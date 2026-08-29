@@ -585,6 +585,17 @@
       fillHoro("gemini", "live-horo-nick");
       fillHoro("aquarius", "live-horo-dayna");
     }
+
+    function paintTemp(el, n) {
+      if (!el || n == null || isNaN(n)) return;
+      var c = "#f7f1e6";
+      if (n <= 64) c = "#8ec5ff";
+      else if (n <= 74) c = "#f7f1e6";
+      else if (n <= 82) c = "#e6c36a";
+      else if (n <= 89) c = "#e07a5f";
+      else c = "#ff5a3c";
+      el.style.color = c;
+    }
     function refreshWeather() {
       var hdr = { "Accept": "application/geo+json" };
       fetch("https://api.weather.gov/points/26.9595,-82.3543", { headers: hdr })
@@ -638,8 +649,8 @@
           var tempEl = document.getElementById("live-temp");
           var feelEl = document.getElementById("live-feels");
           var skyEl = document.getElementById("live-sky");
-          if (tempEl && tempF != null) tempEl.innerHTML = tempF + "&deg;";
-          if (feelEl && tempF != null) feelEl.innerHTML = tempF + "&deg;";
+          if (tempEl && tempF != null) { tempEl.innerHTML = tempF + "&deg;"; paintTemp(tempEl, tempF); }
+          if (feelEl && tempF != null) { feelEl.innerHTML = tempF + "&deg;"; paintTemp(feelEl, tempF); }
           var windEl = document.getElementById("live-wind");
           var gustEl = document.getElementById("live-gusts");
           var rhEl = document.getElementById("live-rh");
@@ -706,7 +717,7 @@
           }
           var tick = document.getElementById("ticktext");
           if (tick) {
-            var SEP = "          • • •          ";
+            var SEP = "\u00a0".repeat(72);
             function sent(s) { return String(s || "").replace(/\.\s+/g, ".\u00a0\u00a0\u00a0\u00a0 ").trim(); }
             var nowB = sent("Now. It is " + (nowH.temperature != null ? nowH.temperature + " degrees" : "updating") + ", " + (nowH.shortForecast || "checking the sky").toLowerCase() + ". Wind " + (nowH.windDirection || "") + " " + (nowH.windSpeed || "") + ". " + (today.detailedForecast || "").slice(0, 220));
             var marB = sent("Marine. " + ((document.getElementById("live-tide-today") || {}).textContent || "Tides updating") + ". Water " + ((document.getElementById("live-sst") || {}).textContent || "") + ". Wind " + ((document.getElementById("live-venf-wind") || {}).textContent || "") + ". Rip " + ((document.getElementById("live-rip") || {}).textContent || "") + ". Red tide " + ((document.getElementById("live-redtide") || {}).textContent || "") + ".");
