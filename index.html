@@ -11,12 +11,13 @@
     * { box-sizing: border-box; }
     html, body { margin:0; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
     .frame { position:relative; width:min(430px,100vw); height:100dvh; max-height:100dvh; margin:0 auto; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
-    header { background:var(--navy); color:#f7f1e6; padding:10px 12px 8px; display:flex; flex-direction:column; gap:8px; }
-    header .top { display:flex; justify-content:space-between; align-items:flex-end; }
-    header .temprow { align-items:center; }
+    header { background:var(--navy); color:#f7f1e6; padding:10px 12px 8px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
+    header .brand { justify-self:start; }
+    header .clock { justify-self:end; text-align:right; }
+    header .temprow { align-items:center; justify-content:center; gap:10px; }
     header .tempblock label, header .feels label { color:#c9c0b0; font-size:10px; }
-    header .temp, header .feels strong { font-size:36px; color:#f7f1e6; }
-    header .wxicon { width:40px; height:40px; flex-basis:40px; margin:0; }
+    header .temp, header .feels strong { font-size:32px; color:#f7f1e6; }
+    header .wxicon { width:36px; height:36px; flex-basis:36px; margin:0; }
     .brand b { display:block; font-family:Fraunces,Georgia,serif; letter-spacing:.1em; font-size:20px; }
     .brand small { letter-spacing:.16em; text-transform:uppercase; font-size:11px; opacity:.75; }
     #when { font-weight:700; }
@@ -99,15 +100,13 @@
 <body>
   <div class="frame">
     <header>
-      <div class="top">
-        <div class="brand"><b>BEACHWALK</b><small>Manasota Key</small></div>
-        <div><div id="when"></div><div class="flag">STORMS</div></div>
-      </div>
+      <div class="brand"><b>BEACHWALK</b><small>Manasota Key</small></div>
       <div class="temprow">
         <div class="tempblock"><label>Temp</label><div class="temp" id="live-temp">77&deg;</div></div>
         <svg class="wxicon" viewBox="0 0 64 64" aria-label="sky"><circle cx="28" cy="28" r="12" fill="#c4a35a"/><g stroke="#c4a35a" stroke-width="3" stroke-linecap="round"><line x1="28" y1="8" x2="28" y2="14"/><line x1="28" y1="42" x2="28" y2="48"/><line x1="8" y1="28" x2="14" y2="28"/><line x1="42" y1="28" x2="48" y2="28"/><line x1="14" y1="14" x2="18" y2="18"/><line x1="38" y1="38" x2="42" y2="42"/><line x1="14" y1="42" x2="18" y2="38"/><line x1="38" y1="18" x2="42" y2="14"/></g><ellipse cx="40" cy="42" rx="16" ry="10" fill="#e8e2d6" stroke="#c9c0b0" stroke-width="1.5"/><ellipse cx="30" cy="44" rx="11" ry="8" fill="#f4efe6"/></svg>
         <div class="feels"><label>Feels like</label><strong id="live-feels">78&deg;</strong></div>
       </div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div></div>
     </header>
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
@@ -704,7 +703,7 @@
           if (tick && nowH.shortForecast) {
             var brief = "Live NWS Englewood. It is " + nowH.temperature + " degrees, " + (nowH.shortForecast || "").toLowerCase() + ". Wind " + (nowH.windDirection || "") + " " + (nowH.windSpeed || "") + ". " + (today.detailedForecast || "").slice(0, 280);
             tick.textContent = brief + "          " + brief;
-            requestAnimationFrame(function () { spinEl(tick, 360); });
+            requestAnimationFrame(function () { spinEl(tick, 275); });
           }
           refreshMarineSky(days, hours, obs);
           refreshExtras(hours, days);
@@ -740,7 +739,7 @@
         txt.textContent = body + "          " + body;
         bar.classList.add("on");
         stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 360); });
+        requestAnimationFrame(function () { spinEl(txt, 275); });
       }).catch(function () { bar.classList.remove("on"); stackTickers(); });
     })();
 
@@ -760,7 +759,7 @@
     function spinEl(el, speed) {
       if (!el) return;
       var w = el.scrollWidth || el.getBoundingClientRect().width;
-      var dur = Math.max(16, w / (speed || 360));
+      var dur = Math.max(16, w / (speed || 275));
       el.style.animation = "none";
       el.offsetHeight;
       el.style.animation = "tick " + dur + "s linear infinite";
@@ -772,7 +771,7 @@
       if (!bar || !txt) return;
       function spin(el, speed) {
         var w = el.getBoundingClientRect().width;
-        var dur = Math.max(20, w / 360);
+        var dur = Math.max(20, w / 275);
         el.style.animation = "none";
         el.offsetHeight;
         el.style.animation = "tick " + dur + "s linear infinite";
@@ -801,14 +800,14 @@
         txt.textContent = body + "          " + body;
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
         frame.classList.add("has-alert"); stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 360); });
+        requestAnimationFrame(function () { spinEl(txt, 275); });
       }).catch(function () {});
     })();
 
     (function () {
       var el = document.getElementById("ticktext");
       if (!el) return;
-      function run() { spinEl(el, 360); }
+      function run() { spinEl(el, 275); }
       var style = document.createElement("style");
       style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }";
       document.head.appendChild(style);
