@@ -156,7 +156,7 @@
       <section id="marine" class="page">
         <h2>Marine</h2>
         <div class="card"><b>Manasota tide today</b><span id="live-tide-today">Loading tides…</span>
-          <div class="tide"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/><text x="70" y="84" font-size="9" fill="#5c6b7a">8:55a</text><text x="138" y="16" font-size="9" fill="#1b2a4a">3:09p 1.7</text></svg></div>
+          <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/><text x="70" y="84" font-size="9" fill="#5c6b7a">8:55a</text><text x="138" y="16" font-size="9" fill="#1b2a4a">3:09p 1.7</text></svg></div>
         </div>
         <div class="tiles">
           <div class="tile"><label>Rip</label><strong id="live-rip">…</strong></div>
@@ -174,8 +174,8 @@
 
       <section id="sky" class="page">
         <h2>Sky</h2>
-        <div class="tile wide"><label id="live-sun-label">Sun path</label><div class="sunpath"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#c4a35a" stroke-width="3"/><circle cx="20" cy="70" r="4" fill="#c4a35a"/><circle cx="200" cy="70" r="4" fill="#1b2a4a"/><circle cx="95" cy="22" r="5" fill="#e07a5f"/><text x="8" y="84" font-size="9" fill="#5c6b7a">7:07a</text><text x="168" y="84" font-size="9" fill="#5c6b7a">7:52p</text><text x="86" y="14" font-size="9" fill="#1b2a4a">now</text></svg></div></div>
-        <div class="tile wide"><label>Moon · waning gibbous after the Aug 28 full / partial eclipse</label><div class="moonpath"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/><circle cx="118" cy="52" r="5" fill="#2a9d8f"/><text x="8" y="84" font-size="8" fill="#5c6b7a">New</text><text x="62" y="12" font-size="8" fill="#5c6b7a">1st</text><text x="118" y="84" font-size="8" fill="#5c6b7a">Full 28th</text><text x="178" y="12" font-size="8" fill="#5c6b7a">3rd</text></svg></div></div>
+        <div class="tile wide"><label id="live-sun-label">Sun path</label><div class="sunpath" id="sun-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#c4a35a" stroke-width="3"/><circle cx="20" cy="70" r="4" fill="#c4a35a"/><circle cx="200" cy="70" r="4" fill="#1b2a4a"/><circle cx="95" cy="22" r="5" fill="#e07a5f"/><text x="8" y="84" font-size="9" fill="#5c6b7a">7:07a</text><text x="168" y="84" font-size="9" fill="#5c6b7a">7:52p</text><text x="86" y="14" font-size="9" fill="#1b2a4a">now</text></svg></div></div>
+        <div class="tile wide"><label>Moon · waning gibbous after the Aug 28 full / partial eclipse</label><div class="moonpath" id="moon-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/><circle cx="118" cy="52" r="5" fill="#2a9d8f"/><text x="8" y="84" font-size="8" fill="#5c6b7a">New</text><text x="62" y="12" font-size="8" fill="#5c6b7a">1st</text><text x="118" y="84" font-size="8" fill="#5c6b7a">Full 28th</text><text x="178" y="12" font-size="8" fill="#5c6b7a">3rd</text></svg></div></div>
         <div class="tiles">
           <div class="tile"><label>Tonight</label><strong id="live-planet1">…</strong><div id="live-planet1d"></div></div>
           <div class="tile"><label>Overnight</label><strong id="live-planet2">…</strong><div id="live-planet2d"></div></div>
@@ -330,6 +330,87 @@
       var d = new Date(iso);
       return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
     }
+
+    window.__bwCharts = { preds: null, rise: null, set: null };
+    function svgWrap(inner) {
+      return '<svg viewBox="0 0 220 90">' + inner + '</svg>';
+    }
+    function drawSunChart(riseIso, setIso) {
+      var box = document.getElementById("sun-chart");
+      if (!box || !riseIso || !setIso) return;
+      var rise = new Date(riseIso).getTime();
+      var set = new Date(setIso).getTime();
+      var now = Date.now();
+      var t = (now - rise) / (set - rise);
+      t = Math.max(0, Math.min(1, t));
+      var x = 20 + t * 180;
+      var y = 70 - Math.sin(t * Math.PI) * 50;
+      function hh(ms) {
+        return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
+      }
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        '<path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#c4a35a" stroke-width="3"/>' +
+        '<circle cx="20" cy="70" r="4" fill="#c4a35a"/>' +
+        '<circle cx="200" cy="70" r="4" fill="#1b2a4a"/>' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#e07a5f"/>' +
+        '<text x="8" y="84" font-size="9" fill="#5c6b7a">' + hh(rise) + '</text>' +
+        '<text x="160" y="84" font-size="9" fill="#5c6b7a">' + hh(set) + '</text>' +
+        '<text x="' + Math.max(8, x-12).toFixed(1) + '" y="' + Math.max(12, y-8).toFixed(1) + '" font-size="9" fill="#1b2a4a">now</text>'
+      );
+    }
+    function moonPhase() {
+      var syn = 29.53058867;
+      var known = Date.UTC(2026,7,28,6,0,0); // full moon Aug 28 2026 approx
+      var days = (Date.now() - known) / 86400000;
+      var age = ((days % syn) + syn) % syn;
+      return age / syn; // 0 full in this ref? wait full=0 then 0.5 new
+    }
+    function drawMoonChart() {
+      var box = document.getElementById("moon-chart");
+      if (!box) return;
+      var ph = moonPhase();
+      var x = 10 + ph * 200;
+      var y = 70 - Math.abs(Math.sin(ph * Math.PI * 2)) * 48;
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        '<path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/>' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#2a9d8f"/>' +
+        '<text x="8" y="84" font-size="8" fill="#5c6b7a">Full</text>' +
+        '<text x="58" y="12" font-size="8" fill="#5c6b7a">3rd</text>' +
+        '<text x="118" y="84" font-size="8" fill="#5c6b7a">New</text>' +
+        '<text x="168" y="12" font-size="8" fill="#5c6b7a">1st</text>'
+      );
+    }
+    function drawTideChart(preds) {
+      var box = document.getElementById("tide-chart");
+      if (!box || !preds || !preds.length) return;
+      var pts = preds.slice(0, 6).map(function (p) {
+        return { t: new Date(p.t.replace(" ", "T")).getTime(), v: parseFloat(p.v), type: p.type };
+      }).filter(function (p) { return !isNaN(p.t) && !isNaN(p.v); });
+      if (pts.length < 2) return;
+      var t0 = pts[0].t, t1 = pts[pts.length-1].t;
+      var vmin = Math.min.apply(null, pts.map(function (p) { return p.v; }));
+      var vmax = Math.max.apply(null, pts.map(function (p) { return p.v; }));
+      if (vmax === vmin) vmax = vmin + 1;
+      function X(ms) { return 10 + ((ms - t0) / (t1 - t0)) * 200; }
+      function Y(v) { return 70 - ((v - vmin) / (vmax - vmin)) * 48; }
+      var d = pts.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
+      var marks = pts.map(function (p) {
+        return '<circle cx="' + X(p.t).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="3" fill="#1b2a4a"/>' +
+          '<text x="' + Math.max(4, X(p.t)-16).toFixed(1) + '" y="84" font-size="8" fill="#5c6b7a">' +
+          new Date(p.t).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"}).toLowerCase() + "</text>";
+      }).join("");
+      var now = Date.now();
+      var nx = X(Math.max(t0, Math.min(t1, now)));
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        '<path d="' + d + '" fill="none" stroke="#2a9d8f" stroke-width="3"/>' +
+        marks +
+        '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#e07a5f" stroke-width="2"/>' +
+        '<text x="' + Math.max(8, nx-10).toFixed(1) + '" y="10" font-size="8" fill="#e07a5f">now</text>'
+      );
+    }
     function refreshMarineSky(days, hours, obs) {
       fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" +
         new Date().toISOString().slice(0,10).replace(/-/g,"") +
@@ -344,6 +425,7 @@
           var el2 = document.getElementById("live-tides-next");
           if (el1) el1.textContent = bits.slice(0, 2).join(" · ") || "NOAA tides unavailable";
           if (el2) el2.textContent = bits.join(" · ") || "NOAA tides unavailable";
+          window.__bwCharts.preds = preds; drawTideChart(preds);
         }).catch(function () {});
       var windEl = document.getElementById("live-venf-wind");
       var gustEl = document.getElementById("live-venf-gust");
@@ -361,6 +443,9 @@
           var lab = document.getElementById("live-sun-label");
           var watch = document.getElementById("live-sky-watch");
           if (lab && r.sunrise && r.sunset) lab.textContent = "Sun path · " + hh(r.sunrise) + " to " + hh(r.sunset);
+          window.__bwCharts.rise = r.sunrise; window.__bwCharts.set = r.sunset;
+          drawSunChart(r.sunrise, r.sunset);
+          drawMoonChart();
           if (watch) {
             var storm = (hours && hours[0] && hours[0].shortForecast) ? hours[0].shortForecast : "";
             watch.textContent = "Sunrise " + (r.sunrise ? hh(r.sunrise) : "") + ", sunset " + (r.sunset ? hh(r.sunset) : "") + ". " + storm + ". Venus still low in the west after sunset; Saturn overnight. ISS passes change nightly — NASA Spot the Station.";
@@ -604,6 +689,11 @@
     }
     refreshWeather();
     setInterval(refreshWeather, 5 * 60 * 1000);
+    setInterval(function () {
+      if (window.__bwCharts && window.__bwCharts.preds) drawTideChart(window.__bwCharts.preds);
+      if (window.__bwCharts && window.__bwCharts.rise) drawSunChart(window.__bwCharts.rise, window.__bwCharts.set);
+      drawMoonChart();
+    }, 60 * 1000);
 
     (function breaking() {
       var bar = document.getElementById("breakbar");
