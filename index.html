@@ -9,14 +9,14 @@
   <style>
     :root { --sand:#f4efe6; --sand-2:#ebe4d6; --navy:#1b2a4a; --teal:#2a9d8f; --gold:#c4a35a; --coral:#e07a5f; --muted:#5c6b7a; }
     * { box-sizing: border-box; }
-    html, body { margin:0; min-height:100%; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
-    .frame { position:relative; width:min(430px,100vw); min-height:100vh; margin:0 auto; background:var(--sand); display:flex; flex-direction:column; }
+    html, body { margin:0; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
+    .frame { position:relative; width:min(430px,100vw); height:100dvh; max-height:100dvh; margin:0 auto; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
     header { background:var(--navy); color:#f7f1e6; padding:16px 18px 14px; display:flex; justify-content:space-between; align-items:flex-end; }
     .brand b { display:block; font-family:Fraunces,Georgia,serif; letter-spacing:.1em; font-size:20px; }
     .brand small { letter-spacing:.16em; text-transform:uppercase; font-size:11px; opacity:.75; }
     #when { font-weight:700; }
     .flag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
-    main { flex:1; padding:10px 12px 6px; }
+    main { flex:1; padding:10px 12px 6px; overflow-y:auto; min-height:0; }
     .page { display:none; }
     .page.on { display:block; }
     .temprow { display:flex; align-items:flex-end; justify-content:space-between; gap:6px; }
@@ -53,24 +53,21 @@
     .dock { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:var(--sand-2); }
     .dock button { min-height:48px; border:0; border-radius:12px; background:transparent; font-weight:700; font-size:13px; color:var(--navy); }
     .dock button.on { background:#fff; }
+    .ticker-stack { flex-shrink:0; width:100%; }
     .ticker, .alert-ticker, .break-ticker {
-      position:absolute; left:0; right:0; z-index:5;
+      position:relative; left:auto; right:auto; bottom:auto;
       font-size:14px; line-height:1.35;
       padding:10px 0; overflow:hidden; white-space:nowrap; pointer-events:none;
     }
-    .ticker { bottom:0; background:var(--navy); color:#f7f1e6; }
-    .alert-ticker { bottom:40px; display:none; font-weight:700; }
+    .ticker { background:var(--navy); color:#f7f1e6; }
+    .alert-ticker { display:none; font-weight:700; }
     .alert-ticker.on { display:block; }
     .alert-ticker.watch { background:#e07a5f; color:#1b2a4a; }
     .alert-ticker.warning { background:#b42318; color:#fff; }
     .break-ticker { display:none; font-weight:700; background:#111; color:#fff; }
     .break-ticker.on { display:block; }
     .ticker span, .alert-ticker span, .break-ticker span { display:inline-block; will-change:transform; }
-    .dock { margin-bottom:44px; }
-    .frame.has-alert .dock { margin-bottom:84px; }
-    .frame.has-break .dock { margin-bottom:84px; }
-    .frame.has-alert.has-break .dock { margin-bottom:124px; }
-    .frame.has-alert .ticker { bottom:0; }
+    .dock { margin-bottom:0; flex-shrink:0; }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
     .tenday { display:flex; flex-direction:column; gap:6px; margin:8px 0 12px; }
@@ -80,7 +77,7 @@
     /* device layouts */
     @media (min-width: 900px) and (orientation: landscape) {
       body { background:#1b2a4a; }
-      .frame { width:100vw; max-width:none; min-height:100vh; height:100vh; }
+      .frame { width:100vw; max-width:none; height:100dvh; }
       .temp, .feels strong { font-size:72px; }
       .wxicon { width:72px; height:72px; flex-basis:72px; }
       iframe.full { height:calc(100vh - 220px); }
@@ -112,11 +109,11 @@
     <main>
       <section id="now" class="page on">
         <div class="temprow">
-          <div class="tempblock"><label>Temp</label><div class="temp">77&deg;</div></div>
+          <div class="tempblock"><label>Temp</label><div class="temp" id="live-temp">77&deg;</div></div>
           <svg class="wxicon" viewBox="0 0 64 64" aria-label="Mostly sunny"><circle cx="28" cy="28" r="12" fill="#c4a35a"/><g stroke="#c4a35a" stroke-width="3" stroke-linecap="round"><line x1="28" y1="8" x2="28" y2="14"/><line x1="28" y1="42" x2="28" y2="48"/><line x1="8" y1="28" x2="14" y2="28"/><line x1="42" y1="28" x2="48" y2="28"/><line x1="14" y1="14" x2="18" y2="18"/><line x1="38" y1="38" x2="42" y2="42"/><line x1="14" y1="42" x2="18" y2="38"/><line x1="38" y1="18" x2="42" y2="14"/></g><ellipse cx="40" cy="42" rx="16" ry="10" fill="#e8e2d6" stroke="#c9c0b0" stroke-width="1.5"/><ellipse cx="30" cy="44" rx="11" ry="8" fill="#f4efe6"/></svg>
-          <div class="feels"><label>Feels like</label><strong>78&deg;</strong></div>
+          <div class="feels"><label>Feels like</label><strong id="live-feels">78&deg;</strong></div>
         </div>
-        <div class="sky">Mostly sunny now · storms after 2p · HI 102&deg;</div>
+        <div class="sky" id="live-sky">Mostly sunny now · storms after 2p · HI 102&deg;</div>
         <div class="pills">
           <span class="pill go">Beach GO</span><span class="pill go">Cart GO</span>
           <span class="pill go">Boat GO</span><span class="pill win">Courts WINDOW</span>
@@ -255,9 +252,11 @@
       <button type="button" id="talk">Talk</button>
       <button type="button" id="meet">Meet</button>
     </nav>
+    <div class="ticker-stack">
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
     <div class="alert-ticker" id="alertbar"><span id="alerttext"></span></div>
     <div class="ticker"><span id="ticktext">It is 77 degrees and feels like 78, mostly sunny this morning with scattered storms after 2 p.m. and a heat index near 102.         Beach, cart, and boat are a go now; courts are a window later.         Rain is unlikely in the next hour, lightning is possible this afternoon, wind is east at 6 gusting to 8, humidity is 91 percent with a dew point of 74, and UV turns high later.         Venice buoy pressure is 30.03 inches and rising.         Sunrise was 7:07 a.m., sunset is 7:52 p.m., and the moon is waning gibbous after the full on the 28th.         •   •   •       Manasota tide is falling after the 8:55 a.m. low of 0.67 feet.         Next high is 3:09 p.m. at 1.72 feet, then another low around 9 p.m.  Rip current risk is low, red tide is not observed, seas are about a foot, and there is no small-craft advisory.         Venice buoy is east 5 knots gusting to 8.         Venice Inlet and Stump Pass are a morning window; afternoon storms are the risk on the run home.         •   •   •       Look west about 45 minutes after sunset for Venus, low and bright. Saturn rises in the east around 9:34 p.m. Jupiter and Mars show in the east before sunrise. The moon is waning gibbous after Friday night's full moon and partial eclipse. Vega leads the Summer Triangle high in the evening. Storms after 2 p.m. will wipe the early sky. Next meteor watch is the Orionids in mid-October. Check NASA Spot the Station for ISS passes.       •   •   •       Inside the gates: Tuesday at 5:30 p.m. there is a French bakery pop-up at Capri.         Sunday September 6 from 1 to 5 p.m. is the Labor Day party at the pool and High Tide with a DJ, food, and sundaes.         Monday September 7 from 5 to 8 p.m. food trucks are at Capri, Currywurst and Shaz Shack.         Use the courts before 2 p.m. if storms build.         •   •   •       Outside the gates tonight at 7 p.m., 22N plays SandBar Tiki on the Key; it is open-air so watch the storms.         Sunday 1 to 5 p.m. Cabana Dogs are at SandBar Tiki.         Friday September 4 at 6 p.m. there are fireworks at Downtown Wellen.         Labor Day weekend also has the Venice craft festival, Artur's, and Troll Music.         •   •   •       The villa is marked occupied.         There are no Do, Fly, Arrive FL, or Leave FL items on the calendar.         Music defaults to 94.9 Magic at whisper volume.         You can switch to 106.3 Sunny, 104.9 Seaview, or 107.9 WSRZ.         Mute overnight, during Talk or Meet, and when the storm board is on.         •   •   •       It is 77 degrees and feels like 78, mostly sunny this morning with scattered storms after 2 p.m. and a heat index near 102.         Beach, cart, and boat are a go now; courts are a window later.         Rain is unlikely in the next hour, lightning is possible this afternoon, wind is east at 6 gusting to 8, humidity is 91 percent with a dew point of 74, and UV turns high later.         Venice buoy pressure is 30.03 inches and rising.         Sunrise was 7:07 a.m., sunset is 7:52 p.m., and the moon is waning gibbous after the full on the 28th.         •   •   •       Manasota tide is falling after the 8:55 a.m. low of 0.67 feet.         Next high is 3:09 p.m. at 1.72 feet, then another low around 9 p.m.  Rip current risk is low, red tide is not observed, seas are about a foot, and there is no small-craft advisory.         Venice buoy is east 5 knots gusting to 8.         Venice Inlet and Stump Pass are a morning window; afternoon storms are the risk on the run home.         •   •   •       Look west about 45 minutes after sunset for Venus, low and bright. Saturn rises in the east around 9:34 p.m. Jupiter and Mars show in the east before sunrise. The moon is waning gibbous after Friday night's full moon and partial eclipse. Vega leads the Summer Triangle high in the evening. Storms after 2 p.m. will wipe the early sky. Next meteor watch is the Orionids in mid-October. Check NASA Spot the Station for ISS passes.       •   •   •       Inside the gates: Tuesday at 5:30 p.m. there is a French bakery pop-up at Capri.         Sunday September 6 from 1 to 5 p.m. is the Labor Day party at the pool and High Tide with a DJ, food, and sundaes.         Monday September 7 from 5 to 8 p.m. food trucks are at Capri, Currywurst and Shaz Shack.         Use the courts before 2 p.m. if storms build.         •   •   •       Outside the gates tonight at 7 p.m., 22N plays SandBar Tiki on the Key; it is open-air so watch the storms.         Sunday 1 to 5 p.m. Cabana Dogs are at SandBar Tiki.         Friday September 4 at 6 p.m. there are fireworks at Downtown Wellen.         Labor Day weekend also has the Venice craft festival, Artur's, and Troll Music.         •   •   •       The villa is marked occupied.         There are no Do, Fly, Arrive FL, or Leave FL items on the calendar.         Music defaults to 94.9 Magic at whisper volume.         You can switch to 106.3 Sunny, 104.9 Seaview, or 107.9 WSRZ.         Mute overnight, during Talk or Meet, and when the storm board is on.</span></div>
+    </div>
   </div>
   <script>
     function showPage(id) {
@@ -290,6 +289,59 @@
       clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
     });
     startRotate();
+
+    function refreshWeather() {
+      var hdr = { "Accept": "application/geo+json" };
+      fetch("https://api.weather.gov/points/26.9595,-82.3543", { headers: hdr })
+        .then(function (r) { return r.json(); })
+        .then(function (pt) {
+          var p = pt.properties || {};
+          return Promise.all([
+            fetch(p.forecast, { headers: hdr }).then(function (r) { return r.json(); }),
+            fetch(p.forecastHourly, { headers: hdr }).then(function (r) { return r.json(); })
+          ]);
+        })
+        .then(function (pair) {
+          var days = (((pair[0] || {}).properties || {}).periods) || [];
+          var hours = (((pair[1] || {}).properties || {}).periods) || [];
+          var nowH = hours[0] || {};
+          var today = days[0] || {};
+          var tempEl = document.getElementById("live-temp");
+          var feelEl = document.getElementById("live-feels");
+          var skyEl = document.getElementById("live-sky");
+          if (tempEl && nowH.temperature != null) tempEl.innerHTML = nowH.temperature + "&deg;";
+          if (feelEl && nowH.temperature != null) feelEl.innerHTML = nowH.temperature + "&deg;";
+          if (skyEl) {
+            var short = nowH.shortForecast || today.shortForecast || "";
+            var hi = "";
+            if (today.name && /night/i.test(today.name) === false && today.temperature != null) hi = " · HI " + today.temperature + "&deg;";
+            skyEl.textContent = short + hi;
+          }
+          if (hours.length && document.querySelector(".hourly")) {
+            var box = document.querySelector(".hourly");
+            box.innerHTML = hours.slice(0, 6).map(function (h) {
+              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" });
+              return '<div class="hour">' + when + '<b>' + h.temperature + '°</b></div>';
+            }).join("");
+          }
+          if (days.length && document.querySelector(".tenday")) {
+            var td = document.querySelector(".tenday");
+            var rows = days.filter(function (d, i) { return i % 2 === 0; }).slice(0, 15);
+            td.innerHTML = rows.map(function (d) {
+              var name = (d.name || "").split(" ")[0];
+              return '<div class="day">' + name + '<span></span><span>' + (d.shortForecast || "") + '</span><span><span class="hi">' + d.temperature + '°</span></span></div>';
+            }).join("");
+          }
+          var tick = document.getElementById("ticktext");
+          if (tick && nowH.shortForecast) {
+            var brief = "Live NWS Englewood. It is " + nowH.temperature + " degrees, " + (nowH.shortForecast || "").toLowerCase() + ". Wind " + (nowH.windDirection || "") + " " + (nowH.windSpeed || "") + ". " + (today.detailedForecast || "").slice(0, 280);
+            tick.textContent = brief + "          " + brief;
+          }
+        })
+        .catch(function () {});
+    }
+    refreshWeather();
+    setInterval(refreshWeather, 10 * 60 * 1000);
 
     (function breaking() {
       var bar = document.getElementById("breakbar");
