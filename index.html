@@ -53,10 +53,11 @@
     .dock { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:var(--sand-2); }
     .dock button { min-height:48px; border:0; border-radius:12px; background:transparent; font-weight:700; font-size:13px; color:var(--navy); }
     .dock button.on { background:#fff; }
-    .ticker-stack { flex-shrink:0; width:100%; }
+    .ticker-stack { flex-shrink:0; width:100%; display:flex; flex-direction:column; }
     .ticker, .alert-ticker, .break-ticker {
       position:relative; left:auto; right:auto; bottom:auto;
-      font-size:14px; line-height:1.35;
+      width:100%; height:40px; box-sizing:border-box;
+      font-size:14px; line-height:20px;
       padding:10px 0; overflow:hidden; white-space:nowrap; pointer-events:none;
     }
     .ticker { background:var(--navy); color:#f7f1e6; }
@@ -74,20 +75,8 @@
     .day { display:grid; grid-template-columns:42px 28px 1fr auto; gap:8px; align-items:center; background:#fff; border-radius:10px; padding:4px 10px; font-size:12px; }
     .day svg { width:26px; height:26px; }
     .hi { font-weight:700; } .lo { color:var(--muted); }
-    /* device layouts */
-    @media (min-width: 900px) and (orientation: landscape) {
-      body { background:#1b2a4a; }
-      .frame { width:100vw; max-width:none; height:100dvh; }
-      .temp, .feels strong { font-size:72px; }
-      .wxicon { width:72px; height:72px; flex-basis:72px; }
-      iframe.full { height:calc(100vh - 220px); }
-      .dock { grid-template-columns: repeat(11, 1fr); }
-      .dock button { min-height:40px; font-size:12px; }
-      .warn { display:none; }
-    }
-    @media (max-width: 899px), (orientation: portrait) {
-      .frame { width:min(430px,100vw); }
-    }
+    /* Keep the same compact column on laptop and phone. */
+    .frame { width:min(430px,100vw); }
     .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
     .pbar-read span { color:var(--muted); font-size:12px; }
     .pbar { position:relative; display:flex; height:18px; border-radius:999px; overflow:hidden; background:#e2d9c8; }
@@ -364,7 +353,7 @@
         txt.textContent = body + "          " + body;
         bar.classList.add("on");
         stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 155); });
+        requestAnimationFrame(function () { spinEl(txt, 260); });
       }).catch(function () { bar.classList.remove("on"); stackTickers(); });
     })();
 
@@ -374,21 +363,17 @@
       var alertBar = document.getElementById("alertbar");
       var breakBar = document.getElementById("breakbar");
       var frame = document.querySelector(".frame");
-      if (alertBar && alertBar.classList.contains("on")) {
-        alertBar.style.bottom = y + "px";
-        y += 40;
-        frame.classList.add("has-alert");
-      } else if (frame) frame.classList.remove("has-alert");
-      if (breakBar && breakBar.classList.contains("on")) {
-        breakBar.style.bottom = y + "px";
-        y += 40;
-        frame.classList.add("has-break");
-      } else if (frame) frame.classList.remove("has-break");
+      if (alertBar) alertBar.style.bottom = "";
+      if (breakBar) breakBar.style.bottom = "";
+      if (alertBar && alertBar.classList.contains("on")) frame.classList.add("has-alert");
+      else if (frame) frame.classList.remove("has-alert");
+      if (breakBar && breakBar.classList.contains("on")) frame.classList.add("has-break");
+      else if (frame) frame.classList.remove("has-break");
     }
     function spinEl(el, speed) {
       if (!el) return;
       var w = el.getBoundingClientRect().width;
-      var dur = Math.max(20, w / (speed || 155));
+      var dur = Math.max(20, w / (speed || 260));
       el.style.animation = "none";
       el.offsetHeight;
       el.style.animation = "tick " + dur + "s linear infinite";
@@ -429,14 +414,14 @@
         txt.textContent = body + "          " + body;
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
         frame.classList.add("has-alert"); stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 155); });
+        requestAnimationFrame(function () { spinEl(txt, 260); });
       }).catch(function () {});
     })();
 
     (function () {
       var el = document.getElementById("ticktext");
       if (!el) return;
-      var pxPerSec = 155;
+      var pxPerSec = 260;
       function run() {
         var w = el.getBoundingClientRect().width;
         var dur = Math.max(40, w / pxPerSec);
