@@ -205,8 +205,8 @@
         <audio id="radio" preload="none" controls style="width:100%;margin:8px 0"></audio>
         <div class="rowbtns">
           <button type="button" class="on" data-stream="https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac">94.9 Magic</button>
-          <button type="button" data-stream="https://live.amperwave.net/direct/fortmyersbroadcasting-wjptfmaac-ibc1">106.3 Sunny</button>
-          <button type="button" data-stream="https://stream.revma.ihrhls.com/zc6945">104.9 Seaview</button>
+          <button type="button" data-stream="https://live.amperwave.net/direct/beasley-wjptfmaac-ibc1">106.3 Sunny</button>
+          <button type="button" data-stream="https://stream.revma.ihrhls.com/zc5096">104.9 Seaview</button>
           <button type="button" data-stream="https://stream.revma.ihrhls.com/zc641">107.9 WSRZ</button>
           <button type="button" data-stream="">Mute</button>
         </div>
@@ -282,6 +282,30 @@
         });
       });
     });
+    (function radioAuto() {
+      var audio = document.getElementById("radio");
+      var status = document.getElementById("radio-status");
+      var magic = document.querySelector('.rowbtns button[data-stream*="tam949"]');
+      if (!audio || !magic) return;
+      function start() {
+        var url = magic.getAttribute("data-stream");
+        if (!url) return;
+        if (audio.src && !audio.paused) return;
+        audio.src = url;
+        audio.volume = 0.18;
+        magic.classList.add("on");
+        document.querySelectorAll(".rowbtns button").forEach(function (x) {
+          if (x !== magic) x.classList.remove("on");
+        });
+        audio.play().then(function () {
+          if (status) status.textContent = "Playing 94.9 Magic";
+        }).catch(function () {
+          if (status) status.textContent = "94.9 is ready — tap 94.9 Magic if you do not hear it yet.";
+        });
+      }
+      start();
+      document.addEventListener("click", start, { once: true });
+    })();
     function clock() {
       document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
     }
