@@ -3,12 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
   <title>BeachWalk Board</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     :root { --sand:#f4efe6; --sand-2:#ebe4d6; --navy:#1b2a4a; --teal:#2a9d8f; --gold:#c4a35a; --coral:#e07a5f; --muted:#5c6b7a; }
     * { box-sizing: border-box; }
+
+    html { color-scheme: light dark; }
+    @media (prefers-color-scheme: dark) {
+      body { background:#0c1018; color:#f4efe6; }
+      .frame { background:#141a24; color:#f4efe6; }
+      header { background:#0b1018; }
+      .sky, .card span, .tile label, .tempblock label, .feels label, .lo, .pbar-read span, .pbar-scale { color:#b7c0cc; }
+      .tile, .card, .day, .hour { background:#1c2432; }
+      .dock { background:#10161f; }
+      .dock button { color:#e8e2d6; }
+      .dock button.on { background:#2a3344; color:#fff; }
+      .ticker { background:#0b1018; color:#f4efe6; }
+      a { color:#e6c36a; }
+      td { border-bottom-color:#2a3344; }
+      .rowbtns button, .rowbtns a { background:#1c2432; border-color:#2a3344; color:#f4efe6; }
+      .rowbtns button.on { background:#e6c36a; color:#1b2a4a; }
+      .pbar { background:#2a3344; }
+    }
     html, body { margin:0; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
     .frame { position:relative; width:min(430px,100vw); height:100dvh; max-height:100dvh; margin:0 auto; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
     header { background:var(--navy); color:#f7f1e6; padding:10px 12px 8px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
@@ -275,6 +294,8 @@
     function showPage(id) {
       document.querySelectorAll(".page").forEach(function (p) { p.classList.toggle("on", p.id === id); });
       document.querySelectorAll("#dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
+      var idx = pages.indexOf(id);
+      if (idx >= 0) i = idx;
     }
     document.getElementById("dock").addEventListener("click", function (e) {
       var btn = e.target.closest("button"); if (!btn) return;
@@ -334,12 +355,39 @@
     var pages = ["now","tenday","radar","marine","sky","bw","eng","house","radio","news","contacts"], i = 0, rot, idle;
     function startRotate() {
       clearInterval(rot);
-      rot = setInterval(function () { i = (i + 1) % pages.length; showPage(pages[i]); }, 10000);
+      rot = setInterval(function () { i = (i + 1) % pages.length; showPage(pages[i]); }, 15000);
     }
     document.getElementById("dock").addEventListener("click", function () {
       clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
     });
     startRotate();
+    (function swipePages() {
+      var startX = 0, startY = 0, active = false;
+      var root = document.querySelector("main") || document.querySelector(".frame");
+      if (!root) return;
+      function down(x, y) { startX = x; startY = y; active = true; }
+      function up(x, y) {
+        if (!active) return;
+        active = false;
+        var dx = x - startX, dy = y - startY;
+        if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+        if (dx < 0) i = (i + 1) % pages.length;
+        else i = (i - 1 + pages.length) % pages.length;
+        showPage(pages[i]);
+        clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
+      }
+      root.addEventListener("touchstart", function (e) {
+        if (e.changedTouches && e.changedTouches[0]) down(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      }, { passive: true });
+      root.addEventListener("touchend", function (e) {
+        if (e.changedTouches && e.changedTouches[0]) up(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      }, { passive: true });
+      root.addEventListener("pointerdown", function (e) {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        down(e.clientX, e.clientY);
+      });
+      root.addEventListener("pointerup", function (e) { up(e.clientX, e.clientY); });
+    })();
 
 
     function fmtTideClock(iso) {
