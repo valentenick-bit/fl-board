@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BeachWalk Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --sand:#f4efe6; --sand-2:#ebe4d6; --navy:#1b2a4a; --teal:#2a9d8f; --gold:#c4a35a; --coral:#e07a5f; --muted:#5c6b7a; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; min-height:100%; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
+    .frame { position:relative; width:min(430px,100vw); min-height:100vh; margin:0 auto; background:var(--sand); display:flex; flex-direction:column; }
+    header { background:var(--navy); color:#f7f1e6; padding:16px 18px 14px; display:flex; justify-content:space-between; align-items:flex-end; }
+    .brand b { display:block; font-family:Fraunces,Georgia,serif; letter-spacing:.1em; font-size:20px; }
+    .brand small { letter-spacing:.16em; text-transform:uppercase; font-size:11px; opacity:.75; }
+    #when { font-weight:700; }
+    .flag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
+    main { flex:1; padding:10px 12px 6px; }
+    .page { display:none; }
+    .page.on { display:block; }
+    .temprow { display:flex; align-items:flex-end; justify-content:space-between; gap:6px; }
+    .tempblock { flex:1; min-width:0; }
+    .tempblock label, .feels label { display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .temp, .feels strong { font-family:Fraunces,Georgia,serif; font-size:52px; line-height:.9; }
+    .wxicon { width:52px; height:52px; flex:0 0 52px; margin-bottom:4px; }
+    .feels { flex:1; min-width:0; text-align:right; }
+    .sky { font-size:18px; color:var(--muted); margin:8px 0 14px; }
+    .pills { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+    .pill { display:block; text-align:center; border-radius:999px; padding:10px 8px; font-weight:700; color:#fff; font-size:14px; }
+    .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
+    .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
+    .hourly { display:flex; gap:8px; overflow-x:auto; padding:4px 0 10px; }
+    .hour { min-width:56px; background:#fff; border-radius:12px; text-align:center; padding:8px 4px; font-size:12px; }
+    .hour b { display:block; font-size:16px; }
+    .hour svg { width:28px; height:28px; display:block; margin:4px auto; }
+    .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+    .tile { background:#fff; border-radius:12px; padding:10px; min-height:72px; }
+    .tile label { display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .tile strong { font-size:20px; }
+    .tile.wide { grid-column:1 / -1; }
+    .tide svg, .sunpath svg, .moonpath svg { width:100%; height:90px; display:block; }
+    h2 { font-family:Fraunces,Georgia,serif; margin:0 0 12px; }
+    .card { background:#fff; border-radius:12px; padding:12px; margin-bottom:8px; }
+    .card b { display:block; } .card span { color:var(--muted); font-size:13px; }
+    iframe.full { width:100%; height:52vh; border:0; border-radius:12px; background:#111; }
+    table { width:100%; border-collapse:collapse; }
+    td { padding:10px 4px; border-bottom:1px solid #e2d9c8; font-size:15px; }
+    a { color:var(--navy); font-weight:700; }
+    .rowbtns { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .rowbtns button, .rowbtns a { background:#fff; border:1px solid #d7cdbb; border-radius:999px; padding:10px 12px; font-weight:700; text-decoration:none; color:var(--navy); }
+    .rowbtns button.on { background:var(--navy); color:#fff; }
+    .dock { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:var(--sand-2); }
+    .dock button { min-height:48px; border:0; border-radius:12px; background:transparent; font-weight:700; font-size:13px; color:var(--navy); }
+    .dock button.on { background:#fff; }
+    .ticker, .alert-ticker, .break-ticker {
+      position:absolute; left:0; right:0; z-index:5;
+      font-size:14px; line-height:1.35;
+      padding:10px 0; overflow:hidden; white-space:nowrap; pointer-events:none;
+    }
+    .ticker { bottom:0; background:var(--navy); color:#f7f1e6; }
+    .alert-ticker { bottom:40px; display:none; font-weight:700; }
+    .alert-ticker.on { display:block; }
+    .alert-ticker.watch { background:#e07a5f; color:#1b2a4a; }
+    .alert-ticker.warning { background:#b42318; color:#fff; }
+    .break-ticker { display:none; font-weight:700; background:#111; color:#fff; }
+    .break-ticker.on { display:block; }
+    .ticker span, .alert-ticker span, .break-ticker span { display:inline-block; will-change:transform; }
+    .dock { margin-bottom:44px; }
+    .frame.has-alert .dock { margin-bottom:84px; }
+    .frame.has-break .dock { margin-bottom:84px; }
+    .frame.has-alert.has-break .dock { margin-bottom:124px; }
+    .frame.has-alert .ticker { bottom:0; }
+
+    .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
+    .tenday { display:flex; flex-direction:column; gap:6px; margin:8px 0 12px; }
+    .day { display:grid; grid-template-columns:42px 28px 1fr auto; gap:8px; align-items:center; background:#fff; border-radius:10px; padding:4px 10px; font-size:12px; }
+    .day svg { width:26px; height:26px; }
+    .hi { font-weight:700; } .lo { color:var(--muted); }
+    /* device layouts */
+    @media (min-width: 900px) and (orientation: landscape) {
+      body { background:#1b2a4a; }
+      .frame { width:100vw; max-width:none; min-height:100vh; height:100vh; }
+      .temp, .feels strong { font-size:72px; }
+      .wxicon { width:72px; height:72px; flex-basis:72px; }
+      iframe.full { height:calc(100vh - 220px); }
+      .dock { grid-template-columns: repeat(11, 1fr); }
+      .dock button { min-height:40px; font-size:12px; }
+      .warn { display:none; }
+    }
+    @media (max-width: 899px), (orientation: portrait) {
+      .frame { width:min(430px,100vw); }
+    }
+    .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+    .pbar-read span { color:var(--muted); font-size:12px; }
+    .pbar { position:relative; display:flex; height:18px; border-radius:999px; overflow:hidden; background:#e2d9c8; }
+    .pseg { flex:1; font-size:9px; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; justify-content:center; color:#fff; }
+    .pseg.low { background:#c4a35a; } .pseg.mid { background:#2a9d8f; } .pseg.high { background:#1b2a4a; }
+    .pneedle { position:absolute; top:-4px; bottom:-4px; left:54%; width:3px; background:#e07a5f; border-radius:2px; box-shadow:0 0 0 2px #fff; }
+    .pbar-scale { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:4px; }
+    .pbar.uv .uv0 { background:#2a9d8f; flex:2; } .pbar.uv .uv1 { background:#c4a35a; flex:3; }
+    .pbar.uv .uv2 { background:#e07a5f; flex:3; } .pbar.uv .uv3 { background:#1b2a4a; flex:3; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="warn">Download and open this file in Chrome. Drive preview hides pages.</div>
+    <header>
+      <div class="brand"><b>BEACHWALK</b><small>Manasota Key</small></div>
+      <div><div id="when"></div><div class="flag">STORMS</div></div>
+    </header>
+    <main>
+      <section id="now" class="page on">
+        <div class="temprow">
+          <div class="tempblock"><label>Temp</label><div class="temp">77&deg;</div></div>
+          <svg class="wxicon" viewBox="0 0 64 64" aria-label="Mostly sunny"><circle cx="28" cy="28" r="12" fill="#c4a35a"/><g stroke="#c4a35a" stroke-width="3" stroke-linecap="round"><line x1="28" y1="8" x2="28" y2="14"/><line x1="28" y1="42" x2="28" y2="48"/><line x1="8" y1="28" x2="14" y2="28"/><line x1="42" y1="28" x2="48" y2="28"/><line x1="14" y1="14" x2="18" y2="18"/><line x1="38" y1="38" x2="42" y2="42"/><line x1="14" y1="42" x2="18" y2="38"/><line x1="38" y1="18" x2="42" y2="14"/></g><ellipse cx="40" cy="42" rx="16" ry="10" fill="#e8e2d6" stroke="#c9c0b0" stroke-width="1.5"/><ellipse cx="30" cy="44" rx="11" ry="8" fill="#f4efe6"/></svg>
+          <div class="feels"><label>Feels like</label><strong>78&deg;</strong></div>
+        </div>
+        <div class="sky">Mostly sunny now · storms after 2p · HI 102&deg;</div>
+        <div class="pills">
+          <span class="pill go">Beach GO</span><span class="pill go">Cart GO</span>
+          <span class="pill go">Boat GO</span><span class="pill win">Courts WINDOW</span>
+        </div>
+        <div class="meta"><div>Lightning later</div><div>Rain next hr low</div><div>VENF1 E 5 kt</div><div>30.03" rising</div></div>
+        <div class="hourly">
+          <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
+          <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
+          <div class="hour">12p<svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><b>90&deg;</b></div>
+          <div class="hour">2p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>93&deg;</b></div>
+          <div class="hour">5p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>88&deg;</b></div>
+          <div class="hour">8p<svg viewBox="0 0 32 32"><path d="M6 12h16" stroke="#5c6b7a" fill="none" stroke-width="2"/></svg><b>80&deg;</b></div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><label>Wind</label><strong>E 6 mph</strong></div>
+          <div class="tile"><label>Gusts</label><strong>8 mph</strong></div>
+          <div class="tile wide"><label>Humidity / dew</label><div class="pbar-read"><strong>91%</strong> <span>Dew 74&deg; · muggy</span></div><div class="pbar"><span class="pseg low">Dry</span><span class="pseg mid">OK</span><span class="pseg high">Muggy</span><i class="pneedle" style="left:91%"></i></div><div class="pbar-scale"><span>0%</span><span>50%</span><span>100%</span></div></div>
+          <div class="tile wide"><label>UV index</label><div class="pbar-read"><strong>High later</strong> <span>Peak ~11</span></div><div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" style="left:88%"></i></div><div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div></div>
+          <div class="tile wide"><label>Pressure · VENF1 rising</label><div class="pbar-read"><strong>30.03"</strong> <span>Fair · +0.05 / 3h</span></div><div class="pbar"><span class="pseg low">Low</span><span class="pseg mid">Fair</span><span class="pseg high">High</span><i class="pneedle"></i></div><div class="pbar-scale"><span>29.60</span><span>30.00</span><span>30.50</span></div></div>
+        </div>
+        <p>Good morning window. Do beach and cart before the afternoon storms.</p>
+      </section>
+      <section id="tenday" class="page">
+        <h2>15-day</h2>
+        <div class="tenday">
+          <div class="day">Sat <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><span>sun then storms</span><span><span class="hi">91&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Sun <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>showers likely</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Mon <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>afternoon storms</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Tue <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>mostly sun / storms</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Wed <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>mostly sun / storms</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Thu <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><span>typical Aug pattern</span><span><span class="hi">91&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Fri <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical Aug pattern</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Sat <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical Aug pattern</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Sun <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>storm chance</span><span><span class="hi">89&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Mon <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>storm chance</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Tue <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical pattern</span><span><span class="hi">90&deg;</span> <span class="lo">77&deg;</span></span></div>
+          <div class="day">Wed <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical pattern</span><span><span class="hi">90&deg;</span> <span class="lo">77&deg;</span></span></div>
+          <div class="day">Thu <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>storm chance</span><span><span class="hi">90&deg;</span> <span class="lo">77&deg;</span></span></div>
+          <div class="day">Fri <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical pattern</span><span><span class="hi">91&deg;</span> <span class="lo">77&deg;</span></span></div>
+          <div class="day">Sat <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical pattern</span><span><span class="hi">90&deg;</span> <span class="lo">77&deg;</span></span></div>
+        </div>
+      </section>
+      <section id="radar" class="page">
+        <h2>Radar</h2>
+        <p><a href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Open live KTBW radar</a> if the map below is blank (some browsers block the embed).</p>
+        <iframe class="full" title="KTBW" src="https://radar.weather.gov/station/KTBW/standard"></iframe>
+      </section>
+      <section id="marine" class="page">
+        <h2>Marine</h2>
+        <div class="card"><b>Manasota tide today</b><span>Low 8:55a 0.67 · High 3:09p 1.72</span>
+          <div class="tide"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/><text x="70" y="84" font-size="9" fill="#5c6b7a">8:55a</text><text x="138" y="16" font-size="9" fill="#1b2a4a">3:09p 1.7</text></svg></div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><label>Rip</label><strong>Low</strong></div>
+          <div class="tile"><label>Red tide</label><strong>Clear</strong></div>
+          <div class="tile"><label>Seas</label><strong>1 ft</strong></div>
+          <div class="tile"><label>Small craft</label><strong>None</strong></div>
+          <div class="tile"><label>VENF1 wind</label><strong>E 5 kt</strong></div>
+          <div class="tile"><label>VENF1 gust</label><strong>8 kt</strong></div>
+        </div>
+        <div class="card"><b>Next tides</b><span>Low 8:55a 0.67 · High 3:09p 1.72 · Low ~9p · High ~3a</span></div>
+        <div class="card"><b>Coastal waters TBW</b><span>Light east this morning, SW this afternoon. Isolated storms after 2p.</span></div>
+        <div class="card"><b>Passes</b><span>Venice Inlet / Stump Pass — morning window. Afternoon storms are the ride home risk.</span></div>
+        <p><a href="https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=8725809" target="_blank" rel="noopener">NOAA 8725809</a> · <a href="https://www.ndbc.noaa.gov/station_page.php?station=VENF1" target="_blank" rel="noopener">VENF1</a></p>
+      </section>
+
+      <section id="sky" class="page">
+        <h2>Sky</h2>
+        <div class="tile wide"><label>Sun path · 7:07a to 7:52p</label><div class="sunpath"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#c4a35a" stroke-width="3"/><circle cx="20" cy="70" r="4" fill="#c4a35a"/><circle cx="200" cy="70" r="4" fill="#1b2a4a"/><circle cx="95" cy="22" r="5" fill="#e07a5f"/><text x="8" y="84" font-size="9" fill="#5c6b7a">7:07a</text><text x="168" y="84" font-size="9" fill="#5c6b7a">7:52p</text><text x="86" y="14" font-size="9" fill="#1b2a4a">now</text></svg></div></div>
+        <div class="tile wide"><label>Moon · waning gibbous after the Aug 28 full / partial eclipse</label><div class="moonpath"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/><circle cx="118" cy="52" r="5" fill="#2a9d8f"/><text x="8" y="84" font-size="8" fill="#5c6b7a">New</text><text x="62" y="12" font-size="8" fill="#5c6b7a">1st</text><text x="118" y="84" font-size="8" fill="#5c6b7a">Full 28th</text><text x="178" y="12" font-size="8" fill="#5c6b7a">3rd</text></svg></div></div>
+        <div class="tiles">
+          <div class="tile"><label>Tonight</label><strong>Venus W</strong><div>Low after sunset</div></div>
+          <div class="tile"><label>Overnight</label><strong>Saturn</strong><div>Rises ~9:34p</div></div>
+          <div class="tile"><label>Dawn</label><strong>Jupiter + Mars</strong><div>East before sun</div></div>
+          <div class="tile"><label>Summer triangle</label><strong>Vega</strong><div>High evening</div></div>
+        </div>
+        <div class="card"><b>Watch / be aware</b>
+          <span>Partial lunar eclipse was overnight Aug 27–28. Next easy meteor look is Orionids in mid-October. ISS passes change nightly — NASA Spot the Station. Gulf glow washes faint stars; Venus and Saturn still punch through. Storms after 2p will hide the early evening sky.</span>
+        </div>
+        <p><a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener">ISS</a> · <a href="https://nightsky.jpl.nasa.gov/planner" target="_blank" rel="noopener">NASA planner</a></p>
+      </section>
+      <section id="bw" class="page">
+        <h2>BeachWalk</h2>
+        <div class="card"><b>Tue 5:30p French bakery pop-up</b><span>Capri · residents welcome</span></div>
+        <div class="card"><b>Sun Sep 6 1–5p Labor Day</b><span>Pool / High Tide · DJ, food, sundaes</span></div>
+        <div class="card"><b>Mon Sep 7 5–8p Food trucks</b><span>Capri · Currywurst + Shaz Shack</span></div>
+      </section>
+      <section id="eng" class="page">
+        <h2>Englewood</h2>
+        <div class="card"><b>Tonight 7p 22N</b><span>SandBar Tiki · Key · storm risk</span></div>
+        <div class="card"><b>Sun 1–5p Cabana Dogs</b><span>SandBar Tiki · Key</span></div>
+        <div class="card"><b>Fri Sep 4 6p fireworks</b><span>Downtown Wellen</span></div>
+        <div class="card"><b>Labor Day weekend</b><span>Venice craft fest · Artur's · Troll Music</span></div>
+      </section>
+      <section id="house" class="page">
+        <h2>House</h2>
+        <div class="card"><b>Occupied</b><span>No Fly / Arrive / Leave in range</span></div>
+        <div class="rowbtns">
+          <button type="button" class="on" data-url="https://www.iheart.com/live/magic-949-2107/">94.9 Magic</button>
+          <button type="button" data-url="https://sunny1063.com/">106.3 Sunny</button>
+          <button type="button" data-url="https://wcvu.iheart.com/">104.9 Seaview</button>
+          <button type="button" data-url="https://www.iheart.com/live/1079-wsrz-641/">107.9 WSRZ</button>
+          <button type="button" data-url="">Mute</button>
+        </div>
+      </section>
+
+      <section id="news" class="page">
+        <h2>Fox News</h2>
+        <p><a href="https://www.foxnews.com/" target="_blank" rel="noopener">Open FoxNews.com</a> if the embed is blocked.</p>
+        <iframe class="full" title="Fox News" src="https://www.foxnews.com/"></iframe>
+      </section>
+      <section id="contacts" class="page">
+        <h2>Contacts</h2>
+        <table>
+          <tr><td>Emergency</td><td><a href="tel:911">911</a></td></tr>
+          <tr><td>Sheriff non-emergency</td><td><a href="tel:9418615800">941-861-5800</a></td></tr>
+          <tr><td>County</td><td>311</td></tr>
+          <tr><td>FPL</td><td><a href="tel:8004688243">800-468-8243</a></td></tr>
+          <tr><td>Poison</td><td><a href="tel:8002221222">800-222-1222</a></td></tr>
+          <tr><td>Castle after-hours</td><td>800-337-5850</td></tr>
+          <tr><td>Club / gate</td><td>Add from TownSq</td></tr>
+        </table>
+      </section>
+    </main>
+    <nav class="dock" id="dock">
+      <button type="button" data-p="now" class="on">Now</button>
+      <button type="button" data-p="tenday">15-day</button>
+      <button type="button" data-p="radar">Radar</button>
+      <button type="button" data-p="marine">Marine</button>
+      <button type="button" data-p="sky">Sky</button>
+      <button type="button" data-p="bw">BeachWalk</button>
+      <button type="button" data-p="eng">Englewood</button>
+      <button type="button" data-p="house">House</button>
+      <button type="button" data-p="news">Fox</button>
+      <button type="button" data-p="contacts">Contacts</button>
+      <button type="button" id="talk">Talk</button>
+      <button type="button" id="meet">Meet</button>
+    </nav>
+    <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
+    <div class="alert-ticker" id="alertbar"><span id="alerttext"></span></div>
+    <div class="ticker"><span id="ticktext">It is 77 degrees and feels like 78, mostly sunny this morning with scattered storms after 2 p.m. and a heat index near 102.         Beach, cart, and boat are a go now; courts are a window later.         Rain is unlikely in the next hour, lightning is possible this afternoon, wind is east at 6 gusting to 8, humidity is 91 percent with a dew point of 74, and UV turns high later.         Venice buoy pressure is 30.03 inches and rising.         Sunrise was 7:07 a.m., sunset is 7:52 p.m., and the moon is waning gibbous after the full on the 28th.         •   •   •       Manasota tide is falling after the 8:55 a.m. low of 0.67 feet.         Next high is 3:09 p.m. at 1.72 feet, then another low around 9 p.m.  Rip current risk is low, red tide is not observed, seas are about a foot, and there is no small-craft advisory.         Venice buoy is east 5 knots gusting to 8.         Venice Inlet and Stump Pass are a morning window; afternoon storms are the risk on the run home.         •   •   •       Look west about 45 minutes after sunset for Venus, low and bright. Saturn rises in the east around 9:34 p.m. Jupiter and Mars show in the east before sunrise. The moon is waning gibbous after Friday night's full moon and partial eclipse. Vega leads the Summer Triangle high in the evening. Storms after 2 p.m. will wipe the early sky. Next meteor watch is the Orionids in mid-October. Check NASA Spot the Station for ISS passes.       •   •   •       Inside the gates: Tuesday at 5:30 p.m. there is a French bakery pop-up at Capri.         Sunday September 6 from 1 to 5 p.m. is the Labor Day party at the pool and High Tide with a DJ, food, and sundaes.         Monday September 7 from 5 to 8 p.m. food trucks are at Capri, Currywurst and Shaz Shack.         Use the courts before 2 p.m. if storms build.         •   •   •       Outside the gates tonight at 7 p.m., 22N plays SandBar Tiki on the Key; it is open-air so watch the storms.         Sunday 1 to 5 p.m. Cabana Dogs are at SandBar Tiki.         Friday September 4 at 6 p.m. there are fireworks at Downtown Wellen.         Labor Day weekend also has the Venice craft festival, Artur's, and Troll Music.         •   •   •       The villa is marked occupied.         There are no Do, Fly, Arrive FL, or Leave FL items on the calendar.         Music defaults to 94.9 Magic at whisper volume.         You can switch to 106.3 Sunny, 104.9 Seaview, or 107.9 WSRZ.         Mute overnight, during Talk or Meet, and when the storm board is on.         •   •   •       It is 77 degrees and feels like 78, mostly sunny this morning with scattered storms after 2 p.m. and a heat index near 102.         Beach, cart, and boat are a go now; courts are a window later.         Rain is unlikely in the next hour, lightning is possible this afternoon, wind is east at 6 gusting to 8, humidity is 91 percent with a dew point of 74, and UV turns high later.         Venice buoy pressure is 30.03 inches and rising.         Sunrise was 7:07 a.m., sunset is 7:52 p.m., and the moon is waning gibbous after the full on the 28th.         •   •   •       Manasota tide is falling after the 8:55 a.m. low of 0.67 feet.         Next high is 3:09 p.m. at 1.72 feet, then another low around 9 p.m.  Rip current risk is low, red tide is not observed, seas are about a foot, and there is no small-craft advisory.         Venice buoy is east 5 knots gusting to 8.         Venice Inlet and Stump Pass are a morning window; afternoon storms are the risk on the run home.         •   •   •       Look west about 45 minutes after sunset for Venus, low and bright. Saturn rises in the east around 9:34 p.m. Jupiter and Mars show in the east before sunrise. The moon is waning gibbous after Friday night's full moon and partial eclipse. Vega leads the Summer Triangle high in the evening. Storms after 2 p.m. will wipe the early sky. Next meteor watch is the Orionids in mid-October. Check NASA Spot the Station for ISS passes.       •   •   •       Inside the gates: Tuesday at 5:30 p.m. there is a French bakery pop-up at Capri.         Sunday September 6 from 1 to 5 p.m. is the Labor Day party at the pool and High Tide with a DJ, food, and sundaes.         Monday September 7 from 5 to 8 p.m. food trucks are at Capri, Currywurst and Shaz Shack.         Use the courts before 2 p.m. if storms build.         •   •   •       Outside the gates tonight at 7 p.m., 22N plays SandBar Tiki on the Key; it is open-air so watch the storms.         Sunday 1 to 5 p.m. Cabana Dogs are at SandBar Tiki.         Friday September 4 at 6 p.m. there are fireworks at Downtown Wellen.         Labor Day weekend also has the Venice craft festival, Artur's, and Troll Music.         •   •   •       The villa is marked occupied.         There are no Do, Fly, Arrive FL, or Leave FL items on the calendar.         Music defaults to 94.9 Magic at whisper volume.         You can switch to 106.3 Sunny, 104.9 Seaview, or 107.9 WSRZ.         Mute overnight, during Talk or Meet, and when the storm board is on.</span></div>
+  </div>
+  <script>
+    function showPage(id) {
+      document.querySelectorAll(".page").forEach(function (p) { p.classList.toggle("on", p.id === id); });
+      document.querySelectorAll("#dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
+    }
+    document.getElementById("dock").addEventListener("click", function (e) {
+      var btn = e.target.closest("button"); if (!btn) return;
+      var id = btn.getAttribute("data-p"); if (id) showPage(id);
+    });
+    document.getElementById("talk").addEventListener("click", function () { window.open("https://grok.com","_blank"); });
+    document.getElementById("meet").addEventListener("click", function () { window.open("https://meet.google.com","_blank"); });
+    document.querySelectorAll(".rowbtns button").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".rowbtns button").forEach(function (x) { x.classList.remove("on"); });
+        btn.classList.add("on");
+        var url = btn.getAttribute("data-url"); if (url) window.open(url, "_blank");
+      });
+    });
+    function clock() {
+      document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
+    }
+    clock(); setInterval(clock, 15000);
+    var pages = ["now","tenday","radar","marine","sky","bw","eng","house","news","contacts"], i = 0, rot, idle;
+    function startRotate() {
+      clearInterval(rot);
+      rot = setInterval(function () { i = (i + 1) % pages.length; showPage(pages[i]); }, 10000);
+    }
+    document.getElementById("dock").addEventListener("click", function () {
+      clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
+    });
+    startRotate();
+
+    (function breaking() {
+      var bar = document.getElementById("breakbar");
+      var txt = document.getElementById("breaktext");
+      if (!bar || !txt) return;
+      var rss = "https://moxie.foxnews.com/google-publisher/latest.xml";
+      var url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss);
+      fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+        var items = (data && data.items) || [];
+        var hits = items.filter(function (it) {
+          var s = ((it.title || "") + " " + (it.description || "")).toLowerCase();
+          return s.indexOf("breaking") >= 0 || (it.title || "").indexOf("BREAKING") >= 0;
+        }).slice(0, 4);
+        if (!hits.length) {
+          bar.classList.remove("on");
+          stackTickers();
+          return;
+        }
+        var body = hits.map(function (it) { return "BREAKING. " + (it.title || "").replace(/\s+/g, " "); }).join("   \u00a0 \u00a0 \u00a0 • \u00a0 • \u00a0 • \u00a0 \u00a0 \u00a0   ");
+        txt.textContent = body + "          " + body;
+        bar.classList.add("on");
+        stackTickers();
+        requestAnimationFrame(function () { spinEl(txt, 155); });
+      }).catch(function () { bar.classList.remove("on"); stackTickers(); });
+    })();
+
+
+    function stackTickers() {
+      var brief = 40, y = brief;
+      var alertBar = document.getElementById("alertbar");
+      var breakBar = document.getElementById("breakbar");
+      var frame = document.querySelector(".frame");
+      if (alertBar && alertBar.classList.contains("on")) {
+        alertBar.style.bottom = y + "px";
+        y += 40;
+        frame.classList.add("has-alert");
+      } else if (frame) frame.classList.remove("has-alert");
+      if (breakBar && breakBar.classList.contains("on")) {
+        breakBar.style.bottom = y + "px";
+        y += 40;
+        frame.classList.add("has-break");
+      } else if (frame) frame.classList.remove("has-break");
+    }
+    function spinEl(el, speed) {
+      if (!el) return;
+      var w = el.getBoundingClientRect().width;
+      var dur = Math.max(20, w / (speed || 155));
+      el.style.animation = "none";
+      el.offsetHeight;
+      el.style.animation = "tick " + dur + "s linear infinite";
+    }
+    (function alerts() {
+      var bar = document.getElementById("alertbar");
+      var txt = document.getElementById("alerttext");
+      var frame = document.querySelector(".frame");
+      if (!bar || !txt) return;
+      function spin(el, speed) {
+        var w = el.getBoundingClientRect().width;
+        var dur = Math.max(20, w / speed);
+        el.style.animation = "none";
+        el.offsetHeight;
+        el.style.animation = "tick " + dur + "s linear infinite";
+      }
+      fetch("https://api.weather.gov/alerts/active?point=26.96,-82.35", {
+        headers: { "Accept": "application/geo+json" }
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        var feats = (data && data.features) || [];
+        var keep = feats.filter(function (f) {
+          var ev = ((f.properties || {}).event || "").toLowerCase();
+          return ev.indexOf("warning") >= 0 || ev.indexOf("watch") >= 0;
+        });
+        if (!keep.length) {
+          bar.className = "alert-ticker";
+          frame.classList.remove("has-alert"); stackTickers();
+          return;
+        }
+        var isWarn = keep.some(function (f) {
+          return (((f.properties || {}).event || "").toLowerCase().indexOf("warning") >= 0);
+        });
+        var parts = keep.map(function (f) {
+          var p = f.properties || {};
+          return (p.event || "Alert") + ". " + (p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 280);
+        });
+        var body = parts.join("   \u00a0 \u00a0 \u00a0 • \u00a0 • \u00a0 • \u00a0 \u00a0 \u00a0   ");
+        txt.textContent = body + "          " + body;
+        bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
+        frame.classList.add("has-alert"); stackTickers();
+        requestAnimationFrame(function () { spinEl(txt, 155); });
+      }).catch(function () {});
+    })();
+
+    (function () {
+      var el = document.getElementById("ticktext");
+      if (!el) return;
+      var pxPerSec = 155;
+      function run() {
+        var w = el.getBoundingClientRect().width;
+        var dur = Math.max(40, w / pxPerSec);
+        el.style.animation = "none";
+        el.offsetHeight;
+        el.style.animation = "tick " + dur + "s linear infinite";
+      }
+      var style = document.createElement("style");
+      style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }";
+      document.head.appendChild(style);
+      el.style.display = "inline-block";
+      el.style.paddingLeft = "0";
+      requestAnimationFrame(run);
+    })();
+  </script>
+</body>
+</html>
