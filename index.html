@@ -97,6 +97,7 @@
       <div class="brand"><b>BEACHWALK</b><small>Manasota Key</small></div>
       <div><div id="when"></div><div class="flag">STORMS</div></div>
     </header>
+    <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
       <section id="now" class="page on">
         <div class="temprow">
@@ -207,7 +208,6 @@
 
       <section id="radio" class="page">
         <h2>Radio</h2>
-        <audio id="radio" preload="none" controls style="width:100%;margin:8px 0"></audio>
         <div class="rowbtns">
           <button type="button" class="on" data-stream="https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac">94.9 Magic</button>
           <button type="button" data-stream="https://oom-cmg.streamguys1.com/tam1055/tam1055-sgplayer-aac">105.5 Dove</button>
@@ -267,7 +267,7 @@
       btn.addEventListener("click", function () {
         document.querySelectorAll(".rowbtns button").forEach(function (x) { x.classList.remove("on"); });
         btn.classList.add("on");
-        var audio = document.getElementById("radio");
+        var audio = document.getElementById("radioPlayer");
         var status = document.getElementById("radio-status");
         var url = btn.getAttribute("data-stream");
         if (!audio) return;
@@ -284,7 +284,7 @@
       });
     });
     (function radioAuto() {
-      var audio = document.getElementById("radio");
+      var audio = document.getElementById("radioPlayer");
       var status = document.getElementById("radio-status");
       var magic = document.querySelector('.rowbtns button[data-stream*="tam949"]');
       if (!audio || !magic) return;
@@ -298,17 +298,16 @@
         document.querySelectorAll(".rowbtns button").forEach(function (x) {
           if (x !== magic) x.classList.remove("on");
         });
-        audio.muted = true;
-        audio.play().then(function () {
-          audio.muted = false;
+        audio.muted = false;
+        var go = audio.play();
+        if (go && go.then) go.then(function () {
           if (status) status.textContent = "Playing 94.9 Magic";
         }).catch(function () {
-          audio.muted = false;
-          if (status) status.textContent = "Chrome blocked autoplay. Tap 94.9 Magic once.";
+          if (status) status.textContent = "Tap 94.9 Magic once — Chrome blocks sound until a click.";
         });
       }
       start();
-      document.addEventListener("click", start, { once: true });
+      document.addEventListener("pointerdown", start, { once: true, capture: true });
     })();
     function clock() {
       document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
@@ -349,7 +348,13 @@
           var days = (((pair[0] || {}).properties || {}).periods) || [];
           var hours = (((pair[1] || {}).properties || {}).periods) || [];
           var obs = ((pair[2] || {}).properties) || {};
+          var nowMs = Date.now();
           var nowH = hours[0] || {};
+          for (var hi = 0; hi < hours.length; hi++) {
+            var a = new Date(hours[hi].startTime).getTime();
+            var b = hours[hi].endTime ? new Date(hours[hi].endTime).getTime() : a + 3600000;
+            if (nowMs >= a && nowMs < b) { nowH = hours[hi]; break; }
+          }
           var today = days[0] || {};
           function c2f(v) { return v == null ? null : Math.round(v * 9/5 + 32); }
           function kph2mph(v) { return v == null ? null : Math.round(v * 0.621371); }
@@ -443,7 +448,7 @@
         .catch(function () {});
     }
     refreshWeather();
-    setInterval(refreshWeather, 10 * 60 * 1000);
+    setInterval(refreshWeather, 5 * 60 * 1000);
 
     (function breaking() {
       var bar = document.getElementById("breakbar");
