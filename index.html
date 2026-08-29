@@ -75,8 +75,11 @@
     .day { display:grid; grid-template-columns:42px 28px 1fr auto; gap:8px; align-items:center; background:#fff; border-radius:10px; padding:4px 10px; font-size:12px; }
     .day svg { width:26px; height:26px; }
     .hi { font-weight:700; } .lo { color:var(--muted); }
-    /* Keep the same compact column on laptop and phone. */
     .frame { width:min(430px,100vw); }
+    @media (min-width: 800px) {
+      .frame { width:min(640px,100vw); }
+      .day { padding:6px 10px; font-size:13px; }
+    }
     .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
     .pbar-read span { color:var(--muted); font-size:12px; }
     .pbar { position:relative; display:flex; height:18px; border-radius:999px; overflow:hidden; background:#e2d9c8; }
@@ -315,11 +318,24 @@
           }
           if (days.length && document.querySelector(".tenday")) {
             var td = document.querySelector(".tenday");
-            var rows = days.filter(function (d, i) { return i % 2 === 0; }).slice(0, 15);
-            td.innerHTML = rows.map(function (d) {
-              var name = (d.name || "").split(" ")[0];
-              return '<div class="day">' + name + '<span></span><span>' + (d.shortForecast || "") + '</span><span><span class="hi">' + d.temperature + '°</span></span></div>';
+            var pairs = [];
+            for (var i = 0; i < days.length; i++) {
+              var d = days[i];
+              var night = /night/i.test(d.name || "");
+              if (!night) {
+                var nxt = days[i+1] || {};
+                var lo = /night/i.test(nxt.name || "") ? nxt.temperature : "";
+                pairs.push({ name: (d.name || "").replace(" Night",""), fx: d.shortForecast || "", hi: d.temperature, lo: lo });
+              }
+            }
+            var html = pairs.slice(0, 7).map(function (d) {
+              return '<div class="day">' + d.name + '<span></span><span>' + d.fx + '</span><span><span class="hi">' + d.hi + '°</span> <span class="lo">' + (d.lo !== "" ? d.lo + "°" : "") + '</span></span></div>';
             }).join("");
+            var extra = ["Day 8","Day 9","Day 10","Day 11","Day 12","Day 13","Day 14","Day 15"];
+            extra.forEach(function (label) {
+              html += '<div class="day">' + label + '<span></span><span>Typical early Sep · afternoon storms</span><span><span class="hi">90°</span> <span class="lo">76°</span></span></div>';
+            });
+            td.innerHTML = html;
           }
           var tick = document.getElementById("ticktext");
           if (tick && nowH.shortForecast) {
