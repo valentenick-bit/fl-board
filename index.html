@@ -46,7 +46,7 @@
     .tile label { display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
     .tile strong { font-size:20px; }
     .tile.wide { grid-column:1 / -1; }
-    .sky-graphs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    .sky-graphs, .marine-graphs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
     .tide svg, .sunpath svg, .moonpath svg { width:100%; height:90px; display:block; }
     h2 { font-family:Fraunces,Georgia,serif; margin:0 0 12px; }
     .card { background:#fff; border-radius:12px; padding:12px; margin-bottom:8px; }
@@ -164,16 +164,19 @@
       </section>
       <section id="marine" class="page">
         <h2>Marine</h2>
-        <div class="card"><b>Manasota tide today</b><span id="live-tide-today">Loading tides…</span>
-          <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/><text x="70" y="84" font-size="9" fill="#5c6b7a">8:55a</text><text x="138" y="16" font-size="9" fill="#1b2a4a">3:09p 1.7</text></svg></div>
+        <div class="marine-graphs">
+        <div class="card"><b>Manasota tide</b><span id="live-tide-today">Loading tides…</span>
+          <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/></svg></div>
+        </div>
+        <div class="card"><b>Ocean surge</b><span id="live-surge">vs predicted tide</span>
+          <div class="tide" id="surge-chart"></div>
+        </div>
         </div>
         <div class="tiles">
-          <div class="tile"><label>Rip</label><strong id="live-rip">…</strong></div>
+          <div class="tile"><label>Rip tide</label><strong id="live-rip">…</strong></div>
           <div class="tile"><label>Red tide</label><strong id="live-redtide">…</strong></div>
           <div class="tile"><label>Seas</label><strong id="live-seas">…</strong></div>
           <div class="tile"><label>Small craft</label><strong id="live-craft">…</strong></div>
-          <div class="tile"><label>VENF1 wind</label><strong id="live-venf-wind">—</strong></div>
-          <div class="tile"><label>VENF1 gust</label><strong id="live-venf-gust">—</strong></div>
           <div class="tile"><label>Gulf SST</label><strong id="live-sst">—</strong></div>
           <div class="tile"><label>Inlet water</label><strong id="live-wtemp">—</strong></div>
         </div>
@@ -425,6 +428,29 @@
         '<text x="' + Math.max(8, nx-10).toFixed(1) + '" y="10" font-size="8" fill="#e07a5f">now</text>'
       );
     }
+
+    function drawSurgeChart(points) {
+      var box = document.getElementById("surge-chart");
+      var lab = document.getElementById("live-surge");
+      if (!box || !points || points.length < 2) return;
+      var t0 = points[0].t, t1 = points[points.length-1].t;
+      var vals = points.map(function (p) { return p.v; });
+      var vmax = Math.max(0.4, Math.max.apply(null, vals.map(Math.abs)));
+      function X(ms) { return 10 + ((ms - t0) / (t1 - t0)) * 200; }
+      function Y(v) { return 40 - (v / vmax) * 28; }
+      var d = points.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
+      var now = Date.now();
+      var nx = X(Math.max(t0, Math.min(t1, now)));
+      var last = points[points.length-1].v;
+      if (lab) lab.textContent = (last >= 0 ? "+" : "") + last.toFixed(2) + " ft vs tide";
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="40" x2="210" y2="40" stroke="#d7cdbb"/>' +
+        '<path d="' + d + '" fill="none" stroke="#e07a5f" stroke-width="3"/>' +
+        '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#1b2a4a" stroke-width="2"/>' +
+        '<text x="8" y="84" font-size="8" fill="#5c6b7a">-' + vmax.toFixed(1) + '</text>' +
+        '<text x="168" y="84" font-size="8" fill="#5c6b7a">+' + vmax.toFixed(1) + ' ft</text>'
+      );
+    }
     function refreshMarineSky(days, hours, obs) {
       fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" +
         new Date().toISOString().slice(0,10).replace(/-/g,"") +
@@ -441,6 +467,31 @@
           if (el2) el2.textContent = bits.join(" · ") || "NOAA tides unavailable";
           window.__bwCharts.preds = preds; drawTideChart(preds);
         }).catch(function () {});
+      var day = new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0,10).replace(/-/g,"");
+      Promise.all([
+        fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=8725520&time_zone=lst_ldt&units=english&format=json").then(function (r) { return r.json(); }),
+        fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=8725520&time_zone=lst_ldt&units=english&interval=h&format=json").then(function (r) { return r.json(); })
+      ]).then(function (pair) {
+        var obs = ((pair[0] || {}).data) || [];
+        var pr = ((pair[1] || {}).predictions) || [];
+        var pmap = {};
+        pr.forEach(function (p) { pmap[p.t] = parseFloat(p.v); });
+        var pts = [];
+        obs.forEach(function (o) {
+          var pred = pmap[o.t];
+          if (pred == null) return;
+          var v = parseFloat(o.v) - pred;
+          if (isNaN(v)) return;
+          pts.push({ t: new Date(o.t.replace(" ", "T")).getTime(), v: v });
+        });
+        if (pts.length < 3) {
+          pts = obs.slice(-24).map(function (o, i, arr) {
+            return { t: new Date(o.t.replace(" ", "T")).getTime(), v: parseFloat(o.v) - parseFloat(arr[0].v) };
+          }).filter(function (p) { return !isNaN(p.t) && !isNaN(p.v); });
+        }
+        window.__bwCharts.surge = pts;
+        drawSurgeChart(pts);
+      }).catch(function () {});
       var windEl = document.getElementById("live-venf-wind");
       var gustEl = document.getElementById("live-venf-gust");
       var coast = document.getElementById("live-coastal");
@@ -738,6 +789,7 @@
     setInterval(refreshWeather, 5 * 60 * 1000);
     setInterval(function () {
       if (window.__bwCharts && window.__bwCharts.preds) drawTideChart(window.__bwCharts.preds);
+      if (window.__bwCharts && window.__bwCharts.surge) drawSurgeChart(window.__bwCharts.surge);
       if (window.__bwCharts && window.__bwCharts.rise) drawSunChart(window.__bwCharts.rise, window.__bwCharts.set);
       drawMoonChart();
     }, 60 * 1000);
