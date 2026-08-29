@@ -93,7 +93,6 @@
 </head>
 <body>
   <div class="frame">
-    <div class="warn">Download and open this file in Chrome. Drive preview hides pages.</div>
     <header>
       <div class="brand"><b>BEACHWALK</b><small>Manasota Key</small></div>
       <div><div id="when"></div><div class="flag">STORMS</div></div>
@@ -203,13 +202,15 @@
       <section id="house" class="page">
         <h2>House</h2>
         <div class="card"><b>Occupied</b><span>No Fly / Arrive / Leave in range</span></div>
+        <audio id="radio" preload="none"></audio>
         <div class="rowbtns">
-          <button type="button" class="on" data-url="https://www.iheart.com/live/magic-949-2107/">94.9 Magic</button>
-          <button type="button" data-url="https://sunny1063.com/">106.3 Sunny</button>
-          <button type="button" data-url="https://wcvu.iheart.com/">104.9 Seaview</button>
-          <button type="button" data-url="https://www.iheart.com/live/1079-wsrz-641/">107.9 WSRZ</button>
-          <button type="button" data-url="">Mute</button>
+          <button type="button" class="on" data-stream="https://stream.revma.ihrhls.com/zc2107">94.9 Magic</button>
+          <button type="button" data-stream="https://playerservices.streamtheworld.com/api/livestream-redirect/WJPTFMAAC.aac">106.3 Sunny</button>
+          <button type="button" data-stream="https://stream.revma.ihrhls.com/zc6945">104.9 Seaview</button>
+          <button type="button" data-stream="https://stream.revma.ihrhls.com/zc641">107.9 WSRZ</button>
+          <button type="button" data-stream="">Mute</button>
         </div>
+        <p id="radio-status">Tap a station to play here. Mute stops it. Volume stays low on the wall.</p>
       </section>
 
       <section id="news" class="page">
@@ -265,7 +266,20 @@
       btn.addEventListener("click", function () {
         document.querySelectorAll(".rowbtns button").forEach(function (x) { x.classList.remove("on"); });
         btn.classList.add("on");
-        var url = btn.getAttribute("data-url"); if (url) window.open(url, "_blank");
+        var audio = document.getElementById("radio");
+        var status = document.getElementById("radio-status");
+        var url = btn.getAttribute("data-stream");
+        if (!audio) return;
+        if (!url) { audio.pause(); audio.removeAttribute("src"); if (status) status.textContent = "Muted."; return; }
+        audio.src = url;
+        audio.volume = 0.18;
+        if (status) status.textContent = "Starting " + btn.textContent + "…";
+        var play = audio.play();
+        if (play && play.then) play.then(function () {
+          if (status) status.textContent = "Playing " + btn.textContent;
+        }).catch(function () {
+          if (status) status.textContent = "Tap the station again if Chrome blocked play.";
+        });
       });
     });
     function clock() {
