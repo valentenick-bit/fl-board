@@ -11,7 +11,12 @@
     * { box-sizing: border-box; }
     html, body { margin:0; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
     .frame { position:relative; width:min(430px,100vw); height:100dvh; max-height:100dvh; margin:0 auto; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
-    header { background:var(--navy); color:#f7f1e6; padding:16px 18px 14px; display:flex; justify-content:space-between; align-items:flex-end; }
+    header { background:var(--navy); color:#f7f1e6; padding:10px 12px 8px; display:flex; flex-direction:column; gap:8px; }
+    header .top { display:flex; justify-content:space-between; align-items:flex-end; }
+    header .temprow { align-items:center; }
+    header .tempblock label, header .feels label { color:#c9c0b0; font-size:10px; }
+    header .temp, header .feels strong { font-size:36px; color:#f7f1e6; }
+    header .wxicon { width:40px; height:40px; flex-basis:40px; margin:0; }
     .brand b { display:block; font-family:Fraunces,Georgia,serif; letter-spacing:.1em; font-size:20px; }
     .brand small { letter-spacing:.16em; text-transform:uppercase; font-size:11px; opacity:.75; }
     #when { font-weight:700; }
@@ -94,17 +99,19 @@
 <body>
   <div class="frame">
     <header>
-      <div class="brand"><b>BEACHWALK</b><small>Manasota Key</small></div>
-      <div><div id="when"></div><div class="flag">STORMS</div></div>
+      <div class="top">
+        <div class="brand"><b>BEACHWALK</b><small>Manasota Key</small></div>
+        <div><div id="when"></div><div class="flag">STORMS</div></div>
+      </div>
+      <div class="temprow">
+        <div class="tempblock"><label>Temp</label><div class="temp" id="live-temp">77&deg;</div></div>
+        <svg class="wxicon" viewBox="0 0 64 64" aria-label="sky"><circle cx="28" cy="28" r="12" fill="#c4a35a"/><g stroke="#c4a35a" stroke-width="3" stroke-linecap="round"><line x1="28" y1="8" x2="28" y2="14"/><line x1="28" y1="42" x2="28" y2="48"/><line x1="8" y1="28" x2="14" y2="28"/><line x1="42" y1="28" x2="48" y2="28"/><line x1="14" y1="14" x2="18" y2="18"/><line x1="38" y1="38" x2="42" y2="42"/><line x1="14" y1="42" x2="18" y2="38"/><line x1="38" y1="18" x2="42" y2="14"/></g><ellipse cx="40" cy="42" rx="16" ry="10" fill="#e8e2d6" stroke="#c9c0b0" stroke-width="1.5"/><ellipse cx="30" cy="44" rx="11" ry="8" fill="#f4efe6"/></svg>
+        <div class="feels"><label>Feels like</label><strong id="live-feels">78&deg;</strong></div>
+      </div>
     </header>
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
       <section id="now" class="page on">
-        <div class="temprow">
-          <div class="tempblock"><label>Temp</label><div class="temp" id="live-temp">77&deg;</div></div>
-          <svg class="wxicon" viewBox="0 0 64 64" aria-label="Mostly sunny"><circle cx="28" cy="28" r="12" fill="#c4a35a"/><g stroke="#c4a35a" stroke-width="3" stroke-linecap="round"><line x1="28" y1="8" x2="28" y2="14"/><line x1="28" y1="42" x2="28" y2="48"/><line x1="8" y1="28" x2="14" y2="28"/><line x1="42" y1="28" x2="48" y2="28"/><line x1="14" y1="14" x2="18" y2="18"/><line x1="38" y1="38" x2="42" y2="42"/><line x1="14" y1="42" x2="18" y2="38"/><line x1="38" y1="18" x2="42" y2="14"/></g><ellipse cx="40" cy="42" rx="16" ry="10" fill="#e8e2d6" stroke="#c9c0b0" stroke-width="1.5"/><ellipse cx="30" cy="44" rx="11" ry="8" fill="#f4efe6"/></svg>
-          <div class="feels"><label>Feels like</label><strong id="live-feels">78&deg;</strong></div>
-        </div>
         <div class="sky" id="live-sky">Mostly sunny now · storms after 2p · HI 102&deg;</div>
         <div class="pills">
           <span class="pill go" id="pill-beach">Beach …</span><span class="pill go" id="pill-cart">Cart …</span>
@@ -165,6 +172,8 @@
           <div class="tile"><label>Small craft</label><strong id="live-craft">…</strong></div>
           <div class="tile"><label>VENF1 wind</label><strong id="live-venf-wind">—</strong></div>
           <div class="tile"><label>VENF1 gust</label><strong id="live-venf-gust">—</strong></div>
+          <div class="tile"><label>Gulf SST</label><strong id="live-sst">—</strong></div>
+          <div class="tile"><label>Inlet water</label><strong id="live-wtemp">—</strong></div>
         </div>
         <div class="card"><b>Next tides</b><span id="live-tides-next">Loading…</span></div>
         <div class="card"><b>Coastal waters TBW</b><span id="live-coastal">Loading…</span></div>
@@ -265,49 +274,50 @@
       var btn = e.target.closest("button"); if (!btn) return;
       var id = btn.getAttribute("data-p"); if (id) showPage(id);
     });
+    function saveRadio(url) {
+      try { localStorage.setItem("bw-radio", url == null ? "" : url); } catch (e) {}
+    }
+    function savedRadio() {
+      try { return localStorage.getItem("bw-radio"); } catch (e) { return null; }
+    }
+    function playStation(url, label) {
+      var audio = document.getElementById("radioPlayer");
+      var status = document.getElementById("radio-status");
+      if (!audio) return;
+      document.querySelectorAll(".rowbtns button").forEach(function (x) {
+        x.classList.toggle("on", (x.getAttribute("data-stream") || "") === (url || ""));
+      });
+      if (!url) {
+        audio.pause();
+        audio.removeAttribute("src");
+        saveRadio("");
+        if (status) status.textContent = "Muted.";
+        return;
+      }
+      saveRadio(url);
+      audio.src = url;
+      audio.volume = 0.18;
+      if (status) status.textContent = "Starting " + (label || "station") + "…";
+      var play = audio.play();
+      if (play && play.then) play.then(function () {
+        if (status) status.textContent = "Playing " + (label || "station");
+      }).catch(function () {
+        if (status) status.textContent = "Tap a station once — Chrome blocks sound until a click.";
+      });
+    }
     document.querySelectorAll(".rowbtns button").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        document.querySelectorAll(".rowbtns button").forEach(function (x) { x.classList.remove("on"); });
-        btn.classList.add("on");
-        var audio = document.getElementById("radioPlayer");
-        var status = document.getElementById("radio-status");
-        var url = btn.getAttribute("data-stream");
-        if (!audio) return;
-        if (!url) { audio.pause(); audio.removeAttribute("src"); if (status) status.textContent = "Muted."; return; }
-        audio.src = url;
-        audio.volume = 0.18;
-        if (status) status.textContent = "Starting " + btn.textContent + "…";
-        var play = audio.play();
-        if (play && play.then) play.then(function () {
-          if (status) status.textContent = "Playing " + btn.textContent;
-        }).catch(function () {
-          if (status) status.textContent = "Tap the station again if Chrome blocked play.";
-        });
+        playStation(btn.getAttribute("data-stream"), btn.textContent);
       });
     });
     (function radioAuto() {
-      var audio = document.getElementById("radioPlayer");
-      var status = document.getElementById("radio-status");
-      var magic = document.querySelector('.rowbtns button[data-stream*="tam949"]');
-      if (!audio || !magic) return;
-      function start() {
-        var url = magic.getAttribute("data-stream");
-        if (!url) return;
-        if (audio.src && !audio.paused) return;
-        audio.src = url;
-        audio.volume = 0.18;
-        magic.classList.add("on");
-        document.querySelectorAll(".rowbtns button").forEach(function (x) {
-          if (x !== magic) x.classList.remove("on");
-        });
-        audio.muted = false;
-        var go = audio.play();
-        if (go && go.then) go.then(function () {
-          if (status) status.textContent = "Playing 94.9 Magic";
-        }).catch(function () {
-          if (status) status.textContent = "Tap 94.9 Magic once — Chrome blocks sound until a click.";
-        });
-      }
+      var saved = savedRadio();
+      var btn = null;
+      if (saved === "") btn = document.querySelector('.rowbtns button[data-stream=""]');
+      else if (saved) btn = document.querySelector('.rowbtns button[data-stream="' + saved + '"]');
+      if (!btn) btn = document.querySelector('.rowbtns button[data-stream*="tam949"]');
+      if (!btn) return;
+      function start() { playStation(btn.getAttribute("data-stream"), btn.textContent); }
       start();
       document.addEventListener("pointerdown", start, { once: true, capture: true });
     })();
@@ -432,6 +442,20 @@
       var coast = document.getElementById("live-coastal");
       if (windEl && document.getElementById("live-wind")) windEl.textContent = document.getElementById("live-wind").textContent;
       if (gustEl && document.getElementById("live-gusts")) gustEl.textContent = document.getElementById("live-gusts").textContent;
+      fetch("https://marine-api.open-meteo.com/v1/marine?latitude=26.93&longitude=-82.37&current=sea_surface_temperature&temperature_unit=fahrenheit")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var el = document.getElementById("live-sst");
+          var v = d.current && d.current.sea_surface_temperature;
+          if (el && v != null) el.textContent = Math.round(v) + "°";
+        }).catch(function () {});
+      fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=8725520&product=water_temperature&units=english&time_zone=lst_ldt&format=json")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var el = document.getElementById("live-wtemp");
+          var row = (d.data && d.data[0]) || null;
+          if (el && row && row.v) el.textContent = Math.round(parseFloat(row.v)) + "°";
+        }).catch(function () {});
       if (coast && days && days[0]) coast.textContent = days[0].detailedForecast || days[0].shortForecast || "";
       fetch("https://api.sunrise-sunset.org/json?lat=26.96&lng=-82.35&formatted=0")
         .then(function (r) { return r.json(); })
@@ -651,29 +675,28 @@
           }
           if (days.length && document.querySelector(".tenday")) {
             var td = document.querySelector(".tenday");
-            var pairs = [];
-            var seen = {};
+            var byDate = {};
             for (var i = 0; i < days.length; i++) {
               var d = days[i];
-              var night = /night/i.test(d.name || "");
-              if (night) continue;
-              var dayKey = new Date(d.startTime).toLocaleDateString("en-US", { timeZone: "America/New_York" });
-              if (seen[dayKey]) continue;
-              seen[dayKey] = true;
+              if (/night/i.test(d.name || "")) continue;
+              var key = new Date(d.startTime).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+              if (byDate[key]) continue;
               var nxt = days[i+1] || {};
-              var lo = /night/i.test(nxt.name || "") ? nxt.temperature : "";
-              var name = new Date(d.startTime).toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
-              pairs.push({ name: name, fx: d.shortForecast || "", hi: d.temperature, lo: lo });
+              byDate[key] = {
+                fx: d.shortForecast || "",
+                hi: d.temperature,
+                lo: /night/i.test(nxt.name || "") ? nxt.temperature : ""
+              };
             }
-            var html = pairs.slice(0, 7).map(function (d) {
-              return '<div class="day">' + d.name + '<span></span><span>' + d.fx + '</span><span><span class="hi">' + d.hi + '°</span> <span class="lo">' + (d.lo !== "" ? d.lo + "°" : "") + '</span></span></div>';
-            }).join("");
-            var shown = pairs.slice(0, 7).length;
-            for (var n = shown; n < 10; n++) {
+            var html = "";
+            for (var n = 0; n < 10; n++) {
               var dt = new Date();
               dt.setDate(dt.getDate() + n);
+              var key = dt.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
               var label = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
-              html += '<div class="day">' + label + '<span></span><span>Typical early Sep · afternoon storms</span><span><span class="hi">90°</span> <span class="lo">76°</span></span></div>';
+              var row = byDate[key];
+              if (row) html += '<div class="day">' + label + '<span></span><span>' + row.fx + '</span><span><span class="hi">' + row.hi + '°</span> <span class="lo">' + (row.lo !== "" ? row.lo + "°" : "") + '</span></span></div>';
+              else html += '<div class="day">' + label + '<span></span><span>Typical early Sep · afternoon storms</span><span><span class="hi">90°</span> <span class="lo">76°</span></span></div>';
             }
             td.innerHTML = html;
           }
@@ -681,6 +704,7 @@
           if (tick && nowH.shortForecast) {
             var brief = "Live NWS Englewood. It is " + nowH.temperature + " degrees, " + (nowH.shortForecast || "").toLowerCase() + ". Wind " + (nowH.windDirection || "") + " " + (nowH.windSpeed || "") + ". " + (today.detailedForecast || "").slice(0, 280);
             tick.textContent = brief + "          " + brief;
+            requestAnimationFrame(function () { spinEl(tick, 360); });
           }
           refreshMarineSky(days, hours, obs);
           refreshExtras(hours, days);
@@ -716,7 +740,7 @@
         txt.textContent = body + "          " + body;
         bar.classList.add("on");
         stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 260); });
+        requestAnimationFrame(function () { spinEl(txt, 360); });
       }).catch(function () { bar.classList.remove("on"); stackTickers(); });
     })();
 
@@ -735,8 +759,8 @@
     }
     function spinEl(el, speed) {
       if (!el) return;
-      var w = el.getBoundingClientRect().width;
-      var dur = Math.max(20, w / (speed || 260));
+      var w = el.scrollWidth || el.getBoundingClientRect().width;
+      var dur = Math.max(16, w / (speed || 360));
       el.style.animation = "none";
       el.offsetHeight;
       el.style.animation = "tick " + dur + "s linear infinite";
@@ -748,7 +772,7 @@
       if (!bar || !txt) return;
       function spin(el, speed) {
         var w = el.getBoundingClientRect().width;
-        var dur = Math.max(20, w / 260);
+        var dur = Math.max(20, w / 360);
         el.style.animation = "none";
         el.offsetHeight;
         el.style.animation = "tick " + dur + "s linear infinite";
@@ -777,14 +801,14 @@
         txt.textContent = body + "          " + body;
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
         frame.classList.add("has-alert"); stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 260); });
+        requestAnimationFrame(function () { spinEl(txt, 360); });
       }).catch(function () {});
     })();
 
     (function () {
       var el = document.getElementById("ticktext");
       if (!el) return;
-      function run() { spinEl(el, 260); }
+      function run() { spinEl(el, 360); }
       var style = document.createElement("style");
       style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }";
       document.head.appendChild(style);
