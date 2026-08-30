@@ -583,27 +583,35 @@ Cart shop:</textarea>
     }
     (function restoreDockOrder() {
       var raw;
-      try { raw = localStorage.getItem("bw-dock"); } catch (e) { raw = null; }
-      if (!raw) return;
+      try { raw = localStorage.getItem("bw-dock-v3"); } catch (e) { raw = null; }
+      if (!raw) {
+        try { localStorage.removeItem("bw-dock"); } catch (e) {}
+        return;
+      }
       var order;
       try { order = JSON.parse(raw); } catch (e) { return; }
       var dock = document.getElementById("dock");
+      var dockMore = document.getElementById("dock-more");
       if (!dock || !order) return;
-      var main = order.main || (Array.isArray(order) ? order : []);
+      var main = order.main || [];
       var more = order.more || [];
+      var saved = main.concat(more);
+      if (saved.indexOf("wink") < 0 || saved.indexOf("talk") >= 0 || saved.indexOf("meet") >= 0) {
+        try { localStorage.removeItem("bw-dock-v3"); localStorage.removeItem("bw-dock"); } catch (e) {}
+        return;
+      }
       main.forEach(function (id) {
         var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b) dock.appendChild(b);
       });
-      var dockMore = document.getElementById("dock-more");
       more.forEach(function (id) {
         var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b && dockMore) dockMore.appendChild(b);
       });
-      ["darkbtn"].forEach(function (id) {
-        var more = document.getElementById("dock-more") || dock;
+      ["darkbtn", "refreshbtn"].forEach(function (id) {
+        var dest = dockMore || dock;
         var b = document.getElementById(id);
-        if (b) more.appendChild(b);
+        if (b) dest.appendChild(b);
       });
       pagesFromDock();
     })();
@@ -614,7 +622,7 @@ Cart shop:</textarea>
           main: Array.from(document.querySelectorAll("#dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); }),
           more: Array.from(document.querySelectorAll("#dock-more button[data-p]")).map(function (b) { return b.getAttribute("data-p"); })
         };
-        try { localStorage.setItem("bw-dock", JSON.stringify(order)); } catch (e) {}
+        try { localStorage.setItem("bw-dock-v3", JSON.stringify(order)); } catch (e) {}
         pagesFromDock();
       }
       document.querySelectorAll(".dock").forEach(function (dock) {
