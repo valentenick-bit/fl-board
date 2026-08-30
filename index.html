@@ -317,6 +317,11 @@ Cart shop:</textarea>
         <p><a href="https://www.foxnews.com/" target="_blank" rel="noopener">Open FoxNews.com</a> if the embed is blocked.</p>
         <iframe class="full" title="Fox News" src="https://www.foxnews.com/"></iframe>
       </section>
+      <section id="wink" class="page">
+        <h2>WINK News</h2>
+        <p><a href="https://www.winknews.com/" target="_blank" rel="noopener">Open WINKNews.com</a> if the embed is blocked.</p>
+        <iframe class="full" title="WINK News" src="https://www.winknews.com/"></iframe>
+      </section>
       <section id="cane" class="page">
         <h2>Tropical</h2>
         <div class="card"><b>Atlantic / Gulf</b><span id="live-cane">Checking NHC…</span></div>
@@ -389,6 +394,7 @@ Cart shop:</textarea>
       <button type="button" data-p="cane">Cane</button>
       <button type="button" data-p="bolt">Bolt</button>
       <button type="button" data-p="news">Fox</button>
+      <button type="button" data-p="wink">WINK</button>
       <button type="button" data-p="contacts">Contacts</button>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="darkbtn">Dark</button>
@@ -554,7 +560,7 @@ Cart shop:</textarea>
     }
     function rotateList() {
       return allDockPages().filter(function (id) {
-        if (id === "news" || id === "contacts" || id === "villa") return false;
+        if (id === "news" || id === "wink" || id === "contacts" || id === "villa") return false;
         if (id === "cane") return !!window.__wxRisk.cane;
         if (id === "bolt") return !!(window.__wxRisk.bolt || window.__wxRisk.alert);
         return true;
@@ -1062,17 +1068,38 @@ Cart shop:</textarea>
         document.getElementById("live-planet4d").textContent = hour < 6 ? "Pre-dawn" : "High after dusk";
       }
       function fillHoro(sign, id) {
-        fetch("https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=" + sign + "&day=today")
-          .then(function (r) { return r.json(); })
-          .then(function (j) {
+        function clip(s) {
+          s = String(s || "").replace(/\s+/g, " ").replace(/^[✨🪐💼❤️]+\s*/g, "").trim();
+          if (s.length > 280) s = s.slice(0, 277).replace(/\s+\S*$/, "") + "…";
+          return s;
+        }
+        function put(txt) {
+          var el = document.getElementById(id);
+          if (el && txt) el.textContent = clip(txt);
+          return !!txt;
+        }
+        function parse(j) {
+          if (!j) return "";
+          if (typeof j === "string") return j;
+          var d = j.data || j;
+          return j.content || j.horoscope || j.description || d.horoscope || d.horoscope_data || d.content || "";
+        }
+        var urls = [
+          "https://api.cosmyday.com/content/daily/" + sign,
+          "https://freehoroscopeapi.com/api/v1/get-horoscope/daily?sign=" + sign,
+          "https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=" + sign + "&day=TODAY"
+        ];
+        function next(i) {
+          if (i >= urls.length) {
             var el = document.getElementById(id);
-            var data = (j && j.data) || j || {};
-            var txt = data.horoscope_data || data.horoscope || "";
-            if (el) el.textContent = txt || "Feed unavailable today.";
-          }).catch(function () {
-            var el = document.getElementById(id);
-            if (el) el.textContent = "Feed unavailable today.";
-          });
+            if (el && /Loading|unavailable/i.test(el.textContent)) el.textContent = "Feed unavailable today.";
+            return;
+          }
+          fetch(urls[i]).then(function (r) { return r.json(); }).then(function (j) {
+            if (!put(parse(j))) next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
       }
       fillHoro("gemini", "live-horo-nick");
       fillHoro("aquarius", "live-horo-dayna");
@@ -1456,20 +1483,55 @@ Cart shop:</textarea>
       var bar = document.getElementById("breakbar");
       var txt = document.getElementById("breaktext");
       if (!bar || !txt) return;
-      var rss = "https://moxie.foxnews.com/google-publisher/latest.xml";
-      var url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss);
-      fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-        var items = (data && data.items) || [];
-        var hits = items.filter(function (it) {
-          var s = ((it.title || "") + " " + (it.description || "")).toLowerCase();
-          return s.indexOf("breaking") >= 0 || (it.title || "").indexOf("BREAKING") >= 0;
-        }).slice(0, 4);
+      function rssJson(rss) {
+        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
+          .then(function (r) { return r.json(); })
+          .then(function (data) { return (data && data.items) || []; })
+          .catch(function () { return []; });
+      }
+      function isBreak(it) {
+        var s = ((it.title || "") + " " + (it.description || "")).toLowerCase();
+        return /breaking|just in|developing|alert:/.test(s) || (it.title || "").indexOf("BREAKING") >= 0;
+      }
+      function keyOf(title) {
+        return String(title || "")
+          .toLowerCase()
+          .replace(/breaking\s*(news)?[:.\-]*/g, " ")
+          .replace(/just in[:.\-]*/g, " ")
+          .replace(/fox news|wink news|wink|fox/g, " ")
+          .replace(/[^a-z0-9\s]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .split(" ")
+          .slice(0, 8)
+          .join(" ");
+      }
+      var foxRss = "https://moxie.foxnews.com/google-publisher/latest.xml";
+      var winkRss = "https://news.google.com/rss/search?q=site:winknews.com+when:1d&hl=en-US&gl=US&ceid=US:en";
+      Promise.all([rssJson(foxRss), rssJson(winkRss)]).then(function (both) {
+        var foxHits = (both[0] || []).filter(isBreak).map(function (it) {
+          return { src: "Fox", title: (it.title || "").replace(/\s+/g, " ") };
+        });
+        var winkHits = (both[1] || []).filter(isBreak).map(function (it) {
+          return { src: "WINK", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*-\s*WINK News.*$/i, "") };
+        });
+        var seen = {};
+        var hits = [];
+        foxHits.concat(winkHits).forEach(function (h) {
+          var k = keyOf(h.title);
+          if (!k || seen[k]) return;
+          seen[k] = true;
+          hits.push(h);
+        });
+        hits = hits.slice(0, 6);
         if (!hits.length) {
           bar.classList.remove("on");
           stackTickers();
           return;
         }
-        var body = hits.map(function (it) { return "BREAKING. " + (it.title || "").replace(/\s+/g, " "); }).join("   \u00a0 \u00a0 \u00a0 • \u00a0 • \u00a0 • \u00a0 \u00a0 \u00a0   ");
+        var body = hits.map(function (h) {
+          return "BREAKING · " + h.src + ". " + h.title;
+        }).join("   \u00a0 \u00a0 \u00a0 • \u00a0 • \u00a0 • \u00a0 \u00a0 \u00a0   ");
         txt.textContent = body + "          " + body;
         bar.classList.add("on");
         stackTickers();
