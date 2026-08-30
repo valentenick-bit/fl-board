@@ -849,7 +849,7 @@ Cart shop:</textarea>
           out.push({ when: when, sum: sum, loc: loc, desc: desc });
         });
         out.sort(function (a,b) { return a.when - b.when; });
-        return out.slice(0, 10);
+        return out.slice(0, 24);
       }
       function isLiveMusic(sum, loc, desc) {
         var s = [sum, loc, desc].join(" ").toLowerCase();
@@ -879,31 +879,45 @@ Cart shop:</textarea>
         }).join("");
       }
       var bag = { bw: [], eng: [] };
+      try {
+        var cached = JSON.parse(localStorage.getItem("bw-ent-cache") || "{}");
+        if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.inside = true; return e; }).filter(function (e) { return e.when.getTime() > Date.now() - 12*3600*1000; });
+        if (cached.eng) bag.eng = cached.eng.map(function (e) { e.when = new Date(e.when); e.inside = false; return e; }).filter(function (e) { return e.when.getTime() > Date.now() - 12*3600*1000; });
+      } catch (e) {}
       function paint() {
         var merged = bag.bw.concat(bag.eng);
         merged.sort(function (a, b) { return a.when - b.when; });
-        render("ent-list", merged.slice(0, 14));
+        if (!merged.length) return;
+        render("ent-list", merged.slice(0, 20));
+        try {
+          localStorage.setItem("bw-ent-cache", JSON.stringify({
+            bw: bag.bw.slice(0, 24),
+            eng: bag.eng.slice(0, 24)
+          }));
+        } catch (err) {}
         if (typeof writeBriefing === "function") writeBriefing();
       }
-      function load(id, key, inside) {
+      function load(id, key, inside, done) {
         var raw = icsUrl(id);
         var urls = [
-          raw,
           "https://corsproxy.io/?" + encodeURIComponent(raw),
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw),
           "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(raw),
-          "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw)
+          raw
         ];
         function next(i) {
-          if (i >= urls.length) return;
+          if (i >= urls.length) { if (done) done(); return; }
           fetch(urls[i]).then(function (r) { return r.text(); }).then(function (txt) {
             if (txt && txt.indexOf("BEGIN:VEVENT") >= 0) {
               bag[key] = parseIcs(txt).map(function (e) { e.inside = inside; return e; });
               paint();
+              if (done) done();
             } else next(i + 1);
           }).catch(function () { next(i + 1); });
         }
         next(0);
       }
+      paint();
       load(BW, "bw", true);
       load(ENG, "eng", false);
       setInterval(function () { load(BW, "bw", true); load(ENG, "eng", false); }, 15 * 60 * 1000);
