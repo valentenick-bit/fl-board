@@ -383,7 +383,6 @@ Cart shop:</textarea>
       <button type="button" data-p="house">House</button>
       <button type="button" data-p="radio">Radio</button>
       <button type="button" data-p="traffic">Roads</button>
-      <button type="button" id="stormbtn">Storm</button>
       <button type="button" id="morebtn">More</button>
     </nav>
     <nav class="dock dock-more" id="dock-more">
@@ -411,7 +410,16 @@ Cart shop:</textarea>
     document.querySelectorAll(".dock").forEach(function (d) {
       d.addEventListener("click", function (e) {
         var btn = e.target.closest("button"); if (!btn) return;
-        var id = btn.getAttribute("data-p"); if (id) showPage(id);
+        var id = btn.getAttribute("data-p"); if (!id) return;
+        if (id === "radar" && window.__wxRisk && window.__wxRisk.warn) {
+          window.__storm = true;
+          window.__stormOff = false;
+          clearInterval(rot); clearTimeout(idle);
+        } else if (id !== "radar" && window.__storm) {
+          window.__storm = false;
+          window.__stormOff = true;
+        }
+        showPage(id);
       });
     });
     function saveRadio(url) {
@@ -494,17 +502,7 @@ Cart shop:</textarea>
       });
       darkBtn.classList.toggle("on", document.documentElement.classList.contains("dark"));
     }
-    var stormBtn = document.getElementById("stormbtn");
     window.__storm = false;
-    if (stormBtn) stormBtn.addEventListener("click", function () {
-      window.__storm = !window.__storm;
-      window.__stormOff = !window.__storm;
-      stormBtn.classList.toggle("on", window.__storm);
-      if (window.__storm) {
-        clearInterval(rot); clearTimeout(idle);
-        showPage("radar");
-      } else startRotate();
-    });
     try {
       localStorage.setItem("bw-seen", new Date().toISOString());
       var seen = document.getElementById("house-seen");
@@ -1552,12 +1550,15 @@ Cart shop:</textarea>
         var isWarnEarly = keep.some(function (f) {
           return /warning/i.test(((f.properties || {}).event || ""));
         });
+        window.__wxRisk.warn = !!isWarnEarly;
         if (isWarnEarly && !window.__stormOff) {
           window.__storm = true;
-          var sb = document.getElementById("stormbtn");
-          if (sb) sb.classList.add("on");
           showPage("radar");
-          clearInterval(rot);
+          clearInterval(rot); clearTimeout(idle);
+        }
+        if (!isWarnEarly) {
+          window.__stormOff = false;
+          if (window.__storm) { window.__storm = false; startRotate(); }
         }
         pagesFromDock();
         if (!keep.length) {
