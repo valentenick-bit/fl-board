@@ -454,6 +454,7 @@ Cart shop:</textarea>
       <button type="button" data-p="sky">Sky</button>
       <button type="button" data-p="ent">Fun</button>
       <button type="button" data-p="house">House</button>
+      <button type="button" data-p="deliver">Pkgs</button>
       <button type="button" data-p="radio">Radio</button>
       <button type="button" data-p="traffic">Roads</button>
       <button type="button" id="morebtn">More</button>
@@ -465,7 +466,6 @@ Cart shop:</textarea>
       <button type="button" data-p="wink">WINK</button>
       <button type="button" data-p="contacts">Emergency</button>
       <button type="button" data-p="villa">Villa</button>
-      <button type="button" data-p="deliver">Deliveries</button>
       <button type="button" id="darkbtn">Dark</button>
       <button type="button" id="refreshbtn">Refresh</button>
           </nav>
@@ -688,7 +688,7 @@ Cart shop:</textarea>
       el.addEventListener("change", function () { try { localStorage.setItem("bw-vendors", el.value); } catch (e) {} });
     })();
     clock(); setInterval(clock, 15000);
-    var pages = ["now","tenday","radar","marine","sky","ent","house","radio","traffic"], i = 0, rot, idle;
+    var pages = ["now","tenday","radar","marine","sky","ent","house","deliver","radio","traffic"], i = 0, rot, idle;
     function warnList() {
       var ev = window.__wxRisk.warnTypes || "";
       var list = ["radar"];
@@ -738,7 +738,7 @@ Cart shop:</textarea>
     }
     (function restoreDockOrder() {
       var raw;
-      try { raw = localStorage.getItem("bw-dock-v4"); } catch (e) { raw = null; }
+      try { raw = localStorage.getItem("bw-dock-v5") || localStorage.getItem("bw-dock-v4"); } catch (e) { raw = null; }
       if (!raw) {
         try { localStorage.removeItem("bw-dock"); } catch (e) {}
         return;
@@ -751,8 +751,8 @@ Cart shop:</textarea>
       var main = order.main || [];
       var more = order.more || [];
       var saved = main.concat(more);
-      if (saved.indexOf("wink") < 0 || saved.indexOf("talk") >= 0 || saved.indexOf("meet") >= 0) {
-        try { localStorage.removeItem("bw-dock-v4"); localStorage.removeItem("bw-dock-v3"); localStorage.removeItem("bw-dock"); } catch (e) {}
+      if (saved.indexOf("wink") < 0 || saved.indexOf("deliver") < 0 || saved.indexOf("talk") >= 0 || saved.indexOf("meet") >= 0) {
+        try { localStorage.removeItem("bw-dock-v5"); localStorage.removeItem("bw-dock-v4"); localStorage.removeItem("bw-dock-v3"); localStorage.removeItem("bw-dock"); } catch (e) {}
         return;
       }
       main.forEach(function (id) {
@@ -777,7 +777,7 @@ Cart shop:</textarea>
           main: Array.from(document.querySelectorAll("#dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); }),
           more: Array.from(document.querySelectorAll("#dock-more button[data-p]")).map(function (b) { return b.getAttribute("data-p"); })
         };
-        try { localStorage.setItem("bw-dock-v4", JSON.stringify(order)); } catch (e) {}
+        try { localStorage.setItem("bw-dock-v5", JSON.stringify(order)); } catch (e) {}
         pagesFromDock();
       }
       document.querySelectorAll(".dock").forEach(function (dock) {
