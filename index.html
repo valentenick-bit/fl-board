@@ -80,7 +80,9 @@
     .ticker span, .alert-ticker span, .break-ticker span { display:inline-block; will-change:transform; }
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
-    .dock-more { background:#ddd4c4; }
+    .dock-more { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding-top:0; padding-bottom:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
+    .dock-wrap.open .dock-more { max-height:72px; opacity:1; padding:4px 6px; pointer-events:auto; }
+    #morebtn.on { background:#1b2a4a; color:#fff; }
     .quiet-photo { width:100%; height:140px; object-fit:cover; border-radius:12px; margin:8px 0; display:none; }
     .quiet-photo.on { display:block; }
 
@@ -256,16 +258,21 @@
       </section>
       <section id="bw" class="page">
         <h2>BeachWalk</h2>
-        <div class="card"><b>Tue 5:30p French bakery pop-up</b><span>Capri · residents welcome</span></div>
-        <div class="card"><b>Sun Sep 6 1–5p Labor Day</b><span>Pool / High Tide · DJ, food, sundaes</span></div>
-        <div class="card"><b>Mon Sep 7 5–8p Food trucks</b><span>Capri · Currywurst + Shaz Shack</span></div>
+        <div id="bw-list">
+          <div class="card"><b>Tue Sep 1 5:30p French bakery</b><span>Capri · residents welcome</span></div>
+          <div class="card"><b>Sun Sep 6 1–5p Labor Day</b><span>Pool / High Tide</span></div>
+          <div class="card"><b>Mon Sep 7 5–8p Food trucks</b><span>Capri · Currywurst + Shaz Shack</span></div>
+        </div>
+        <p><a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">Open BeachWalk calendar</a></p>
       </section>
       <section id="eng" class="page">
         <h2>Englewood</h2>
-        <div class="card"><b>Tonight 7p 22N</b><span>SandBar Tiki · Key · storm risk</span></div>
-        <div class="card"><b>Sun 1–5p Cabana Dogs</b><span>SandBar Tiki · Key</span></div>
-        <div class="card"><b>Fri Sep 4 6p fireworks</b><span>Downtown Wellen</span></div>
-        <div class="card"><b>Labor Day weekend</b><span>Venice craft fest · Artur's · Troll Music</span></div>
+        <div id="eng-list">
+          <div class="card"><b>Sun Aug 30 1–5p Cabana Dogs</b><span>SandBar Tiki</span></div>
+          <div class="card"><b>Fri Sep 4 6p fireworks</b><span>Downtown Wellen</span></div>
+          <div class="card"><b>Labor Day weekend</b><span>Venice craft fest · Pioneer Days · Artur's</span></div>
+        </div>
+        <p><a href="https://calendar.google.com/calendar/embed?src=a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">Open Englewood calendar</a></p>
       </section>
       <section id="house" class="page">
         <h2>House</h2>
@@ -374,6 +381,7 @@ Cart shop:</textarea>
       <button type="button" data-p="house">House</button>
       <button type="button" data-p="radio">Radio</button>
       <button type="button" data-p="traffic">Roads</button>
+      <button type="button" id="morebtn">More</button>
     </nav>
     <nav class="dock dock-more" id="dock-more">
       <button type="button" data-p="cane">Cane</button>
@@ -383,8 +391,7 @@ Cart shop:</textarea>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="stormbtn">Storm</button>
       <button type="button" id="darkbtn">Dark</button>
-      <button type="button" id="muteall">Mute all</button>
-    </nav>
+          </nav>
     </div>
     <div class="ticker-stack">
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
@@ -484,14 +491,6 @@ Cart shop:</textarea>
     }
     var stormBtn = document.getElementById("stormbtn");
     window.__storm = false;
-    var muteAll = document.getElementById("muteall");
-    if (muteAll) muteAll.addEventListener("click", function () {
-      window.__forceRadio = false;
-      playStation("", "Mute");
-      var tick = document.getElementById("ticktext");
-      if (tick) tick.style.animationPlayState = "paused";
-      muteAll.classList.add("on");
-    });
     if (stormBtn) stormBtn.addEventListener("click", function () {
       window.__storm = !window.__storm;
       window.__stormOff = !window.__storm;
@@ -571,12 +570,19 @@ Cart shop:</textarea>
       var order;
       try { order = JSON.parse(raw); } catch (e) { return; }
       var dock = document.getElementById("dock");
-      if (!dock || !order || !order.length) return;
-      order.forEach(function (id) {
-        var b = dock.querySelector('button[data-p="' + id + '"]');
+      if (!dock || !order) return;
+      var main = order.main || (Array.isArray(order) ? order : []);
+      var more = order.more || [];
+      main.forEach(function (id) {
+        var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b) dock.appendChild(b);
       });
-      ["stormbtn","darkbtn","muteall"].forEach(function (id) {
+      var dockMore = document.getElementById("dock-more");
+      more.forEach(function (id) {
+        var b = document.querySelector('.dock button[data-p="' + id + '"]');
+        if (b && dockMore) dockMore.appendChild(b);
+      });
+      ["stormbtn","darkbtn"].forEach(function (id) {
         var more = document.getElementById("dock-more") || dock;
         var b = document.getElementById(id);
         if (b) more.appendChild(b);
@@ -584,54 +590,146 @@ Cart shop:</textarea>
       pagesFromDock();
     })();
     (function dragDock() {
-      var dock = document.getElementById("dock");
-      if (!dock) return;
-      var hold, start, dragging = false, lifted = null;
+      var hold, start, dragging = false, lifted = null, home = null, skipClick = false;
       function save() {
-        var order = Array.from(dock.querySelectorAll("button[data-p]")).map(function (b) { return b.getAttribute("data-p"); });
+        var order = {
+          main: Array.from(document.querySelectorAll("#dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); }),
+          more: Array.from(document.querySelectorAll("#dock-more button[data-p]")).map(function (b) { return b.getAttribute("data-p"); })
+        };
         try { localStorage.setItem("bw-dock", JSON.stringify(order)); } catch (e) {}
         pagesFromDock();
       }
-      dock.addEventListener("pointerdown", function (e) {
-        var btn = e.target.closest("button[data-p]");
-        if (!btn) return;
-        start = { x: e.clientX, y: e.clientY };
-        hold = setTimeout(function () {
-          dragging = true;
-          lifted = btn;
-          btn.classList.add("dragging");
-          try { btn.setPointerCapture(e.pointerId); } catch (err) {}
-        }, 520);
-      });
-      dock.addEventListener("pointermove", function (e) {
-        if (!dragging || !lifted) {
-          if (hold && start && (Math.abs(e.clientX - start.x) > 12 || Math.abs(e.clientY - start.y) > 12)) clearTimeout(hold);
-          return;
-        }
-        var el = document.elementFromPoint(e.clientX, e.clientY);
-        var over = el && el.closest && el.closest("#dock button[data-p]");
-        if (over && over !== lifted) {
+      document.querySelectorAll(".dock").forEach(function (dock) {
+        dock.addEventListener("pointerdown", function (e) {
+          var btn = e.target.closest("button[data-p]");
+          if (!btn) return;
+          home = dock;
+          start = { x: e.clientX, y: e.clientY };
+          clearTimeout(hold);
+          hold = setTimeout(function () {
+            dragging = true;
+            skipClick = true;
+            lifted = btn;
+            btn.classList.add("dragging");
+            try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+          }, 500);
+        });
+        dock.addEventListener("pointermove", function (e) {
+          if (!dragging || !lifted) {
+            if (hold && start && (Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) > 16)) clearTimeout(hold);
+            return;
+          }
+          e.preventDefault();
+          var el = document.elementFromPoint(e.clientX, e.clientY);
+          var over = el && el.closest && el.closest(".dock button[data-p]");
+          if (!over || over === lifted) return;
+          var dest = over.parentNode;
+          if (dest !== home) return;
           var rect = over.getBoundingClientRect();
-          var before = (e.clientY < rect.top + rect.height / 2) || (e.clientX < rect.left + rect.width / 2);
-          dock.insertBefore(lifted, before ? over : over.nextSibling);
-        }
-      });
-      function endDrag(e) {
-        clearTimeout(hold);
-        if (dragging) {
+          var before = dest.classList.contains("dock-more")
+            ? e.clientX < rect.left + rect.width / 2
+            : (e.clientX < rect.left + rect.width / 2);
+          dest.insertBefore(lifted, before ? over : over.nextSibling);
+        });
+        dock.addEventListener("pointerup", function () {
+          clearTimeout(hold);
+          if (dragging) {
+            dragging = false;
+            if (lifted) lifted.classList.remove("dragging");
+            lifted = null;
+            home = null;
+            save();
+            setTimeout(function () { skipClick = false; }, 50);
+          }
+        });
+        dock.addEventListener("pointercancel", function () {
+          clearTimeout(hold);
           dragging = false;
           if (lifted) lifted.classList.remove("dragging");
           lifted = null;
-          save();
-          e.preventDefault();
-          e.stopPropagation();
-        }
+        });
+        dock.addEventListener("click", function (e) {
+          if (skipClick) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+      });
+    })();
+
+    (function liveCals() {
+      var BW = "605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947@group.calendar.google.com";
+      var ENG = "a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6@group.calendar.google.com";
+      function icsUrl(id) {
+        return "https://calendar.google.com/calendar/ical/" + encodeURIComponent(id) + "/public/basic.ics";
       }
-      dock.addEventListener("pointerup", endDrag);
-      dock.addEventListener("pointercancel", endDrag);
-      dock.addEventListener("click", function (e) {
-        if (e.target && e.target.closest && e.target.closest("button.dragging")) e.stopPropagation();
-      }, true);
+      function parseIcs(text) {
+        var blocks = String(text || "").split("BEGIN:VEVENT").slice(1);
+        var out = [];
+        blocks.forEach(function (b) {
+          var sum = (b.match(/SUMMARY:(.+)/) || [])[1] || "";
+          var loc = (b.match(/LOCATION:(.+)/) || [])[1] || "";
+          var ds = (b.match(/DTSTART(?:;[^:]*)?:(\d{8}(?:T\d{6}Z?)?)/) || [])[1] || "";
+          if (!sum || !ds) return;
+          var when;
+          if (ds.length === 8) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T12:00:00-04:00");
+          else if (ds.indexOf("Z") >= 0) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":"+ds.slice(13,15)+"Z");
+          else when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":00-04:00");
+          if (when.getTime() < Date.now() - 6*3600*1000) return;
+          out.push({ when: when, sum: sum.replace(/\\n/g," ").trim(), loc: loc.replace(/\\n/g," ").trim() });
+        });
+        out.sort(function (a,b) { return a.when - b.when; });
+        return out.slice(0, 8);
+      }
+      function render(id, events) {
+        var box = document.getElementById(id);
+        if (!box || !events.length) return;
+        box.innerHTML = events.map(function (e) {
+          var d = e.when.toLocaleString("en-US", { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
+          return '<div class="card"><b>' + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
+        }).join("");
+      }
+      function load(id, target) {
+        var raw = icsUrl(id);
+        var proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw);
+        fetch(proxied).then(function (r) { return r.text(); }).then(function (txt) {
+          if (txt && txt.indexOf("BEGIN:VEVENT") >= 0) render(target, parseIcs(txt));
+        }).catch(function () {});
+      }
+      load(BW, "bw-list");
+      load(ENG, "eng-list");
+      setInterval(function () { load(BW, "bw-list"); load(ENG, "eng-list"); }, 15 * 60 * 1000);
+    })();
+
+    (function extraDock() {
+      var wrap = document.querySelector(".dock-wrap");
+      var moreBtn = document.getElementById("morebtn");
+      var extra = document.getElementById("dock-more");
+      if (!wrap || !moreBtn || !extra) return;
+      var hideT;
+      function open() {
+        wrap.classList.add("open");
+        moreBtn.classList.add("on");
+        clearTimeout(hideT);
+        hideT = setTimeout(close, 8000);
+      }
+      function close() {
+        wrap.classList.remove("open");
+        moreBtn.classList.remove("on");
+        clearTimeout(hideT);
+      }
+      moreBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (wrap.classList.contains("open")) close();
+        else open();
+      });
+      extra.addEventListener("click", function (e) {
+        if (e.target.closest("button")) {
+          clearTimeout(hideT);
+          hideT = setTimeout(close, 2500);
+        }
+      });
+      extra.addEventListener("pointerdown", function () {
+        clearTimeout(hideT);
+        hideT = setTimeout(close, 8000);
+      });
     })();
     startRotate();
     (function swipePages() {
@@ -1355,17 +1453,33 @@ Cart shop:</textarea>
     setInterval(pollBreaking, 5 * 60 * 1000);
 
 
+    window.__tickOn = { alert: 0, brk: 0 };
+    function markTicker(kind, on) {
+      if (on) {
+        if (!window.__tickOn[kind]) window.__tickOn[kind] = Date.now();
+      } else window.__tickOn[kind] = 0;
+    }
     function stackTickers() {
-      var brief = 40, y = brief;
+      var stack = document.querySelector(".ticker-stack");
       var alertBar = document.getElementById("alertbar");
       var breakBar = document.getElementById("breakbar");
+      var brief = stack && stack.querySelector(".ticker");
       var frame = document.querySelector(".frame");
-      if (alertBar) alertBar.style.bottom = "";
-      if (breakBar) breakBar.style.bottom = "";
-      if (alertBar && alertBar.classList.contains("on")) frame.classList.add("has-alert");
-      else if (frame) frame.classList.remove("has-alert");
-      if (breakBar && breakBar.classList.contains("on")) frame.classList.add("has-break");
-      else if (frame) frame.classList.remove("has-break");
+      var alertOn = !!(alertBar && alertBar.classList.contains("on"));
+      var breakOn = !!(breakBar && breakBar.classList.contains("on"));
+      markTicker("alert", alertOn);
+      markTicker("brk", breakOn);
+      if (frame) {
+        frame.classList.toggle("has-alert", alertOn);
+        frame.classList.toggle("has-break", breakOn);
+      }
+      if (!stack || !brief) return;
+      var rows = [];
+      if (alertOn) rows.push({ el: alertBar, t: window.__tickOn.alert });
+      if (breakOn) rows.push({ el: breakBar, t: window.__tickOn.brk });
+      rows.sort(function (a, b) { return b.t - a.t; });
+      rows.forEach(function (r) { stack.insertBefore(r.el, brief); });
+      stack.appendChild(brief);
     }
     function spinEl(el, speed) {
       if (!el) return;
