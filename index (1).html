@@ -1,0 +1,2153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BeachWalk Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --sand:#f4efe6; --sand-2:#ebe4d6; --navy:#1b2a4a; --teal:#2a9d8f; --gold:#c4a35a; --coral:#e07a5f; --muted:#5c6b7a; }
+    * { box-sizing: border-box; }
+
+    html, body { margin:0; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
+    html, body { background:var(--sand); }
+    .frame { position:relative; width:100vw; height:100dvh; max-width:none; max-height:100dvh; margin:0; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
+    header.night { filter:brightness(.68); }
+    header { background:var(--navy); color:#f7f1e6; padding:10px 12px 8px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
+    header .brand { justify-self:start; }
+    header .clock { justify-self:end; text-align:right; }
+    header .temprow { display:grid; grid-template-columns:1fr auto 1fr; align-items:end; gap:8px; }
+    header .tempblock, header .iconblock, header .feels { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
+    header .tempblock label, header .iconblock label, header .feels label { color:#c9c0b0; font-size:10px; white-space:nowrap; line-height:12px; height:12px; margin:0; }
+    header .temp, header .feels strong { font-size:32px; line-height:32px; height:32px; color:#f7f1e6; font-weight:600; display:block; }
+    header .wxicon { width:32px; height:32px; flex:none; margin:0; display:block; }
+    .brand b { display:block; font-family:Fraunces,Georgia,serif; letter-spacing:.1em; font-size:20px; }
+    .brand small { letter-spacing:.16em; text-transform:uppercase; font-size:11px; opacity:.75; }
+    #when { font-weight:700; }
+    .flag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
+    main { flex:1; padding:10px 12px 6px; overflow-y:auto; min-height:0; }
+    .page { display:none; }
+    .page.on { display:block; }
+    .temprow { display:flex; align-items:flex-end; justify-content:space-between; gap:6px; }
+    .tempblock { flex:1; min-width:0; }
+    .tempblock label, .feels label { display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .temp, .feels strong { font-family:Fraunces,Georgia,serif; font-size:52px; line-height:.9; }
+    .wxicon { width:52px; height:52px; flex:0 0 52px; margin-bottom:4px; }
+    .feels { flex:1; min-width:0; text-align:right; }
+    .sky { font-size:16px; line-height:1.4; color:var(--muted); margin:4px 0 12px; max-width:52rem; }
+    .pills { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+    .pill { display:block; text-align:center; border-radius:999px; padding:10px 8px; font-weight:700; color:#fff; font-size:14px; }
+    .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
+    .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
+    .hourly { display:flex; flex-wrap:nowrap; gap:8px; padding:4px 0 10px; overflow:hidden; }
+    .hourly .hour { flex:1 1 0; min-width:0; }
+    .hour { min-width:56px; background:#fff; border-radius:12px; text-align:center; padding:8px 4px; font-size:12px; }
+    .hour b { display:block; font-size:16px; }
+    .hour svg { width:28px; height:28px; display:block; margin:4px auto; }
+    .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+    .tile { background:#fff; border-radius:12px; padding:10px; min-height:72px; }
+    .tile label { display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .tile strong { font-size:20px; }
+    .tile.wide { grid-column:1 / -1; }
+    .sky-graphs, .marine-graphs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    .tide svg, .sunpath svg, .moonpath svg { width:100%; height:90px; display:block; }
+    h2 { font-family:Fraunces,Georgia,serif; margin:0 0 12px; }
+    .card { background:#fff; border-radius:12px; padding:12px; margin-bottom:8px; }
+    .card b { display:block; } .card span { color:var(--muted); font-size:13px; }
+    .card.music { background:#fff5f1; box-shadow:inset 4px 0 0 #e07a5f; }
+    .music-tag, .place-tag { display:inline-block; margin:0 6px 4px 0; padding:2px 8px; border-radius:999px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; }
+    .card span.music-tag { background:#e07a5f; color:#fff; }
+    .card span.place-tag { background:#2a9d8f; color:#fff; }
+    iframe.full { width:100%; height:52vh; border:0; border-radius:12px; background:#111; }
+    table { width:100%; border-collapse:collapse; }
+    td { padding:10px 4px; border-bottom:1px solid #e2d9c8; font-size:15px; }
+    a { color:var(--navy); font-weight:700; }
+    .rowbtns { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .rowbtns button, .rowbtns a { background:#fff; border:1px solid #d7cdbb; border-radius:999px; padding:10px 12px; font-weight:700; text-decoration:none; color:var(--navy); }
+    .rowbtns button.on { background:var(--navy); color:#fff; }
+    .dock { display:grid; grid-template-columns:repeat(6,1fr); gap:4px; padding:4px 6px; background:var(--sand-2); }
+    .dock button { min-height:32px; border:0; border-radius:8px; background:transparent; font-weight:700; font-size:11px; color:var(--navy); padding:4px 2px; }
+    .dock button.on { background:#fff; }
+    .dock button.dragging { opacity:.45; }
+    .ticker-stack { flex-shrink:0; width:100%; display:flex; flex-direction:column; }
+    .ticker, .alert-ticker, .break-ticker {
+      position:relative; left:auto; right:auto; bottom:auto;
+      width:100%; height:40px; box-sizing:border-box;
+      font-size:14px; line-height:20px;
+      padding:10px 0; overflow:hidden; white-space:nowrap; pointer-events:none;
+    }
+    .ticker { background:var(--navy); color:#f7f1e6; }
+    .alert-ticker { display:none; font-weight:700; }
+    .alert-ticker.on { display:block; }
+    .alert-ticker.watch { background:#e07a5f; color:#1b2a4a; }
+    .alert-ticker.warning { background:#b42318; color:#fff; }
+    .break-ticker { display:none; font-weight:700; background:#111; color:#fff; }
+    .break-ticker.on { display:block; }
+    .ticker span, .alert-ticker span, .break-ticker span { display:inline-flex; will-change:transform; white-space:nowrap; }
+    .tseg { flex:none; padding:0; }
+    .ticker .tseg b { font-weight:800; color:#e8d5a3; }
+    .dock { margin-bottom:0; flex-shrink:0; }
+    .dock-wrap { flex-shrink:0; }
+    .dock-more { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding-top:0; padding-bottom:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
+    .dock-wrap.open .dock-more { max-height:72px; opacity:1; padding:4px 6px; pointer-events:auto; }
+    #morebtn.on { background:#1b2a4a; color:#fff; }
+    .quiet-photo { width:100%; height:140px; object-fit:cover; border-radius:12px; margin:8px 0; display:none; }
+    .quiet-photo.on { display:block; }
+
+    .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
+    .tenday { display:flex; flex-direction:column; gap:6px; margin:8px 0 12px; }
+    .day { display:grid; grid-template-columns:42px 28px 1fr auto; gap:8px; align-items:center; background:#fff; border-radius:10px; padding:4px 10px; font-size:12px; }
+    .day svg { width:26px; height:26px; }
+    .hi { font-weight:700; } .lo { color:var(--muted); }
+    @media (min-width: 800px) {
+      .day { padding:6px 10px; font-size:13px; }
+      iframe.full { height:68vh; }
+      iframe.lite { height:56vh; }
+      .tiles { grid-template-columns:repeat(4, 1fr); }
+      main { padding:12px 18px 8px; }
+    }
+    .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+    .pbar-read span { color:var(--muted); font-size:12px; }
+    .pbar { position:relative; display:flex; height:18px; border-radius:999px; overflow:hidden; background:#e2d9c8; }
+    .pseg { flex:1; font-size:9px; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; justify-content:center; color:#fff; }
+    .pseg.low { background:#c4a35a; } .pseg.mid { background:#2a9d8f; } .pseg.high { background:#1b2a4a; }
+    .pneedle { position:absolute; top:-4px; bottom:-4px; left:54%; width:3px; background:#e07a5f; border-radius:2px; box-shadow:0 0 0 2px #fff; }
+    .pbar-scale { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:4px; }
+    .pbar.uv .uv0 { background:#2a9d8f; flex:2; } .pbar.uv .uv1 { background:#c4a35a; flex:3; }
+    .pbar.uv .uv2 { background:#e07a5f; flex:3; } .pbar.uv .uv3 { background:#1b2a4a; flex:3; }
+
+    html.dark body { background:#0c1018; }
+    html.dark .frame { background:#141a24; color:#f4efe6; }
+    html.dark header { background:#0b1018; }
+    html.dark .tile, html.dark .card, html.dark .day, html.dark .hour { background:#1c2432; }
+    html.dark .dock { background:#10161f; }
+    html.dark .dock button { color:#e8e2d6; }
+    html.dark .dock button.on { background:#2a3344; color:#fff; }
+    html.dark .ticker { background:#0b1018; }
+    html.dark .rowbtns button { background:#1c2432; border-color:#2a3344; color:#f4efe6; }
+    #live-heat { display:none; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#e07a5f; }
+    #live-heat.on { display:block; }
+    .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
+    iframe.lite { width:100%; height:40vh; border:0; border-radius:12px; background:#111; }
+
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <div class="brand"><b>BEACHWALK</b><small>Manasota Key</small></div>
+      <div class="temprow">
+        <div class="tempblock"><label>Temp</label><div class="temp" id="live-temp">77&deg;</div></div>
+        <div class="iconblock"><label>&nbsp;</label>
+        <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
+        <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
+      </div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div></div>
+    </header>
+    <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
+    <main>
+      <section id="now" class="page on">
+        <p class="sky" id="live-sky">Good morning. Mostly sunny in Englewood with a heat index near 102°. Afternoon storms are likely after 2 p.m. Beach and cart are best this morning before the storms build.</p>
+        <div class="pills">
+          <span class="pill go" id="pill-beach">Beach …</span><span class="pill go" id="pill-cart">Cart …</span>
+          <span class="pill go" id="pill-boat">Boat …</span><span class="pill win" id="pill-courts">Courts …</span>
+          <span class="pill go" id="pill-rip">Rip …</span><span class="pill go" id="pill-craft">Craft …</span>
+        </div>
+        <div class="hourly">
+          <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
+          <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
+          <div class="hour">12p<svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><b>90&deg;</b></div>
+          <div class="hour">2p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>93&deg;</b></div>
+          <div class="hour">5p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>88&deg;</b></div>
+          <div class="hour">8p<svg viewBox="0 0 32 32"><path d="M6 12h16" stroke="#5c6b7a" fill="none" stroke-width="2"/></svg><b>80&deg;</b></div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><label>Wind</label><strong id="live-wind">E 6 mph</strong></div>
+          <div class="tile"><label>Gusts</label><strong id="live-gusts">8 mph</strong></div>
+        </div>
+        <div class="marine-graphs">
+          <div class="card"><b>Humidity</b><span id="live-rh">—</span> <span id="live-dew"></span>
+            <div class="tide" id="humid-chart"></div>
+          </div>
+          <div class="card"><b>Pressure</b><span id="live-pres">—</span> <span id="live-pres-note"></span>
+            <div class="tide" id="pres-chart"></div>
+          </div>
+        </div>
+        <div class="marine-graphs">
+          <div class="card"><b>Rain / hour</b><span id="live-rain-hr">—</span>
+            <div class="tide" id="rainhr-chart"></div>
+          </div>
+          <div class="card"><b>Rain event</b><span id="live-rain-ev">—</span>
+            <div class="tide" id="rainev-chart"></div>
+          </div>
+        </div>
+        <div class="marine-graphs">
+          <div class="card"><b>Air quality</b><span id="live-aqi">—</span>
+            <div id="live-aqi-note" class="card" style="background:transparent;padding:0;margin:0">Englewood</div>
+          </div>
+          <div class="card"><b>Rain next 3 hr</b><span id="live-rain3">—</span>
+            <div class="tide" id="rain3-chart"></div>
+          </div>
+        </div>
+        <div class="tiles">
+          <div class="tile wide"><label>UV index</label><div class="pbar-read"><strong id="live-uv">UV</strong> <span>NWS hourly</span></div><div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" style="left:88%"></i></div><div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div></div>
+        </div>
+      </section>
+      <section id="tenday" class="page">
+        <h2>10-day</h2>
+        <div class="tenday">
+          <div class="day">Sat <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><span>sun then storms</span><span><span class="hi">91&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Sun <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>showers likely</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Mon <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>afternoon storms</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Tue <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>mostly sun / storms</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Wed <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>mostly sun / storms</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Thu <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><span>typical Aug pattern</span><span><span class="hi">91&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Fri <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical Aug pattern</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Sat <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical Aug pattern</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Sun <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>storm chance</span><span><span class="hi">89&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Mon <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>storm chance</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
+          <div class="day">Tue <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical pattern</span><span><span class="hi">90&deg;</span> <span class="lo">77&deg;</span></span></div>
+          <div class="day">Wed <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical pattern</span><span><span class="hi">90&deg;</span> <span class="lo">77&deg;</span></span></div>
+          <div class="day">Thu <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>storm chance</span><span><span class="hi">90&deg;</span> <span class="lo">77&deg;</span></span></div>
+          <div class="day">Fri <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical pattern</span><span><span class="hi">91&deg;</span> <span class="lo">77&deg;</span></span></div>
+          <div class="day">Sat <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span>typical pattern</span><span><span class="hi">90&deg;</span> <span class="lo">77&deg;</span></span></div>
+        </div>
+      </section>
+      <section id="radar" class="page">
+        <h2>Radar</h2>
+        <p><a href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Open live KTBW radar</a> if the map below is blank (some browsers block the embed).</p>
+        <iframe class="full" title="KTBW" src="https://radar.weather.gov/station/KTBW/standard"></iframe>
+      </section>
+      <section id="marine" class="page">
+        <h2>Marine</h2>
+        <div class="marine-graphs">
+        <div class="card"><b>Manasota tide</b><span id="live-tide-today">Loading tides…</span>
+          <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/></svg></div>
+        </div>
+        <div class="card"><b>Ocean surge</b><span id="live-surge">vs predicted tide</span>
+          <div class="tide" id="surge-chart"></div>
+        </div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><label>Rip tide</label><strong id="live-rip">…</strong></div>
+          <div class="tile"><label>Red tide</label><strong id="live-redtide">…</strong></div>
+          <div class="tile"><label>Seas</label><strong id="live-seas">…</strong></div>
+          <div class="tile"><label>Small craft</label><strong id="live-craft">…</strong></div>
+          <div class="tile"><label>Gulf SST</label><strong id="live-sst">—</strong></div>
+          <div class="tile"><label>Inlet water</label><strong id="live-wtemp">—</strong></div>
+        </div>
+        <div class="card"><b>Gulf water history</b><span>Open-Meteo SST</span>
+          <div class="tide" id="wtemp-chart"></div>
+        </div>
+        <div class="card"><b>Coastal waters TBW</b><span id="live-coastal">Loading…</span></div>
+        <div class="card"><b>Passes</b><span>Venice Inlet / Stump Pass — morning window. Afternoon storms are the ride home risk.</span></div>
+        <div class="card"><b>Saltwater report</b><span id="live-fish">Loading Lemon Bay / Stump Pass / Venice Inlet…</span></div>
+        <div class="card"><b>Alligator watch</b><span id="live-gator">FWC: unprovoked bites are uncommon. Stay out of murky canals and ponds at dawn and dusk. Don’t feed gators. Pets on a short leash. Report a nuisance gator: 866-392-4286.</span></div>
+        <p><a href="https://fishinfranks.com/fishin_report.htm" target="_blank" rel="noopener">Fishin Franks</a> · <a href="https://www.floridasportsman.com/editorial/southwest-florida-weekend-fishing-forecast/402036" target="_blank" rel="noopener">Florida Sportsman SW</a> · <a href="https://myfwc.com/fishing/saltwater/recreational/" target="_blank" rel="noopener">FWC regs</a></p>
+        <p><a href="https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=8725809" target="_blank" rel="noopener">NOAA 8725809</a> · <a href="https://www.ndbc.noaa.gov/station_page.php?station=VENF1" target="_blank" rel="noopener">VENF1</a></p>
+      </section>
+
+      <section id="sky" class="page">
+        <h2>Sky</h2>
+        <div class="sky-graphs">
+        <div class="tile"><label id="live-sun-label">Sun path</label><div class="sunpath" id="sun-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#c4a35a" stroke-width="3"/><circle cx="20" cy="70" r="4" fill="#c4a35a"/><circle cx="200" cy="70" r="4" fill="#1b2a4a"/><circle cx="95" cy="22" r="5" fill="#e07a5f"/><text x="8" y="84" font-size="9" fill="#5c6b7a">7:07a</text><text x="168" y="84" font-size="9" fill="#5c6b7a">7:52p</text><text x="86" y="14" font-size="9" fill="#1b2a4a">now</text></svg></div></div>
+        <div class="tile"><label>Moon</label><div class="moonpath" id="moon-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/><circle cx="118" cy="52" r="5" fill="#2a9d8f"/><text x="8" y="84" font-size="8" fill="#5c6b7a">New</text><text x="62" y="12" font-size="8" fill="#5c6b7a">1st</text><text x="118" y="84" font-size="8" fill="#5c6b7a">Full 28th</text><text x="178" y="12" font-size="8" fill="#5c6b7a">3rd</text></svg></div></div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><label>Tonight</label><strong id="live-planet1">…</strong><div id="live-planet1d"></div></div>
+          <div class="tile"><label>Overnight</label><strong id="live-planet2">…</strong><div id="live-planet2d"></div></div>
+          <div class="tile"><label>Dawn</label><strong id="live-planet3">…</strong><div id="live-planet3d"></div></div>
+          <div class="tile"><label>Stars</label><strong id="live-planet4">…</strong><div id="live-planet4d"></div></div>
+        </div>
+        <div class="card"><b>Nick · Gemini</b><span id="live-horo-nick">Loading…</span></div>
+        <div class="card"><b>Dayna · Aquarius</b><span id="live-horo-dayna">Loading…</span></div>
+        <div class="card"><b>Watch / be aware</b>
+          <span id="live-sky-watch">Updating…</span>
+        </div>
+        <div class="card"><b>ISS over the Key</b><span id="live-iss">Loading passes…</span></div>
+        <p><a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener">ISS</a> · <a href="https://nightsky.jpl.nasa.gov/planner" target="_blank" rel="noopener">NASA planner</a></p>
+      </section>
+      <section id="ent" class="page">
+        <h2>Entertainment</h2>
+        <div id="ent-list">
+          <div class="card music"><span class="place-tag">SandBar Tiki</span><span class="music-tag">Live music</span><b>Sun Aug 30 1–5p · Cabana Dogs @ SandBar Tiki</b><span>SandBar Tiki & Grille, Beach Rd</span></div>
+          <div class="card"><span class="place-tag">BeachWalk</span><b>Tue Sep 1 5:30p · French Atelier & Bakery Pop-Up</b><span>Capri Clubhouse</span></div>
+          <div class="card music"><span class="place-tag">Downtown Wellen</span><span class="music-tag">Live music</span><b>Fri Sep 4 6p · TL Jentgens + Fireworks</b><span>Downtown Wellen</span></div>
+          <div class="card"><span class="place-tag">Downtown Venice</span><b>Sat–Mon Sep 5–7 · Venice Craft Festival</b><span>Downtown Venice</span></div>
+          <div class="card"><span class="place-tag">Indian Mound Park</span><b>Sat Sep 5 9a · Pioneer Days boat races</b><span>Indian Mound Park</span></div>
+          <div class="card music"><span class="place-tag">Artur's</span><span class="music-tag">Live music</span><b>Sat Sep 5 5:30p · Johnny D @ Artur's</b><span>Englewood</span></div>
+          <div class="card music"><span class="place-tag">Troll Music</span><span class="music-tag">Live music</span><b>Sat Sep 5 7:30p · Storm Riders</b><span>Troll Music, Venice</span></div>
+          <div class="card music"><span class="place-tag">BeachWalk</span><span class="music-tag">Live music</span><b>Sun Sep 6 1–5p · Labor Day Celebration</b><span>Pool / High Tide · DJ</span></div>
+          <div class="card"><span class="place-tag">Pioneer Park</span><b>Mon Sep 7 9a · Pioneer Days Parade</b><span>Dearborn / Pioneer Park</span></div>
+          <div class="card"><span class="place-tag">BeachWalk</span><b>Mon Sep 7 5–8p · Labor Day Food Trucks</b><span>Capri · Currywurst + Shaz Shack</span></div>
+        </div>
+        <p>
+          <a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">BeachWalk calendar</a>
+          ·
+          <a href="https://calendar.google.com/calendar/embed?src=a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">Englewood calendar</a>
+        </p>
+      </section>
+      <section id="house" class="page">
+        <h2>House</h2>
+        <div class="card"><b id="house-occ">Occupied</b><span id="house-seen">Last seen —</span></div>
+        <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
+        <div class="card"><b>Fly</b><span id="cal-fly">Drop a flight number on the Fly calendar.</span></div>
+        <div class="card"><b>Arrive FL</b><span id="cal-arrive">No Arrive FL event in range.</span></div>
+        <div class="card"><b>Leave FL</b><span id="cal-leave">No Leave FL event in range.</span></div>
+        <div class="card"><b>Next flight</b><span id="cal-flight">None stored. Type a flight on Villa if you want it pinned.</span></div>
+        <div class="card"><b>Leave FL · cart</b><span>Plug the cart before you lock up. Leave it on the charger if you will be gone more than a night.</span></div>
+        <div class="card"><b>Trash / recycle</b><span>Sarasota County: garbage, recycle, and yard waste are the same weekday. Curb by 6 a.m. Confirm the BeachWalk day in TownSq. Bulk is by appointment with the hauler.</span></div>
+        <div class="card"><b>Vendors</b>
+          <span>Castle after-hours 800-337-5850. Tap to edit the rest — saved on this device.</span>
+          <textarea id="vendors" rows="4" style="width:100%;margin-top:8px;border:1px solid #d7cdbb;border-radius:8px;padding:8px;font:inherit">HVAC:
+Pest:
+Cart shop:</textarea>
+        </div>
+      </section>
+
+
+      <section id="radio" class="page">
+        <h2>Radio</h2>
+        <div class="card">
+          <b>Stations</b>
+          <div class="rowbtns">
+            <button type="button" class="on" data-stream="https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac">94.9 Magic</button>
+            <button type="button" data-stream="https://oom-cmg.streamguys1.com/tam1055/tam1055-sgplayer-aac">105.5 Dove</button>
+            <button type="button" data-stream="https://stream.revma.ihrhls.com/zc5096">104.9 Seaview</button>
+            <button type="button" data-stream="https://stream.revma.ihrhls.com/zc641">107.9 WSRZ</button>
+            <button type="button" data-stream="">Mute</button>
+          </div>
+        </div>
+        <p id="radio-status">Tap a station to play here. Mute stops it. Volume stays low.</p>
+        <div class="card">
+          <b>Scanners</b>
+          <span>Quiet until a call. Broadcastify may play a short ad first.</span>
+          <div class="rowbtns">
+            <button type="button" data-scan="30021">SO / Venice PD</button>
+            <button type="button" data-scan="45683">EAFD / South Fire</button>
+          </div>
+          <iframe id="scan-frame" title="Scanner" style="display:none;width:100%;height:92px;border:0;border-radius:8px;margin-top:8px;background:#111" allow="autoplay"></iframe>
+          <p style="margin:8px 0 0"><b>SO / Venice PD.</b> Sarasota County Sheriff, Venice Police, and North Port Police. Quiet until a call. Broadcastify may play a short ad.</p>
+          <p style="margin:8px 0 0"><b>EAFD / South Fire.</b> Englewood, Nokomis, North Port, and Venice fire.</p>
+        </div>
+        <div class="card">
+          <b>NOAA Weather Radio</b>
+          <span>Englewood sits on the Sarasota / Charlotte line. Fort Myers WXK83 and Tampa KHB32 are the streams that cover the Key. SAME: Sarasota 012115 · Charlotte 012015.</span>
+          <div class="rowbtns">
+            <button type="button" data-stream="https://radio.weatherusa.net/NWR/KHB32.mp3">NOAA Tampa</button>
+          </div>
+          <p style="margin:8px 0 0"><b>NOAA Tampa (KHB32 162.550).</b> Live stream. Weather, marine loop, and warnings for the Tampa Bay / Sarasota side of the Key.</p>
+          <p style="margin:8px 0 0"><b>Largo KEC38, Fort Myers WXK83, Venice WWG59.</b> No working internet stream for those transmitters. Use a weather radio on 162.450 / 162.475 / 162.400, or stay on NOAA Tampa here. Warnings and marine text below are still for the Englewood point.</p>
+          <p style="margin:8px 0 0"><b>Warnings now.</b> <span id="live-nwr-alert">Checking NWS for Englewood…</span></p>
+          <p style="margin:8px 0 0"><b>Marine now.</b> <span id="live-nwr-marine">Coastal waters update with the Marine page.</span></p>
+        </div>
+      </section>
+      <section id="news" class="page">
+        <h2>Fox News</h2>
+        <p><a href="https://www.foxnews.com/" target="_blank" rel="noopener">Open FoxNews.com</a> if the embed is blocked.</p>
+        <iframe class="full" title="Fox News" src="https://www.foxnews.com/"></iframe>
+      </section>
+      <section id="wink" class="page">
+        <h2>WINK News</h2>
+        <div id="wink-list">
+          <div class="card"><b>Southwest Florida headlines</b><span>Loading WINK…</span></div>
+        </div>
+        <p><a href="https://www.winknews.com/" target="_blank" rel="noopener">Open WINKNews.com</a></p>
+      </section>
+      <section id="cane" class="page">
+        <h2>Tropical</h2>
+        <div class="card"><b>Atlantic / Gulf</b><span id="live-cane">Checking NHC…</span></div>
+        <img id="cane-img-2d" alt="NHC Atlantic 2-day outlook" style="width:100%;border-radius:12px;background:#111;margin-bottom:8px" src="https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png"/>
+        <img id="cane-img" alt="NHC Atlantic 5-day outlook" style="width:100%;border-radius:12px;background:#111" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
+        <p><a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener">NHC Atlantic / Gulf outlook</a></p>
+      </section>
+      <section id="bolt" class="page">
+        <h2>Lightning</h2>
+        <div class="card"><b>Key</b><span id="live-bolt">If NWS mentions lightning, pool and cart go NO.</span></div>
+        <div class="card"><b>Risk class</b><span id="live-bolt-dist">NWS product class only — not a measured mile count.</span></div>
+        <iframe class="lite" title="Lightning" src="https://map.blitzortung.org/#6/26.96/-82.35"></iframe>
+        <p id="pool-light">Pool: open unless a strike is close. Cart: same rule as Boat NO when thunder is in the hourly.</p>
+      </section>
+      <section id="traffic" class="page">
+        <h2>Traffic</h2>
+        <div class="card"><b>Drives</b><span>I-75 to PGD / SRQ · US-41 through Venice / Englewood. Tap the map. Live speeds from FL511.</span></div>
+        <iframe class="lite" title="FL511" src="https://fl511.com/map/EmbeddedMap?lat=27.00&lng=-82.36&zoom=10&layers=TrafficSpeeds,Incidents,Congestion"></iframe>
+        <p><a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a> · <a href="https://www.google.com/maps/dir/?api=1&destination=Sarasota+Bradenton+International+Airport" target="_blank" rel="noopener">To SRQ</a> · <a href="https://www.google.com/maps/dir/?api=1&destination=Punta+Gorda+Airport" target="_blank" rel="noopener">To PGD</a></p>
+      </section>
+      <section id="villa" class="page">
+        <h2>Open / close</h2>
+        <div class="card"><b>Open villa</b>
+          <div class="check">
+            <label><input type="checkbox" data-list="open"> Water heater / breakers on</label>
+            <label><input type="checkbox" data-list="open"> AC to occupied set point</label>
+            <label><input type="checkbox" data-list="open"> Water main on, check for leaks</label>
+            <label><input type="checkbox" data-list="open"> Golf cart unplugged / charged</label>
+            <label><input type="checkbox" data-list="open"> TownSq / gate fob works</label>
+          </div>
+        </div>
+        <div class="card"><b>Close villa</b>
+          <div class="check">
+            <label><input type="checkbox" data-list="close"> Water heater off / breakers as listed</label>
+            <label><input type="checkbox" data-list="close"> AC to vacant set point</label>
+            <label><input type="checkbox" data-list="close"> Water main off if leaving 2+ weeks</label>
+            <label><input type="checkbox" data-list="close"> Cart plugged, trash out, perishables gone</label>
+            <label><input type="checkbox" data-list="close"> Lock lanai, sliders, garage, notify gate</label>
+          </div>
+        </div>
+      </section>
+      <section id="contacts" class="page">
+        <h2>Emergency</h2>
+        <div class="card"><b>Now</b><span id="live-prep">Checking watches for the Key…</span></div>
+        <table>
+          <tr><td>Life emergency</td><td><a href="tel:911">911</a></td></tr>
+          <tr><td>Sheriff non-emergency</td><td><a href="tel:9418615800">941-861-5800</a></td></tr>
+          <tr><td>Sarasota County / 311</td><td><a href="tel:9418615000">941-861-5000</a> · 311</td></tr>
+          <tr><td>Charlotte EM</td><td><a href="tel:9418334000">941-833-4000</a></td></tr>
+          <tr><td>Poison</td><td><a href="tel:8002221222">800-222-1222</a></td></tr>
+          <tr><td>Castle after-hours</td><td><a href="tel:8003375850">800-337-5850</a></td></tr>
+        </table>
+        <div class="card"><b>Power · FPL</b>
+          <span id="live-fpl">Outage: 800-468-8243. Tracker shows county totals, not a public JSON feeder count.</span>
+          <p><a href="tel:8004688243">800-4-OUTAGE</a> · <a href="https://www.fpl.com/powertracker" target="_blank" rel="noopener">FPL Power Tracker</a></p>
+        </div>
+        <div class="card"><b>Gas · TECO Peoples Gas</b>
+          <span>Smell gas — leave the villa, then call. Don’t flip switches.</span>
+          <p><a href="tel:8778326747">877-832-6747</a> · Sarasota office 941-342-4027</p>
+        </div>
+        <div class="card"><b>Water · Englewood Water District</b>
+          <span>Boil-water and main-break alerts. Text EWDAlerts to 24639.</span>
+          <p><a href="tel:9414743217">941-474-3217</a> · <a href="https://englewoodwater.com/" target="_blank" rel="noopener">englewoodwater.com</a></p>
+        </div>
+        <div class="card"><b>Internet · Frontier</b>
+          <span>Fiber outages are common on the Key after storms. Have a phone hotspot ready.</span>
+          <p><a href="tel:18009218101">800-921-8101</a> · <a href="https://frontier.com/helpcenter" target="_blank" rel="noopener">Frontier help</a></p>
+        </div>
+        <table>
+          <tr><td>FEMA disaster help</td><td><a href="tel:8006213362">800-621-3362</a></td></tr>
+          <tr><td>Flood insurance</td><td><a href="tel:8882255353">888-225-5353</a></td></tr>
+          <tr><td>FL Emergency Info</td><td><a href="tel:8003423557">800-342-3557</a></td></tr>
+          <tr><td>Red Cross Sarasota</td><td><a href="tel:9413799300">941-379-9300</a></td></tr>
+          <tr><td>Suncoast 211</td><td><a href="tel:211">211</a></td></tr>
+          <tr><td>Special needs registry</td><td>941-861-5000 / 311</td></tr>
+          <tr><td>Animal services</td><td><a href="tel:9418619500">941-861-9500</a></td></tr>
+          <tr><td>Roads</td><td>511</td></tr>
+        </table>
+        <div class="card"><b>Always on the Key</b><span>3 days water, meds, cash, paper maps, full cart and truck tanks, NOAA radio or this board, and a written out-of-state contact. Know your evacuation zone on scgov.net before a watch.</span></div>
+        <p><a href="https://www.scgov.net/government/emergency-services/emergency-management-4420" target="_blank" rel="noopener">Sarasota EM</a> · <a href="https://www.fema.gov/" target="_blank" rel="noopener">FEMA</a> · <a href="https://floridadisaster.org/" target="_blank" rel="noopener">FloridaDisaster</a></p>
+      </section>
+    </main>
+    <div class="dock-wrap">
+    <nav class="dock" id="dock">
+      <button type="button" data-p="now" class="on">Now</button>
+      <button type="button" data-p="tenday">10-day</button>
+      <button type="button" data-p="radar">Radar</button>
+      <button type="button" data-p="marine">Marine</button>
+      <button type="button" data-p="sky">Sky</button>
+      <button type="button" data-p="ent">Fun</button>
+      <button type="button" data-p="house">House</button>
+      <button type="button" data-p="radio">Radio</button>
+      <button type="button" data-p="traffic">Roads</button>
+      <button type="button" id="morebtn">More</button>
+    </nav>
+    <nav class="dock dock-more" id="dock-more">
+      <button type="button" data-p="cane">Cane</button>
+      <button type="button" data-p="bolt">Bolt</button>
+      <button type="button" data-p="news">Fox</button>
+      <button type="button" data-p="wink">WINK</button>
+      <button type="button" data-p="contacts">Emergency</button>
+      <button type="button" data-p="villa">Villa</button>
+      <button type="button" id="darkbtn">Dark</button>
+      <button type="button" id="refreshbtn">Refresh</button>
+          </nav>
+    </div>
+    <div class="ticker-stack">
+    <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
+    <div class="alert-ticker" id="alertbar"><span id="alerttext"></span></div>
+    <div class="ticker"><span id="ticktext">It is 77 degrees and feels like 78, mostly sunny this morning with scattered storms after 2 p.m. and a heat index near 102.         Beach, cart, and boat are a go now; courts are a window later.         Rain is unlikely in the next hour, lightning is possible this afternoon, wind is east at 6 gusting to 8, humidity is 91 percent with a dew point of 74, and UV turns high later.         Venice buoy pressure is 30.03 inches and rising.         Sunrise was 7:07 a.m., sunset is 7:52 p.m., and the moon is waning gibbous after the full on the 28th.         •   •   •       Manasota tide is falling after the 8:55 a.m. low of 0.67 feet.         Next high is 3:09 p.m. at 1.72 feet, then another low around 9 p.m.  Rip current risk is low, red tide is not observed, seas are about a foot, and there is no small-craft advisory.         Venice buoy is east 5 knots gusting to 8.         Venice Inlet and Stump Pass are a morning window; afternoon storms are the risk on the run home.         •   •   •       Look west about 45 minutes after sunset for Venus, low and bright. Saturn rises in the east around 9:34 p.m. Jupiter and Mars show in the east before sunrise. The moon is waning gibbous after Friday night's full moon and partial eclipse. Vega leads the Summer Triangle high in the evening. Storms after 2 p.m. will wipe the early sky. Next meteor watch is the Orionids in mid-October. Check NASA Spot the Station for ISS passes.       •   •   •       Inside the gates: Tuesday at 5:30 p.m. there is a French bakery pop-up at Capri.         Sunday September 6 from 1 to 5 p.m. is the Labor Day party at the pool and High Tide with a DJ, food, and sundaes.         Monday September 7 from 5 to 8 p.m. food trucks are at Capri, Currywurst and Shaz Shack.         Use the courts before 2 p.m. if storms build.         •   •   •       Outside the gates tonight at 7 p.m., 22N plays SandBar Tiki on the Key; it is open-air so watch the storms.         Sunday 1 to 5 p.m. Cabana Dogs are at SandBar Tiki.         Friday September 4 at 6 p.m. there are fireworks at Downtown Wellen.         Labor Day weekend also has the Venice craft festival, Artur's, and Troll Music.         •   •   •       The villa is marked occupied.         There are no Do, Fly, Arrive FL, or Leave FL items on the calendar.         Music defaults to 94.9 Magic at whisper volume.         You can switch to 106.3 Sunny, 104.9 Seaview, or 107.9 WSRZ.         Mute overnight, during Talk or Meet, and when the storm board is on.         •   •   •       It is 77 degrees and feels like 78, mostly sunny this morning with scattered storms after 2 p.m. and a heat index near 102.         Beach, cart, and boat are a go now; courts are a window later.         Rain is unlikely in the next hour, lightning is possible this afternoon, wind is east at 6 gusting to 8, humidity is 91 percent with a dew point of 74, and UV turns high later.         Venice buoy pressure is 30.03 inches and rising.         Sunrise was 7:07 a.m., sunset is 7:52 p.m., and the moon is waning gibbous after the full on the 28th.         •   •   •       Manasota tide is falling after the 8:55 a.m. low of 0.67 feet.         Next high is 3:09 p.m. at 1.72 feet, then another low around 9 p.m.  Rip current risk is low, red tide is not observed, seas are about a foot, and there is no small-craft advisory.         Venice buoy is east 5 knots gusting to 8.         Venice Inlet and Stump Pass are a morning window; afternoon storms are the risk on the run home.         •   •   •       Look west about 45 minutes after sunset for Venus, low and bright. Saturn rises in the east around 9:34 p.m. Jupiter and Mars show in the east before sunrise. The moon is waning gibbous after Friday night's full moon and partial eclipse. Vega leads the Summer Triangle high in the evening. Storms after 2 p.m. will wipe the early sky. Next meteor watch is the Orionids in mid-October. Check NASA Spot the Station for ISS passes.       •   •   •       Inside the gates: Tuesday at 5:30 p.m. there is a French bakery pop-up at Capri.         Sunday September 6 from 1 to 5 p.m. is the Labor Day party at the pool and High Tide with a DJ, food, and sundaes.         Monday September 7 from 5 to 8 p.m. food trucks are at Capri, Currywurst and Shaz Shack.         Use the courts before 2 p.m. if storms build.         •   •   •       Outside the gates tonight at 7 p.m., 22N plays SandBar Tiki on the Key; it is open-air so watch the storms.         Sunday 1 to 5 p.m. Cabana Dogs are at SandBar Tiki.         Friday September 4 at 6 p.m. there are fireworks at Downtown Wellen.         Labor Day weekend also has the Venice craft festival, Artur's, and Troll Music.         •   •   •       The villa is marked occupied.         There are no Do, Fly, Arrive FL, or Leave FL items on the calendar.         Music defaults to 94.9 Magic at whisper volume.         You can switch to 106.3 Sunny, 104.9 Seaview, or 107.9 WSRZ.         Mute overnight, during Talk or Meet, and when the storm board is on.</span></div>
+    </div>
+  </div>
+  <script>
+    function showPage(id) {
+      document.querySelectorAll(".page").forEach(function (p) { p.classList.toggle("on", p.id === id); });
+      document.querySelectorAll(".dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
+      var idx = pages.indexOf(id);
+      if (idx >= 0) i = idx;
+    }
+    document.querySelectorAll(".dock").forEach(function (d) {
+      d.addEventListener("click", function (e) {
+        var btn = e.target.closest("button"); if (!btn) return;
+        var id = btn.getAttribute("data-p"); if (!id) return;
+        showPage(id);
+      });
+    });
+    function saveRadio(url) {
+      try { localStorage.setItem("bw-radio", url == null ? "" : url); } catch (e) {}
+    }
+    function savedRadio() {
+      try { return localStorage.getItem("bw-radio"); } catch (e) { return null; }
+    }
+    var NOAA_URL = "https://radio.weatherusa.net/NWR/KHB32.mp3";
+    function playStation(url, label, opts) {
+      opts = opts || {};
+      var audio = document.getElementById("radioPlayer");
+      var status = document.getElementById("radio-status");
+      if (!audio) return;
+      document.querySelectorAll(".rowbtns button").forEach(function (x) {
+        var scan = x.getAttribute("data-scan");
+        var match = scan ? url === "scan:" + scan : (x.getAttribute("data-stream") || "") === (url || "");
+        x.classList.toggle("on", match);
+      });
+      var scan = document.getElementById("scan-frame");
+      function hideScan() {
+        if (!scan) return;
+        scan.style.display = "none";
+        scan.removeAttribute("src");
+      }
+      if (!url) {
+        audio.pause();
+        audio.removeAttribute("src");
+        hideScan();
+        if (!opts.keepSaved) saveRadio("");
+        if (status) status.textContent = "Muted.";
+        return;
+      }
+      if (String(url).indexOf("scan:") === 0) {
+        audio.pause();
+        audio.removeAttribute("src");
+        if (!opts.keepSaved) saveRadio(url);
+        if (scan) {
+          scan.src = "https://www.broadcastify.com/webPlayer/" + url.slice(5);
+          scan.style.display = "block";
+        }
+        if (status) status.textContent = "Scanner player on. Broadcastify may play a short ad. Quiet until a call.";
+        return;
+      }
+      hideScan();
+      if (!opts.keepSaved) saveRadio(url);
+      if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert) {
+        audio.pause();
+        if (status) status.textContent = "Quiet hours 10 p.m.–7 a.m. Tap again to play anyway.";
+        window.__forceRadio = true;
+        return;
+      }
+      if (audio.src !== url) audio.src = url;
+      audio.volume = window.__nwrAlert ? 0.32 : 0.18;
+      if (status) status.textContent = "Starting " + (label || "station") + "…";
+      var play = audio.play();
+      if (play && play.then) play.then(function () {
+        if (status) status.textContent = "Playing " + (label || "station");
+      }).catch(function () {
+        if (status) status.textContent = "Tap a station once — Chrome blocks sound until a click.";
+      });
+    }
+    document.querySelectorAll(".rowbtns button").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var scan = btn.getAttribute("data-scan");
+        playStation(scan ? "scan:" + scan : btn.getAttribute("data-stream"), btn.textContent);
+      });
+    });
+    (function radioAuto() {
+      var saved = savedRadio();
+      var btn = null;
+      if (saved === "") btn = document.querySelector('.rowbtns button[data-stream=""]');
+      else if (saved) btn = document.querySelector('.rowbtns button[data-stream="' + saved + '"]');
+      if (!btn) btn = document.querySelector('.rowbtns button[data-stream*="tam949"]');
+      if (!btn) return;
+      function start() {
+        if (window.__nwrAlert) {
+          playStation(NOAA_URL, "NOAA Tampa (warning)", { keepSaved: true });
+          return;
+        }
+        if (inQuietHours()) { playStation("", "Mute"); return; }
+        playStation(btn.getAttribute("data-stream"), btn.textContent);
+      }
+      start();
+      document.addEventListener("pointerdown", start, { once: true, capture: true });
+    })();
+    function greetWord() {
+      var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+      if (hr < 12) return "Good morning.";
+      if (hr < 17) return "Good afternoon.";
+      return "Good evening.";
+    }
+    function stampGreet() {
+      var el = document.getElementById("live-sky");
+      if (!el) return;
+      var g = greetWord();
+      var t = el.textContent || "";
+      if (/^(Good morning|Good afternoon|Good evening)\./i.test(t)) el.textContent = t.replace(/^(Good morning|Good afternoon|Good evening)\./i, g);
+      else el.textContent = g + " " + t;
+    }
+    function clock() {
+      document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
+      var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
+      var head = document.querySelector("header");
+      if (head) head.classList.toggle("night", hr >= 22 || hr < 6);
+      stampGreet();
+    }
+
+    function inQuietHours() {
+      var h = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+      return h >= 22 || h < 7;
+    }
+    try {
+      if (localStorage.getItem("bw-dark") === "1") document.documentElement.classList.add("dark");
+    } catch (e) {}
+    var refreshBtn = document.getElementById("refreshbtn");
+    if (refreshBtn) refreshBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      location.reload();
+    });
+    
+    var darkBtn = document.getElementById("darkbtn");
+    if (darkBtn) {
+      darkBtn.addEventListener("click", function () {
+        document.documentElement.classList.toggle("dark");
+        var on = document.documentElement.classList.contains("dark");
+        darkBtn.classList.toggle("on", on);
+        try { localStorage.setItem("bw-dark", on ? "1" : "0"); } catch (e) {}
+      });
+      darkBtn.classList.toggle("on", document.documentElement.classList.contains("dark"));
+    }
+    window.__storm = false;
+    try {
+      localStorage.setItem("bw-seen", new Date().toISOString());
+      var seen = document.getElementById("house-seen");
+      if (seen) seen.textContent = "Last seen " + new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+    } catch (e) {}
+    document.querySelectorAll("input[data-list]").forEach(function (box) {
+      var key = "bw-" + box.getAttribute("data-list") + "-" + box.parentNode.textContent.trim();
+      try { box.checked = localStorage.getItem(key) === "1"; } catch (e) {}
+      box.addEventListener("change", function () {
+        try { localStorage.setItem(key, box.checked ? "1" : "0"); } catch (e) {}
+      });
+    });
+    (function tickerHold() {
+      var el = document.getElementById("ticktext");
+      if (!el) return;
+      var tmr, paused = false;
+      function freeze() { el.style.animationPlayState = paused ? "running" : "paused"; paused = !paused; }
+      el.style.pointerEvents = "auto";
+      el.addEventListener("pointerdown", function () { tmr = setTimeout(freeze, 550); });
+      el.addEventListener("pointerup", function () { clearTimeout(tmr); });
+    })();
+        (function vendors() {
+      var el = document.getElementById("vendors");
+      if (!el) return;
+      try { var s = localStorage.getItem("bw-vendors"); if (s) el.value = s; } catch (e) {}
+      el.addEventListener("change", function () { try { localStorage.setItem("bw-vendors", el.value); } catch (e) {} });
+    })();
+    clock(); setInterval(clock, 15000);
+    var pages = ["now","tenday","radar","marine","sky","ent","house","radio","traffic"], i = 0, rot, idle;
+    function warnList() {
+      var ev = window.__wxRisk.warnTypes || "";
+      var list = ["radar"];
+      if (/hurricane|tropical|surge/.test(ev)) list.push("cane", "marine");
+      if (/thunder|tornado|severe|lightning/.test(ev)) list.push("bolt");
+      if (/flood/.test(ev) && list.indexOf("marine") < 0) list.push("marine");
+      list.push("contacts");
+      var seen = {};
+      return list.filter(function (id) {
+        if (seen[id] || !document.getElementById(id)) return false;
+        seen[id] = true;
+        return true;
+      });
+    }
+    function startRotate() {
+      clearInterval(rot);
+      rot = setInterval(function () {
+        pages = window.__storm ? warnList() : rotateList();
+        if (!pages.length) return;
+        i = (i + 1) % pages.length;
+        showPage(pages[i]);
+      }, 15000);
+    }
+    document.querySelectorAll(".dock").forEach(function (d) {
+      d.addEventListener("click", function () {
+        clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
+      });
+    });
+
+    window.__wxRisk = { alert: false, cane: false, bolt: false };
+    function allDockPages() {
+      return Array.from(document.querySelectorAll(".dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); });
+    }
+    function rotateList() {
+      return allDockPages().filter(function (id) {
+        if (id === "news" || id === "wink" || id === "contacts" || id === "villa") return false;
+        if (id === "cane") return !!window.__wxRisk.cane;
+        if (id === "bolt") return !!window.__wxRisk.bolt;
+        return true;
+      });
+    }
+    function pagesFromDock() {
+      pages = rotateList();
+      var on = document.querySelector(".page.on");
+      i = pages.indexOf(on ? on.id : "");
+      if (i < 0) i = 0;
+    }
+    (function restoreDockOrder() {
+      var raw;
+      try { raw = localStorage.getItem("bw-dock-v4"); } catch (e) { raw = null; }
+      if (!raw) {
+        try { localStorage.removeItem("bw-dock"); } catch (e) {}
+        return;
+      }
+      var order;
+      try { order = JSON.parse(raw); } catch (e) { return; }
+      var dock = document.getElementById("dock");
+      var dockMore = document.getElementById("dock-more");
+      if (!dock || !order) return;
+      var main = order.main || [];
+      var more = order.more || [];
+      var saved = main.concat(more);
+      if (saved.indexOf("wink") < 0 || saved.indexOf("talk") >= 0 || saved.indexOf("meet") >= 0) {
+        try { localStorage.removeItem("bw-dock-v4"); localStorage.removeItem("bw-dock-v3"); localStorage.removeItem("bw-dock"); } catch (e) {}
+        return;
+      }
+      main.forEach(function (id) {
+        var b = document.querySelector('.dock button[data-p="' + id + '"]');
+        if (b) dock.appendChild(b);
+      });
+      more.forEach(function (id) {
+        var b = document.querySelector('.dock button[data-p="' + id + '"]');
+        if (b && dockMore) dockMore.appendChild(b);
+      });
+      ["darkbtn", "refreshbtn"].forEach(function (id) {
+        var dest = dockMore || dock;
+        var b = document.getElementById(id);
+        if (b) dest.appendChild(b);
+      });
+      pagesFromDock();
+    })();
+    (function dragDock() {
+      var hold, start, dragging = false, lifted = null, home = null, skipClick = false;
+      function save() {
+        var order = {
+          main: Array.from(document.querySelectorAll("#dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); }),
+          more: Array.from(document.querySelectorAll("#dock-more button[data-p]")).map(function (b) { return b.getAttribute("data-p"); })
+        };
+        try { localStorage.setItem("bw-dock-v4", JSON.stringify(order)); } catch (e) {}
+        pagesFromDock();
+      }
+      document.querySelectorAll(".dock").forEach(function (dock) {
+        dock.addEventListener("pointerdown", function (e) {
+          var btn = e.target.closest("button[data-p]");
+          if (!btn) return;
+          home = dock;
+          start = { x: e.clientX, y: e.clientY };
+          clearTimeout(hold);
+          hold = setTimeout(function () {
+            dragging = true;
+            skipClick = true;
+            lifted = btn;
+            btn.classList.add("dragging");
+            try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+          }, 500);
+        });
+        dock.addEventListener("pointermove", function (e) {
+          if (!dragging || !lifted) {
+            if (hold && start && (Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) > 16)) clearTimeout(hold);
+            return;
+          }
+          e.preventDefault();
+          var el = document.elementFromPoint(e.clientX, e.clientY);
+          var over = el && el.closest && el.closest(".dock button[data-p]");
+          if (!over || over === lifted) return;
+          var dest = over.parentNode;
+          if (dest !== home) return;
+          var rect = over.getBoundingClientRect();
+          var before = dest.classList.contains("dock-more")
+            ? e.clientX < rect.left + rect.width / 2
+            : (e.clientX < rect.left + rect.width / 2);
+          dest.insertBefore(lifted, before ? over : over.nextSibling);
+        });
+        dock.addEventListener("pointerup", function () {
+          clearTimeout(hold);
+          if (dragging) {
+            dragging = false;
+            if (lifted) lifted.classList.remove("dragging");
+            lifted = null;
+            home = null;
+            save();
+            setTimeout(function () { skipClick = false; }, 50);
+          }
+        });
+        dock.addEventListener("pointercancel", function () {
+          clearTimeout(hold);
+          dragging = false;
+          if (lifted) lifted.classList.remove("dragging");
+          lifted = null;
+        });
+        dock.addEventListener("click", function (e) {
+          if (skipClick) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+      });
+    })();
+
+    (function liveCals() {
+      var BW = "605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947@group.calendar.google.com";
+      var ENG = "a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6@group.calendar.google.com";
+      function icsUrl(id) {
+        return "https://calendar.google.com/calendar/ical/" + encodeURIComponent(id) + "/public/basic.ics";
+      }
+      function parseIcs(text) {
+        text = String(text || "").replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
+        var blocks = text.split("BEGIN:VEVENT").slice(1);
+        var out = [];
+        blocks.forEach(function (b) {
+          var sum = (b.match(/SUMMARY(?:;[^:]*)?:([^\n\r]+)/) || [])[1] || "";
+          sum = sum.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").replace(/^(BW|Maybe):\s*/i, "").trim();
+          var loc = (b.match(/LOCATION(?:;[^:]*)?:([^\n\r]+)/) || [])[1] || "";
+          loc = loc.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").trim();
+          var desc = (b.match(/DESCRIPTION(?:;[^:]*)?:([^\n\r]+)/) || [])[1] || "";
+          desc = desc.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").replace(/<[^>]+>/g, " ").trim();
+          var ds = (b.match(/DTSTART(?:;[^:]*)?:(\d{8}(?:T\d{6}Z?)?)/) || [])[1] || "";
+          if (!sum || !ds) return;
+          var when;
+          if (ds.length === 8) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T12:00:00-04:00");
+          else if (ds.indexOf("Z") >= 0) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":"+ds.slice(13,15)+"Z");
+          else when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":00-04:00");
+          if (isNaN(when.getTime()) || when.getTime() < Date.now() - 12*3600*1000) return;
+          out.push({ when: when, sum: sum, loc: loc, desc: desc });
+        });
+        out.sort(function (a,b) { return a.when - b.when; });
+        return out.slice(0, 10);
+      }
+      function isLiveMusic(sum, loc, desc) {
+        var s = [sum, loc, desc].join(" ").toLowerCase();
+        if (/food truck|zumba|bakery|yoga|boat race|parade|craft festival|hoa|board meeting|committee/.test(s) && !/\b(music|band|dj|piano|concert)\b/.test(s)) return false;
+        if (/troll music|sandbar tiki|sand bar tiki|artur/.test(s)) return true;
+        if (/@/.test(sum) && !/http|zoom|meet\.google/.test(s)) return true;
+        if (/labor day/.test(s) && /celebrat|party|pool|high tide|\bdj\b/.test(s)) return true;
+        return /live\s*music|\bmusic\b|\bband\b|\bdjs?\b|concert|tribute|pian|\bcabana dogs\b|johnny d|jentgens|storm riders|floyd|oldies|rocket 88|generation gap|\b22n\b|open mic|karaoke|steel drum|reggae|acoustic|jazz|blues|\bduo\b|\btrio\b|singer|vocal|guitar|covers?\b|performing/.test(s);
+      }
+      function render(id, events) {
+        var box = document.getElementById(id);
+        if (!box || !events.length) return;
+        box.innerHTML = events.map(function (e) {
+          var allDay = e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum);
+          var d = e.when.toLocaleString("en-US", allDay
+            ? { weekday:"short", month:"short", day:"numeric", timeZone:"America/New_York" }
+            : { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
+          var live = isLiveMusic(e.sum, e.loc, e.desc);
+          var place = e.inside ? "BeachWalk" : "Englewood";
+          if (!e.inside) {
+            var at = (e.sum.match(/@\s*(.+)$/) || [])[1];
+            if (at) place = at.replace(/\s*\(.*$/, "").trim();
+            else if (e.loc) place = e.loc.split(",")[0].trim();
+          }
+          if (place.length > 28) place = place.slice(0, 26).replace(/\s+\S*$/, "") + "…";
+          return '<div class="card' + (live ? " music" : "") + '"><span class="place-tag">' + place + "</span>" + (live ? '<span class="music-tag">Live music</span>' : "") + "<b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
+        }).join("");
+      }
+      var bag = { bw: [], eng: [] };
+      function paint() {
+        var merged = bag.bw.concat(bag.eng);
+        merged.sort(function (a, b) { return a.when - b.when; });
+        render("ent-list", merged.slice(0, 14));
+        if (typeof writeBriefing === "function") writeBriefing();
+      }
+      function load(id, key, inside) {
+        var raw = icsUrl(id);
+        var urls = [
+          raw,
+          "https://corsproxy.io/?" + encodeURIComponent(raw),
+          "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(raw),
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw)
+        ];
+        function next(i) {
+          if (i >= urls.length) return;
+          fetch(urls[i]).then(function (r) { return r.text(); }).then(function (txt) {
+            if (txt && txt.indexOf("BEGIN:VEVENT") >= 0) {
+              bag[key] = parseIcs(txt).map(function (e) { e.inside = inside; return e; });
+              paint();
+            } else next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
+      }
+      load(BW, "bw", true);
+      load(ENG, "eng", false);
+      setInterval(function () { load(BW, "bw", true); load(ENG, "eng", false); }, 15 * 60 * 1000);
+    })();
+
+    (function extraDock() {
+      var wrap = document.querySelector(".dock-wrap");
+      var moreBtn = document.getElementById("morebtn");
+      var extra = document.getElementById("dock-more");
+      if (!wrap || !moreBtn || !extra) return;
+      var hideT;
+      function open() {
+        wrap.classList.add("open");
+        moreBtn.classList.add("on");
+        clearTimeout(hideT);
+        hideT = setTimeout(close, 8000);
+      }
+      function close() {
+        wrap.classList.remove("open");
+        moreBtn.classList.remove("on");
+        clearTimeout(hideT);
+      }
+      moreBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (wrap.classList.contains("open")) close();
+        else open();
+      });
+      extra.addEventListener("click", function (e) {
+        if (e.target.closest("button")) {
+          clearTimeout(hideT);
+          hideT = setTimeout(close, 2500);
+        }
+      });
+      extra.addEventListener("pointerdown", function () {
+        clearTimeout(hideT);
+        hideT = setTimeout(close, 8000);
+      });
+    })();
+
+    (function winkHeadlines() {
+      var box = document.getElementById("wink-list");
+      if (!box) return;
+      var feeds = [
+        "https://news.google.com/rss/search?q=site:winknews.com+when:1d&hl=en-US&gl=US&ceid=US:en",
+        "https://www.winknews.com/search/?f=rss&t=article&l=12"
+      ];
+      function cleanTitle(s) {
+        return String(s || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*WINK News.*$/i, "").trim();
+      }
+      function render(items) {
+        var seen = {};
+        var rows = [];
+        items.forEach(function (it) {
+          var title = cleanTitle(it.title);
+          var key = title.toLowerCase().slice(0, 48);
+          if (!title || seen[key]) return;
+          seen[key] = true;
+          rows.push({ title: title, link: it.link || it.url || "https://www.winknews.com/", when: it.pubDate || it.published || "" });
+        });
+        rows = rows.slice(0, 8);
+        if (!rows.length) {
+          box.innerHTML = '<div class="card"><b>WINK site blocks embeds</b><span><a href="https://www.winknews.com/" target="_blank" rel="noopener">Open WINKNews.com</a></span></div>';
+          return;
+        }
+        box.innerHTML = rows.map(function (r) {
+          var t = r.when ? new Date(r.when) : null;
+          var when = (t && !isNaN(t)) ? t.toLocaleString("en-US", { weekday:"short", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "WINK";
+          return '<div class="card"><b><a href="' + r.link + '" target="_blank" rel="noopener">' + r.title + "</a></b><span>" + when + "</span></div>";
+        }).join("");
+      }
+      function rssJson(rss) {
+        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && d.items) || []; })
+          .catch(function () { return []; });
+      }
+      function load() {
+        Promise.all(feeds.map(rssJson)).then(function (lists) {
+          render([].concat.apply([], lists));
+        });
+      }
+      load();
+      setInterval(load, 10 * 60 * 1000);
+    })();
+    (function fishReport() {
+      var el = document.getElementById("live-fish");
+      if (!el) return;
+      var fallback = "Late August on the Key: fish first light. Snook and tarpon work the passes and the first trough off Manasota and Englewood Beach. Redfish and trout hold Lemon Bay grass and mangrove edges. Whitebait is around the ICW. Spanish and sharks show off the beaches when bait is pushed in. Afternoon storms cut the window short — be in before the build. Check FWC seasons before you keep a fish.";
+      function rssJson(rss) {
+        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && d.items) || []; })
+          .catch(function () { return []; });
+      }
+      function load() {
+        var q = "https://news.google.com/rss/search?q=%22fishing+report%22+(Englewood+OR+Venice+OR+%22Charlotte+Harbor%22+OR+%22Lemon+Bay%22)+when:7d&hl=en-US&gl=US&ceid=US:en";
+        rssJson(q).then(function (items) {
+          var hit = null;
+          for (var i = 0; i < items.length; i++) {
+            var s = ((items[i].title || "") + " " + (items[i].description || "")).toLowerCase();
+            if (/fish|snook|tarpon|redfish|trout|mackerel|grouper/.test(s)) { hit = items[i]; break; }
+          }
+          if (!hit) { el.textContent = fallback; return; }
+          var title = (hit.title || "").replace(/\s*-\s*.*$/, "").replace(/\s+/g, " ").trim();
+          var when = hit.pubDate ? new Date(hit.pubDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" }) : "";
+          el.innerHTML = (when ? when + " · " : "") + title + ". " + fallback + (hit.link ? ' <a href="' + hit.link + '" target="_blank" rel="noopener">Read report</a>' : "");
+        }).catch(function () { el.textContent = fallback; });
+      }
+      el.textContent = fallback;
+      load();
+      setInterval(load, 6 * 60 * 60 * 1000);
+    })();
+    (function gatorWatch() {
+      var el = document.getElementById("live-gator");
+      if (!el) return;
+      var tip = "FWC: Florida averages about eight unprovoked bites a year. Stay out of murky canals and ponds at dawn and dusk. Don’t feed gators. Pets on a short leash. Nuisance line 866-392-4286.";
+      function rss(q) {
+        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(q))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && d.items) || []; })
+          .catch(function () { return []; });
+      }
+      function load() {
+        var q = "https://news.google.com/rss/search?q=alligator+(attack+OR+bite+OR+incident)+Florida+when:14d&hl=en-US&gl=US&ceid=US:en";
+        rss(q).then(function (items) {
+          var local = [];
+          var state = [];
+          items.forEach(function (it) {
+            var blob = ((it.title || "") + " " + (it.description || "")).toLowerCase();
+            if (!/alligator|gator/.test(blob)) return;
+            var row = {
+              title: (it.title || "").replace(/\s*-\s*[^-]+$/, "").replace(/\s+/g, " ").trim(),
+              when: it.pubDate ? new Date(it.pubDate) : null,
+              link: it.link || "",
+              local: /sarasota|charlotte|englewood|venice|north port|punt[ao] gorda|lemon bay|manasota/i.test(blob)
+            };
+            if (!row.title) return;
+            (row.local ? local : state).push(row);
+          });
+          var pick = (local[0] || state[0]);
+          if (!pick) { el.textContent = "No new alligator-attack headlines in the last two weeks. " + tip; return; }
+          var day = pick.when && !isNaN(pick.when.getTime()) ? pick.when.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" }) : "";
+          var where = pick.local ? "Near the Key. " : "Statewide, not Englewood. ";
+          el.innerHTML = (day ? day + " · " : "") + where + pick.title + ". " + tip + (pick.link ? ' <a href="' + pick.link + '" target="_blank" rel="noopener">FWC / news</a>' : "") + ' · <a href="https://myfwc.com/wildlifehabitats/wildlife/alligator/nuisance/" target="_blank" rel="noopener">FWC gators</a>';
+        }).catch(function () { el.textContent = tip; });
+      }
+      load();
+      setInterval(load, 60 * 60 * 1000);
+    })();
+    startRotate();
+    (function swipePages() {
+      var startX = 0, startY = 0, active = false;
+      var root = document.querySelector("main") || document.querySelector(".frame");
+      if (!root) return;
+      function down(x, y) { startX = x; startY = y; active = true; }
+      function up(x, y) {
+        if (!active) return;
+        active = false;
+        var dx = x - startX, dy = y - startY;
+        if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+        if (dx < 0) i = (i + 1) % pages.length;
+        else i = (i - 1 + pages.length) % pages.length;
+        showPage(pages[i]);
+        clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
+      }
+      root.addEventListener("touchstart", function (e) {
+        if (e.changedTouches && e.changedTouches[0]) down(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      }, { passive: true });
+      root.addEventListener("touchend", function (e) {
+        if (e.changedTouches && e.changedTouches[0]) up(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      }, { passive: true });
+      root.addEventListener("pointerdown", function (e) {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        down(e.clientX, e.clientY);
+      });
+      root.addEventListener("pointerup", function (e) { up(e.clientX, e.clientY); });
+    })();
+
+
+    function fmtTideClock(iso) {
+      var d = new Date(iso);
+      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
+    }
+
+    window.__bwCharts = { preds: null, rise: null, set: null };
+    function svgWrap(inner) {
+      return '<svg viewBox="0 0 220 90">' + inner + '</svg>';
+    }
+    function drawSunChart(riseIso, setIso) {
+      var box = document.getElementById("sun-chart");
+      if (!box || !riseIso || !setIso) return;
+      var rise = new Date(riseIso).getTime();
+      var set = new Date(setIso).getTime();
+      var now = Date.now();
+      var t = (now - rise) / (set - rise);
+      t = Math.max(0, Math.min(1, t));
+      var x = 20 + t * 180;
+      var y = 70 - Math.sin(t * Math.PI) * 50;
+      function hh(ms) {
+        return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
+      }
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        '<path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#c4a35a" stroke-width="3"/>' +
+        '<circle cx="20" cy="70" r="4" fill="#c4a35a"/>' +
+        '<circle cx="200" cy="70" r="4" fill="#1b2a4a"/>' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#e07a5f"/>' +
+        '<text x="8" y="84" font-size="9" fill="#5c6b7a">' + hh(rise) + '</text>' +
+        '<text x="160" y="84" font-size="9" fill="#5c6b7a">' + hh(set) + '</text>' +
+        '<text x="' + Math.max(8, x-12).toFixed(1) + '" y="' + Math.max(12, y-8).toFixed(1) + '" font-size="9" fill="#1b2a4a">now</text>'
+      );
+    }
+    function moonPhase() {
+      var syn = 29.53058867;
+      var known = Date.UTC(2026,7,28,6,0,0); // full moon Aug 28 2026 approx
+      var days = (Date.now() - known) / 86400000;
+      var age = ((days % syn) + syn) % syn;
+      return age / syn; // 0 full in this ref? wait full=0 then 0.5 new
+    }
+    function drawMoonChart() {
+      var box = document.getElementById("moon-chart");
+      if (!box) return;
+      var ph = moonPhase();
+      var x = 10 + ph * 200;
+      var y = 70 - Math.abs(Math.sin(ph * Math.PI * 2)) * 48;
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        '<path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/>' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#2a9d8f"/>' +
+        '<text x="8" y="84" font-size="8" fill="#5c6b7a">Full</text>' +
+        '<text x="58" y="12" font-size="8" fill="#5c6b7a">3rd</text>' +
+        '<text x="118" y="84" font-size="8" fill="#5c6b7a">New</text>' +
+        '<text x="168" y="12" font-size="8" fill="#5c6b7a">1st</text>'
+      );
+    }
+    function drawTideChart(preds) {
+      var box = document.getElementById("tide-chart");
+      if (!box || !preds || !preds.length) return;
+      var pts = preds.slice(0, 6).map(function (p) {
+        return { t: new Date(p.t.replace(" ", "T")).getTime(), v: parseFloat(p.v), type: p.type };
+      }).filter(function (p) { return !isNaN(p.t) && !isNaN(p.v); });
+      if (pts.length < 2) return;
+      var t0 = pts[0].t, t1 = pts[pts.length-1].t;
+      var vmin = Math.min.apply(null, pts.map(function (p) { return p.v; }));
+      var vmax = Math.max.apply(null, pts.map(function (p) { return p.v; }));
+      if (vmax === vmin) vmax = vmin + 1;
+      function X(ms) { return 10 + ((ms - t0) / (t1 - t0)) * 200; }
+      function Y(v) { return 70 - ((v - vmin) / (vmax - vmin)) * 48; }
+      var d = pts.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
+      var marks = pts.map(function (p) {
+        return '<circle cx="' + X(p.t).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="3" fill="#1b2a4a"/>' +
+          '<text x="' + Math.max(4, X(p.t)-16).toFixed(1) + '" y="84" font-size="8" fill="#5c6b7a">' +
+          new Date(p.t).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"}).toLowerCase() + "</text>";
+      }).join("");
+      var now = Date.now();
+      var nx = X(Math.max(t0, Math.min(t1, now)));
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        '<path d="' + d + '" fill="none" stroke="#2a9d8f" stroke-width="3"/>' +
+        marks +
+        '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#e07a5f" stroke-width="2"/>' +
+        '<text x="' + Math.max(8, nx-10).toFixed(1) + '" y="10" font-size="8" fill="#e07a5f">now</text>'
+      );
+    }
+
+    function drawSurgeChart(points) {
+      var box = document.getElementById("surge-chart");
+      var lab = document.getElementById("live-surge");
+      if (!box || !points || points.length < 2) return;
+      var t0 = points[0].t, t1 = points[points.length-1].t;
+      var vals = points.map(function (p) { return p.v; });
+      var vmax = Math.max(0.4, Math.max.apply(null, vals.map(Math.abs)));
+      function X(ms) { return 10 + ((ms - t0) / (t1 - t0)) * 200; }
+      function Y(v) { return 40 - (v / vmax) * 28; }
+      var d = points.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
+      var now = Date.now();
+      var nx = X(Math.max(t0, Math.min(t1, now)));
+      var last = points[points.length-1].v;
+      if (lab) lab.textContent = (last >= 0 ? "+" : "") + last.toFixed(2) + " ft vs tide";
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="40" x2="210" y2="40" stroke="#d7cdbb"/>' +
+        '<path d="' + d + '" fill="none" stroke="#e07a5f" stroke-width="3"/>' +
+        '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#1b2a4a" stroke-width="2"/>' +
+        '<text x="8" y="84" font-size="8" fill="#5c6b7a">-' + vmax.toFixed(1) + '</text>' +
+        '<text x="168" y="84" font-size="8" fill="#5c6b7a">+' + vmax.toFixed(1) + ' ft</text>'
+      );
+    }
+
+    function drawHistChart(id, points, color, ymin, ymax, unit) {
+      var box = document.getElementById(id);
+      if (!box || !points || points.length < 2) return;
+      var t0 = points[0].t, t1 = points[points.length-1].t;
+      if (t1 === t0) t1 = t0 + 1;
+      function X(ms) { return 10 + ((ms - t0) / (t1 - t0)) * 200; }
+      function Y(v) { return 70 - ((v - ymin) / (ymax - ymin)) * 52; }
+      var d = points.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
+      var now = Date.now();
+      var nx = X(Math.max(t0, Math.min(t1, now)));
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="3"/>' +
+        '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#e07a5f" stroke-width="2"/>' +
+        '<text x="8" y="84" font-size="8" fill="#5c6b7a">' + ymin + unit + '</text>' +
+        '<text x="168" y="84" font-size="8" fill="#5c6b7a">' + ymax + unit + '</text>'
+      );
+    }
+    function refreshMarineSky(days, hours, obs) {
+      fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" +
+        new Date().toISOString().slice(0,10).replace(/-/g,"") +
+        "&range=36&datum=MLLW&station=8725809&time_zone=lst_ldt&units=english&interval=hilo&format=json")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var preds = data.predictions || [];
+          var now = Date.now();
+          var upcoming = preds.filter(function (p) {
+            var ms = new Date(String(p.t).replace(" ", "T")).getTime();
+            return !isNaN(ms) && ms >= now - 15 * 60 * 1000;
+          });
+          function fmtP(p) {
+            return (p.type === "H" ? "High" : "Low") + " " + fmtTideClock(p.t.replace(" ", "T")) + " " + Number(p.v).toFixed(2) + " ft";
+          }
+          var nextH = upcoming.filter(function (p) { return p.type === "H"; })[0];
+          var nextL = upcoming.filter(function (p) { return p.type === "L"; })[0];
+          var pair = [nextH, nextL].filter(Boolean).sort(function (a, b) {
+            return new Date(String(a.t).replace(" ", "T")) - new Date(String(b.t).replace(" ", "T"));
+          });
+          var el1 = document.getElementById("live-tide-today");
+          if (el1) el1.textContent = pair.length ? pair.map(fmtP).join(" · ") : "NOAA tides unavailable";
+          window.__bwCharts.preds = preds; drawTideChart(preds);
+        }).catch(function () {});
+      var day = new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0,10).replace(/-/g,"");
+      Promise.all([
+        fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=8725520&time_zone=lst_ldt&units=english&format=json").then(function (r) { return r.json(); }),
+        fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=8725520&time_zone=lst_ldt&units=english&interval=h&format=json").then(function (r) { return r.json(); })
+      ]).then(function (pair) {
+        var obs = ((pair[0] || {}).data) || [];
+        var pr = ((pair[1] || {}).predictions) || [];
+        var pmap = {};
+        pr.forEach(function (p) { pmap[p.t] = parseFloat(p.v); });
+        var pts = [];
+        obs.forEach(function (o) {
+          var pred = pmap[o.t];
+          if (pred == null) return;
+          var v = parseFloat(o.v) - pred;
+          if (isNaN(v)) return;
+          pts.push({ t: new Date(o.t.replace(" ", "T")).getTime(), v: v });
+        });
+        if (pts.length < 3) {
+          pts = obs.slice(-24).map(function (o, i, arr) {
+            return { t: new Date(o.t.replace(" ", "T")).getTime(), v: parseFloat(o.v) - parseFloat(arr[0].v) };
+          }).filter(function (p) { return !isNaN(p.t) && !isNaN(p.v); });
+        }
+        window.__bwCharts.surge = pts;
+        drawSurgeChart(pts);
+      }).catch(function () {});
+      var windEl = document.getElementById("live-venf-wind");
+      var gustEl = document.getElementById("live-venf-gust");
+      var coast = document.getElementById("live-coastal");
+      var nwrM = document.getElementById("live-nwr-marine");
+      fetch("https://api.weather.gov/zones/forecast/GMZ856/forecast", { headers: { "Accept": "application/geo+json" } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var per = ((((d || {}).properties || {}).periods) || [])[0] || {};
+          var line = ((per.name || "Coastal waters") + ". " + (per.detailedForecast || per.shortForecast || "")).replace(/\s+/g, " ").trim();
+          if (line.length > 280) line = line.slice(0, 277).replace(/\s+\S*$/, "") + ".";
+          if (coast && line) coast.textContent = line;
+          if (nwrM && line) nwrM.textContent = line;
+        }).catch(function () {
+          if (nwrM) nwrM.textContent = "Coastal waters Englewood to Bonita Beach — see Marine page if this is blank.";
+        });
+      if (windEl && document.getElementById("live-wind")) windEl.textContent = document.getElementById("live-wind").textContent;
+      if (gustEl && document.getElementById("live-gusts")) gustEl.textContent = document.getElementById("live-gusts").textContent;
+      fetch("https://marine-api.open-meteo.com/v1/marine?latitude=26.93&longitude=-82.37&current=sea_surface_temperature&temperature_unit=fahrenheit")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var el = document.getElementById("live-sst");
+          var v = d.current && d.current.sea_surface_temperature;
+          if (el && v != null) el.textContent = Math.round(v) + "°";
+        }).catch(function () {});
+      fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=8725520&product=water_temperature&units=english&time_zone=lst_ldt&format=json")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var el = document.getElementById("live-wtemp");
+          var row = (d.data && d.data[0]) || null;
+          if (el && row && row.v) el.textContent = Math.round(parseFloat(row.v)) + "°";
+        }).catch(function () {});
+      if (coast && days && days[0]) coast.textContent = days[0].detailedForecast || days[0].shortForecast || "";
+      fetch("https://api.sunrise-sunset.org/json?lat=26.96&lng=-82.35&formatted=0")
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var r = (j && j.results) || {};
+          function hh(iso) {
+            return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
+          }
+          var lab = document.getElementById("live-sun-label");
+          var watch = document.getElementById("live-sky-watch");
+          if (lab && r.sunrise && r.sunset) lab.textContent = "Sun path · " + hh(r.sunrise) + " to " + hh(r.sunset);
+          window.__bwCharts.rise = r.sunrise; window.__bwCharts.set = r.sunset;
+          drawSunChart(r.sunrise, r.sunset);
+          drawMoonChart();
+          if (watch) {
+            var storm = (hours && hours[0] && hours[0].shortForecast) ? hours[0].shortForecast : "";
+            watch.textContent = "Sunrise " + (r.sunrise ? hh(r.sunrise) : "") + ", sunset " + (r.sunset ? hh(r.sunset) : "") + ". " + storm + ". Venus still low in the west after sunset; Saturn overnight. ISS passes change nightly — NASA Spot the Station.";
+          }
+        }).catch(function () {});
+    }
+    
+    function setPill(id, kind, label) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.className = "pill " + kind;
+      el.textContent = label;
+    }
+    function refreshExtras(hours, days) {
+      var nowH = hours && hours[0] ? hours[0] : {};
+      var rain = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value) || 0;
+      var fx = (nowH.shortForecast || "").toLowerCase();
+      var storm = /thunder|storm|lightning/.test(fx);
+      var windStr = nowH.windSpeed || "";
+      var windMph = parseInt(windStr, 10) || 0;
+      if (storm) {
+        setPill("pill-beach", "no", "Beach NO");
+        setPill("pill-cart", "no", "Cart NO");
+        setPill("pill-boat", "no", "Boat NO");
+        setPill("pill-courts", "no", "Courts NO");
+      } else if (rain >= 40 || windMph >= 18) {
+        setPill("pill-beach", "win", "Beach WINDOW");
+        setPill("pill-cart", "win", "Cart WINDOW");
+        setPill("pill-boat", "no", "Boat NO");
+        setPill("pill-courts", "win", "Courts WINDOW");
+      } else {
+        setPill("pill-beach", "go", "Beach GO");
+        setPill("pill-cart", "go", "Cart GO");
+        setPill("pill-boat", windMph >= 15 ? "win" : "go", windMph >= 15 ? "Boat WINDOW" : "Boat GO");
+        setPill("pill-courts", "go", "Courts GO");
+      }
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=26.96&longitude=-82.35&current=uv_index,wind_speed_10m,wind_gusts_10m&hourly=uv_index&forecast_days=1&wind_speed_unit=mph&timezone=America%2FNew_York")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var uv = d.current && d.current.uv_index;
+          var uvEl = document.getElementById("live-uv");
+          if (uvEl && uv != null) {
+            var word = uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : "Very high";
+            uvEl.textContent = word + " " + Math.round(uv);
+            var needle = uvEl.parentElement && uvEl.parentElement.parentElement && uvEl.parentElement.parentElement.querySelector(".pneedle");
+            if (needle) needle.style.left = Math.min(100, (uv / 11) * 100) + "%";
+          }
+        }).catch(function () {});
+      fetch("https://api.weather.gov/alerts/active?point=26.96,-82.35", { headers: { "Accept": "application/geo+json" } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var feats = (d && d.features) || [];
+          var rip = "Low";
+          var craft = "None";
+          feats.forEach(function (f) {
+            var ev = ((f.properties || {}).event || "").toLowerCase();
+            var hd = ((f.properties || {}).headline || "").toLowerCase();
+            if (ev.indexOf("rip") >= 0 || hd.indexOf("rip current") >= 0) rip = (f.properties.event || "Rip");
+            if (ev.indexOf("small craft") >= 0) craft = "Yes";
+          });
+          var ripEl = document.getElementById("live-rip");
+          var craftEl = document.getElementById("live-craft");
+          if (ripEl) ripEl.textContent = rip;
+          if (craftEl) craftEl.textContent = craft;
+        }).catch(function () {});
+      var red = document.getElementById("live-redtide");
+      if (red) red.textContent = "SWFL not observed";
+      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://myfwc.com/research/redtide/statewide/"))
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          var sw = /Southwest Florida[\s\S]{0,240}/i.exec(html);
+          if (red && sw) {
+            var line = sw[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 90);
+            if (/not observed/i.test(line)) red.textContent = "Not observed";
+            else if (/bloom|high|medium/i.test(line)) red.textContent = "Present — check FWC";
+            else red.textContent = "See FWC";
+          }
+        }).catch(function () {});
+      var seas = document.getElementById("live-seas");
+      if (seas && days && days[0] && days[0].detailedForecast) {
+        var m = /(\d+(?:\.\d+)?)\s*(?:to\s*)?(\d+)?\s*foot/i.exec(days[0].detailedForecast);
+        seas.textContent = m ? (m[2] ? m[1] + "–" + m[2] + " ft" : m[1] + " ft") : "1–2 ft";
+      }
+      var hour = new Date().getHours();
+      var p1 = document.getElementById("live-planet1");
+      if (p1) {
+        document.getElementById("live-planet1").textContent = "Venus";
+        document.getElementById("live-planet1d").textContent = "West after sunset";
+        document.getElementById("live-planet2").textContent = "Saturn";
+        document.getElementById("live-planet2d").textContent = "East late evening";
+        document.getElementById("live-planet3").textContent = "Jupiter";
+        document.getElementById("live-planet3d").textContent = "East before sunrise";
+        document.getElementById("live-planet4").textContent = "Summer Triangle";
+        document.getElementById("live-planet4d").textContent = hour < 6 ? "Pre-dawn" : "High after dusk";
+      }
+      function fillHoro(sign, id) {
+        function clip(s) {
+          s = String(s || "").replace(/\s+/g, " ").replace(/^[✨🪐💼❤️]+\s*/g, "").trim();
+          if (s.length > 280) s = s.slice(0, 277).replace(/\s+\S*$/, "") + "…";
+          return s;
+        }
+        function put(txt) {
+          var el = document.getElementById(id);
+          if (el && txt) el.textContent = clip(txt);
+          return !!txt;
+        }
+        function parse(j) {
+          if (!j) return "";
+          if (typeof j === "string") return j;
+          var d = j.data || j;
+          return j.content || j.horoscope || j.description || d.horoscope || d.horoscope_data || d.content || "";
+        }
+        var urls = [
+          "https://api.cosmyday.com/content/daily/" + sign,
+          "https://freehoroscopeapi.com/api/v1/get-horoscope/daily?sign=" + sign,
+          "https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=" + sign + "&day=TODAY"
+        ];
+        function next(i) {
+          if (i >= urls.length) {
+            var el = document.getElementById(id);
+            if (el && /Loading|unavailable/i.test(el.textContent)) el.textContent = "Feed unavailable today.";
+            return;
+          }
+          fetch(urls[i]).then(function (r) { return r.json(); }).then(function (j) {
+            if (!put(parse(j))) next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
+      }
+      fillHoro("gemini", "live-horo-nick");
+      fillHoro("aquarius", "live-horo-dayna");
+      fetch("https://iss-api.polluxlabs.io/iss-pass?lat=26.96&lon=-82.35")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var el = document.getElementById("live-iss");
+          var list = d.passes || d.response || d || [];
+          if (!Array.isArray(list)) list = list.passes || [];
+          if (el) {
+            if (!list.length) { el.textContent = "No pass list yet. Use NASA Spot the Station."; return; }
+            el.textContent = list.slice(0, 3).map(function (p) {
+              var when = new Date((p.risetime || p.start || p.start_time || 0) * (String(p.risetime || "").length === 10 ? 1000 : 1));
+              if (p.start_time) when = new Date(p.start_time);
+              return when.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + (p.duration ? " · " + Math.round(p.duration/60) + " min" : "");
+            }).join(" · ");
+          }
+        }).catch(function () {
+          var el = document.getElementById("live-iss");
+          if (el) el.textContent = "Pass API blocked. Use NASA Spot the Station.";
+        });
+      var photo = document.getElementById("quiet-photo");
+      var stormy = hours && hours[0] && /thunder|rain|shower/i.test(hours[0].shortForecast || "");
+      if (photo) photo.classList.toggle("on", !stormy);
+      var ripTxt = (document.getElementById("live-rip") || {}).textContent || "";
+      var craftTxt = (document.getElementById("live-craft") || {}).textContent || "";
+      if (/high|warning|yes/i.test(ripTxt)) setPill("pill-rip", "no", "Rip HIGH");
+      else if (/moderate|advisory/i.test(ripTxt)) setPill("pill-rip", "win", "Rip MOD");
+      else setPill("pill-rip", "go", "Rip LOW");
+      if (/yes|warning/i.test(craftTxt)) setPill("pill-craft", "no", "Craft YES");
+      else setPill("pill-craft", "go", "Craft none");
+      if (hours && hours.length) {
+        var slice = hours.slice(0, 3);
+        var pops = slice.map(function (h) { return (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0; });
+        var r3 = document.getElementById("live-rain3");
+        if (r3) r3.textContent = pops[0] + "% · " + pops[1] + "% · " + pops[2] + "%";
+        var pts = slice.map(function (h, idx) { return { t: idx, v: pops[idx] }; });
+        if (pts.length > 1) {
+          var box = document.getElementById("rain3-chart");
+          if (box) {
+            var d = pts.map(function (p, i) { return (i ? "L" : "M") + (10 + i * 95) + "," + (70 - p.v * 0.52); }).join(" ");
+            box.innerHTML = svgWrap('<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="' + d + '" fill="none" stroke="#4a90a4" stroke-width="3"/>');
+          }
+        }
+      }
+      fetch("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=26.96&longitude=-82.35&current=us_aqi,pm2_5")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var aqi = d.current && d.current.us_aqi;
+          var el = document.getElementById("live-aqi");
+          var note = document.getElementById("live-aqi-note");
+          if (el && aqi != null) {
+            var word = aqi <= 50 ? "Good" : aqi <= 100 ? "Moderate" : aqi <= 150 ? "Sensitive" : "Unhealthy";
+            el.textContent = Math.round(aqi) + " · " + word;
+          }
+          if (note && d.current && d.current.pm2_5 != null) note.textContent = "PM2.5 " + Math.round(d.current.pm2_5);
+        }).catch(function () {});
+      (function nhcList() {
+        var el = document.getElementById("live-cane");
+        function apply(d) {
+          var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
+          if (!Array.isArray(storms)) storms = [];
+          window.__wxRisk.cane = storms.some(function (s) {
+            var lat = parseFloat(s.latitude != null ? s.latitude : s.lat);
+            var lon = parseFloat(s.longitude != null ? s.longitude : s.lon);
+            if (!isNaN(lat) && !isNaN(lon)) return lat >= 18 && lat <= 32 && lon <= -75 && lon >= -98;
+            return /gulf|florida|tampa|keys|cuba|yucatan/i.test(JSON.stringify(s));
+          }) || /hurricane|tropical|surge/.test(window.__wxRisk.warnTypes || "");
+          pagesFromDock();
+          if (!el) return;
+          el.textContent = storms.length
+            ? storms.map(function (s) { return (s.name || s.id || "Storm") + " " + (s.classification || s.binNumber || s.intensity || ""); }).join(" · ")
+            : "No named Atlantic or Gulf storms. 2-day and 5-day outlooks below.";
+        }
+        function fail() {
+          if (el) el.textContent = "Named-storm file did not load. Outlook maps below still update from NHC.";
+        }
+        var raw = "https://www.nhc.noaa.gov/CurrentStorms.json";
+        fetch(raw).then(function (r) { return r.json(); }).then(apply).catch(function () {
+          fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(raw))
+            .then(function (r) { return r.json(); })
+            .then(apply)
+            .catch(fail);
+        });
+      })();
+      var bolt = document.getElementById("live-bolt");
+      var fx = ((hours && hours[0] && hours[0].shortForecast) || "") + " " + ((days && days[0] && days[0].detailedForecast) || "");
+      if (bolt) bolt.textContent = /thunder|lightning/i.test(fx) ? "Lightning in the forecast. Pool and cart NO until it clears." : "No lightning words in the current NWS Englewood forecast.";
+      fetch("https://marine-api.open-meteo.com/v1/marine?latitude=26.93&longitude=-82.37&hourly=sea_surface_temperature&past_days=1&forecast_days=1&temperature_unit=fahrenheit")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var hs = (d.hourly && d.hourly.time) || [];
+          var vs = (d.hourly && d.hourly.sea_surface_temperature) || [];
+          var pts = [];
+          for (var i = 0; i < hs.length; i++) if (vs[i] != null) pts.push({ t: new Date(hs[i]).getTime(), v: vs[i] });
+          if (pts.length) drawHistChart("wtemp-chart", pts, "#2a9d8f", 80, 92, "°");
+        }).catch(function () {});
+    }
+
+
+    function heatIndexF(t, rh) {
+      if (t == null || rh == null) return t;
+      if (t < 80) return Math.round(t);
+      var hi = -42.379 + 2.04901523*t + 10.14333127*rh - 0.22475541*t*rh - 0.00683783*t*t - 0.05481717*rh*rh + 0.00122874*t*t*rh + 0.00085282*t*rh*rh - 0.00000199*t*t*rh*rh;
+      return Math.round(hi);
+    }
+    function paintTemp(el, n) {
+      if (!el || n == null || isNaN(n)) return;
+      var c = "#f7f1e6";
+      if (n <= 64) c = "#8ec5ff";
+      else if (n <= 74) c = "#f7f1e6";
+      else if (n <= 82) c = "#e6c36a";
+      else if (n <= 89) c = "#e07a5f";
+      else c = "#ff5a3c";
+      el.style.color = c;
+    }
+
+    function isNightAt(ms) {
+      ms = ms || Date.now();
+      if (window.__bwCharts && window.__bwCharts.rise && window.__bwCharts.set) {
+        var rise = new Date(window.__bwCharts.rise).getTime();
+        var set = new Date(window.__bwCharts.set).getTime();
+        return ms < rise || ms >= set;
+      }
+      var h = parseInt(new Date(ms).toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+      return h >= 20 || h < 6;
+    }
+    function wxKind(s, ms) {
+      s = String(s || "").toLowerCase();
+      var kind = "partly";
+      if (/thunder|t-storm|lightning/.test(s)) kind = "thunder";
+      else if (/rain|shower|drizzle/.test(s)) kind = "rain";
+      else if (/snow|sleet/.test(s)) kind = "snow";
+      else if (/fog|mist|haze/.test(s)) kind = "fog";
+      else if (/wind/.test(s) && /cloud|rain|sun/.test(s) === false) kind = "wind";
+      else if (/overcast/.test(s) || (/cloudy/.test(s) && !/partly|mostly sunny/.test(s))) kind = "cloud";
+      else if (/partly|mostly cloudy|mostly sunny/.test(s)) kind = "partly";
+      else if (/clear|sunny|fair/.test(s)) kind = "sun";
+      if (isNightAt(ms) && kind === "sun") kind = "moon";
+      if (isNightAt(ms) && kind === "partly") kind = "partly-night";
+      return kind;
+    }
+    function wxSvg(kind, box) {
+      box = box || 32;
+      var inner = {
+        sun: '<circle cx="16" cy="16" r="6" fill="#c4a35a"/><g stroke="#c4a35a" stroke-width="2" stroke-linecap="round"><line x1="16" y1="4" x2="16" y2="7"/><line x1="16" y1="25" x2="16" y2="28"/><line x1="4" y1="16" x2="7" y2="16"/><line x1="25" y1="16" x2="28" y2="16"/></g>',
+        moon: '<path d="M20 6 a10 10 0 1 0 6 16 a8 8 0 1 1 -6 -16z" fill="#e8e2d6"/>',
+        "partly-night": '<path d="M12 6 a7 7 0 1 0 4 12 a6 6 0 1 1 -4 -12z" fill="#e8e2d6"/><ellipse cx="21" cy="21" rx="7" ry="4.5" fill="#8aa0b5"/>',
+        partly: '<circle cx="12" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="20" rx="8" ry="5" fill="#d9d2c4"/>',
+        cloud: '<ellipse cx="16" cy="18" rx="9" ry="6" fill="#8aa0b5"/>',
+        rain: '<ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/><g stroke="#5c6b7a" stroke-width="1.6"><line x1="11" y1="22" x2="9" y2="27"/><line x1="16" y1="22" x2="14" y2="27"/><line x1="21" y1="22" x2="19" y2="27"/></g>',
+        thunder: '<ellipse cx="16" cy="13" rx="9" ry="6" fill="#5c6b7a"/><path d="M18 16 L13 22 L16 22 L12 28 L20 20 L16 20 Z" fill="#c4a35a"/>',
+        wind: '<g stroke="#5c6b7a" fill="none" stroke-width="2" stroke-linecap="round"><path d="M6 12 h16"/><path d="M6 16 h20"/><path d="M6 20 h12"/></g>',
+        fog: '<g stroke="#8aa0b5" fill="none" stroke-width="2"><path d="M6 12 h20"/><path d="M8 16 h16"/><path d="M6 20 h20"/></g>',
+        snow: '<ellipse cx="16" cy="14" rx="8" ry="5" fill="#8aa0b5"/><g stroke="#5c6b7a" stroke-width="1.4"><line x1="12" y1="22" x2="12" y2="27"/><line x1="16" y1="22" x2="16" y2="27"/><line x1="20" y1="22" x2="20" y2="27"/></g>'
+      };
+      return '<svg viewBox="0 0 32 32" width="' + box + '" height="' + box + '">' + (inner[kind] || inner.partly) + "</svg>";
+    }
+    function setHeaderIcon(text, ms) {
+      var el = document.getElementById("live-wxicon");
+      if (!el) return;
+      var kind = wxKind(text, ms);
+      el.setAttribute("aria-label", kind);
+      var tmp = document.createElement("div");
+      tmp.innerHTML = wxSvg(kind, 32);
+      var inner = tmp.querySelector("svg");
+      if (inner) el.innerHTML = inner.innerHTML;
+    }
+
+    var WX_IDS = ["live-temp","live-feels","live-sky","live-wind","live-gusts","live-rh","live-dew","live-pres","live-uv"];
+    function saveWxSnap() {
+      var snap = { t: Date.now() };
+      WX_IDS.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) snap[id] = el.textContent;
+      });
+      try { localStorage.setItem("bw-wx-snap", JSON.stringify(snap)); } catch (e) {}
+    }
+    function loadWxSnap(reason) {
+      var raw;
+      try { raw = localStorage.getItem("bw-wx-snap"); } catch (e) { return; }
+      if (!raw) return;
+      var snap;
+      try { snap = JSON.parse(raw); } catch (e) { return; }
+      WX_IDS.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && snap[id]) el.textContent = snap[id];
+      });
+      var sky = document.getElementById("live-sky");
+      if (sky && snap.t) {
+        var age = new Date(snap.t).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
+        sky.textContent = (snap["live-sky"] || sky.textContent) + " · cached " + age + (reason ? " (" + reason + ")" : "");
+      }
+    }
+    function refreshWeather() {
+      var hdr = { "Accept": "application/geo+json" };
+      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=26.9595&longitude=-82.3543&current=temperature_2m,apparent_temperature,relative_humidity_2m&temperature_unit=fahrenheit&timezone=America/New_York")
+        .then(function (r) { return r.json(); })
+        .catch(function () { return null; });
+      fetch("https://api.weather.gov/points/26.9595,-82.3543", { headers: hdr })
+        .then(function (r) { return r.json(); })
+        .then(function (pt) {
+          var p = pt.properties || {};
+          return Promise.all([
+            fetch(p.forecast, { headers: hdr }).then(function (r) { return r.json(); }),
+            fetch(p.forecastHourly, { headers: hdr }).then(function (r) { return r.json(); }),
+            fetch(p.observationStations, { headers: hdr }).then(function (r) { return r.json(); }).then(function (st) {
+              var feats = (st && st.features) || [];
+              var pick = feats[0];
+              feats.forEach(function (f) {
+                var id = ((f.properties || {}).stationIdentifier || "") + (f.id || "");
+                if (/KVNC|KPGD|KVNC/.test(id)) pick = f;
+              });
+              if (!pick) return {};
+              return fetch(pick.id + "/observations/latest", { headers: hdr }).then(function (r) { return r.json(); });
+            })
+          ]);
+        })
+        .then(function (pair) {
+          return omP.then(function (om) { return { pair: pair, om: om }; });
+        })
+        .then(function (pack) {
+          var pair = pack.pair || [];
+          var om = pack.om || {};
+          var days = (((pair[0] || {}).properties || {}).periods) || [];
+          var hours = (((pair[1] || {}).properties || {}).periods) || [];
+          var obs = ((pair[2] || {}).properties) || {};
+          var nowMs = Date.now();
+          var nowH = hours[0] || {};
+          for (var hi = 0; hi < hours.length; hi++) {
+            var a = new Date(hours[hi].startTime).getTime();
+            var b = hours[hi].endTime ? new Date(hours[hi].endTime).getTime() : a + 3600000;
+            if (nowMs >= a && nowMs < b) { nowH = hours[hi]; break; }
+          }
+          var today = days[0] || {};
+          function c2f(v) { return v == null ? null : Math.round(v * 9/5 + 32); }
+          function kph2mph(v) { return v == null ? null : Math.round(v * 0.621371); }
+          function pa2inhg(v) { return v == null ? null : (v / 3386.39).toFixed(2); }
+          function degToCard(d) {
+            if (d == null || isNaN(d)) return "";
+            var dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+            return dirs[Math.round(d / 22.5) % 16];
+          }
+          var tempF = nowH.temperature != null ? nowH.temperature : c2f(obs.temperature && obs.temperature.value);
+          var dewF = nowH.dewpoint && nowH.dewpoint.value != null ? Math.round(nowH.dewpoint.value) : c2f(obs.dewpoint && obs.dewpoint.value);
+          if (nowH.dewpoint && nowH.dewpoint.unitCode && /degC/.test(nowH.dewpoint.unitCode)) dewF = c2f(nowH.dewpoint.value);
+          var rh = (nowH.relativeHumidity && nowH.relativeHumidity.value != null) ? Math.round(nowH.relativeHumidity.value) : (obs.relativeHumidity && obs.relativeHumidity.value != null ? Math.round(obs.relativeHumidity.value) : null);
+          var windTxt = nowH.windSpeed || "";
+          var windDir = nowH.windDirection || degToCard(obs.windDirection && obs.windDirection.value);
+          if (!windTxt && obs.windSpeed && obs.windSpeed.value != null) windTxt = kph2mph(obs.windSpeed.value) + " mph";
+          var gust = obs.windGust && obs.windGust.value != null ? kph2mph(obs.windGust.value) : null;
+          var pres = pa2inhg(obs.barometricPressure && obs.barometricPressure.value);
+          var tempEl = document.getElementById("live-temp");
+          var feelEl = document.getElementById("live-feels");
+          var skyEl = document.getElementById("live-sky");
+          if (tempEl && tempF != null) { tempEl.innerHTML = tempF + "&deg;"; paintTemp(tempEl, tempF); }
+          var feelF = null;
+          if (om.current && om.current.apparent_temperature != null) feelF = Math.round(om.current.apparent_temperature);
+          else if (obs.heatIndex && obs.heatIndex.value != null) {
+            feelF = /degC/.test(obs.heatIndex.unitCode || "") ? Math.round(obs.heatIndex.value * 9/5 + 32) : Math.round(obs.heatIndex.value);
+          } else feelF = heatIndexF(tempF, rh);
+          if (feelEl && feelF != null) { feelEl.innerHTML = feelF + "&deg;"; paintTemp(feelEl, feelF); }
+          var heatEl = document.getElementById("live-heat");
+          var hiVal = (obs.heatIndex && obs.heatIndex.value != null) ? Math.round(obs.heatIndex.value * 9/5 + 32) : tempF;
+          if (obs.heatIndex && obs.heatIndex.unitCode && /degF/.test(obs.heatIndex.unitCode)) hiVal = Math.round(obs.heatIndex.value);
+          if (heatEl) {
+            if (hiVal != null && hiVal >= 90) { heatEl.textContent = "Heat " + hiVal + "°"; heatEl.classList.add("on"); }
+            else heatEl.classList.remove("on");
+          }
+          var windEl = document.getElementById("live-wind");
+          var gustEl = document.getElementById("live-gusts");
+          var rhEl = document.getElementById("live-rh");
+          var dewEl = document.getElementById("live-dew");
+          var presEl = document.getElementById("live-pres");
+          var presNote = document.getElementById("live-pres-note");
+          var meta = document.getElementById("live-meta");
+          if (windEl) windEl.textContent = (windDir + " " + windTxt).trim() || "—";
+          if (gustEl) gustEl.textContent = gust != null ? gust + " mph" : "—";
+          if (rhEl && rh != null) {
+            rhEl.textContent = rh + "%";
+            var needle = rhEl.parentElement && rhEl.parentElement.parentElement && rhEl.parentElement.parentElement.querySelector(".pneedle");
+            if (needle) needle.style.left = Math.max(0, Math.min(100, rh)) + "%";
+          }
+          if (dewEl && dewF != null) dewEl.textContent = "Dew " + dewF + "°";
+          if (presEl && pres) {
+            presEl.textContent = pres + '"';
+            var pnum = parseFloat(pres);
+            if (presNote) presNote.textContent = pnum >= 30.2 ? "High" : pnum <= 29.8 ? "Low" : "Fair";
+          }
+          if (meta) {
+            var rain = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value != null) ? nowH.probabilityOfPrecipitation.value : null;
+            meta.innerHTML = "<div>" + (obs.textDescription || nowH.shortForecast || "") + "</div><div>Rain next hr " + (rain != null ? rain + "%" : "—") + "</div><div>" + (windDir + " " + windTxt).trim() + "</div><div>" + (pres ? pres + '"' : "") + "</div>";
+          }
+          if (skyEl) {
+            var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+            var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
+            var short = nowH.shortForecast || today.shortForecast || "Conditions updating";
+            var detail = String(today.detailedForecast || nowH.detailedForecast || "").replace(/\s+/g, " ").trim();
+            if (detail.length > 240) detail = detail.slice(0, 237).replace(/\s+\S*$/, "") + ".";
+            var bits = [greet, short.replace(/\.$/, "") + " in Englewood."];
+            if (tempF != null) bits.push("It is " + tempF + "°" + (feelF != null && feelF !== tempF ? " and feels like " + feelF + "°" : "") + ".");
+            if (today.temperature != null && today.name && !/night/i.test(today.name)) bits.push("Today's high is near " + today.temperature + "°.");
+            if (detail && detail.toLowerCase().indexOf(short.toLowerCase()) < 0) bits.push(detail);
+            else if (detail) bits.push(detail);
+            var windBit = (windDir + " " + windTxt).trim();
+            if (windBit) bits.push("Wind " + windBit + (gust != null ? ", gusts " + gust + " mph" : "") + ".");
+            var rainHr = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value != null) ? nowH.probabilityOfPrecipitation.value : null;
+            if (rainHr != null) bits.push("Rain chance this hour is " + rainHr + "%.");
+            var blob = (short + " " + detail).toLowerCase();
+            if (/thunder|storm|lightning/i.test(blob)) bits.push("Beach and cart are best before the storms build.");
+            else if (/rain|shower/i.test(blob)) bits.push("Keep a cover plan for beach and cart.");
+            else bits.push("A good window for beach and cart.");
+            skyEl.textContent = bits.join(" ").replace(/\s+/g, " ").trim();
+            window.__briefWx = {
+              temp: tempF,
+              feel: feelF,
+              short: short,
+              hi: today.temperature,
+              wind: windBit,
+              rain: rainHr,
+              detail: detail
+            };
+          }
+          setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now());
+          if (hours.length && document.querySelector(".hourly")) {
+            var box = document.querySelector(".hourly");
+            var n = Math.max(6, Math.min(10, Math.floor((box.clientWidth || 400) / 68)));
+            box.innerHTML = hours.slice(0, n).map(function (h) {
+              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" });
+              return '<div class="hour">' + when + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime()), 28) + '<b>' + h.temperature + '°</b></div>';
+            }).join("");
+          }
+          if (days.length && document.querySelector(".tenday")) {
+            var td = document.querySelector(".tenday");
+            var byDate = {};
+            for (var i = 0; i < days.length; i++) {
+              var d = days[i];
+              if (/night/i.test(d.name || "")) continue;
+              var key = new Date(d.startTime).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+              if (byDate[key]) continue;
+              var nxt = days[i+1] || {};
+              byDate[key] = {
+                fx: d.shortForecast || "",
+                hi: d.temperature,
+                lo: /night/i.test(nxt.name || "") ? nxt.temperature : ""
+              };
+            }
+            var html = "";
+            for (var n = 0; n < 10; n++) {
+              var dt = new Date();
+              dt.setDate(dt.getDate() + n);
+              var key = dt.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+              var label = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
+              var row = byDate[key];
+              if (row) html += '<div class="day">' + label + wxSvg(wxKind(row.fx), 26) + '<span>' + row.fx + '</span><span><span class="hi">' + row.hi + '°</span> <span class="lo">' + (row.lo !== "" ? row.lo + "°" : "") + '</span></span></div>';
+              else html += '<div class="day">' + label + wxSvg("thunder", 26) + '<span>Typical early Sep · afternoon storms</span><span><span class="hi">90°</span> <span class="lo">76°</span></span></div>';
+            }
+            td.innerHTML = html;
+          }
+          fetch("https://api.weather.gov/stations/KVNC/observations?limit=36", { headers: hdr })
+            .then(function (r) { return r.json(); })
+            .then(function (st) {
+              var feats = ((st && st.features) || []).slice().reverse();
+              var hum = [], prs = [];
+              feats.forEach(function (f) {
+                var p = f.properties || {};
+                var ts = new Date(p.timestamp).getTime();
+                if (p.relativeHumidity && p.relativeHumidity.value != null) hum.push({ t: ts, v: p.relativeHumidity.value });
+                if (p.barometricPressure && p.barometricPressure.value != null) prs.push({ t: ts, v: p.barometricPressure.value / 3386.39 });
+              });
+              var hr = [], ev = [];
+              feats.forEach(function (f) {
+                var p = f.properties || {};
+                var ts = new Date(p.timestamp).getTime();
+                function inch(obj) {
+                  if (!obj || obj.value == null) return null;
+                  var v = obj.value;
+                  if (obj.unitCode && /mm/.test(obj.unitCode)) v = v / 25.4;
+                  return v;
+                }
+                var h1 = inch(p.precipitationLastHour);
+                var h6 = inch(p.precipitationLast6Hours) != null ? inch(p.precipitationLast6Hours) : inch(p.precipitationLast3Hours);
+                if (h1 != null) hr.push({ t: ts, v: h1 });
+                if (h6 != null) ev.push({ t: ts, v: h6 });
+              });
+              var hrEl = document.getElementById("live-rain-hr");
+              var evEl = document.getElementById("live-rain-ev");
+              if (hrEl && hr.length) hrEl.textContent = hr[hr.length-1].v.toFixed(2) + '" last hour';
+              if (evEl && ev.length) evEl.textContent = ev[ev.length-1].v.toFixed(2) + '" last 6 hours';
+              if (hr.length) drawHistChart("rainhr-chart", hr, "#4a90a4", 0, Math.max(0.25, Math.max.apply(null, hr.map(function (p) { return p.v; }))), '"');
+              if (ev.length) drawHistChart("rainev-chart", ev, "#1b2a4a", 0, Math.max(0.5, Math.max.apply(null, ev.map(function (p) { return p.v; }))), '"');
+              if (hum.length) drawHistChart("humid-chart", hum, "#2a9d8f", 40, 100, "%");
+              if (prs.length) {
+                var lo = 29.6, hi = 30.4;
+                prs.forEach(function (p) { if (p.v < lo) lo = Math.floor(p.v * 10) / 10; if (p.v > hi) hi = Math.ceil(p.v * 10) / 10; });
+                drawHistChart("pres-chart", prs, "#1b2a4a", lo, hi, '"');
+              }
+            }).catch(function () {});
+          saveWxSnap();
+          refreshMarineSky(days, hours, obs);
+          writeBriefing();
+          refreshExtras(hours, days);
+        })
+        .catch(function () { loadWxSnap("offline"); });
+    }
+    loadWxSnap();
+    refreshWeather();
+    setInterval(refreshWeather, 5 * 60 * 1000);
+    setInterval(function () {
+      if (window.__bwCharts && window.__bwCharts.preds) drawTideChart(window.__bwCharts.preds);
+      if (window.__bwCharts && window.__bwCharts.surge) drawSurgeChart(window.__bwCharts.surge);
+      if (window.__bwCharts && window.__bwCharts.rise) drawSunChart(window.__bwCharts.rise, window.__bwCharts.set);
+      drawMoonChart();
+    }, 60 * 1000);
+
+    function spaceSentences(s) {
+      return String(s || "")
+        .replace(/\s+/g, " ")
+        .replace(/([.!?])\s+/g, "$1\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 ")
+        .trim();
+    }
+    function setTicker(el, html, speed) {
+      if (!el) return;
+      html = String(html || "").trim();
+      if (!html) return;
+      if (el.getAttribute("data-hash") === html) return;
+      el.setAttribute("data-hash", html);
+      el.innerHTML = html;
+      requestAnimationFrame(function () { spinEl(el, speed || 112); });
+    }
+    function pollBreaking() {
+      var bar = document.getElementById("breakbar");
+      var txt = document.getElementById("breaktext");
+      if (!bar || !txt) return;
+      function rssJson(rss) {
+        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
+          .then(function (r) { return r.json(); })
+          .then(function (data) { return (data && data.items) || []; })
+          .catch(function () { return []; });
+      }
+      function isBreak(it) {
+        var s = ((it.title || "") + " " + (it.description || "")).toLowerCase();
+        return /breaking|just in|developing|alert:/.test(s) || (it.title || "").indexOf("BREAKING") >= 0;
+      }
+      function keyOf(title) {
+        return String(title || "")
+          .toLowerCase()
+          .replace(/breaking\s*(news)?[:.\-]*/g, " ")
+          .replace(/just in[:.\-]*/g, " ")
+          .replace(/fox news|wink news|wink|fox/g, " ")
+          .replace(/[^a-z0-9\s]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .split(" ")
+          .slice(0, 8)
+          .join(" ");
+      }
+      var foxRss = "https://moxie.foxnews.com/google-publisher/latest.xml";
+      var winkRss = "https://news.google.com/rss/search?q=site:winknews.com+when:1d&hl=en-US&gl=US&ceid=US:en";
+      Promise.all([rssJson(foxRss), rssJson(winkRss)]).then(function (both) {
+        var foxHits = (both[0] || []).filter(isBreak).map(function (it) {
+          return { src: "Fox", title: (it.title || "").replace(/\s+/g, " ") };
+        });
+        var winkHits = (both[1] || []).filter(isBreak).map(function (it) {
+          return { src: "WINK", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*-\s*WINK News.*$/i, "") };
+        });
+        var seen = {};
+        var hits = [];
+        foxHits.concat(winkHits).forEach(function (h) {
+          var k = keyOf(h.title);
+          if (!k || seen[k]) return;
+          seen[k] = true;
+          hits.push(h);
+        });
+        hits = hits.slice(0, 6);
+        if (!hits.length) {
+          bar.classList.remove("on");
+          txt.setAttribute("data-hash", "");
+          stackTickers();
+          return;
+        }
+        var body = hits.map(function (h) {
+          var line = "BREAKING · " + h.src + ". " + h.title;
+          if (!/[.!?]$/.test(line)) line += ".";
+          return spaceSentences(line);
+        }).join("\u00a0".repeat(140));
+        bar.classList.add("on");
+        stackTickers();
+        setTicker(txt, body, 150);
+      }).catch(function () { bar.classList.remove("on"); stackTickers(); });
+    }
+    pollBreaking();
+    setInterval(pollBreaking, 5 * 60 * 1000);
+
+
+    window.__tickOn = { alert: 0, brk: 0 };
+    function markTicker(kind, on) {
+      if (on) {
+        if (!window.__tickOn[kind]) window.__tickOn[kind] = Date.now();
+      } else window.__tickOn[kind] = 0;
+    }
+    function stackTickers() {
+      var stack = document.querySelector(".ticker-stack");
+      var alertBar = document.getElementById("alertbar");
+      var breakBar = document.getElementById("breakbar");
+      var brief = stack && stack.querySelector(".ticker");
+      var frame = document.querySelector(".frame");
+      var alertOn = !!(alertBar && alertBar.classList.contains("on"));
+      var breakOn = !!(breakBar && breakBar.classList.contains("on"));
+      markTicker("alert", alertOn);
+      markTicker("brk", breakOn);
+      if (frame) {
+        frame.classList.toggle("has-alert", alertOn);
+        frame.classList.toggle("has-break", breakOn);
+      }
+      if (!stack || !brief) return;
+      var rows = [];
+      if (alertOn) rows.push({ el: alertBar, t: window.__tickOn.alert });
+      if (breakOn) rows.push({ el: breakBar, t: window.__tickOn.brk });
+      rows.sort(function (a, b) { return b.t - a.t; });
+      rows.forEach(function (r) { stack.insertBefore(r.el, brief); });
+      stack.appendChild(brief);
+    }
+    function writeBriefing() {
+      var tick = document.getElementById("ticktext");
+      if (!tick) return;
+      function t(id) {
+        var el = document.getElementById(id);
+        var s = el && el.textContent ? el.textContent.replace(/\s+/g, " ").trim() : "";
+        if (!s) return "";
+        if (/^(loading|checking|updating|—|–|\.\.\.|…)/i.test(s)) return "";
+        return s.replace(/&deg;|°/g, "°");
+      }
+      function end(s) {
+        s = String(s || "").replace(/\s+/g, " ").trim();
+        if (!s) return "";
+        if (!/[.!?]$/.test(s)) s += ".";
+        return s;
+      }
+      function join(parts) {
+        return parts.map(end).filter(Boolean).join(" ");
+      }
+      function sent(s) {
+        return String(s || "")
+          .replace(/\s+/g, " ")
+          .replace(/([.!?])\s+/g, "$1\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 ")
+          .trim();
+      }
+      function para(title, sentences) {
+        var body = sent(join(sentences));
+        if (!body) body = "Details for this page are still filling in.";
+        return "<b>" + title + ".</b> " + body;
+      }
+      function events() {
+        var box = document.getElementById("ent-list");
+        if (!box) return ["No events loaded yet."];
+        var bits = Array.prototype.slice.call(box.querySelectorAll(".card"), 0, 6).map(function (c) {
+          var b = c.querySelector("b");
+          if (!b) return "";
+          var line = b.textContent.replace(/\s+/g, " ").trim();
+          var place = c.querySelector(".place-tag");
+          if (place) line += " at " + place.textContent.replace(/\s+/g, " ").trim();
+          if (c.classList.contains("music")) line = "Live music: " + line;
+          return line;
+        }).filter(Boolean);
+        return bits.length ? bits : ["No upcoming events in range."];
+      }
+      var SEP = "\u00a0".repeat(140);
+      var html = [
+        para("Now", [
+          t("live-sky"),
+          t("live-temp") ? "It is " + t("live-temp") + (t("live-feels") ? " and feels like " + t("live-feels") : "") : "",
+          t("live-wind") ? "Wind is " + t("live-wind") + (t("live-gusts") ? " with gusts " + t("live-gusts") : "") : "",
+          t("live-rh") ? "Humidity is " + t("live-rh") + (t("live-dew") ? ". " + t("live-dew") : "") : "",
+          t("live-pres") ? "Pressure is " + t("live-pres") + (t("live-pres-note") ? " and " + t("live-pres-note").toLowerCase() : "") : "",
+          t("live-uv") ? "UV is " + t("live-uv") : "",
+          t("live-rain-hr") ? "Rain this hour is " + t("live-rain-hr") : "",
+          t("live-rain-ev") ? "Rain this event is " + t("live-rain-ev") : "",
+          t("live-rain3") ? "The next three hours show " + t("live-rain3") : "",
+          t("live-aqi") ? "Air quality is " + t("live-aqi") : ""
+        ]),
+        para("Emergency", [
+          t("live-nwr-alert") || "No watch or warning for the Englewood point right now",
+          t("live-prep"),
+          t("live-cane") ? "Atlantic and Gulf: " + t("live-cane") : "",
+          t("live-bolt")
+        ]),
+        para("Marine", [
+          t("live-tide-today") ? "Next tides are " + t("live-tide-today") : "",
+          t("live-surge") ? "Surge is " + t("live-surge") : "",
+          t("live-sst") ? "Gulf water is " + t("live-sst") : "",
+          t("live-wtemp") ? "Inlet water is " + t("live-wtemp") : "",
+          t("live-seas") ? "Seas are " + t("live-seas") : "",
+          t("live-rip") ? "Rip tide is " + t("live-rip") : "",
+          t("live-redtide") ? "Red tide is " + t("live-redtide") : "",
+          t("live-craft") ? "Small craft advisory is " + t("live-craft") : "",
+          t("live-coastal"),
+          t("live-fish"),
+          t("live-gator")
+        ]),
+        para("Sky", [
+          t("live-sun-label"),
+          t("live-moon-label"),
+          t("live-planet1") ? "Tonight look for " + t("live-planet1") + (t("live-planet1d") ? " " + t("live-planet1d") : "") : "",
+          t("live-planet2") ? "Overnight look for " + t("live-planet2") + (t("live-planet2d") ? " " + t("live-planet2d") : "") : "",
+          t("live-planet3") ? "At dawn look for " + t("live-planet3") + (t("live-planet3d") ? " " + t("live-planet3d") : "") : "",
+          t("live-planet4") ? "Stars: " + t("live-planet4") + (t("live-planet4d") ? " " + t("live-planet4d") : "") : "",
+          t("live-sky-watch"),
+          t("live-iss"),
+          t("live-horo-nick") ? "Nick, Gemini. " + t("live-horo-nick") : "",
+          t("live-horo-dayna") ? "Dayna, Aquarius. " + t("live-horo-dayna") : ""
+        ]),
+        para("Entertainment", events())
+      ].join(SEP);
+      setTicker(tick, html, 112);
+    }
+    function spinEl(el, speed) {
+      if (!el) return;
+      var html = "";
+      var first = el.querySelector(".tseg");
+      html = first ? first.innerHTML : el.innerHTML;
+      html = String(html || "").trim();
+      if (!html) return;
+      el.innerHTML = "<span class='tseg'>" + html + "</span><span class='tseg'>" + html + "</span>";
+      el.style.display = "inline-flex";
+      var one = el.querySelector(".tseg").getBoundingClientRect().width;
+      if (!one) return;
+      var dur = Math.max(24, one / (speed || 112));
+      el.style.setProperty("--tick-w", one + "px");
+      el.style.animation = "none";
+      el.offsetHeight;
+      el.style.animation = "tick " + dur + "s linear infinite";
+    }
+    function pollAlerts() {
+      var bar = document.getElementById("alertbar");
+      var txt = document.getElementById("alerttext");
+      var frame = document.querySelector(".frame");
+      if (!bar || !txt) return;
+      fetch("https://api.weather.gov/alerts/active?point=26.96,-82.35", {
+        headers: { "Accept": "application/geo+json" }
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        var feats = (data && data.features) || [];
+        var keep = feats.filter(function (f) {
+          var ev = ((f.properties || {}).event || "").toLowerCase();
+          return ev.indexOf("warning") >= 0 || ev.indexOf("watch") >= 0;
+        });
+        var nwrA = document.getElementById("live-nwr-alert");
+        if (nwrA) {
+          nwrA.textContent = keep.length
+            ? keep.map(function (f) { return (f.properties || {}).event || "Alert"; }).join(" · ")
+            : "No watch or warning for the Englewood point right now.";
+        }
+        var prep = document.getElementById("live-prep");
+        if (prep) {
+          var ev = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
+          var tip = "No watch or warning on the Englewood point. Keep 3 days of water, meds, and a full tank anyway.";
+          if (/hurricane|tropical storm|storm surge/.test(ev)) tip = "Tropical watch or warning. Know your zone on scgov.net. Fuel the truck and cart. Ice, water, meds, cash. Bring in chairs. Leave if they call your zone.";
+          else if (/tornado/.test(ev)) tip = "Tornado watch or warning. Interior room, no windows. Stay off the cart and pool.";
+          else if (/flash flood|flood/.test(ev)) tip = "Flood threat. Do not drive standing water. Move the truck to higher ground.";
+          else if (/heat/.test(ev)) tip = "Heat warning. AC first. Midday indoor only. Check on neighbors.";
+          else if (/rip/.test(ev)) tip = "Rip current. Swim only near a lifeguard. If pulled out, swim parallel to the beach.";
+          else if (/thunder|severe|wind/.test(ev)) tip = "Severe weather. Off the pool and cart. Interior room if a warning hits.";
+          else if (keep.length) tip = keep.map(function (f) { return (f.properties || {}).event; }).join(" · ") + ". Stay inside until it expires.";
+          prep.textContent = tip;
+        }
+        window.__wxRisk.alert = !!keep.length;
+        window.__wxRisk.warnTypes = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
+        window.__wxRisk.bolt = /thunder|lightning/i.test((document.getElementById("live-bolt") || {}).textContent || "") ||
+          keep.some(function (f) {
+            var ev = ((f.properties || {}).event || "").toLowerCase();
+            return ev.indexOf("thunder") >= 0 || ev.indexOf("lightning") >= 0 || ev.indexOf("severe") >= 0 || ev.indexOf("tornado") >= 0;
+          });
+        var dist = document.getElementById("live-bolt-dist");
+        if (dist) {
+          if (!keep.length) dist.textContent = "No watch or warning. Use the map for flashes.";
+          else if (keep.some(function (f) { return /warning/i.test((f.properties || {}).event || ""); })) dist.textContent = "Warning in effect — treat as close / overhead risk for the Key. Stay off the pool and cart.";
+          else dist.textContent = "Watch in the county. Risk is area-wide, not a mile reading.";
+        }
+        var isWarnEarly = keep.some(function (f) {
+          return /warning/i.test(((f.properties || {}).event || ""));
+        });
+        window.__wxRisk.warn = !!isWarnEarly;
+        (function syncNoaa(hasWarn) {
+          var audio = document.getElementById("radioPlayer");
+          var playing = audio && audio.getAttribute("src");
+          if (hasWarn) {
+            if (!window.__nwrAlert) {
+              var cur = (audio && audio.getAttribute("src")) || savedRadio() || "";
+              if (/KHB32|NWR|KEC38/i.test(cur)) cur = savedRadio() && !/KHB32|NWR|KEC38/i.test(savedRadio()) ? savedRadio() : "";
+              window.__nwrPrev = { url: cur };
+            }
+            window.__nwrAlert = true;
+            window.__forceRadio = true;
+            if (!playing || String(playing).indexOf("KHB32") < 0) {
+              playStation(NOAA_URL, "NOAA Tampa (warning)", { keepSaved: true });
+            }
+          } else if (window.__nwrAlert) {
+            window.__nwrAlert = false;
+            var prev = window.__nwrPrev || {};
+            window.__nwrPrev = null;
+            if (inQuietHours()) {
+              playStation("", "Mute", { keepSaved: true });
+              if (prev.url) saveRadio(prev.url);
+            } else playStation(prev.url || "", prev.url ? "previous station" : "Mute");
+          }
+        })(!!isWarnEarly);
+        if (isWarnEarly) {
+          window.__storm = true;
+          pages = warnList();
+          if (pages.indexOf(document.querySelector(".page.on") && document.querySelector(".page.on").id) < 0) {
+            i = 0;
+            showPage(pages[0] || "radar");
+          }
+          startRotate();
+        } else if (window.__storm) {
+          window.__storm = false;
+          startRotate();
+        }
+        pagesFromDock();
+        if (!keep.length) {
+          bar.className = "alert-ticker";
+          txt.setAttribute("data-hash", "");
+          frame.classList.remove("has-alert"); stackTickers();
+          writeBriefing();
+          return;
+        }
+        var isWarn = keep.some(function (f) {
+          return (((f.properties || {}).event || "").toLowerCase().indexOf("warning") >= 0);
+        });
+        var parts = keep.map(function (f) {
+          var p = f.properties || {};
+          var line = (p.event || "Alert") + ". " + (p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 280);
+          if (!/[.!?]$/.test(line)) line += ".";
+          return spaceSentences(line);
+        });
+        var body = parts.join("\u00a0".repeat(140));
+        bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
+        frame.classList.add("has-alert"); stackTickers();
+        setTicker(txt, body, 150);
+        writeBriefing();
+      }).catch(function () {});
+    }
+    pollAlerts();
+    setInterval(pollAlerts, 5 * 60 * 1000);
+
+    (function () {
+      var style = document.createElement("style");
+      style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--tick-w, 50%))); } }";
+      document.head.appendChild(style);
+      writeBriefing();
+      setInterval(writeBriefing, 15 * 60 * 1000);
+    })();
+  </script>
+</body>
+</html>
