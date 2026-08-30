@@ -37,7 +37,10 @@
     .feels { flex:1; min-width:0; text-align:right; }
     .sky { font-size:18px; line-height:1.45; color:#3d4a5c; margin:6px 0 16px; max-width:52rem; }
     .pills { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
-    .pill { display:block; text-align:center; border-radius:999px; padding:10px 8px; font-weight:700; color:#fff; font-size:14px; }
+    .pill { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; text-align:center; border-radius:16px; padding:8px 8px 9px; font-weight:700; color:#fff; font-size:14px; min-height:52px; }
+    .pill small { font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.88; font-weight:700; }
+    .pill b { font-size:15px; font-weight:800; line-height:1.15; }
+    .pill-key { font-size:12px; color:var(--muted); margin:0 0 10px; letter-spacing:.02em; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
     .hourly { display:flex; flex-wrap:nowrap; gap:0; padding:6px 4px; overflow:hidden; background:rgba(255,255,255,.42); border:1px solid var(--hair); border-radius:16px; margin-bottom:12px; }
@@ -160,10 +163,11 @@
         <h2 data-k="On the Key">Now</h2>
         <p class="sky" id="live-sky">Good morning. Mostly sunny in Englewood with a heat index near 102°. Afternoon storms are likely after 2 p.m. Beach and cart are best this morning before the storms build.</p>
         <div class="pills">
-          <span class="pill go" id="pill-beach">Beach …</span><span class="pill go" id="pill-cart">Cart …</span>
-          <span class="pill go" id="pill-boat">Boat …</span><span class="pill win" id="pill-courts">Courts …</span>
-          <span class="pill go" id="pill-rip">Rip …</span><span class="pill go" id="pill-craft">Craft …</span>
+          <span class="pill go" id="pill-beach"><small>Beach</small><b>Checking</b></span><span class="pill go" id="pill-rip"><small>Rip current</small><b>Checking</b></span>
+          <span class="pill go" id="pill-pool"><small>Pool</small><b>Checking</b></span><span class="pill go" id="pill-cart"><small>Golf cart</small><b>Checking</b></span>
+          <span class="pill go" id="pill-boat"><small>Boat</small><b>Checking</b></span><span class="pill win" id="pill-courts"><small>Courts</small><b>Checking</b></span>
         </div>
+        <p class="pill-key">Green = go now. Gold = wait or keep it short. Coral = don’t.</p>
         <div class="hourly">
           <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
           <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
@@ -1339,11 +1343,11 @@ Cart shop:</textarea>
         }).catch(function () {});
     }
     
-    function setPill(id, kind, label) {
+    function setPill(id, kind, title, detail) {
       var el = document.getElementById(id);
       if (!el) return;
       el.className = "pill " + kind;
-      el.textContent = label;
+      el.innerHTML = "<small>" + title + "</small><b>" + detail + "</b>";
     }
     function refreshExtras(hours, days) {
       var nowH = hours && hours[0] ? hours[0] : {};
@@ -1353,20 +1357,23 @@ Cart shop:</textarea>
       var windStr = nowH.windSpeed || "";
       var windMph = parseInt(windStr, 10) || 0;
       if (storm) {
-        setPill("pill-beach", "no", "Beach NO");
-        setPill("pill-cart", "no", "Cart NO");
-        setPill("pill-boat", "no", "Boat NO");
-        setPill("pill-courts", "no", "Courts NO");
+        setPill("pill-beach", "no", "Beach", "Don’t swim");
+        setPill("pill-cart", "no", "Golf cart", "Park it");
+        setPill("pill-boat", "no", "Boat", "Stay in");
+        setPill("pill-courts", "no", "Courts", "Stay off");
+        setPill("pill-pool", "no", "Pool", "Get out");
       } else if (rain >= 40 || windMph >= 18) {
-        setPill("pill-beach", "win", "Beach WINDOW");
-        setPill("pill-cart", "win", "Cart WINDOW");
-        setPill("pill-boat", "no", "Boat NO");
-        setPill("pill-courts", "win", "Courts WINDOW");
+        setPill("pill-beach", "win", "Beach", "Keep it short");
+        setPill("pill-cart", "win", "Golf cart", "Short trips");
+        setPill("pill-boat", "no", "Boat", "Stay in");
+        setPill("pill-courts", "win", "Courts", "Maybe later");
+        setPill("pill-pool", "win", "Pool", "If it’s not raining");
       } else {
-        setPill("pill-beach", "go", "Beach GO");
-        setPill("pill-cart", "go", "Cart GO");
-        setPill("pill-boat", windMph >= 15 ? "win" : "go", windMph >= 15 ? "Boat WINDOW" : "Boat GO");
-        setPill("pill-courts", "go", "Courts GO");
+        setPill("pill-beach", "go", "Beach", "Good to swim");
+        setPill("pill-cart", "go", "Golf cart", "Good to ride");
+        setPill("pill-boat", windMph >= 15 ? "win" : "go", "Boat", windMph >= 15 ? "Choppy" : "Good to launch");
+        setPill("pill-courts", "go", "Courts", "Good to play");
+        setPill("pill-pool", "go", "Pool", "Good to swim");
       }
       fetch("https://api.open-meteo.com/v1/forecast?latitude=26.96&longitude=-82.35&current=uv_index,wind_speed_10m,wind_gusts_10m&hourly=uv_index&forecast_days=1&wind_speed_unit=mph&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
@@ -1485,12 +1492,9 @@ Cart shop:</textarea>
       var stormy = hours && hours[0] && /thunder|rain|shower/i.test(hours[0].shortForecast || "");
       if (photo) photo.classList.toggle("on", !stormy);
       var ripTxt = (document.getElementById("live-rip") || {}).textContent || "";
-      var craftTxt = (document.getElementById("live-craft") || {}).textContent || "";
-      if (/high|warning|yes/i.test(ripTxt)) setPill("pill-rip", "no", "Rip HIGH");
-      else if (/moderate|advisory/i.test(ripTxt)) setPill("pill-rip", "win", "Rip MOD");
-      else setPill("pill-rip", "go", "Rip LOW");
-      if (/yes|warning/i.test(craftTxt)) setPill("pill-craft", "no", "Craft YES");
-      else setPill("pill-craft", "go", "Craft none");
+      if (/high|warning|yes/i.test(ripTxt)) setPill("pill-rip", "no", "Rip current", "Don’t swim");
+      else if (/moderate|advisory/i.test(ripTxt)) setPill("pill-rip", "win", "Rip current", "Be careful");
+      else setPill("pill-rip", "go", "Rip current", "Typical");
       if (hours && hours.length) {
         var slice = hours.slice(0, 3);
         var pops = slice.map(function (h) { return (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0; });
