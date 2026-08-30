@@ -98,6 +98,21 @@
     .pbar-scale { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:4px; }
     .pbar.uv .uv0 { background:#2a9d8f; flex:2; } .pbar.uv .uv1 { background:#c4a35a; flex:3; }
     .pbar.uv .uv2 { background:#e07a5f; flex:3; } .pbar.uv .uv3 { background:#1b2a4a; flex:3; }
+
+    html.dark body { background:#0c1018; }
+    html.dark .frame { background:#141a24; color:#f4efe6; }
+    html.dark header { background:#0b1018; }
+    html.dark .tile, html.dark .card, html.dark .day, html.dark .hour { background:#1c2432; }
+    html.dark .dock { background:#10161f; }
+    html.dark .dock button { color:#e8e2d6; }
+    html.dark .dock button.on { background:#2a3344; color:#fff; }
+    html.dark .ticker { background:#0b1018; }
+    html.dark .rowbtns button { background:#1c2432; border-color:#2a3344; color:#f4efe6; }
+    #live-heat { display:none; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#e07a5f; }
+    #live-heat.on { display:block; }
+    .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
+    iframe.lite { width:100%; height:40vh; border:0; border-radius:12px; background:#111; }
+
   </style>
 </head>
 <body>
@@ -110,7 +125,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div></div>
     </header>
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
@@ -119,6 +134,7 @@
         <div class="pills">
           <span class="pill go" id="pill-beach">Beach …</span><span class="pill go" id="pill-cart">Cart …</span>
           <span class="pill go" id="pill-boat">Boat …</span><span class="pill win" id="pill-courts">Courts …</span>
+          <span class="pill go" id="pill-rip">Rip …</span><span class="pill go" id="pill-craft">Craft …</span>
         </div>
         <div class="hourly">
           <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
@@ -146,6 +162,14 @@
           </div>
           <div class="card"><b>Rain event</b><span id="live-rain-ev">—</span>
             <div class="tide" id="rainev-chart"></div>
+          </div>
+        </div>
+        <div class="marine-graphs">
+          <div class="card"><b>Air quality</b><span id="live-aqi">—</span>
+            <div id="live-aqi-note" class="card" style="background:transparent;padding:0;margin:0">Englewood</div>
+          </div>
+          <div class="card"><b>Rain next 3 hr</b><span id="live-rain3">—</span>
+            <div class="tide" id="rain3-chart"></div>
           </div>
         </div>
         <div class="tiles">
@@ -196,6 +220,9 @@
           <div class="tile"><label>Gulf SST</label><strong id="live-sst">—</strong></div>
           <div class="tile"><label>Inlet water</label><strong id="live-wtemp">—</strong></div>
         </div>
+        <div class="card"><b>Gulf water history</b><span>Open-Meteo SST</span>
+          <div class="tide" id="wtemp-chart"></div>
+        </div>
         <div class="card"><b>Next tides</b><span id="live-tides-next">Loading…</span></div>
         <div class="card"><b>Coastal waters TBW</b><span id="live-coastal">Loading…</span></div>
         <div class="card"><b>Passes</b><span>Venice Inlet / Stump Pass — morning window. Afternoon storms are the ride home risk.</span></div>
@@ -236,7 +263,12 @@
       </section>
       <section id="house" class="page">
         <h2>House</h2>
-        <div class="card"><b>Occupied</b><span>No Fly / Arrive / Leave in range</span></div>
+        <div class="card"><b id="house-occ">Occupied</b><span id="house-seen">Last seen —</span></div>
+        <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
+        <div class="card"><b>Fly</b><span id="cal-fly">Drop a flight number on the Fly calendar.</span></div>
+        <div class="card"><b>Arrive FL</b><span id="cal-arrive">No Arrive FL event in range.</span></div>
+        <div class="card"><b>Leave FL</b><span id="cal-leave">No Leave FL event in range.</span></div>
+        <div class="card"><b>Next flight</b><span id="cal-flight">None stored. Type a flight on Villa if you want it pinned.</span></div>
       </section>
 
 
@@ -259,6 +291,39 @@
         <p><a href="https://www.foxnews.com/" target="_blank" rel="noopener">Open FoxNews.com</a> if the embed is blocked.</p>
         <iframe class="full" title="Fox News" src="https://www.foxnews.com/"></iframe>
       </section>
+      <section id="cane" class="page">
+        <h2>Tropical</h2>
+        <div class="card"><b>Atlantic / Gulf</b><span id="live-cane">Checking NHC…</span></div>
+        <img id="cane-img" alt="NHC 5-day outlook" style="width:100%;border-radius:12px;background:#111" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
+        <p><a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">NHC</a></p>
+      </section>
+      <section id="bolt" class="page">
+        <h2>Lightning</h2>
+        <div class="card"><b>Key</b><span id="live-bolt">If NWS mentions lightning, pool and cart go NO.</span></div>
+        <iframe class="lite" title="Lightning" src="https://map.blitzortung.org/#6/26.96/-82.35"></iframe>
+        <p id="pool-light">Pool: open unless a strike is close. Cart: same rule as Boat NO when thunder is in the hourly.</p>
+      </section>
+      <section id="villa" class="page">
+        <h2>Open / close</h2>
+        <div class="card"><b>Open villa</b>
+          <div class="check">
+            <label><input type="checkbox" data-list="open"> Water heater / breakers on</label>
+            <label><input type="checkbox" data-list="open"> AC to occupied set point</label>
+            <label><input type="checkbox" data-list="open"> Water main on, check for leaks</label>
+            <label><input type="checkbox" data-list="open"> Golf cart unplugged / charged</label>
+            <label><input type="checkbox" data-list="open"> TownSq / gate fob works</label>
+          </div>
+        </div>
+        <div class="card"><b>Close villa</b>
+          <div class="check">
+            <label><input type="checkbox" data-list="close"> Water heater off / breakers as listed</label>
+            <label><input type="checkbox" data-list="close"> AC to vacant set point</label>
+            <label><input type="checkbox" data-list="close"> Water main off if leaving 2+ weeks</label>
+            <label><input type="checkbox" data-list="close"> Cart plugged, trash out, perishables gone</label>
+            <label><input type="checkbox" data-list="close"> Lock lanai, sliders, garage, notify gate</label>
+          </div>
+        </div>
+      </section>
       <section id="contacts" class="page">
         <h2>Contacts</h2>
         <table>
@@ -270,6 +335,7 @@
           <tr><td>Castle after-hours</td><td>800-337-5850</td></tr>
           <tr><td>Club / gate</td><td>Add from TownSq</td></tr>
         </table>
+        <div class="card"><b>Hours (typical)</b><span>Gate 24/7. Pool / courts: community posted hours. Pool closes for lightning. Quiet hours on this board 10 p.m.–7 a.m. Eastern unless you tap a station.</span></div>
       </section>
     </main>
     <nav class="dock" id="dock">
@@ -284,6 +350,11 @@
       <button type="button" data-p="radio">Radio</button>
       <button type="button" data-p="news">Fox</button>
       <button type="button" data-p="contacts">Contacts</button>
+      <button type="button" data-p="cane">Cane</button>
+      <button type="button" data-p="bolt">Bolt</button>
+      <button type="button" data-p="villa">Villa</button>
+      <button type="button" id="stormbtn">Storm</button>
+      <button type="button" id="darkbtn">Dark</button>
     </nav>
     <div class="ticker-stack">
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
@@ -323,6 +394,12 @@
         return;
       }
       saveRadio(url);
+      if (inQuietHours() && !window.__forceRadio) {
+        audio.pause();
+        if (status) status.textContent = "Quiet hours 10 p.m.–7 a.m. Tap again to play anyway.";
+        window.__forceRadio = true;
+        return;
+      }
       audio.src = url;
       audio.volume = 0.18;
       if (status) status.textContent = "Starting " + (label || "station") + "…";
@@ -345,16 +422,69 @@
       else if (saved) btn = document.querySelector('.rowbtns button[data-stream="' + saved + '"]');
       if (!btn) btn = document.querySelector('.rowbtns button[data-stream*="tam949"]');
       if (!btn) return;
-      function start() { playStation(btn.getAttribute("data-stream"), btn.textContent); }
+      function start() {
+        if (inQuietHours()) { playStation("", "Mute"); return; }
+        playStation(btn.getAttribute("data-stream"), btn.textContent);
+      }
       start();
       document.addEventListener("pointerdown", start, { once: true, capture: true });
     })();
     function clock() {
       document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
     }
+
+    function inQuietHours() {
+      var h = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+      return h >= 22 || h < 7;
+    }
+    try {
+      if (localStorage.getItem("bw-dark") === "1") document.documentElement.classList.add("dark");
+    } catch (e) {}
+    var darkBtn = document.getElementById("darkbtn");
+    if (darkBtn) {
+      darkBtn.addEventListener("click", function () {
+        document.documentElement.classList.toggle("dark");
+        var on = document.documentElement.classList.contains("dark");
+        darkBtn.classList.toggle("on", on);
+        try { localStorage.setItem("bw-dark", on ? "1" : "0"); } catch (e) {}
+      });
+      darkBtn.classList.toggle("on", document.documentElement.classList.contains("dark"));
+    }
+    var stormBtn = document.getElementById("stormbtn");
+    window.__storm = false;
+    if (stormBtn) stormBtn.addEventListener("click", function () {
+      window.__storm = !window.__storm;
+      stormBtn.classList.toggle("on", window.__storm);
+      if (window.__storm) {
+        clearInterval(rot); clearTimeout(idle);
+        showPage("radar");
+      } else startRotate();
+    });
+    try {
+      localStorage.setItem("bw-seen", new Date().toISOString());
+      var seen = document.getElementById("house-seen");
+      if (seen) seen.textContent = "Last seen " + new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+    } catch (e) {}
+    document.querySelectorAll("input[data-list]").forEach(function (box) {
+      var key = "bw-" + box.getAttribute("data-list") + "-" + box.parentNode.textContent.trim();
+      try { box.checked = localStorage.getItem(key) === "1"; } catch (e) {}
+      box.addEventListener("change", function () {
+        try { localStorage.setItem(key, box.checked ? "1" : "0"); } catch (e) {}
+      });
+    });
+    (function tickerHold() {
+      var el = document.getElementById("ticktext");
+      if (!el) return;
+      var tmr, paused = false;
+      function freeze() { el.style.animationPlayState = paused ? "running" : "paused"; paused = !paused; }
+      el.style.pointerEvents = "auto";
+      el.addEventListener("pointerdown", function () { tmr = setTimeout(freeze, 550); });
+      el.addEventListener("pointerup", function () { clearTimeout(tmr); });
+    })();
     clock(); setInterval(clock, 15000);
-    var pages = ["now","tenday","radar","marine","sky","bw","eng","house","radio","news","contacts"], i = 0, rot, idle;
+    var pages = ["now","tenday","radar","marine","sky","bw","eng","house","radio","news","contacts","cane","bolt","villa"], i = 0, rot, idle;
     function startRotate() {
+      if (window.__storm) return;
       clearInterval(rot);
       rot = setInterval(function () { i = (i + 1) % pages.length; showPage(pages[i]); }, 15000);
     }
@@ -702,6 +832,61 @@
       }
       fillHoro("gemini", "live-horo-nick");
       fillHoro("aquarius", "live-horo-dayna");
+      var ripTxt = (document.getElementById("live-rip") || {}).textContent || "";
+      var craftTxt = (document.getElementById("live-craft") || {}).textContent || "";
+      if (/high|warning|yes/i.test(ripTxt)) setPill("pill-rip", "no", "Rip HIGH");
+      else if (/moderate|advisory/i.test(ripTxt)) setPill("pill-rip", "win", "Rip MOD");
+      else setPill("pill-rip", "go", "Rip LOW");
+      if (/yes|warning/i.test(craftTxt)) setPill("pill-craft", "no", "Craft YES");
+      else setPill("pill-craft", "go", "Craft none");
+      if (hours && hours.length) {
+        var slice = hours.slice(0, 3);
+        var pops = slice.map(function (h) { return (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0; });
+        var r3 = document.getElementById("live-rain3");
+        if (r3) r3.textContent = pops[0] + "% · " + pops[1] + "% · " + pops[2] + "%";
+        var pts = slice.map(function (h, idx) { return { t: idx, v: pops[idx] }; });
+        if (pts.length > 1) {
+          var box = document.getElementById("rain3-chart");
+          if (box) {
+            var d = pts.map(function (p, i) { return (i ? "L" : "M") + (10 + i * 95) + "," + (70 - p.v * 0.52); }).join(" ");
+            box.innerHTML = svgWrap('<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="' + d + '" fill="none" stroke="#4a90a4" stroke-width="3"/>');
+          }
+        }
+      }
+      fetch("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=26.96&longitude=-82.35&current=us_aqi,pm2_5")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var aqi = d.current && d.current.us_aqi;
+          var el = document.getElementById("live-aqi");
+          var note = document.getElementById("live-aqi-note");
+          if (el && aqi != null) {
+            var word = aqi <= 50 ? "Good" : aqi <= 100 ? "Moderate" : aqi <= 150 ? "Sensitive" : "Unhealthy";
+            el.textContent = Math.round(aqi) + " · " + word;
+          }
+          if (note && d.current && d.current.pm2_5 != null) note.textContent = "PM2.5 " + Math.round(d.current.pm2_5);
+        }).catch(function () {});
+      fetch("https://www.nhc.noaa.gov/CurrentStorms.json")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var el = document.getElementById("live-cane");
+          var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
+          if (el) el.textContent = storms.length ? storms.map(function (s) { return (s.name || s.id || "Storm") + " " + (s.classification || s.binNumber || ""); }).join(" · ") : "No active NHC storms in the file. Outlook map still updates.";
+        }).catch(function () {
+          var el = document.getElementById("live-cane");
+          if (el) el.textContent = "NHC list blocked — outlook graphic still loads.";
+        });
+      var bolt = document.getElementById("live-bolt");
+      var fx = ((hours && hours[0] && hours[0].shortForecast) || "") + " " + ((days && days[0] && days[0].detailedForecast) || "");
+      if (bolt) bolt.textContent = /thunder|lightning/i.test(fx) ? "Lightning in the forecast. Pool and cart NO until it clears." : "No lightning words in the current NWS Englewood forecast.";
+      fetch("https://marine-api.open-meteo.com/v1/marine?latitude=26.93&longitude=-82.37&hourly=sea_surface_temperature&past_days=1&forecast_days=1&temperature_unit=fahrenheit")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var hs = (d.hourly && d.hourly.time) || [];
+          var vs = (d.hourly && d.hourly.sea_surface_temperature) || [];
+          var pts = [];
+          for (var i = 0; i < hs.length; i++) if (vs[i] != null) pts.push({ t: new Date(hs[i]).getTime(), v: vs[i] });
+          if (pts.length) drawHistChart("wtemp-chart", pts, "#2a9d8f", 80, 92, "°");
+        }).catch(function () {});
     }
 
     function paintTemp(el, n) {
@@ -821,6 +1006,13 @@
           var skyEl = document.getElementById("live-sky");
           if (tempEl && tempF != null) { tempEl.innerHTML = tempF + "&deg;"; paintTemp(tempEl, tempF); }
           if (feelEl && tempF != null) { feelEl.innerHTML = tempF + "&deg;"; paintTemp(feelEl, tempF); }
+          var heatEl = document.getElementById("live-heat");
+          var hiVal = (obs.heatIndex && obs.heatIndex.value != null) ? Math.round(obs.heatIndex.value * 9/5 + 32) : tempF;
+          if (obs.heatIndex && obs.heatIndex.unitCode && /degF/.test(obs.heatIndex.unitCode)) hiVal = Math.round(obs.heatIndex.value);
+          if (heatEl) {
+            if (hiVal != null && hiVal >= 90) { heatEl.textContent = "Heat " + hiVal + "°"; heatEl.classList.add("on"); }
+            else heatEl.classList.remove("on");
+          }
           var windEl = document.getElementById("live-wind");
           var gustEl = document.getElementById("live-gusts");
           var rhEl = document.getElementById("live-rh");
