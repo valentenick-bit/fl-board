@@ -497,7 +497,9 @@ Cart shop:</textarea>
     function savedRadio() {
       try { return localStorage.getItem("bw-radio"); } catch (e) { return null; }
     }
-    function playStation(url, label) {
+    var NOAA_URL = "https://radio.weatherusa.net/NWR/KHB32.mp3";
+    function playStation(url, label, opts) {
+      opts = opts || {};
       var audio = document.getElementById("radioPlayer");
       var status = document.getElementById("radio-status");
       if (!audio) return;
@@ -507,19 +509,19 @@ Cart shop:</textarea>
       if (!url) {
         audio.pause();
         audio.removeAttribute("src");
-        saveRadio("");
+        if (!opts.keepSaved) saveRadio("");
         if (status) status.textContent = "Muted.";
         return;
       }
-      saveRadio(url);
-      if (inQuietHours() && !window.__forceRadio) {
+      if (!opts.keepSaved) saveRadio(url);
+      if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert) {
         audio.pause();
         if (status) status.textContent = "Quiet hours 10 p.m.–7 a.m. Tap again to play anyway.";
         window.__forceRadio = true;
         return;
       }
-      audio.src = url;
-      audio.volume = 0.18;
+      if (audio.src !== url) audio.src = url;
+      audio.volume = window.__nwrAlert ? 0.32 : 0.18;
       if (status) status.textContent = "Starting " + (label || "station") + "…";
       var play = audio.play();
       if (play && play.then) play.then(function () {
@@ -541,6 +543,10 @@ Cart shop:</textarea>
       if (!btn) btn = document.querySelector('.rowbtns button[data-stream*="tam949"]');
       if (!btn) return;
       function start() {
+        if (window.__nwrAlert) {
+          playStation(NOAA_URL, "NOAA Tampa (warning)", { keepSaved: true });
+          return;
+        }
         if (inQuietHours()) { playStation("", "Mute"); return; }
         playStation(btn.getAttribute("data-stream"), btn.textContent);
       }
@@ -1968,6 +1974,30 @@ Cart shop:</textarea>
           return /warning/i.test(((f.properties || {}).event || ""));
         });
         window.__wxRisk.warn = !!isWarnEarly;
+        (function syncNoaa(hasWarn) {
+          var audio = document.getElementById("radioPlayer");
+          var playing = audio && audio.getAttribute("src");
+          if (hasWarn) {
+            if (!window.__nwrAlert) {
+              var cur = (audio && audio.getAttribute("src")) || savedRadio() || "";
+              if (/KHB32|NWR|KEC38/i.test(cur)) cur = savedRadio() && !/KHB32|NWR|KEC38/i.test(savedRadio()) ? savedRadio() : "";
+              window.__nwrPrev = { url: cur };
+            }
+            window.__nwrAlert = true;
+            window.__forceRadio = true;
+            if (!playing || String(playing).indexOf("KHB32") < 0) {
+              playStation(NOAA_URL, "NOAA Tampa (warning)", { keepSaved: true });
+            }
+          } else if (window.__nwrAlert) {
+            window.__nwrAlert = false;
+            var prev = window.__nwrPrev || {};
+            window.__nwrPrev = null;
+            if (inQuietHours()) {
+              playStation("", "Mute", { keepSaved: true });
+              if (prev.url) saveRadio(prev.url);
+            } else playStation(prev.url || "", prev.url ? "previous station" : "Mute");
+          }
+        })(!!isWarnEarly);
         if (isWarnEarly && !window.__stormOff) {
           window.__storm = true;
           showPage("radar");
