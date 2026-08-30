@@ -79,6 +79,10 @@
     .break-ticker.on { display:block; }
     .ticker span, .alert-ticker span, .break-ticker span { display:inline-block; will-change:transform; }
     .dock { margin-bottom:0; flex-shrink:0; }
+    .dock-wrap { flex-shrink:0; }
+    .dock-more { background:#ddd4c4; }
+    .quiet-photo { width:100%; height:140px; object-fit:cover; border-radius:12px; margin:8px 0; display:none; }
+    .quiet-photo.on { display:block; }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
     .tenday { display:flex; flex-direction:column; gap:6px; margin:8px 0 12px; }
@@ -247,6 +251,7 @@
         <div class="card"><b>Watch / be aware</b>
           <span id="live-sky-watch">Updating…</span>
         </div>
+        <div class="card"><b>ISS over the Key</b><span id="live-iss">Loading passes…</span></div>
         <p><a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener">ISS</a> · <a href="https://nightsky.jpl.nasa.gov/planner" target="_blank" rel="noopener">NASA planner</a></p>
       </section>
       <section id="bw" class="page">
@@ -270,6 +275,17 @@
         <div class="card"><b>Arrive FL</b><span id="cal-arrive">No Arrive FL event in range.</span></div>
         <div class="card"><b>Leave FL</b><span id="cal-leave">No Leave FL event in range.</span></div>
         <div class="card"><b>Next flight</b><span id="cal-flight">None stored. Type a flight on Villa if you want it pinned.</span></div>
+        <div class="card"><b>Leave FL · cart</b><span>Plug the cart before you lock up. Leave it on the charger if you will be gone more than a night.</span></div>
+        <div class="card"><b>Trash / recycle</b><span>Sarasota County: garbage, recycle, and yard waste are the same weekday. Curb by 6 a.m. Confirm the BeachWalk day in TownSq. Bulk is by appointment with the hauler.</span></div>
+        <div class="card"><b>Vendors</b>
+          <span>Castle after-hours 800-337-5850. Tap to edit the rest — saved on this device.</span>
+          <textarea id="vendors" rows="4" style="width:100%;margin-top:8px;border:1px solid #d7cdbb;border-radius:8px;padding:8px;font:inherit">HVAC:
+Pest:
+Cart shop:</textarea>
+        </div>
+        <div class="card"><b>FPL</b><span id="live-fpl">Open Power Tracker for the Englewood feeder. County counts are on the map, not a public JSON feed.</span>
+          <p><a href="https://www.fpl.com/powertracker" target="_blank" rel="noopener">FPL Power Tracker</a></p>
+        </div>
       </section>
 
 
@@ -301,8 +317,15 @@
       <section id="bolt" class="page">
         <h2>Lightning</h2>
         <div class="card"><b>Key</b><span id="live-bolt">If NWS mentions lightning, pool and cart go NO.</span></div>
+        <div class="card"><b>Distance class</b><span id="live-bolt-dist">No official mile count without a strike API. Class comes from NWS products.</span></div>
         <iframe class="lite" title="Lightning" src="https://map.blitzortung.org/#6/26.96/-82.35"></iframe>
         <p id="pool-light">Pool: open unless a strike is close. Cart: same rule as Boat NO when thunder is in the hourly.</p>
+      </section>
+      <section id="traffic" class="page">
+        <h2>Traffic</h2>
+        <div class="card"><b>Drives</b><span>I-75 to PGD / SRQ · US-41 through Venice / Englewood. Tap the map. Live speeds from FL511.</span></div>
+        <iframe class="lite" title="FL511" src="https://fl511.com/map/EmbeddedMap?lat=27.00&lng=-82.36&zoom=10&layers=TrafficSpeeds,Incidents,Congestion"></iframe>
+        <p><a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a> · <a href="https://www.google.com/maps/dir/?api=1&destination=Sarasota+Bradenton+International+Airport" target="_blank" rel="noopener">To SRQ</a> · <a href="https://www.google.com/maps/dir/?api=1&destination=Punta+Gorda+Airport" target="_blank" rel="noopener">To PGD</a></p>
       </section>
       <section id="villa" class="page">
         <h2>Open / close</h2>
@@ -339,6 +362,7 @@
         <div class="card"><b>Hours (typical)</b><span>Gate 24/7. Pool / courts: community posted hours. Pool closes for lightning. Quiet hours on this board 10 p.m.–7 a.m. Eastern unless you tap a station.</span></div>
       </section>
     </main>
+    <div class="dock-wrap">
     <nav class="dock" id="dock">
       <button type="button" data-p="now" class="on">Now</button>
       <button type="button" data-p="tenday">10-day</button>
@@ -349,14 +373,19 @@
       <button type="button" data-p="eng">Englewood</button>
       <button type="button" data-p="house">House</button>
       <button type="button" data-p="radio">Radio</button>
-      <button type="button" data-p="news">Fox</button>
-      <button type="button" data-p="contacts">Contacts</button>
+      <button type="button" data-p="traffic">Roads</button>
+    </nav>
+    <nav class="dock dock-more" id="dock-more">
       <button type="button" data-p="cane">Cane</button>
       <button type="button" data-p="bolt">Bolt</button>
+      <button type="button" data-p="news">Fox</button>
+      <button type="button" data-p="contacts">Contacts</button>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="stormbtn">Storm</button>
       <button type="button" id="darkbtn">Dark</button>
+      <button type="button" id="muteall">Mute all</button>
     </nav>
+    </div>
     <div class="ticker-stack">
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
     <div class="alert-ticker" id="alertbar"><span id="alerttext"></span></div>
@@ -366,13 +395,15 @@
   <script>
     function showPage(id) {
       document.querySelectorAll(".page").forEach(function (p) { p.classList.toggle("on", p.id === id); });
-      document.querySelectorAll("#dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
+      document.querySelectorAll(".dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
       var idx = pages.indexOf(id);
       if (idx >= 0) i = idx;
     }
-    document.getElementById("dock").addEventListener("click", function (e) {
-      var btn = e.target.closest("button"); if (!btn) return;
-      var id = btn.getAttribute("data-p"); if (id) showPage(id);
+    document.querySelectorAll(".dock").forEach(function (d) {
+      d.addEventListener("click", function (e) {
+        var btn = e.target.closest("button"); if (!btn) return;
+        var id = btn.getAttribute("data-p"); if (id) showPage(id);
+      });
     });
     function saveRadio(url) {
       try { localStorage.setItem("bw-radio", url == null ? "" : url); } catch (e) {}
@@ -453,8 +484,17 @@
     }
     var stormBtn = document.getElementById("stormbtn");
     window.__storm = false;
+    var muteAll = document.getElementById("muteall");
+    if (muteAll) muteAll.addEventListener("click", function () {
+      window.__forceRadio = false;
+      playStation("", "Mute");
+      var tick = document.getElementById("ticktext");
+      if (tick) tick.style.animationPlayState = "paused";
+      muteAll.classList.add("on");
+    });
     if (stormBtn) stormBtn.addEventListener("click", function () {
       window.__storm = !window.__storm;
+      window.__stormOff = !window.__storm;
       stormBtn.classList.toggle("on", window.__storm);
       if (window.__storm) {
         clearInterval(rot); clearTimeout(idle);
@@ -482,20 +522,46 @@
       el.addEventListener("pointerdown", function () { tmr = setTimeout(freeze, 550); });
       el.addEventListener("pointerup", function () { clearTimeout(tmr); });
     })();
+        (function vendors() {
+      var el = document.getElementById("vendors");
+      if (!el) return;
+      try { var s = localStorage.getItem("bw-vendors"); if (s) el.value = s; } catch (e) {}
+      el.addEventListener("change", function () { try { localStorage.setItem("bw-vendors", el.value); } catch (e) {} });
+    })();
     clock(); setInterval(clock, 15000);
-    var pages = ["now","tenday","radar","marine","sky","bw","eng","house","radio","news","contacts","cane","bolt","villa"], i = 0, rot, idle;
+    var pages = ["now","tenday","radar","marine","sky","bw","eng","house","radio","traffic"], i = 0, rot, idle;
     function startRotate() {
       if (window.__storm) return;
       clearInterval(rot);
-      rot = setInterval(function () { i = (i + 1) % pages.length; showPage(pages[i]); }, 15000);
+      rot = setInterval(function () {
+        pages = rotateList();
+        if (!pages.length) return;
+        i = (i + 1) % pages.length;
+        showPage(pages[i]);
+      }, 15000);
     }
-    document.getElementById("dock").addEventListener("click", function () {
-      clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
+    document.querySelectorAll(".dock").forEach(function (d) {
+      d.addEventListener("click", function () {
+        clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
+      });
     });
 
+    window.__wxRisk = { alert: false, cane: false, bolt: false };
+    function allDockPages() {
+      return Array.from(document.querySelectorAll(".dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); });
+    }
+    function rotateList() {
+      return allDockPages().filter(function (id) {
+        if (id === "news" || id === "contacts" || id === "villa") return false;
+        if (id === "cane") return !!window.__wxRisk.cane;
+        if (id === "bolt") return !!(window.__wxRisk.bolt || window.__wxRisk.alert);
+        return true;
+      });
+    }
     function pagesFromDock() {
-      pages = Array.from(document.querySelectorAll("#dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); });
-      if (pages[i] && pages.indexOf(pages[i]) >= 0) i = pages.indexOf(document.querySelector(".page.on") ? document.querySelector(".page.on").id : pages[0]);
+      pages = rotateList();
+      var on = document.querySelector(".page.on");
+      i = pages.indexOf(on ? on.id : "");
       if (i < 0) i = 0;
     }
     (function restoreDockOrder() {
@@ -510,9 +576,10 @@
         var b = dock.querySelector('button[data-p="' + id + '"]');
         if (b) dock.appendChild(b);
       });
-      ["stormbtn","darkbtn"].forEach(function (id) {
+      ["stormbtn","darkbtn","muteall"].forEach(function (id) {
+        var more = document.getElementById("dock-more") || dock;
         var b = document.getElementById(id);
-        if (b) dock.appendChild(b);
+        if (b) more.appendChild(b);
       });
       pagesFromDock();
     })();
@@ -907,6 +974,27 @@
       }
       fillHoro("gemini", "live-horo-nick");
       fillHoro("aquarius", "live-horo-dayna");
+      fetch("https://iss-api.polluxlabs.io/iss-pass?lat=26.96&lon=-82.35")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var el = document.getElementById("live-iss");
+          var list = d.passes || d.response || d || [];
+          if (!Array.isArray(list)) list = list.passes || [];
+          if (el) {
+            if (!list.length) { el.textContent = "No pass list yet. Use NASA Spot the Station."; return; }
+            el.textContent = list.slice(0, 3).map(function (p) {
+              var when = new Date((p.risetime || p.start || p.start_time || 0) * (String(p.risetime || "").length === 10 ? 1000 : 1));
+              if (p.start_time) when = new Date(p.start_time);
+              return when.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + (p.duration ? " · " + Math.round(p.duration/60) + " min" : "");
+            }).join(" · ");
+          }
+        }).catch(function () {
+          var el = document.getElementById("live-iss");
+          if (el) el.textContent = "Pass API blocked. Use NASA Spot the Station.";
+        });
+      var photo = document.getElementById("quiet-photo");
+      var stormy = hours && hours[0] && /thunder|rain|shower/i.test(hours[0].shortForecast || "");
+      if (photo) photo.classList.toggle("on", !stormy);
       var ripTxt = (document.getElementById("live-rip") || {}).textContent || "";
       var craftTxt = (document.getElementById("live-craft") || {}).textContent || "";
       if (/high|warning|yes/i.test(ripTxt)) setPill("pill-rip", "no", "Rip HIGH");
@@ -945,6 +1033,13 @@
         .then(function (d) {
           var el = document.getElementById("live-cane");
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
+          window.__wxRisk.cane = storms.length > 0;
+          pagesFromDock();
+          if (storms.length && !window.__stormOff) {
+            window.__storm = true;
+            var sb = document.getElementById("stormbtn");
+            if (sb) sb.classList.add("on");
+          }
           if (el) el.textContent = storms.length ? storms.map(function (s) { return (s.name || s.id || "Storm") + " " + (s.classification || s.binNumber || ""); }).join(" · ") : "No active NHC storms in the file. Outlook map still updates.";
         }).catch(function () {
           var el = document.getElementById("live-cane");
@@ -964,6 +1059,13 @@
         }).catch(function () {});
     }
 
+
+    function heatIndexF(t, rh) {
+      if (t == null || rh == null) return t;
+      if (t < 80) return Math.round(t);
+      var hi = -42.379 + 2.04901523*t + 10.14333127*rh - 0.22475541*t*rh - 0.00683783*t*t - 0.05481717*rh*rh + 0.00122874*t*t*rh + 0.00085282*t*rh*rh - 0.00000199*t*t*rh*rh;
+      return Math.round(hi);
+    }
     function paintTemp(el, n) {
       if (!el || n == null || isNaN(n)) return;
       var c = "#f7f1e6";
@@ -1080,7 +1182,11 @@
           var feelEl = document.getElementById("live-feels");
           var skyEl = document.getElementById("live-sky");
           if (tempEl && tempF != null) { tempEl.innerHTML = tempF + "&deg;"; paintTemp(tempEl, tempF); }
-          if (feelEl && tempF != null) { feelEl.innerHTML = tempF + "&deg;"; paintTemp(feelEl, tempF); }
+          var feelF = heatIndexF(tempF, rh);
+          if (obs.heatIndex && obs.heatIndex.value != null) {
+            feelF = /degC/.test(obs.heatIndex.unitCode || "") ? Math.round(obs.heatIndex.value * 9/5 + 32) : Math.round(obs.heatIndex.value);
+          }
+          if (feelEl && feelF != null) { feelEl.innerHTML = feelF + "&deg;"; paintTemp(feelEl, feelF); }
           var heatEl = document.getElementById("live-heat");
           var hiVal = (obs.heatIndex && obs.heatIndex.value != null) ? Math.round(obs.heatIndex.value * 9/5 + 32) : tempF;
           if (obs.heatIndex && obs.heatIndex.unitCode && /degF/.test(obs.heatIndex.unitCode)) hiVal = Math.round(obs.heatIndex.value);
@@ -1289,6 +1395,25 @@
           var ev = ((f.properties || {}).event || "").toLowerCase();
           return ev.indexOf("warning") >= 0 || ev.indexOf("watch") >= 0;
         });
+        window.__wxRisk.alert = !!keep.length;
+        window.__wxRisk.bolt = keep.some(function (f) {
+          var ev = ((f.properties || {}).event || "").toLowerCase();
+          return ev.indexOf("thunder") >= 0 || ev.indexOf("lightning") >= 0 || ev.indexOf("severe") >= 0;
+        });
+        var dist = document.getElementById("live-bolt-dist");
+        if (dist) {
+          if (!keep.length) dist.textContent = "No active watch/warning. Treat as far / none unless the map shows a flash.";
+          else if (keep.some(function (f) { return /warning/i.test((f.properties || {}).event || ""); })) dist.textContent = "Warning in effect — treat as close / overhead risk for the Key. Stay off the pool and cart.";
+          else dist.textContent = "Watch in the county — strikes possible within tens of miles. Not a measured distance.";
+        }
+        if (keep.length && !window.__stormOff) {
+          window.__storm = true;
+          var sb = document.getElementById("stormbtn");
+          if (sb) sb.classList.add("on");
+          showPage("radar");
+          clearInterval(rot);
+        }
+        pagesFromDock();
         if (!keep.length) {
           bar.className = "alert-ticker";
           frame.classList.remove("has-alert"); stackTickers();
