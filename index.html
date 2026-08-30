@@ -41,6 +41,8 @@
     .pill small { font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.88; font-weight:700; }
     .pill b { font-size:15px; font-weight:800; line-height:1.15; }
     .pill-key { font-size:12px; color:var(--muted); margin:0 0 10px; letter-spacing:.02em; }
+    .ent-h { margin:8px 0 6px; font-family:"Source Sans 3",system-ui,sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:800; }
+    #ent-bw .card, #ent-eng .card { padding:8px 10px; margin-bottom:6px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
     .hourly { display:flex; flex-wrap:nowrap; gap:0; padding:6px 4px; overflow:hidden; background:rgba(255,255,255,.42); border:1px solid var(--hair); border-radius:16px; margin-bottom:12px; }
@@ -284,18 +286,11 @@
       </section>
       <section id="ent" class="page">
         <h2 data-k="On and off the Key">Entertainment</h2>
-        <div id="ent-list">
-          <div class="card music"><span class="place-tag">SandBar Tiki</span><span class="music-tag">Live music</span><b>Sun Aug 30 1–5p · Cabana Dogs @ SandBar Tiki</b><span>SandBar Tiki & Grille, Beach Rd</span></div>
-          <div class="card"><span class="place-tag">BeachWalk</span><b>Tue Sep 1 5:30p · French Atelier & Bakery Pop-Up</b><span>Capri Clubhouse</span></div>
-          <div class="card music"><span class="place-tag">Downtown Wellen</span><span class="music-tag">Live music</span><b>Fri Sep 4 6p · TL Jentgens + Fireworks</b><span>Downtown Wellen</span></div>
-          <div class="card"><span class="place-tag">Downtown Venice</span><b>Sat–Mon Sep 5–7 · Venice Craft Festival</b><span>Downtown Venice</span></div>
-          <div class="card"><span class="place-tag">Indian Mound Park</span><b>Sat Sep 5 9a · Pioneer Days boat races</b><span>Indian Mound Park</span></div>
-          <div class="card music"><span class="place-tag">Artur's</span><span class="music-tag">Live music</span><b>Sat Sep 5 5:30p · Johnny D @ Artur's</b><span>Englewood</span></div>
-          <div class="card music"><span class="place-tag">Troll Music</span><span class="music-tag">Live music</span><b>Sat Sep 5 7:30p · Storm Riders</b><span>Troll Music, Venice</span></div>
-          <div class="card music"><span class="place-tag">BeachWalk</span><span class="music-tag">Live music</span><b>Sun Sep 6 1–5p · Labor Day Celebration</b><span>Pool / High Tide · DJ</span></div>
-          <div class="card"><span class="place-tag">Pioneer Park</span><b>Mon Sep 7 9a · Pioneer Days Parade</b><span>Dearborn / Pioneer Park</span></div>
-          <div class="card"><span class="place-tag">BeachWalk</span><b>Mon Sep 7 5–8p · Labor Day Food Trucks</b><span>Capri · Currywurst + Shaz Shack</span></div>
-        </div>
+        <p id="ent-count" class="pill-key">Loading BeachWalk and Englewood calendars…</p>
+        <h3 class="ent-h">BeachWalk</h3>
+        <div id="ent-bw"></div>
+        <h3 class="ent-h">Englewood</h3>
+        <div id="ent-eng"></div>
         <p>
           <a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">BeachWalk calendar</a>
           ·
@@ -866,7 +861,7 @@ Cart shop:</textarea>
           out.push({ when: when, sum: sum, loc: loc, desc: desc });
         });
         out.sort(function (a,b) { return a.when - b.when; });
-        return out.slice(0, 24);
+        return out.slice(0, 40);
       }
       function isLiveMusic(sum, loc, desc) {
         var s = [sum, loc, desc].join(" ").toLowerCase();
@@ -905,12 +900,15 @@ Cart shop:</textarea>
       function paint() {
         var merged = bag.bw.concat(bag.eng);
         merged.sort(function (a, b) { return a.when - b.when; });
-        if (!merged.length) return;
-        render("ent-list", merged.slice(0, 20));
+        if (!bag.bw.length && !bag.eng.length) return;
+        render("ent-bw", bag.bw.slice(0, 8));
+        render("ent-eng", bag.eng.slice(0, 8));
+        var note = document.getElementById("ent-count");
+        if (note) note.textContent = bag.bw.length + " BeachWalk · " + bag.eng.length + " Englewood";
         try {
           localStorage.setItem("bw-ent-cache", JSON.stringify({
-            bw: bag.bw.slice(0, 24),
-            eng: bag.eng.slice(0, 24)
+            bw: bag.bw.slice(0, 40),
+            eng: bag.eng.slice(0, 40)
           }));
         } catch (err) {}
         if (typeof writeBriefing === "function") writeBriefing();
@@ -927,7 +925,8 @@ Cart shop:</textarea>
           if (i >= urls.length) { if (done) done(); return; }
           fetch(urls[i]).then(function (r) { return r.text(); }).then(function (txt) {
             if (txt && txt.indexOf("BEGIN:VEVENT") >= 0) {
-              bag[key] = parseIcs(txt).map(function (e) { e.inside = inside; return e; });
+              var parsed = parseIcs(txt).map(function (e) { e.inside = inside; return e; });
+              if (parsed.length) bag[key] = parsed;
               paint();
               if (done) done();
             } else next(i + 1);
@@ -936,9 +935,9 @@ Cart shop:</textarea>
         next(0);
       }
       paint();
-      load(BW, "bw", true);
       load(ENG, "eng", false);
-      setInterval(function () { load(BW, "bw", true); load(ENG, "eng", false); }, 15 * 60 * 1000);
+      load(BW, "bw", true);
+      setInterval(function () { load(ENG, "eng", false); load(BW, "bw", true); }, 15 * 60 * 1000);
     })();
 
     (function extraDock() {
@@ -2022,9 +2021,13 @@ Cart shop:</textarea>
         return "<b>" + title + ".</b> " + body;
       }
       function events() {
-        var box = document.getElementById("ent-list");
-        if (!box) return ["No events loaded yet."];
-        var bits = Array.prototype.slice.call(box.querySelectorAll(".card"), 0, 6).map(function (c) {
+        var box = document.getElementById("ent-bw") || document.getElementById("ent-list");
+        var box2 = document.getElementById("ent-eng");
+        var nodes = [];
+        if (box) nodes = nodes.concat(Array.prototype.slice.call(box.querySelectorAll(".card")));
+        if (box2) nodes = nodes.concat(Array.prototype.slice.call(box2.querySelectorAll(".card")));
+        if (!nodes.length) return ["No events loaded yet."];
+        var bits = nodes.slice(0, 8).map(function (c) {
           var b = c.querySelector("b");
           if (!b) return "";
           var line = b.textContent.replace(/\s+/g, " ").trim();
