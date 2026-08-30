@@ -516,11 +516,26 @@ Cart shop:</textarea>
       start();
       document.addEventListener("pointerdown", start, { once: true, capture: true });
     })();
+    function greetWord() {
+      var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+      if (hr < 12) return "Good morning.";
+      if (hr < 17) return "Good afternoon.";
+      return "Good evening.";
+    }
+    function stampGreet() {
+      var el = document.getElementById("live-sky");
+      if (!el) return;
+      var g = greetWord();
+      var t = el.textContent || "";
+      if (/^(Good morning|Good afternoon|Good evening)\./i.test(t)) el.textContent = t.replace(/^(Good morning|Good afternoon|Good evening)\./i, g);
+      else el.textContent = g + " " + t;
+    }
     function clock() {
       document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
       var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
       var head = document.querySelector("header");
       if (head) head.classList.toggle("night", hr >= 22 || hr < 6);
+      stampGreet();
     }
 
     function inQuietHours() {
