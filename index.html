@@ -305,9 +305,6 @@
 Pest:
 Cart shop:</textarea>
         </div>
-        <div class="card"><b>FPL</b><span id="live-fpl">Open Power Tracker for the Englewood feeder. County counts are on the map, not a public JSON feed.</span>
-          <p><a href="https://www.fpl.com/powertracker" target="_blank" rel="noopener">FPL Power Tracker</a></p>
-        </div>
       </section>
 
 
@@ -402,17 +399,44 @@ Cart shop:</textarea>
         </div>
       </section>
       <section id="contacts" class="page">
-        <h2>Contacts</h2>
+        <h2>Emergency</h2>
+        <div class="card"><b>Now</b><span id="live-prep">Checking watches for the Key…</span></div>
         <table>
-          <tr><td>Emergency</td><td><a href="tel:911">911</a></td></tr>
+          <tr><td>Life emergency</td><td><a href="tel:911">911</a></td></tr>
           <tr><td>Sheriff non-emergency</td><td><a href="tel:9418615800">941-861-5800</a></td></tr>
-          <tr><td>County</td><td>311</td></tr>
-          <tr><td>FPL</td><td><a href="tel:8004688243">800-468-8243</a></td></tr>
+          <tr><td>Sarasota County / 311</td><td><a href="tel:9418615000">941-861-5000</a> · 311</td></tr>
+          <tr><td>Charlotte EM</td><td><a href="tel:9418334000">941-833-4000</a></td></tr>
           <tr><td>Poison</td><td><a href="tel:8002221222">800-222-1222</a></td></tr>
-          <tr><td>Castle after-hours</td><td>800-337-5850</td></tr>
-          <tr><td>Club / gate</td><td>Add from TownSq</td></tr>
+          <tr><td>Castle after-hours</td><td><a href="tel:8003375850">800-337-5850</a></td></tr>
         </table>
-        <div class="card"><b>Hours (typical)</b><span>Gate 24/7. Pool / courts: community posted hours. Pool closes for lightning. Quiet hours on this board 10 p.m.–7 a.m. Eastern unless you tap a station.</span></div>
+        <div class="card"><b>Power · FPL</b>
+          <span id="live-fpl">Outage: 800-468-8243. Tracker shows county totals, not a public JSON feeder count.</span>
+          <p><a href="tel:8004688243">800-4-OUTAGE</a> · <a href="https://www.fpl.com/powertracker" target="_blank" rel="noopener">FPL Power Tracker</a></p>
+        </div>
+        <div class="card"><b>Gas · TECO Peoples Gas</b>
+          <span>Smell gas — leave the villa, then call. Don’t flip switches.</span>
+          <p><a href="tel:8778326747">877-832-6747</a> · Sarasota office 941-342-4027</p>
+        </div>
+        <div class="card"><b>Water · Englewood Water District</b>
+          <span>Boil-water and main-break alerts. Text EWDAlerts to 24639.</span>
+          <p><a href="tel:9414743217">941-474-3217</a> · <a href="https://englewoodwater.com/" target="_blank" rel="noopener">englewoodwater.com</a></p>
+        </div>
+        <div class="card"><b>Internet · Frontier</b>
+          <span>Fiber outages are common on the Key after storms. Have a phone hotspot ready.</span>
+          <p><a href="tel:18009218101">800-921-8101</a> · <a href="https://frontier.com/helpcenter" target="_blank" rel="noopener">Frontier help</a></p>
+        </div>
+        <table>
+          <tr><td>FEMA disaster help</td><td><a href="tel:8006213362">800-621-3362</a></td></tr>
+          <tr><td>Flood insurance</td><td><a href="tel:8882255353">888-225-5353</a></td></tr>
+          <tr><td>FL Emergency Info</td><td><a href="tel:8003423557">800-342-3557</a></td></tr>
+          <tr><td>Red Cross Sarasota</td><td><a href="tel:9413799300">941-379-9300</a></td></tr>
+          <tr><td>Suncoast 211</td><td><a href="tel:211">211</a></td></tr>
+          <tr><td>Special needs registry</td><td>941-861-5000 / 311</td></tr>
+          <tr><td>Animal services</td><td><a href="tel:9418619500">941-861-9500</a></td></tr>
+          <tr><td>Roads</td><td>511</td></tr>
+        </table>
+        <div class="card"><b>Always on the Key</b><span>3 days water, meds, cash, paper maps, full cart and truck tanks, NOAA radio or this board, and a written out-of-state contact. Know your evacuation zone on scgov.net before a watch.</span></div>
+        <p><a href="https://www.scgov.net/government/emergency-services/emergency-management-4420" target="_blank" rel="noopener">Sarasota EM</a> · <a href="https://www.fema.gov/" target="_blank" rel="noopener">FEMA</a> · <a href="https://floridadisaster.org/" target="_blank" rel="noopener">FloridaDisaster</a></p>
       </section>
     </main>
     <div class="dock-wrap">
@@ -433,7 +457,7 @@ Cart shop:</textarea>
       <button type="button" data-p="bolt">Bolt</button>
       <button type="button" data-p="news">Fox</button>
       <button type="button" data-p="wink">WINK</button>
-      <button type="button" data-p="contacts">Contacts</button>
+      <button type="button" data-p="contacts">Emergency</button>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="darkbtn">Dark</button>
       <button type="button" id="refreshbtn">Refresh</button>
@@ -1915,6 +1939,19 @@ Cart shop:</textarea>
           nwrA.textContent = keep.length
             ? keep.map(function (f) { return (f.properties || {}).event || "Alert"; }).join(" · ")
             : "No watch or warning for the Englewood point right now.";
+        }
+        var prep = document.getElementById("live-prep");
+        if (prep) {
+          var ev = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
+          var tip = "No watch or warning on the Englewood point. Keep 3 days of water, meds, and a full tank anyway.";
+          if (/hurricane|tropical storm|storm surge/.test(ev)) tip = "Tropical watch or warning. Know your zone on scgov.net. Fuel the truck and cart. Ice, water, meds, cash. Bring in chairs. Leave if they call your zone.";
+          else if (/tornado/.test(ev)) tip = "Tornado watch or warning. Interior room, no windows. Stay off the cart and pool.";
+          else if (/flash flood|flood/.test(ev)) tip = "Flood threat. Do not drive standing water. Move the truck to higher ground.";
+          else if (/heat/.test(ev)) tip = "Heat warning. AC first. Midday indoor only. Check on neighbors.";
+          else if (/rip/.test(ev)) tip = "Rip current. Swim only near a lifeguard. If pulled out, swim parallel to the beach.";
+          else if (/thunder|severe|wind/.test(ev)) tip = "Severe weather. Off the pool and cart. Interior room if a warning hits.";
+          else if (keep.length) tip = keep.map(function (f) { return (f.properties || {}).event; }).join(" · ") + ". Stay inside until it expires.";
+          prep.textContent = tip;
         }
         window.__wxRisk.alert = !!keep.length;
         window.__wxRisk.bolt = keep.some(function (f) {
