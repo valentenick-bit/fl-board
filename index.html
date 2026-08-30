@@ -340,6 +340,19 @@ Cart shop:</textarea>
           <p style="margin:8px 0 0"><b>SO / Venice PD.</b> Sarasota County Sheriff, Venice Police, and North Port Police.</p>
           <p style="margin:8px 0 0"><b>EAFD / South Fire.</b> Englewood, Nokomis, and Venice fire.</p>
         </div>
+        <div class="card">
+          <b>NOAA Weather Radio</b>
+          <span>Englewood sits on the Sarasota / Charlotte line. Fort Myers WXK83 and Tampa KHB32 are the streams that cover the Key. SAME: Sarasota 012115 · Charlotte 012015.</span>
+          <div class="rowbtns">
+            <button type="button" data-stream="https://radio.weatherusa.net/NWR/WXK83.mp3">NOAA Fort Myers</button>
+            <button type="button" data-stream="https://radio.weatherusa.net/NWR/KHB32.mp3">NOAA Tampa</button>
+            <button type="button" data-stream="https://broadcastify.cdnstream1.com/43384">NOAA WXK83 feed</button>
+          </div>
+          <p style="margin:8px 0 0"><b>NOAA Fort Myers (WXK83 162.475).</b> Charlotte Harbor, south Englewood, Stump Pass. Weather, marine, and warnings.</p>
+          <p style="margin:8px 0 0"><b>NOAA Tampa (KHB32 162.550).</b> Sarasota County and the Key. Weather and warnings.</p>
+          <p style="margin:8px 0 0"><b>Warnings now.</b> <span id="live-nwr-alert">Checking NWS for Englewood…</span></p>
+          <p style="margin:8px 0 0"><b>Marine now.</b> <span id="live-nwr-marine">Coastal waters update with the Marine page.</span></p>
+        </div>
       </section>
       <section id="news" class="page">
         <h2>Fox News</h2>
@@ -1100,6 +1113,18 @@ Cart shop:</textarea>
       var windEl = document.getElementById("live-venf-wind");
       var gustEl = document.getElementById("live-venf-gust");
       var coast = document.getElementById("live-coastal");
+      var nwrM = document.getElementById("live-nwr-marine");
+      fetch("https://api.weather.gov/zones/forecast/GMZ856/forecast", { headers: { "Accept": "application/geo+json" } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var per = ((((d || {}).properties || {}).periods) || [])[0] || {};
+          var line = ((per.name || "Coastal waters") + ". " + (per.detailedForecast || per.shortForecast || "")).replace(/\s+/g, " ").trim();
+          if (line.length > 280) line = line.slice(0, 277).replace(/\s+\S*$/, "") + ".";
+          if (coast && line) coast.textContent = line;
+          if (nwrM && line) nwrM.textContent = line;
+        }).catch(function () {
+          if (nwrM) nwrM.textContent = "Coastal waters Englewood to Bonita Beach — see Marine page if this is blank.";
+        });
       if (windEl && document.getElementById("live-wind")) windEl.textContent = document.getElementById("live-wind").textContent;
       if (gustEl && document.getElementById("live-gusts")) gustEl.textContent = document.getElementById("live-gusts").textContent;
       fetch("https://marine-api.open-meteo.com/v1/marine?latitude=26.93&longitude=-82.37&current=sea_surface_temperature&temperature_unit=fahrenheit")
@@ -1847,6 +1872,12 @@ Cart shop:</textarea>
           var ev = ((f.properties || {}).event || "").toLowerCase();
           return ev.indexOf("warning") >= 0 || ev.indexOf("watch") >= 0;
         });
+        var nwrA = document.getElementById("live-nwr-alert");
+        if (nwrA) {
+          nwrA.textContent = keep.length
+            ? keep.map(function (f) { return (f.properties || {}).event || "Alert"; }).join(" · ")
+            : "No watch or warning for the Englewood point right now.";
+        }
         window.__wxRisk.alert = !!keep.length;
         window.__wxRisk.bolt = keep.some(function (f) {
           var ev = ((f.properties || {}).event || "").toLowerCase();
