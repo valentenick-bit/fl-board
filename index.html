@@ -327,8 +327,9 @@ Cart shop:</textarea>
       <section id="cane" class="page">
         <h2>Tropical</h2>
         <div class="card"><b>Atlantic / Gulf</b><span id="live-cane">Checking NHC…</span></div>
-        <img id="cane-img" alt="NHC 5-day outlook" style="width:100%;border-radius:12px;background:#111" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
-        <p><a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">NHC</a></p>
+        <img id="cane-img-2d" alt="NHC Atlantic 2-day outlook" style="width:100%;border-radius:12px;background:#111;margin-bottom:8px" src="https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png"/>
+        <img id="cane-img" alt="NHC Atlantic 5-day outlook" style="width:100%;border-radius:12px;background:#111" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
+        <p><a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener">NHC Atlantic / Gulf outlook</a></p>
       </section>
       <section id="bolt" class="page">
         <h2>Lightning</h2>
@@ -400,6 +401,7 @@ Cart shop:</textarea>
       <button type="button" data-p="contacts">Contacts</button>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="darkbtn">Dark</button>
+      <button type="button" id="refreshbtn">Refresh</button>
           </nav>
     </div>
     <div class="ticker-stack">
@@ -500,6 +502,11 @@ Cart shop:</textarea>
     try {
       if (localStorage.getItem("bw-dark") === "1") document.documentElement.classList.add("dark");
     } catch (e) {}
+    var refreshBtn = document.getElementById("refreshbtn");
+    if (refreshBtn) refreshBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      location.reload();
+    });
     var darkBtn = document.getElementById("darkbtn");
     if (darkBtn) {
       darkBtn.addEventListener("click", function () {
@@ -1205,18 +1212,29 @@ Cart shop:</textarea>
           }
           if (note && d.current && d.current.pm2_5 != null) note.textContent = "PM2.5 " + Math.round(d.current.pm2_5);
         }).catch(function () {});
-      fetch("https://www.nhc.noaa.gov/CurrentStorms.json")
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var el = document.getElementById("live-cane");
+      (function nhcList() {
+        var el = document.getElementById("live-cane");
+        function apply(d) {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
+          if (!Array.isArray(storms)) storms = [];
           window.__wxRisk.cane = storms.length > 0;
           pagesFromDock();
-          if (el) el.textContent = storms.length ? storms.map(function (s) { return (s.name || s.id || "Storm") + " " + (s.classification || s.binNumber || ""); }).join(" · ") : "No active NHC storms in the file. Outlook map still updates.";
-        }).catch(function () {
-          var el = document.getElementById("live-cane");
-          if (el) el.textContent = "NHC list blocked — outlook graphic still loads.";
+          if (!el) return;
+          el.textContent = storms.length
+            ? storms.map(function (s) { return (s.name || s.id || "Storm") + " " + (s.classification || s.binNumber || s.intensity || ""); }).join(" · ")
+            : "No named Atlantic or Gulf storms. 2-day and 5-day outlooks below.";
+        }
+        function fail() {
+          if (el) el.textContent = "Named-storm file did not load. Outlook maps below still update from NHC.";
+        }
+        var raw = "https://www.nhc.noaa.gov/CurrentStorms.json";
+        fetch(raw).then(function (r) { return r.json(); }).then(apply).catch(function () {
+          fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(raw))
+            .then(function (r) { return r.json(); })
+            .then(apply)
+            .catch(fail);
         });
+      })();
       var bolt = document.getElementById("live-bolt");
       var fx = ((hours && hours[0] && hours[0].shortForecast) || "") + " " + ((days && days[0] && days[0].detailedForecast) || "");
       if (bolt) bolt.textContent = /thunder|lightning/i.test(fx) ? "Lightning in the forecast. Pool and cart NO until it clears." : "No lightning words in the current NWS Englewood forecast.";
