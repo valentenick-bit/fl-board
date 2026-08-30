@@ -270,9 +270,13 @@
       <section id="eng" class="page">
         <h2>Englewood</h2>
         <div id="eng-list">
-          <div class="card"><b>Sun Aug 30 1–5p Cabana Dogs</b><span>SandBar Tiki</span></div>
-          <div class="card"><b>Fri Sep 4 6p fireworks</b><span>Downtown Wellen</span></div>
-          <div class="card"><b>Labor Day weekend</b><span>Venice craft fest · Pioneer Days · Artur's</span></div>
+          <div class="card"><b>Sun Aug 30 1–5p · Cabana Dogs @ SandBar Tiki</b><span>SandBar Tiki & Grille, Beach Rd</span></div>
+          <div class="card"><b>Fri Sep 4 6p · TL Jentgens + Fireworks</b><span>Downtown Wellen</span></div>
+          <div class="card"><b>Sat–Mon Sep 5–7 · Venice Craft Festival</b><span>Downtown Venice</span></div>
+          <div class="card"><b>Sat Sep 5 9a · Pioneer Days boat races</b><span>Indian Mound Park</span></div>
+          <div class="card"><b>Sat Sep 5 5:30p · Johnny D @ Artur's</b><span>Englewood</span></div>
+          <div class="card"><b>Sat Sep 5 7:30p · Storm Riders</b><span>Troll Music, Venice</span></div>
+          <div class="card"><b>Mon Sep 7 9a · Pioneer Days Parade</b><span>Dearborn / Pioneer Park</span></div>
         </div>
         <p><a href="https://calendar.google.com/calendar/embed?src=a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">Open Englewood calendar</a></p>
       </section>
@@ -687,38 +691,52 @@ Cart shop:</textarea>
         return "https://calendar.google.com/calendar/ical/" + encodeURIComponent(id) + "/public/basic.ics";
       }
       function parseIcs(text) {
-        var blocks = String(text || "").split("BEGIN:VEVENT").slice(1);
+        text = String(text || "").replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
+        var blocks = text.split("BEGIN:VEVENT").slice(1);
         var out = [];
         blocks.forEach(function (b) {
-          var sum = (b.match(/SUMMARY:(.+)/) || [])[1] || "";
-          sum = sum.replace(/^(BW|Maybe):\s*/i, "");
-          var loc = (b.match(/LOCATION:(.+)/) || [])[1] || "";
+          var sum = (b.match(/SUMMARY(?:;[^:]*)?:([^\n\r]+)/) || [])[1] || "";
+          sum = sum.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").replace(/^(BW|Maybe):\s*/i, "").trim();
+          var loc = (b.match(/LOCATION(?:;[^:]*)?:([^\n\r]+)/) || [])[1] || "";
+          loc = loc.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").trim();
           var ds = (b.match(/DTSTART(?:;[^:]*)?:(\d{8}(?:T\d{6}Z?)?)/) || [])[1] || "";
           if (!sum || !ds) return;
           var when;
           if (ds.length === 8) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T12:00:00-04:00");
           else if (ds.indexOf("Z") >= 0) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":"+ds.slice(13,15)+"Z");
           else when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":00-04:00");
-          if (when.getTime() < Date.now() - 6*3600*1000) return;
-          out.push({ when: when, sum: sum.replace(/\\n/g," ").trim(), loc: loc.replace(/\\n/g," ").trim() });
+          if (isNaN(when.getTime()) || when.getTime() < Date.now() - 12*3600*1000) return;
+          out.push({ when: when, sum: sum, loc: loc });
         });
         out.sort(function (a,b) { return a.when - b.when; });
-        return out.slice(0, 8);
+        return out.slice(0, 10);
       }
       function render(id, events) {
         var box = document.getElementById(id);
         if (!box || !events.length) return;
         box.innerHTML = events.map(function (e) {
-          var d = e.when.toLocaleString("en-US", { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
+          var allDay = e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum);
+          var d = e.when.toLocaleString("en-US", allDay
+            ? { weekday:"short", month:"short", day:"numeric", timeZone:"America/New_York" }
+            : { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
           return '<div class="card"><b>' + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
         }).join("");
       }
       function load(id, target) {
         var raw = icsUrl(id);
-        var proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw);
-        fetch(proxied).then(function (r) { return r.text(); }).then(function (txt) {
-          if (txt && txt.indexOf("BEGIN:VEVENT") >= 0) render(target, parseIcs(txt));
-        }).catch(function () {});
+        var urls = [
+          raw,
+          "https://corsproxy.io/?" + encodeURIComponent(raw),
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw)
+        ];
+        function next(i) {
+          if (i >= urls.length) return;
+          fetch(urls[i]).then(function (r) { return r.text(); }).then(function (txt) {
+            if (txt && txt.indexOf("BEGIN:VEVENT") >= 0) render(target, parseIcs(txt));
+            else next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
       }
       load(BW, "bw-list");
       load(ENG, "eng-list");
