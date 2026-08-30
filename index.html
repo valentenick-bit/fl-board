@@ -1433,7 +1433,9 @@ Cart shop:</textarea>
           drawMoonChart();
           if (watch) {
             var storm = (hours && hours[0] && hours[0].shortForecast) ? hours[0].shortForecast : "";
-            watch.textContent = "Sunrise " + (r.sunrise ? hh(r.sunrise) : "") + ", sunset " + (r.sunset ? hh(r.sunset) : "") + ". " + storm + ". Venus still low in the west after sunset; Saturn overnight. ISS passes change nightly — NASA Spot the Station.";
+            var p1 = (document.getElementById("live-planet1") || {}).textContent || "";
+            var p1d = (document.getElementById("live-planet1d") || {}).textContent || "";
+            watch.textContent = "Sunrise " + (r.sunrise ? hh(r.sunrise) : "") + ", sunset " + (r.sunset ? hh(r.sunset) : "") + ". " + storm + (p1 && p1 !== "…" ? ". Tonight: " + p1 + " " + p1d : "") + ".";
           }
         }).catch(function () {});
     }
@@ -1553,117 +1555,116 @@ Cart shop:</textarea>
         var m = /(\d+(?:\.\d+)?)\s*(?:to\s*)?(\d+)?\s*foot/i.exec(days[0].detailedForecast);
         seas.textContent = m ? (m[2] ? m[1] + "–" + m[2] + " ft" : m[1] + " ft") : "1–2 ft";
       }
-      function azWord(az) {
-        az = ((Number(az) % 360) + 360) % 360;
-        var pts = ["N","NE","E","SE","S","SW","W","NW"];
-        return pts[Math.round(az / 45) % 8];
-      }
-      fetch("https://api.visibleplanets.dev/v3?latitude=26.96&longitude=-82.35")
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var bodies = (d && (d.data || d.bodies || d)) || [];
-          if (!Array.isArray(bodies)) bodies = [];
-          bodies = bodies.filter(function (b) {
-            var n = (b.name || "").toLowerCase();
-            return /venus|mars|jupiter|saturn|mercury|moon/.test(n);
-          }).sort(function (a, b) { return (a.magnitude || 9) - (b.magnitude || 9); });
-          function put(i, body, when) {
-            var n = document.getElementById("live-planet" + i);
-            var dtl = document.getElementById("live-planet" + i + "d");
-            if (!n || !body) return;
-            n.textContent = body.name || "—";
-            var alt = body.altitude != null ? Math.round(body.altitude) + "°" : "";
-            var az = body.azimuth != null ? azWord(body.azimuth) : "";
-            if (dtl) dtl.textContent = [when, az, alt].filter(Boolean).join(" · ");
+      (function fillSkyPage() {
+        function setPlanet(i, name, detail) {
+          var n = document.getElementById("live-planet" + i);
+          var d = document.getElementById("live-planet" + i + "d");
+          if (n) n.textContent = name;
+          if (d) d.textContent = detail || "";
+        }
+        function azWord(az) {
+          az = ((Number(az) % 360) + 360) % 360;
+          var pts = ["N","NE","E","SE","S","SW","W","NW"];
+          return pts[Math.round(az / 45) % 8];
+        }
+        var mo = parseInt(new Date().toLocaleString("en-US", { month: "numeric", timeZone: "America/New_York" }), 10);
+        var season = {
+          1: ["Venus", "SW after sunset", "Jupiter", "South late", "Saturn", "West at dusk", "Winter hexagon", "High after dusk"],
+          2: ["Venus", "West after sunset", "Jupiter", "West evening", "Mars", "East before dawn", "Winter hexagon", "High after dusk"],
+          3: ["Venus", "West after sunset", "Saturn", "Pre-dawn east", "Jupiter", "West evening", "Leo", "South after dusk"],
+          4: ["Venus", "West after sunset", "Saturn", "Dawn east", "Mars", "Morning east", "Leo", "South after dusk"],
+          5: ["Venus", "West dusk", "Saturn", "Dawn east", "Mars", "Morning", "Virgo", "South after dusk"],
+          6: ["Venus", "West dusk", "Saturn", "Overnight east", "Jupiter", "Dawn east", "Summer Triangle", "High after dusk"],
+          7: ["Venus", "West dusk", "Saturn", "Overnight", "Jupiter", "Dawn east", "Summer Triangle", "High after dusk"],
+          8: ["Venus", "West after sunset", "Saturn", "South overnight", "Jupiter", "East before sunrise", "Summer Triangle", "High after dusk"],
+          9: ["Venus", "West dusk", "Saturn", "South evening", "Jupiter", "East before sunrise", "Summer Triangle", "High after dusk"],
+          10: ["Venus", "SW dusk", "Saturn", "South evening", "Jupiter", "East overnight", "Pegasus", "High after dusk"],
+          11: ["Venus", "SW dusk", "Jupiter", "East overnight", "Saturn", "SW evening", "Taurus", "Late evening"],
+          12: ["Venus", "SW dusk", "Jupiter", "South overnight", "Saturn", "West evening", "Winter hexagon", "Late evening"]
+        }[mo] || ["Venus", "West after sunset", "Saturn", "Overnight", "Jupiter", "Dawn east", "Bright stars", "After dusk"];
+        setPlanet(1, season[0], season[1]);
+        setPlanet(2, season[2], season[3]);
+        setPlanet(3, season[4], season[5]);
+        setPlanet(4, season[6], season[7]);
+        var watch = document.getElementById("live-sky-watch");
+        if (watch) watch.textContent = "Tonight: " + season[0] + " " + season[1] + ". Overnight: " + season[2] + " " + season[3] + ". Dawn: " + season[4] + " " + season[5] + ".";
+        function applyBodies(bodies, slot, label) {
+          if (!bodies || !bodies.length) return;
+          var b = bodies[0];
+          setPlanet(slot, b.name, label + " · " + azWord(b.azimuth) + (b.altitude != null ? " · " + Math.round(b.altitude) + "°" : ""));
+        }
+        function bodiesFrom(d) {
+          var list = (d && (d.data || d.bodies || d)) || [];
+          if (!Array.isArray(list)) return [];
+          return list.filter(function (b) { return /venus|mars|jupiter|saturn|mercury|moon/i.test(b.name || ""); })
+            .sort(function (a, b) { return (a.magnitude || 9) - (b.magnitude || 9); });
+        }
+        function askSky(iso, slot, label) {
+          var url = "https://api.visibleplanets.dev/v3?latitude=26.96&longitude=-82.35&aboveHorizon=true";
+          if (iso) url += "&time=" + encodeURIComponent(iso);
+          var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+          var t = ctrl ? setTimeout(function () { ctrl.abort(); }, 5000) : null;
+          fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
+            .then(function (r) { return r.json(); })
+            .then(function (d) { applyBodies(bodiesFrom(d), slot, label); })
+            .catch(function () {})
+            .then(function () { if (t) clearTimeout(t); });
+        }
+        var rise = window.__bwCharts && window.__bwCharts.rise;
+        var set = window.__bwCharts && window.__bwCharts.set;
+        var dusk = set ? new Date(new Date(set).getTime() + 30 * 60000).toISOString() : null;
+        var dawn = rise ? new Date(new Date(rise).getTime() - 40 * 60000).toISOString() : null;
+        var mid = new Date(); mid.setHours(24, 0, 0, 0);
+        askSky(dusk, 1, "Dusk");
+        askSky(mid.toISOString(), 2, "Overnight");
+        askSky(dawn, 3, "Dawn");
+        function fillHoro(sign, id) {
+          function clip(s) {
+            s = String(s || "").replace(/\s+/g, " ").trim();
+            if (s.length > 280) s = s.slice(0, 277).replace(/\s+\S*$/, "") + "…";
+            return s;
           }
-          put(1, bodies[0], "Now");
-          put(2, bodies[1], "Now");
-          put(3, bodies[2], "Now");
-          var stars = document.getElementById("live-planet4");
-          var starsd = document.getElementById("live-planet4d");
-          if (stars) stars.textContent = "Above the Key";
-          if (starsd) starsd.textContent = bodies.length ? bodies.length + " bright bodies in the sky" : "Check after dusk";
-        }).catch(function () {});
-      fetch("https://api.visibleplanets.dev/v3?latitude=26.96&longitude=-82.35&time=" + encodeURIComponent(new Date(Date.now() + 6 * 3600 * 1000).toISOString()))
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var bodies = (d && (d.data || d.bodies || d)) || [];
-          if (!Array.isArray(bodies)) return;
-          bodies = bodies.filter(function (b) { return /venus|mars|jupiter|saturn|mercury|moon/i.test(b.name || ""); });
-          if (bodies[0]) {
-            var n = document.getElementById("live-planet3");
-            var dtl = document.getElementById("live-planet3d");
-            if (n) n.textContent = bodies[0].name;
-            if (dtl) dtl.textContent = "Later · " + azWord(bodies[0].azimuth || 0);
+          function parse(j) {
+            if (!j) return "";
+            var d = j.data || j;
+            return j.horoscope || j.content || j.description || j.prediction || d.horoscope || d.content || "";
           }
-        }).catch(function () {});
-      function fillHoro(sign, id) {
-        function clip(s) {
-          s = String(s || "").replace(/\s+/g, " ").replace(/^[✨🪐💼❤️]+\s*/g, "").trim();
-          if (s.length > 280) s = s.slice(0, 277).replace(/\s+\S*$/, "") + "…";
-          return s;
-        }
-        function put(txt) {
-          var el = document.getElementById(id);
-          if (el && txt) el.textContent = clip(txt);
-          return !!txt;
-        }
-        function parse(j) {
-          if (!j) return "";
-          if (typeof j === "string") return j;
-          var d = j.data || j;
-          return j.content || j.horoscope || j.description || j.prediction || d.horoscope || d.horoscope_data || d.content || d.prediction || "";
-        }
-        var urls = [
-          "https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=" + sign + "&day=TODAY",
-          "https://ohmanda.com/api/horoscope/" + sign + "/",
-          "https://corsproxy.io/?" + encodeURIComponent("https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=" + sign + "&day=TODAY")
-        ];
-        function next(i) {
-          if (i >= urls.length) {
-            var el = document.getElementById(id);
-            if (el && /Loading|unavailable/i.test(el.textContent)) el.textContent = "Feed unavailable today.";
-            return;
-          }
-          fetch(urls[i]).then(function (r) { return r.json(); }).then(function (j) {
-            if (!put(parse(j))) next(i + 1);
-          }).catch(function () { next(i + 1); });
-        }
-        next(0);
-      }
-      fillHoro("gemini", "live-horo-nick");
-      fillHoro("aquarius", "live-horo-dayna");
-      (function issLive() {
-        var el = document.getElementById("live-iss");
-        if (!el) return;
-        function xmlCities(next) {
-          var files = [
-            "https://spotthestation.nasa.gov/sightings/xml_files/United_States_Florida_Sarasota.xml",
-            "https://spotthestation.nasa.gov/sightings/xml_files/United_States_Florida_Venice.xml",
-            "https://spotthestation.nasa.gov/sightings/xml_files/United_States_Florida_Punta_Gorda.xml"
+          var urls = [
+            "https://ohmanda.com/api/horoscope/" + sign + "/",
+            "https://corsproxy.io/?" + encodeURIComponent("https://ohmanda.com/api/horoscope/" + sign + "/")
           ];
-          function tryFile(i) {
-            if (i >= files.length) { next([]); return; }
-            fetch("https://corsproxy.io/?" + encodeURIComponent(files[i])).then(function (r) { return r.text(); }).then(function (xml) {
-              var titles = xml.match(/<title>([^<]+)<\/title>/g) || [];
-              var rows = titles.map(function (t) { return t.replace(/<\/?title>/g, "").replace(/&amp;/g, "&"); })
-                .filter(function (t) { return /ISS|Sighting|20\d\d/i.test(t) && !/Spot the Station/i.test(t); });
-              if (rows.length) next(rows.slice(0, 3));
-              else tryFile(i + 1);
-            }).catch(function () { tryFile(i + 1); });
+          function next(i) {
+            if (i >= urls.length) {
+              var el = document.getElementById(id);
+              if (el && /Loading|unavailable/i.test(el.textContent)) el.textContent = "Open the Sky page after a refresh — daily note loads from the live feed.";
+              return;
+            }
+            fetch(urls[i]).then(function (r) { return r.json(); }).then(function (j) {
+              var txt = parse(j);
+              var el = document.getElementById(id);
+              if (txt && el) el.textContent = clip(txt);
+              else next(i + 1);
+            }).catch(function () { next(i + 1); });
           }
-          tryFile(0);
+          next(0);
         }
-        xmlCities(function (rows) {
-          if (rows && rows.length) {
-            el.textContent = rows.join(" · ");
-            return;
-          }
+        fillHoro("gemini", "live-horo-nick");
+        fillHoro("aquarius", "live-horo-dayna");
+        var issEl = document.getElementById("live-iss");
+        if (issEl) {
           fetch("https://api.wheretheiss.at/v1/satellites/25544").then(function (r) { return r.json(); }).then(function (d) {
-            if (!d || d.latitude == null) { el.textContent = "Use NASA Spot the Station."; return; }
-            el.textContent = "ISS now " + Number(d.latitude).toFixed(1) + "°, " + Number(d.longitude).toFixed(1) + "°. Visible passes: NASA Spot the Station.";
-          }).catch(function () { el.textContent = "Use NASA Spot the Station."; });
-        });
+            if (!d || d.latitude == null) { issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact passes."; return; }
+            var lat = Number(d.latitude), lon = Number(d.longitude);
+            var R = 6371, p1 = 26.96 * Math.PI/180, p2 = lat * Math.PI/180, dl = (lon + 82.35) * Math.PI/180;
+            var a = Math.sin((p2-p1)/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+            var km = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+            var vis = d.visibility === "daylight" ? "in daylight" : (d.visibility === "eclipsed" ? "in Earth's shadow" : "sunlit");
+            var near = km < 800 ? "Near the Key now — step outside." : km < 2500 ? "Over this side of the hemisphere." : "Far from Florida right now.";
+            issEl.textContent = "ISS " + lat.toFixed(1) + "°, " + lon.toFixed(1) + "° · " + Math.round(km) + " km from the Key · " + vis + ". " + near + " Visible passes are dusk or dawn — NASA Spot the Station.";
+          }).catch(function () {
+            issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact pass times.";
+          });
+        }
       })();
       var photo = document.getElementById("quiet-photo");
       if (photo) photo.classList.add("on");
