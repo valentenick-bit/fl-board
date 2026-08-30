@@ -35,7 +35,7 @@
     .temp, .feels strong { font-family:Fraunces,Georgia,serif; font-size:52px; line-height:.9; }
     .wxicon { width:52px; height:52px; flex:0 0 52px; margin-bottom:4px; }
     .feels { flex:1; min-width:0; text-align:right; }
-    .sky { font-size:18px; color:var(--muted); margin:8px 0 14px; }
+    .sky { font-size:16px; line-height:1.4; color:var(--muted); margin:4px 0 12px; max-width:52rem; }
     .pills { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
     .pill { display:block; text-align:center; border-radius:999px; padding:10px 8px; font-weight:700; color:#fff; font-size:14px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
@@ -80,7 +80,9 @@
     .alert-ticker.warning { background:#b42318; color:#fff; }
     .break-ticker { display:none; font-weight:700; background:#111; color:#fff; }
     .break-ticker.on { display:block; }
-    .ticker span, .alert-ticker span, .break-ticker span { display:inline-block; will-change:transform; }
+    .ticker span, .alert-ticker span, .break-ticker span { display:inline-flex; will-change:transform; white-space:nowrap; }
+    .tseg { flex:none; padding-right:160px; }
+    .ticker .tseg b { font-weight:800; color:#e8d5a3; }
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
     .dock-more { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding-top:0; padding-bottom:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
@@ -142,7 +144,7 @@
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
       <section id="now" class="page on">
-        <div class="sky" id="live-sky">Mostly sunny now · storms after 2p · HI 102&deg;</div>
+        <p class="sky" id="live-sky">Good morning. Mostly sunny in Englewood with a heat index near 102°. Afternoon storms are likely after 2 p.m. Beach and cart are best this morning before the storms build.</p>
         <div class="pills">
           <span class="pill go" id="pill-beach">Beach …</span><span class="pill go" id="pill-cart">Cart …</span>
           <span class="pill go" id="pill-boat">Boat …</span><span class="pill win" id="pill-courts">Courts …</span>
@@ -187,7 +189,6 @@
         <div class="tiles">
           <div class="tile wide"><label>UV index</label><div class="pbar-read"><strong id="live-uv">UV</strong> <span>NWS hourly</span></div><div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" style="left:88%"></i></div><div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div></div>
         </div>
-        <p>Good morning window. Do beach and cart before the afternoon storms.</p>
       </section>
       <section id="tenday" class="page">
         <h2>10-day</h2>
@@ -1470,10 +1471,25 @@ Cart shop:</textarea>
             meta.innerHTML = "<div>" + (obs.textDescription || nowH.shortForecast || "") + "</div><div>Rain next hr " + (rain != null ? rain + "%" : "—") + "</div><div>" + (windDir + " " + windTxt).trim() + "</div><div>" + (pres ? pres + '"' : "") + "</div>";
           }
           if (skyEl) {
-            var short = nowH.shortForecast || today.shortForecast || "";
-            var hi = "";
-            if (today.name && /night/i.test(today.name) === false && today.temperature != null) hi = " · HI " + today.temperature + "&deg;";
-            skyEl.textContent = short + hi;
+            var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+            var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
+            var short = nowH.shortForecast || today.shortForecast || "Conditions updating";
+            var detail = String(today.detailedForecast || nowH.detailedForecast || "").replace(/\s+/g, " ").trim();
+            if (detail.length > 240) detail = detail.slice(0, 237).replace(/\s+\S*$/, "") + ".";
+            var bits = [greet, short.replace(/\.$/, "") + " in Englewood."];
+            if (tempF != null) bits.push("It is " + tempF + "°" + (feelF != null && feelF !== tempF ? " and feels like " + feelF + "°" : "") + ".");
+            if (today.temperature != null && today.name && !/night/i.test(today.name)) bits.push("Today's high is near " + today.temperature + "°.");
+            if (detail && detail.toLowerCase().indexOf(short.toLowerCase()) < 0) bits.push(detail);
+            else if (detail) bits.push(detail);
+            var windBit = (windDir + " " + windTxt).trim();
+            if (windBit) bits.push("Wind " + windBit + (gust != null ? ", gusts " + gust + " mph" : "") + ".");
+            var rainHr = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value != null) ? nowH.probabilityOfPrecipitation.value : null;
+            if (rainHr != null) bits.push("Rain chance this hour is " + rainHr + "%.");
+            var blob = (short + " " + detail).toLowerCase();
+            if (/thunder|storm|lightning/i.test(blob)) bits.push("Beach and cart are best before the storms build.");
+            else if (/rain|shower/i.test(blob)) bits.push("Keep a cover plan for beach and cart.");
+            else bits.push("A good window for beach and cart.");
+            skyEl.textContent = bits.join(" ").replace(/\s+/g, " ").trim();
           }
           setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now());
           if (hours.length && document.querySelector(".hourly")) {
@@ -1511,20 +1527,7 @@ Cart shop:</textarea>
             }
             td.innerHTML = html;
           }
-          var tick = document.getElementById("ticktext");
-          if (tick) {
-            var SEP = "\u00a0".repeat(72);
-            function sent(s) { return String(s || "").replace(/\.\s+/g, ".\u00a0\u00a0\u00a0\u00a0 ").trim(); }
-            var nowB = sent("Now. It is " + (nowH.temperature != null ? nowH.temperature + " degrees" : "updating") + ", " + (nowH.shortForecast || "checking the sky").toLowerCase() + ". Wind " + (nowH.windDirection || "") + " " + (nowH.windSpeed || "") + ". " + (today.detailedForecast || "").slice(0, 220));
-            var marB = sent("Marine. " + ((document.getElementById("live-tide-today") || {}).textContent || "Tides updating") + ". Water " + ((document.getElementById("live-sst") || {}).textContent || "") + ". Wind " + ((document.getElementById("live-venf-wind") || {}).textContent || "") + ". Rip " + ((document.getElementById("live-rip") || {}).textContent || "") + ". Red tide " + ((document.getElementById("live-redtide") || {}).textContent || "") + ".");
-            var skyB = sent("Sky. " + ((document.getElementById("live-sun-label") || {}).textContent || "Sun path updating") + ". " + ((document.getElementById("live-sky-watch") || {}).textContent || ""));
-            var bwB = sent("BeachWalk. Tuesday 5:30 p.m. French bakery pop-up at Capri. Sunday September 6 from 1 to 5 p.m. Labor Day party at the pool and High Tide. Monday September 7 food trucks at Capri.");
-            var engB = sent("Englewood. Friday September 4 at 6 p.m. fireworks at Downtown Wellen. Labor Day weekend has the Venice craft festival, Artur's, and Troll Music.");
-            var houseB = sent("House. Villa marked occupied. Last radio station is remembered after refresh. Mute overnight if needed.");
-            var brief = [nowB, marB, skyB, bwB, engB, houseB].join(SEP);
-            tick.textContent = brief + SEP + brief;
-            requestAnimationFrame(function () { spinEl(tick, 225); });
-          }
+          writeBriefing();
           fetch("https://api.weather.gov/stations/KVNC/observations?limit=36", { headers: hdr })
             .then(function (r) { return r.json(); })
             .then(function (st) {
@@ -1633,7 +1636,7 @@ Cart shop:</textarea>
         var body = hits.map(function (h) {
           return "BREAKING · " + h.src + ". " + h.title;
         }).join("   \u00a0 \u00a0 \u00a0 • \u00a0 • \u00a0 • \u00a0 \u00a0 \u00a0   ");
-        txt.textContent = body + "          " + body;
+        txt.textContent = body;
         bar.classList.add("on");
         stackTickers();
         requestAnimationFrame(function () { spinEl(txt, 225); });
@@ -1671,10 +1674,52 @@ Cart shop:</textarea>
       rows.forEach(function (r) { stack.insertBefore(r.el, brief); });
       stack.appendChild(brief);
     }
+    function writeBriefing() {
+      var tick = document.getElementById("ticktext");
+      if (!tick) return;
+      function t(id, d) {
+        var el = document.getElementById(id);
+        var s = el && el.textContent ? el.textContent.replace(/\s+/g, " ").trim() : "";
+        return s || d || "";
+      }
+      function cards(id, fallback) {
+        var box = document.getElementById(id);
+        if (!box) return fallback;
+        var bits = Array.prototype.slice.call(box.querySelectorAll(".card b"), 0, 3).map(function (b) { return b.textContent.replace(/\s+/g, " ").trim(); }).filter(Boolean);
+        return bits.length ? bits.join(". ") + "." : fallback;
+      }
+      function sent(s) { return String(s || "").replace(/\.\s+/g, ".\u00a0\u00a0\u00a0 ").trim(); }
+      var SEP = "\u00a0".repeat(56);
+      var nowB = sent(t("live-sky", "Weather is updating for Englewood."));
+      var marB = sent([t("live-tide-today"), t("live-sst"), t("live-venf-wind"), "Rip " + t("live-rip"), "Red tide " + t("live-redtide")].filter(function (x) { return x && x !== "Rip " && x !== "Red tide "; }).join(". "));
+      var skyB = sent([t("live-sun-label"), t("live-moon-label"), t("live-sky-watch")].filter(Boolean).join(". "));
+      var bwB = sent(cards("bw-list", "Next BeachWalk items are on the BeachWalk page."));
+      var engB = sent(cards("eng-list", "Next Englewood picks are on the Englewood page."));
+      var houseB = sent(t("house-occ", "Villa") + ". " + t("house-seen", "") + " " + t("cal-do", "") + " " + t("cal-fly", ""));
+      tick.innerHTML = [
+        "<b>Now.</b> " + nowB,
+        "<b>Marine.</b> " + (marB || "Marine details updating."),
+        "<b>Sky.</b> " + (skyB || "Sky details updating."),
+        "<b>BeachWalk.</b> " + bwB,
+        "<b>Englewood.</b> " + engB,
+        "<b>House.</b> " + houseB
+      ].join(SEP);
+      requestAnimationFrame(function () { spinEl(tick, 225); });
+    }
     function spinEl(el, speed) {
       if (!el) return;
-      var w = el.scrollWidth || el.getBoundingClientRect().width;
-      var dur = Math.max(16, w / (speed || 225));
+      var html = "";
+      var first = el.querySelector(".tseg");
+      html = first ? first.innerHTML : el.innerHTML;
+      html = String(html || "").trim();
+      if (!html) return;
+      el.innerHTML = "<span class='tseg'></span><span class='tseg'></span>";
+      var segs = el.querySelectorAll(".tseg");
+      segs[0].innerHTML = html;
+      segs[1].innerHTML = html;
+      el.style.display = "inline-flex";
+      var one = segs[0].getBoundingClientRect().width;
+      var dur = Math.max(18, one / (speed || 225));
       el.style.animation = "none";
       el.offsetHeight;
       el.style.animation = "tick " + dur + "s linear infinite";
@@ -1737,7 +1782,7 @@ Cart shop:</textarea>
           return (p.event || "Alert") + ". " + (p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 280);
         });
         var body = parts.join("   \u00a0 \u00a0 \u00a0 • \u00a0 • \u00a0 • \u00a0 \u00a0 \u00a0   ");
-        txt.textContent = body + "          " + body;
+        txt.textContent = body;
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
         frame.classList.add("has-alert"); stackTickers();
         requestAnimationFrame(function () { spinEl(txt, 225); });
@@ -1747,15 +1792,11 @@ Cart shop:</textarea>
     setInterval(pollAlerts, 5 * 60 * 1000);
 
     (function () {
-      var el = document.getElementById("ticktext");
-      if (!el) return;
-      function run() { spinEl(el, 225); }
       var style = document.createElement("style");
       style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }";
       document.head.appendChild(style);
-      el.style.display = "inline-block";
-      el.style.paddingLeft = "0";
-      requestAnimationFrame(run);
+      writeBriefing();
+      setInterval(writeBriefing, 5 * 60 * 1000);
     })();
   </script>
 </body>
