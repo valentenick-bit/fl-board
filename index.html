@@ -311,8 +311,11 @@ Pest:
 Cart shop:</textarea>
         </div>
       </section>
-
-
+      <section id="deliver" class="page">
+        <h2 data-k="From Gmail">Deliveries</h2>
+        <p id="deliv-note" class="pill-key">Loading the delivery report…</p>
+        <div id="deliv-list"></div>
+      </section>
       <section id="radio" class="page">
         <h2 data-k="Listen">Radio</h2>
         <div class="card">
@@ -462,6 +465,7 @@ Cart shop:</textarea>
       <button type="button" data-p="wink">WINK</button>
       <button type="button" data-p="contacts">Emergency</button>
       <button type="button" data-p="villa">Villa</button>
+      <button type="button" data-p="deliver">Deliveries</button>
       <button type="button" id="darkbtn">Dark</button>
       <button type="button" id="refreshbtn">Refresh</button>
           </nav>
@@ -933,6 +937,54 @@ Cart shop:</textarea>
       load(ENG, "eng", false);
       load(BW, "bw", true);
       setInterval(function () { load(ENG, "eng", false); load(BW, "bw", true); }, 15 * 60 * 1000);
+    })();
+
+    (function loadDeliveries() {
+      var note = document.getElementById("deliv-note");
+      var box = document.getElementById("deliv-list");
+      if (!box) return;
+      var urls = [
+        "deliveries.json",
+        "./deliveries.json",
+        "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=137FOO1hZ9XB29x-LekMYlh-aLaBc1JT_")
+      ];
+      function card(item, incoming) {
+        var who = item.who || "";
+        var title = item.title || "";
+        var detail = item.detail || "";
+        if (incoming) {
+          return '<div class="card music"><span class="place-tag place-out">On the way</span><span class="music-tag">' + who + "</span><b>" + title + "</b><span>" + detail + "</span></div>";
+        }
+        return '<div class="card"><span class="place-tag place-bw">Delivered</span><b>' + who + " · " + title + "</b><span>" + detail + "</span></div>";
+      }
+      function paint(data) {
+        var inc = data.incoming || [];
+        var del = data.delivered || [];
+        box.innerHTML = inc.map(function (x) { return card(x, true); }).join("") + del.map(function (x) { return card(x, false); }).join("");
+        if (note) note.textContent = "Report " + (data.updated || "") + " · automation 8 a.m. and 6 p.m.";
+      }
+      function next(i) {
+        if (i >= urls.length) {
+          paint({
+            updated: "built-in snapshot",
+            incoming: [
+              {who:"Amazon", title:"1 automotive item", detail:"Shipped Sat Aug 29."},
+              {who:"BikerVision", title:"Order BV8691", detail:"Shipped Sat Aug 29."},
+              {who:"Bulletpoint", title:"Order 742702", detail:"USPS 9434 6501 0579 5033 7588 88."}
+            ],
+            delivered: [
+              {who:"Amazon", title:"3 device + automotive", detail:"Sat Aug 29."}
+            ]
+          });
+          return;
+        }
+        fetch(urls[i]).then(function (r) { return r.json(); }).then(function (data) {
+          if (data && (data.incoming || data.delivered)) paint(data);
+          else next(i + 1);
+        }).catch(function () { next(i + 1); });
+      }
+      next(0);
+      setInterval(function () { next(0); }, 30 * 60 * 1000);
     })();
 
     (function extraDock() {
