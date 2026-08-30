@@ -460,7 +460,6 @@ Cart shop:</textarea>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="darkbtn">Dark</button>
       <button type="button" id="refreshbtn">Refresh</button>
-      <button type="button" id="simcanebtn">Sim cane</button>
           </nav>
     </div>
     <div class="ticker-stack">
@@ -579,22 +578,7 @@ Cart shop:</textarea>
       e.preventDefault();
       location.reload();
     });
-    (function simCane() {
-      var btn = document.getElementById("simcanebtn");
-      function label() {
-        if (btn) btn.textContent = window.__simHurricane ? "End sim" : "Sim cane";
-      }
-      try { window.__simHurricane = localStorage.getItem("bw-sim-cane") !== "0"; } catch (e) { window.__simHurricane = true; }
-      label();
-      if (!btn) return;
-      btn.addEventListener("click", function (e) {
-        e.preventDefault();
-        window.__simHurricane = !window.__simHurricane;
-        try { localStorage.setItem("bw-sim-cane", window.__simHurricane ? "1" : "0"); } catch (err) {}
-        label();
-        pollAlerts();
-      });
-    })();
+    
     var darkBtn = document.getElementById("darkbtn");
     if (darkBtn) {
       darkBtn.addEventListener("click", function () {
@@ -2026,17 +2010,6 @@ Cart shop:</textarea>
         headers: { "Accept": "application/geo+json" }
       }).then(function (r) { return r.json(); }).then(function (data) {
         var feats = (data && data.features) || [];
-        try {
-          if (localStorage.getItem("bw-sim-cane") === "0") window.__simHurricane = false;
-          else if (window.__simHurricane !== false) window.__simHurricane = true;
-        } catch (e) { if (window.__simHurricane !== false) window.__simHurricane = true; }
-        if (window.__simHurricane) {
-          feats = feats.concat([{ properties: {
-            event: "Hurricane Warning",
-            headline: "SIMULATION ONLY — Hurricane Warning for coastal Sarasota and Charlotte including Englewood and Manasota Key. This is a board test, not an NWS product.",
-            description: "Practice loop: Radar, Cane, Marine, Emergency. NOAA Tampa may start. Tap More → Sim cane to end."
-          }}]);
-        }
         var keep = feats.filter(function (f) {
           var ev = ((f.properties || {}).event || "").toLowerCase();
           return ev.indexOf("warning") >= 0 || ev.indexOf("watch") >= 0;
