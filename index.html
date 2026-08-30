@@ -239,6 +239,8 @@
         <div class="card"><b>Next tides</b><span id="live-tides-next">Loading…</span></div>
         <div class="card"><b>Coastal waters TBW</b><span id="live-coastal">Loading…</span></div>
         <div class="card"><b>Passes</b><span>Venice Inlet / Stump Pass — morning window. Afternoon storms are the ride home risk.</span></div>
+        <div class="card"><b>Saltwater report</b><span id="live-fish">Loading Lemon Bay / Stump Pass / Venice Inlet…</span></div>
+        <p><a href="https://fishinfranks.com/fishin_report.htm" target="_blank" rel="noopener">Fishin Franks</a> · <a href="https://www.floridasportsman.com/editorial/southwest-florida-weekend-fishing-forecast/402036" target="_blank" rel="noopener">Florida Sportsman SW</a> · <a href="https://myfwc.com/fishing/saltwater/recreational/" target="_blank" rel="noopener">FWC regs</a></p>
         <p><a href="https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=8725809" target="_blank" rel="noopener">NOAA 8725809</a> · <a href="https://www.ndbc.noaa.gov/station_page.php?station=VENF1" target="_blank" rel="noopener">VENF1</a></p>
       </section>
 
@@ -313,17 +315,27 @@ Cart shop:</textarea>
 
       <section id="radio" class="page">
         <h2>Radio</h2>
-        <div class="rowbtns">
-          <button type="button" class="on" data-stream="https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac">94.9 Magic</button>
-          <button type="button" data-stream="https://oom-cmg.streamguys1.com/tam1055/tam1055-sgplayer-aac">105.5 Dove</button>
-          <button type="button" data-stream="https://stream.revma.ihrhls.com/zc5096">104.9 Seaview</button>
-          <button type="button" data-stream="https://stream.revma.ihrhls.com/zc641">107.9 WSRZ</button>
-          <button type="button" data-stream="https://broadcastify.cdnstream1.com/30021">SO / Venice PD</button>
-          <button type="button" data-stream="https://broadcastify.cdnstream1.com/45683">EAFD / South Fire</button>
-          <button type="button" data-stream="">Mute</button>
+        <div class="card">
+          <b>Stations</b>
+          <div class="rowbtns">
+            <button type="button" class="on" data-stream="https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac">94.9 Magic</button>
+            <button type="button" data-stream="https://oom-cmg.streamguys1.com/tam1055/tam1055-sgplayer-aac">105.5 Dove</button>
+            <button type="button" data-stream="https://stream.revma.ihrhls.com/zc5096">104.9 Seaview</button>
+            <button type="button" data-stream="https://stream.revma.ihrhls.com/zc641">107.9 WSRZ</button>
+            <button type="button" data-stream="">Mute</button>
+          </div>
         </div>
         <p id="radio-status">Tap a station to play here. Mute stops it. Volume stays low.</p>
-        <p>Scanners: Sarasota SO / Venice / North Port, and South County fire (Englewood, Nokomis, Venice). Quiet until a call. Broadcastify may play a short ad first.</p>
+        <div class="card">
+          <b>Scanners</b>
+          <span>Quiet until a call. Broadcastify may play a short ad first.</span>
+          <div class="rowbtns">
+            <button type="button" data-stream="https://broadcastify.cdnstream1.com/30021">SO / Venice PD</button>
+            <button type="button" data-stream="https://broadcastify.cdnstream1.com/45683">EAFD / South Fire</button>
+          </div>
+          <p style="margin:8px 0 0"><b>SO / Venice PD.</b> Sarasota County Sheriff, Venice Police, and North Port Police.</p>
+          <p style="margin:8px 0 0"><b>EAFD / South Fire.</b> Englewood, Nokomis, and Venice fire.</p>
+        </div>
       </section>
       <section id="news" class="page">
         <h2>Fox News</h2>
@@ -831,6 +843,34 @@ Cart shop:</textarea>
       }
       load();
       setInterval(load, 10 * 60 * 1000);
+    })();
+    (function fishReport() {
+      var el = document.getElementById("live-fish");
+      if (!el) return;
+      var fallback = "Late August on the Key: fish first light. Snook and tarpon work the passes and the first trough off Manasota and Englewood Beach. Redfish and trout hold Lemon Bay grass and mangrove edges. Whitebait is around the ICW. Spanish and sharks show off the beaches when bait is pushed in. Afternoon storms cut the window short — be in before the build. Check FWC seasons before you keep a fish.";
+      function rssJson(rss) {
+        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && d.items) || []; })
+          .catch(function () { return []; });
+      }
+      function load() {
+        var q = "https://news.google.com/rss/search?q=%22fishing+report%22+(Englewood+OR+Venice+OR+%22Charlotte+Harbor%22+OR+%22Lemon+Bay%22)+when:7d&hl=en-US&gl=US&ceid=US:en";
+        rssJson(q).then(function (items) {
+          var hit = null;
+          for (var i = 0; i < items.length; i++) {
+            var s = ((items[i].title || "") + " " + (items[i].description || "")).toLowerCase();
+            if (/fish|snook|tarpon|redfish|trout|mackerel|grouper/.test(s)) { hit = items[i]; break; }
+          }
+          if (!hit) { el.textContent = fallback; return; }
+          var title = (hit.title || "").replace(/\s*-\s*.*$/, "").replace(/\s+/g, " ").trim();
+          var when = hit.pubDate ? new Date(hit.pubDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" }) : "";
+          el.innerHTML = (when ? when + " · " : "") + title + ". " + fallback + (hit.link ? ' <a href="' + hit.link + '" target="_blank" rel="noopener">Read report</a>' : "");
+        }).catch(function () { el.textContent = fallback; });
+      }
+      el.textContent = fallback;
+      load();
+      setInterval(load, 6 * 60 * 60 * 1000);
     })();
     startRotate();
     (function swipePages() {
@@ -1490,6 +1530,15 @@ Cart shop:</textarea>
             else if (/rain|shower/i.test(blob)) bits.push("Keep a cover plan for beach and cart.");
             else bits.push("A good window for beach and cart.");
             skyEl.textContent = bits.join(" ").replace(/\s+/g, " ").trim();
+            window.__briefWx = {
+              temp: tempF,
+              feel: feelF,
+              short: short,
+              hi: today.temperature,
+              wind: windBit,
+              rain: rainHr,
+              detail: detail
+            };
           }
           setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now());
           if (hours.length && document.querySelector(".hourly")) {
@@ -1527,7 +1576,6 @@ Cart shop:</textarea>
             }
             td.innerHTML = html;
           }
-          writeBriefing();
           fetch("https://api.weather.gov/stations/KVNC/observations?limit=36", { headers: hdr })
             .then(function (r) { return r.json(); })
             .then(function (st) {
@@ -1569,6 +1617,7 @@ Cart shop:</textarea>
             }).catch(function () {});
           saveWxSnap();
           refreshMarineSky(days, hours, obs);
+          writeBriefing();
           refreshExtras(hours, days);
         })
         .catch(function () { loadWxSnap("offline"); });
@@ -1639,7 +1688,7 @@ Cart shop:</textarea>
         txt.textContent = body;
         bar.classList.add("on");
         stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 225); });
+        requestAnimationFrame(function () { spinEl(txt, 112); });
       }).catch(function () { bar.classList.remove("on"); stackTickers(); });
     }
     pollBreaking();
@@ -1688,14 +1737,28 @@ Cart shop:</textarea>
         var bits = Array.prototype.slice.call(box.querySelectorAll(".card b"), 0, 3).map(function (b) { return b.textContent.replace(/\s+/g, " ").trim(); }).filter(Boolean);
         return bits.length ? bits.join(". ") + "." : fallback;
       }
-      function sent(s) { return String(s || "").replace(/\.\s+/g, ".\u00a0\u00a0\u00a0 ").trim(); }
-      var SEP = "\u00a0".repeat(56);
-      var nowB = sent(t("live-sky", "Weather is updating for Englewood."));
-      var marB = sent([t("live-tide-today"), t("live-sst"), t("live-venf-wind"), "Rip " + t("live-rip"), "Red tide " + t("live-redtide")].filter(function (x) { return x && x !== "Rip " && x !== "Red tide "; }).join(". "));
+      function sent(s) {
+        return String(s || "")
+          .replace(/\s+/g, " ")
+          .replace(/([.!?])\s+/g, "$1\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 ")
+          .trim();
+      }
+      var SEP = "\u00a0".repeat(80);
+      var w = window.__briefWx || {};
+      var nowParts = [];
+      if (w.temp != null) nowParts.push("It is " + w.temp + " degrees" + (w.feel != null && w.feel !== w.temp ? " and feels like " + w.feel : "") + ".");
+      if (w.short) nowParts.push(w.short.replace(/\.$/, "") + " in Englewood.");
+      if (w.hi != null) nowParts.push("Today's high is near " + w.hi + " degrees.");
+      if (w.wind) nowParts.push(w.wind);
+      if (w.rain != null) nowParts.push("Rain chance this hour is " + w.rain + "%.");
+      if (w.detail) nowParts.push(w.detail);
+      if (!nowParts.length) nowParts.push(t("live-sky", "Weather is updating for Englewood."));
+      var nowB = sent(nowParts.join(" "));
+      var marB = sent([t("live-tide-today"), t("live-sst"), t("live-venf-wind"), t("live-rip") ? "Rip " + t("live-rip") : "", t("live-redtide") ? "Red tide " + t("live-redtide") : "", t("live-fish")].filter(Boolean).join(". "));
       var skyB = sent([t("live-sun-label"), t("live-moon-label"), t("live-sky-watch")].filter(Boolean).join(". "));
       var bwB = sent(cards("bw-list", "Next BeachWalk items are on the BeachWalk page."));
       var engB = sent(cards("eng-list", "Next Englewood picks are on the Englewood page."));
-      var houseB = sent(t("house-occ", "Villa") + ". " + t("house-seen", "") + " " + t("cal-do", "") + " " + t("cal-fly", ""));
+      var houseB = sent([t("house-occ", "Villa"), t("house-seen", ""), t("cal-do", ""), t("cal-fly", "")].filter(Boolean).join(". "));
       tick.innerHTML = [
         "<b>Now.</b> " + nowB,
         "<b>Marine.</b> " + (marB || "Marine details updating."),
@@ -1704,7 +1767,7 @@ Cart shop:</textarea>
         "<b>Englewood.</b> " + engB,
         "<b>House.</b> " + houseB
       ].join(SEP);
-      requestAnimationFrame(function () { spinEl(tick, 225); });
+      requestAnimationFrame(function () { spinEl(tick, 112); });
     }
     function spinEl(el, speed) {
       if (!el) return;
@@ -1719,7 +1782,7 @@ Cart shop:</textarea>
       segs[1].innerHTML = html;
       el.style.display = "inline-flex";
       var one = segs[0].getBoundingClientRect().width;
-      var dur = Math.max(18, one / (speed || 225));
+      var dur = Math.max(18, one / (speed || 112));
       el.style.animation = "none";
       el.offsetHeight;
       el.style.animation = "tick " + dur + "s linear infinite";
@@ -1785,7 +1848,7 @@ Cart shop:</textarea>
         txt.textContent = body;
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
         frame.classList.add("has-alert"); stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 225); });
+        requestAnimationFrame(function () { spinEl(txt, 112); });
       }).catch(function () {});
     }
     pollAlerts();
