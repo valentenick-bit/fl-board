@@ -269,7 +269,7 @@
         </div>
         <div class="card"><b>Coastal waters TBW</b><span id="live-coastal">Loading…</span></div>
         <div class="card"><b>Passes</b><span>Venice Inlet / Stump Pass — morning window. Afternoon storms are the ride home risk.</span></div>
-        <div class="card"><b>Saltwater report</b><span id="live-fish">Loading Lemon Bay / Stump Pass / Venice Inlet…</span></div>
+        <div class="card"><b>What’s biting · Key</b><span id="live-fish">Loading Lemon Bay / Stump Pass / Englewood Beach…</span></div>
         <div class="card"><b>Alligator watch</b><span id="live-gator">FWC: unprovoked bites are uncommon. Stay out of murky canals and ponds at dawn and dusk. Don’t feed gators. Pets on a short leash. Report a nuisance gator: 866-392-4286.</span></div>
         <p><a href="https://fishinfranks.com/fishin_report.htm" target="_blank" rel="noopener">Fishin Franks</a> · <a href="https://www.floridasportsman.com/editorial/southwest-florida-weekend-fishing-forecast/402036" target="_blank" rel="noopener">Florida Sportsman SW</a> · <a href="https://myfwc.com/fishing/saltwater/recreational/" target="_blank" rel="noopener">FWC regs</a></p>
         <p><a href="https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=8725809" target="_blank" rel="noopener">NOAA 8725809</a> · <a href="https://www.ndbc.noaa.gov/station_page.php?station=VENF1" target="_blank" rel="noopener">VENF1</a></p>
@@ -1123,30 +1123,13 @@ Cart shop:</textarea>
     (function fishReport() {
       var el = document.getElementById("live-fish");
       if (!el) return;
-      var fallback = "Late August on the Key: fish first light. Snook and tarpon work the passes and the first trough off Manasota and Englewood Beach. Redfish and trout hold Lemon Bay grass and mangrove edges. Whitebait is around the ICW. Spanish and sharks show off the beaches when bait is pushed in. Afternoon storms cut the window short — be in before the build. Check FWC seasons before you keep a fish.";
-      function rssJson(rss) {
-        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
-          .then(function (r) { return r.json(); })
-          .then(function (d) { return (d && d.items) || []; })
-          .catch(function () { return []; });
-      }
-      function load() {
-        var q = "https://news.google.com/rss/search?q=%22fishing+report%22+(Englewood+OR+Venice+OR+%22Charlotte+Harbor%22+OR+%22Lemon+Bay%22)+when:7d&hl=en-US&gl=US&ceid=US:en";
-        rssJson(q).then(function (items) {
-          var hit = null;
-          for (var i = 0; i < items.length; i++) {
-            var s = ((items[i].title || "") + " " + (items[i].description || "")).toLowerCase();
-            if (/fish|snook|tarpon|redfish|trout|mackerel|grouper/.test(s)) { hit = items[i]; break; }
-          }
-          if (!hit) { el.textContent = fallback; return; }
-          var title = (hit.title || "").replace(/\s*-\s*.*$/, "").replace(/\s+/g, " ").trim();
-          var when = hit.pubDate ? new Date(hit.pubDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" }) : "";
-          el.innerHTML = (when ? when + " · " : "") + title + ". " + fallback + (hit.link ? ' <a href="' + hit.link + '" target="_blank" rel="noopener">Read report</a>' : "");
-        }).catch(function () { el.textContent = fallback; });
-      }
-      el.textContent = fallback;
-      load();
-      setInterval(load, 6 * 60 * 60 * 1000);
+      var bite = "<b>Aug 27–30 · Lemon Bay / Stump Pass / Englewood Beach</b><br>" +
+        "<b>When:</b> First light and moving water. Be off the Gulf before the afternoon build.<br>" +
+        "<b>Passes & beach trough:</b> Snook 18–35 in. on live whitebait, threadfin herring, and pinfish. Tarpon rolling the first trough at dawn — free-line herring or a live crab.<br>" +
+        "<b>Lemon Bay & mangroves:</b> Redfish on pinfish and small mullet. Trout on grass edges. Juvenile tarpon 10–40 lb on a slow paddle tail or twitch bait.<br>" +
+        "<b>Nearshore:</b> Snapper, cobia, and Spanish while bait is up. Threadfin or pilchards on 2/0–5/0, just enough lead to hold bottom.<br>" +
+        "Check FWC seasons before you keep a fish.";
+      el.innerHTML = bite;
     })();
     (function gatorWatch() {
       var el = document.getElementById("live-gator");
