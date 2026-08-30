@@ -244,6 +244,7 @@
         <div class="card"><b>Coastal waters TBW</b><span id="live-coastal">Loading…</span></div>
         <div class="card"><b>Passes</b><span>Venice Inlet / Stump Pass — morning window. Afternoon storms are the ride home risk.</span></div>
         <div class="card"><b>Saltwater report</b><span id="live-fish">Loading Lemon Bay / Stump Pass / Venice Inlet…</span></div>
+        <div class="card"><b>Alligator watch</b><span id="live-gator">FWC: unprovoked bites are uncommon. Stay out of murky canals and ponds at dawn and dusk. Don’t feed gators. Pets on a short leash. Report a nuisance gator: 866-392-4286.</span></div>
         <p><a href="https://fishinfranks.com/fishin_report.htm" target="_blank" rel="noopener">Fishin Franks</a> · <a href="https://www.floridasportsman.com/editorial/southwest-florida-weekend-fishing-forecast/402036" target="_blank" rel="noopener">Florida Sportsman SW</a> · <a href="https://myfwc.com/fishing/saltwater/recreational/" target="_blank" rel="noopener">FWC regs</a></p>
         <p><a href="https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=8725809" target="_blank" rel="noopener">NOAA 8725809</a> · <a href="https://www.ndbc.noaa.gov/station_page.php?station=VENF1" target="_blank" rel="noopener">VENF1</a></p>
       </section>
@@ -911,6 +912,43 @@ Cart shop:</textarea>
       el.textContent = fallback;
       load();
       setInterval(load, 6 * 60 * 60 * 1000);
+    })();
+    (function gatorWatch() {
+      var el = document.getElementById("live-gator");
+      if (!el) return;
+      var tip = "FWC: Florida averages about eight unprovoked bites a year. Stay out of murky canals and ponds at dawn and dusk. Don’t feed gators. Pets on a short leash. Nuisance line 866-392-4286.";
+      function rss(q) {
+        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(q))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && d.items) || []; })
+          .catch(function () { return []; });
+      }
+      function load() {
+        var q = "https://news.google.com/rss/search?q=alligator+(attack+OR+bite+OR+incident)+Florida+when:14d&hl=en-US&gl=US&ceid=US:en";
+        rss(q).then(function (items) {
+          var local = [];
+          var state = [];
+          items.forEach(function (it) {
+            var blob = ((it.title || "") + " " + (it.description || "")).toLowerCase();
+            if (!/alligator|gator/.test(blob)) return;
+            var row = {
+              title: (it.title || "").replace(/\s*-\s*[^-]+$/, "").replace(/\s+/g, " ").trim(),
+              when: it.pubDate ? new Date(it.pubDate) : null,
+              link: it.link || "",
+              local: /sarasota|charlotte|englewood|venice|north port|punt[ao] gorda|lemon bay|manasota/i.test(blob)
+            };
+            if (!row.title) return;
+            (row.local ? local : state).push(row);
+          });
+          var pick = (local[0] || state[0]);
+          if (!pick) { el.textContent = "No new alligator-attack headlines in the last two weeks. " + tip; return; }
+          var day = pick.when && !isNaN(pick.when.getTime()) ? pick.when.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" }) : "";
+          var where = pick.local ? "Near the Key. " : "Statewide, not Englewood. ";
+          el.innerHTML = (day ? day + " · " : "") + where + pick.title + ". " + tip + (pick.link ? ' <a href="' + pick.link + '" target="_blank" rel="noopener">FWC / news</a>' : "") + ' · <a href="https://myfwc.com/wildlifehabitats/wildlife/alligator/nuisance/" target="_blank" rel="noopener">FWC gators</a>';
+        }).catch(function () { el.textContent = tip; });
+      }
+      load();
+      setInterval(load, 60 * 60 * 1000);
     })();
     startRotate();
     (function swipePages() {
