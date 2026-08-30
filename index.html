@@ -498,32 +498,9 @@ Cart shop:</textarea>
     }
     var NOAA_URL = "https://radio.weatherusa.net/NWR/KHB32.mp3";
     window.__radioWant = { url: "", label: "" };
-    window.__radioGain = null;
-    window.__radioCtx = null;
-    function ensureRadioGain(audio) {
-      if (window.__radioGain) return window.__radioGain;
-      try {
-        var Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return null;
-        window.__radioCtx = new Ctx();
-        var src = window.__radioCtx.createMediaElementSource(audio);
-        var g = window.__radioCtx.createGain();
-        src.connect(g);
-        g.connect(window.__radioCtx.destination);
-        window.__radioGain = g;
-      } catch (e) {
-        window.__radioGain = null;
-      }
-      return window.__radioGain;
-    }
     function setLoudness(audio, url) {
       var noaa = /weatherusa|NWR/i.test(url || "");
-      var base = 0.22;
-      audio.volume = base;
-      var node = ensureRadioGain(audio);
-      if (window.__radioCtx && window.__radioCtx.state === "suspended") window.__radioCtx.resume();
-      if (node) node.gain.value = noaa ? (window.__nwrAlert ? 3.1 : 2.6) : 1;
-      else audio.volume = noaa ? (window.__nwrAlert ? 0.55 : 0.48) : base;
+      audio.volume = noaa ? (window.__nwrAlert ? 0.62 : 0.55) : 0.22;
     }
     function playStation(url, label, opts) {
       opts = opts || {};
