@@ -101,6 +101,8 @@
     .dock-wrap.open .dock-more { max-height:72px; opacity:1; padding:4px 6px; pointer-events:auto; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
     .quiet-photo { width:100%; height:32vh; min-height:180px; object-fit:cover; border-radius:16px; margin:10px 0 0; display:block; border:1px solid var(--hair); }
+    .keycam { width:100%; height:34vh; min-height:200px; margin:10px 0 6px; border-radius:16px; overflow:hidden; border:1px solid var(--hair); background:#111; }
+    .keycam iframe { width:100%; height:100%; border:0; display:block; }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
     .tenday { display:flex; flex-direction:column; gap:0; margin:8px 0 12px; background:var(--sand-2); border:1px solid var(--hair); border-radius:16px; overflow:hidden; }
@@ -171,7 +173,10 @@
           <span class="pill go" id="pill-boat"><small>Boat</small><b>Checking</b></span><span class="pill win" id="pill-courts"><small>Courts</small><b>Checking</b></span>
         </div>
         <p class="pill-key">Green = go now. Gold = wait or keep it short. Coral = don’t.</p>
-        <img id="quiet-photo" class="quiet-photo on" alt="Manasota Key" src="https://commons.wikimedia.org/wiki/Special:FilePath/Englewood_Beach081915_024NEW.jpg?width=1600"/>
+        <div class="keycam">
+          <iframe id="keycam-frame" title="Manasota Key live cam" src="https://capeweather.com/southwest-florida-live-streaming-webcams/manasota-key-beach-webcam/" allow="autoplay; fullscreen" allowfullscreen></iframe>
+        </div>
+        <p id="keycam-cap" class="pill-key">1 / 3 · Pearl Beach Inn, Manasota Key</p>
       </section>
       <section id="tenday" class="page">
         <h2 data-k="On the Key">Weather</h2>
@@ -615,6 +620,24 @@ Cart shop:</textarea>
       }
       start();
       document.addEventListener("pointerdown", start, { once: true, capture: true });
+    })();
+    (function cycleKeyCams() {
+      var cams = [
+        { src: "https://capeweather.com/southwest-florida-live-streaming-webcams/manasota-key-beach-webcam/", cap: "Pearl Beach Inn, Manasota Key · west Gulf" },
+        { src: "https://www.earthcam.com/usa/florida/englewood/?cam=englewoodbeach", cap: "Englewood Beach EarthCam · Chadwick Park" },
+        { src: "https://www.pureflorida.com/beaches/live-beach-cam/", cap: "Pure Florida · Englewood Beach" }
+      ];
+      var i = 0;
+      var frame = document.getElementById("keycam-frame");
+      var cap = document.getElementById("keycam-cap");
+      function show() {
+        if (!frame) return;
+        frame.src = cams[i].src;
+        if (cap) cap.textContent = (i + 1) + " / " + cams.length + " · " + cams[i].cap;
+        i = (i + 1) % cams.length;
+      }
+      show();
+      setInterval(show, 5 * 1000);
     })();
     function greetWord() {
       var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
