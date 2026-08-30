@@ -177,10 +177,9 @@
           <iframe id="keycam-frame" title="Gulf live cam" src="https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
         </div>
         <p id="keycam-cap" class="pill-key">1 / 2 · Siesta Key Beach live</p>
-        <div class="rowbtns" style="margin-top:6px">
-          <a href="https://capeweather.com/southwest-florida-live-streaming-webcams/manasota-key-beach-webcam/" target="_blank" rel="noopener">Pearl Beach Inn</a>
-          <a href="https://www.earthcam.com/usa/florida/englewood/?cam=englewoodbeach" target="_blank" rel="noopener">Englewood EarthCam</a>
-          <a href="https://www.pureflorida.com/beaches/live-beach-cam/" target="_blank" rel="noopener">Pure Florida</a>
+        <div class="rowbtns" id="keycam-btns" style="margin-top:6px">
+          <button type="button" class="on" data-cam="0">Siesta Key</button>
+          <button type="button" data-cam="1">Fort Myers Beach</button>
         </div>
       </section>
       <section id="tenday" class="page">
@@ -634,14 +633,25 @@ Cart shop:</textarea>
       var i = 0;
       var frame = document.getElementById("keycam-frame");
       var cap = document.getElementById("keycam-cap");
-      function show() {
+      var btns = document.querySelectorAll("#keycam-btns button");
+      function paint() {
         if (!frame) return;
         frame.src = cams[i].src;
         if (cap) cap.textContent = (i + 1) + " / " + cams.length + " · " + cams[i].cap;
-        i = (i + 1) % cams.length;
+        btns.forEach(function (b, n) { b.classList.toggle("on", n === i); });
       }
-      show();
-      setInterval(show, 10 * 1000);
+      function next() {
+        i = (i + 1) % cams.length;
+        paint();
+      }
+      btns.forEach(function (b) {
+        b.addEventListener("click", function () {
+          i = parseInt(b.getAttribute("data-cam"), 10) || 0;
+          paint();
+        });
+      });
+      paint();
+      setInterval(next, 10 * 1000);
     })();
     function greetWord() {
       var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
@@ -717,6 +727,14 @@ Cart shop:</textarea>
       el.addEventListener("change", function () { try { localStorage.setItem("bw-vendors", el.value); } catch (e) {} });
     })();
     clock(); setInterval(clock, 15000);
+    (function midnightReload() {
+      var etNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+      var next = new Date(etNow);
+      next.setHours(24, 0, 10, 0);
+      var wait = next - etNow;
+      if (wait < 5000) wait += 24 * 60 * 60 * 1000;
+      setTimeout(function () { location.reload(); }, wait);
+    })();
     var pages = ["now","tenday","radar","marine","sky","ent","house","deliver","radio","traffic"], i = 0, rot, idle;
     function warnList() {
       var ev = window.__wxRisk.warnTypes || "";
