@@ -131,9 +131,25 @@
         <div class="tiles">
           <div class="tile"><label>Wind</label><strong id="live-wind">E 6 mph</strong></div>
           <div class="tile"><label>Gusts</label><strong id="live-gusts">8 mph</strong></div>
-          <div class="tile wide"><label>Humidity / dew</label><div class="pbar-read"><strong id="live-rh">91%</strong> <span id="live-dew">Dew 74&deg;</span></div><div class="pbar"><span class="pseg low">Dry</span><span class="pseg mid">OK</span><span class="pseg high">Muggy</span><i class="pneedle" style="left:91%"></i></div><div class="pbar-scale"><span>0%</span><span>50%</span><span>100%</span></div></div>
+        </div>
+        <div class="marine-graphs">
+          <div class="card"><b>Humidity</b><span id="live-rh">—</span> <span id="live-dew"></span>
+            <div class="tide" id="humid-chart"></div>
+          </div>
+          <div class="card"><b>Pressure</b><span id="live-pres">—</span> <span id="live-pres-note"></span>
+            <div class="tide" id="pres-chart"></div>
+          </div>
+        </div>
+        <div class="marine-graphs">
+          <div class="card"><b>Rain / hour</b><span id="live-rain-hr">—</span>
+            <div class="tide" id="rainhr-chart"></div>
+          </div>
+          <div class="card"><b>Rain event</b><span id="live-rain-ev">—</span>
+            <div class="tide" id="rainev-chart"></div>
+          </div>
+        </div>
+        <div class="tiles">
           <div class="tile wide"><label>UV index</label><div class="pbar-read"><strong id="live-uv">UV</strong> <span>NWS hourly</span></div><div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" style="left:88%"></i></div><div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div></div>
-          <div class="tile wide"><label>Pressure · VENF1 rising</label><div class="pbar-read"><strong id="live-pres">—</strong> <span id="live-pres-note">station</span></div><div class="pbar"><span class="pseg low">Low</span><span class="pseg mid">Fair</span><span class="pseg high">High</span><i class="pneedle"></i></div><div class="pbar-scale"><span>29.60</span><span>30.00</span><span>30.50</span></div></div>
         </div>
         <p>Good morning window. Do beach and cart before the afternoon storms.</p>
       </section>
@@ -481,6 +497,25 @@
         '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#1b2a4a" stroke-width="2"/>' +
         '<text x="8" y="84" font-size="8" fill="#5c6b7a">-' + vmax.toFixed(1) + '</text>' +
         '<text x="168" y="84" font-size="8" fill="#5c6b7a">+' + vmax.toFixed(1) + ' ft</text>'
+      );
+    }
+
+    function drawHistChart(id, points, color, ymin, ymax, unit) {
+      var box = document.getElementById(id);
+      if (!box || !points || points.length < 2) return;
+      var t0 = points[0].t, t1 = points[points.length-1].t;
+      if (t1 === t0) t1 = t0 + 1;
+      function X(ms) { return 10 + ((ms - t0) / (t1 - t0)) * 200; }
+      function Y(v) { return 70 - ((v - ymin) / (ymax - ymin)) * 52; }
+      var d = points.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
+      var now = Date.now();
+      var nx = X(Math.max(t0, Math.min(t1, now)));
+      box.innerHTML = svgWrap(
+        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="3"/>' +
+        '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#e07a5f" stroke-width="2"/>' +
+        '<text x="8" y="84" font-size="8" fill="#5c6b7a">' + ymin + unit + '</text>' +
+        '<text x="168" y="84" font-size="8" fill="#5c6b7a">' + ymax + unit + '</text>'
       );
     }
     function refreshMarineSky(days, hours, obs) {
@@ -866,6 +901,45 @@
             tick.textContent = brief + SEP + brief;
             requestAnimationFrame(function () { spinEl(tick, 225); });
           }
+          fetch("https://api.weather.gov/stations/KVNC/observations?limit=36", { headers: hdr })
+            .then(function (r) { return r.json(); })
+            .then(function (st) {
+              var feats = ((st && st.features) || []).slice().reverse();
+              var hum = [], prs = [];
+              feats.forEach(function (f) {
+                var p = f.properties || {};
+                var ts = new Date(p.timestamp).getTime();
+                if (p.relativeHumidity && p.relativeHumidity.value != null) hum.push({ t: ts, v: p.relativeHumidity.value });
+                if (p.barometricPressure && p.barometricPressure.value != null) prs.push({ t: ts, v: p.barometricPressure.value / 3386.39 });
+              });
+              var hr = [], ev = [];
+              feats.forEach(function (f) {
+                var p = f.properties || {};
+                var ts = new Date(p.timestamp).getTime();
+                function inch(obj) {
+                  if (!obj || obj.value == null) return null;
+                  var v = obj.value;
+                  if (obj.unitCode && /mm/.test(obj.unitCode)) v = v / 25.4;
+                  return v;
+                }
+                var h1 = inch(p.precipitationLastHour);
+                var h6 = inch(p.precipitationLast6Hours) != null ? inch(p.precipitationLast6Hours) : inch(p.precipitationLast3Hours);
+                if (h1 != null) hr.push({ t: ts, v: h1 });
+                if (h6 != null) ev.push({ t: ts, v: h6 });
+              });
+              var hrEl = document.getElementById("live-rain-hr");
+              var evEl = document.getElementById("live-rain-ev");
+              if (hrEl && hr.length) hrEl.textContent = hr[hr.length-1].v.toFixed(2) + '" last hour';
+              if (evEl && ev.length) evEl.textContent = ev[ev.length-1].v.toFixed(2) + '" last 6 hours';
+              if (hr.length) drawHistChart("rainhr-chart", hr, "#4a90a4", 0, Math.max(0.25, Math.max.apply(null, hr.map(function (p) { return p.v; }))), '"');
+              if (ev.length) drawHistChart("rainev-chart", ev, "#1b2a4a", 0, Math.max(0.5, Math.max.apply(null, ev.map(function (p) { return p.v; }))), '"');
+              if (hum.length) drawHistChart("humid-chart", hum, "#2a9d8f", 40, 100, "%");
+              if (prs.length) {
+                var lo = 29.6, hi = 30.4;
+                prs.forEach(function (p) { if (p.v < lo) lo = Math.floor(p.v * 10) / 10; if (p.v > hi) hi = Math.ceil(p.v * 10) / 10; });
+                drawHistChart("pres-chart", prs, "#1b2a4a", lo, hi, '"');
+              }
+            }).catch(function () {});
           refreshMarineSky(days, hours, obs);
           refreshExtras(hours, days);
         })
