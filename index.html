@@ -324,22 +324,21 @@ Cart shop:</textarea>
           <b>Scanners</b>
           <span>Quiet until a call. Broadcastify may play a short ad first.</span>
           <div class="rowbtns">
-            <button type="button" data-stream="https://broadcastify.cdnstream1.com/30021">SO / Venice PD</button>
-            <button type="button" data-stream="https://broadcastify.cdnstream1.com/45683">EAFD / South Fire</button>
+            <button type="button" data-scan="30021">SO / Venice PD</button>
+            <button type="button" data-scan="45683">EAFD / South Fire</button>
           </div>
-          <p style="margin:8px 0 0"><b>SO / Venice PD.</b> Sarasota County Sheriff, Venice Police, and North Port Police.</p>
-          <p style="margin:8px 0 0"><b>EAFD / South Fire.</b> Englewood, Nokomis, and Venice fire.</p>
+          <iframe id="scan-frame" title="Scanner" style="display:none;width:100%;height:92px;border:0;border-radius:8px;margin-top:8px;background:#111" allow="autoplay"></iframe>
+          <p style="margin:8px 0 0"><b>SO / Venice PD.</b> Sarasota County Sheriff, Venice Police, and North Port Police. Quiet until a call. Broadcastify may play a short ad.</p>
+          <p style="margin:8px 0 0"><b>EAFD / South Fire.</b> Englewood, Nokomis, North Port, and Venice fire.</p>
         </div>
         <div class="card">
           <b>NOAA Weather Radio</b>
           <span>Englewood sits on the Sarasota / Charlotte line. Fort Myers WXK83 and Tampa KHB32 are the streams that cover the Key. SAME: Sarasota 012115 · Charlotte 012015.</span>
           <div class="rowbtns">
             <button type="button" data-stream="https://radio.weatherusa.net/NWR/KHB32.mp3">NOAA Tampa</button>
-            <button type="button" data-stream="https://radio.weatherusa.net/NWR/KEC38.mp3">NOAA Largo</button>
           </div>
-          <p style="margin:8px 0 0"><b>NOAA Tampa (KHB32 162.550).</b> Working stream. Weather, marine loop, and warnings for the Tampa Bay / Sarasota side of the Key.</p>
-          <p style="margin:8px 0 0"><b>NOAA Largo (KEC38 162.450).</b> Second Tampa Bay transmitter if Tampa is quiet.</p>
-          <p style="margin:8px 0 0"><b>Fort Myers WXK83 / Venice WWG59.</b> Those are the local boxes on the Key, but neither has a live internet feed right now (WXK83’s Broadcastify has been offline). Warnings and marine text below are still for the Englewood point.</p>
+          <p style="margin:8px 0 0"><b>NOAA Tampa (KHB32 162.550).</b> Live stream. Weather, marine loop, and warnings for the Tampa Bay / Sarasota side of the Key.</p>
+          <p style="margin:8px 0 0"><b>Largo KEC38, Fort Myers WXK83, Venice WWG59.</b> No working internet stream for those transmitters. Use a weather radio on 162.450 / 162.475 / 162.400, or stay on NOAA Tampa here. Warnings and marine text below are still for the Englewood point.</p>
           <p style="margin:8px 0 0"><b>Warnings now.</b> <span id="live-nwr-alert">Checking NWS for Englewood…</span></p>
           <p style="margin:8px 0 0"><b>Marine now.</b> <span id="live-nwr-marine">Coastal waters update with the Marine page.</span></p>
         </div>
@@ -495,15 +494,36 @@ Cart shop:</textarea>
       var status = document.getElementById("radio-status");
       if (!audio) return;
       document.querySelectorAll(".rowbtns button").forEach(function (x) {
-        x.classList.toggle("on", (x.getAttribute("data-stream") || "") === (url || ""));
+        var scan = x.getAttribute("data-scan");
+        var match = scan ? url === "scan:" + scan : (x.getAttribute("data-stream") || "") === (url || "");
+        x.classList.toggle("on", match);
       });
+      var scan = document.getElementById("scan-frame");
+      function hideScan() {
+        if (!scan) return;
+        scan.style.display = "none";
+        scan.removeAttribute("src");
+      }
       if (!url) {
         audio.pause();
         audio.removeAttribute("src");
+        hideScan();
         if (!opts.keepSaved) saveRadio("");
         if (status) status.textContent = "Muted.";
         return;
       }
+      if (String(url).indexOf("scan:") === 0) {
+        audio.pause();
+        audio.removeAttribute("src");
+        if (!opts.keepSaved) saveRadio(url);
+        if (scan) {
+          scan.src = "https://www.broadcastify.com/webPlayer/" + url.slice(5);
+          scan.style.display = "block";
+        }
+        if (status) status.textContent = "Scanner player on. Broadcastify may play a short ad. Quiet until a call.";
+        return;
+      }
+      hideScan();
       if (!opts.keepSaved) saveRadio(url);
       if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert) {
         audio.pause();
@@ -523,7 +543,8 @@ Cart shop:</textarea>
     }
     document.querySelectorAll(".rowbtns button").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        playStation(btn.getAttribute("data-stream"), btn.textContent);
+        var scan = btn.getAttribute("data-scan");
+        playStation(scan ? "scan:" + scan : btn.getAttribute("data-stream"), btn.textContent);
       });
     });
     (function radioAuto() {
@@ -1790,6 +1811,21 @@ Cart shop:</textarea>
       drawMoonChart();
     }, 60 * 1000);
 
+    function spaceSentences(s) {
+      return String(s || "")
+        .replace(/\s+/g, " ")
+        .replace(/([.!?])\s+/g, "$1\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 ")
+        .trim();
+    }
+    function setTicker(el, html, speed) {
+      if (!el) return;
+      html = String(html || "").trim();
+      if (!html) return;
+      if (el.getAttribute("data-hash") === html) return;
+      el.setAttribute("data-hash", html);
+      el.innerHTML = html;
+      requestAnimationFrame(function () { spinEl(el, speed || 112); });
+    }
     function pollBreaking() {
       var bar = document.getElementById("breakbar");
       var txt = document.getElementById("breaktext");
@@ -1837,16 +1873,18 @@ Cart shop:</textarea>
         hits = hits.slice(0, 6);
         if (!hits.length) {
           bar.classList.remove("on");
+          txt.setAttribute("data-hash", "");
           stackTickers();
           return;
         }
         var body = hits.map(function (h) {
-          return "BREAKING · " + h.src + ". " + h.title;
-        }).join("   \u00a0 \u00a0 \u00a0 • \u00a0 • \u00a0 • \u00a0 \u00a0 \u00a0   ");
-        txt.textContent = body;
+          var line = "BREAKING · " + h.src + ". " + h.title;
+          if (!/[.!?]$/.test(line)) line += ".";
+          return spaceSentences(line);
+        }).join("\u00a0".repeat(140));
         bar.classList.add("on");
         stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 112); });
+        setTicker(txt, body, 150);
       }).catch(function () { bar.classList.remove("on"); stackTickers(); });
     }
     pollBreaking();
@@ -1972,10 +2010,7 @@ Cart shop:</textarea>
         ]),
         para("Entertainment", events())
       ].join(SEP);
-      if (tick.getAttribute("data-hash") === html) return;
-      tick.setAttribute("data-hash", html);
-      tick.innerHTML = html;
-      requestAnimationFrame(function () { spinEl(tick, 112); });
+      setTicker(tick, html, 112);
     }
     function spinEl(el, speed) {
       if (!el) return;
@@ -1999,13 +2034,6 @@ Cart shop:</textarea>
       var txt = document.getElementById("alerttext");
       var frame = document.querySelector(".frame");
       if (!bar || !txt) return;
-      function spin(el, speed) {
-        var w = el.getBoundingClientRect().width;
-        var dur = Math.max(20, w / 225);
-        el.style.animation = "none";
-        el.offsetHeight;
-        el.style.animation = "tick " + dur + "s linear infinite";
-      }
       fetch("https://api.weather.gov/alerts/active?point=26.96,-82.35", {
         headers: { "Accept": "application/geo+json" }
       }).then(function (r) { return r.json(); }).then(function (data) {
@@ -2089,6 +2117,7 @@ Cart shop:</textarea>
         pagesFromDock();
         if (!keep.length) {
           bar.className = "alert-ticker";
+          txt.setAttribute("data-hash", "");
           frame.classList.remove("has-alert"); stackTickers();
           writeBriefing();
           return;
@@ -2098,13 +2127,14 @@ Cart shop:</textarea>
         });
         var parts = keep.map(function (f) {
           var p = f.properties || {};
-          return (p.event || "Alert") + ". " + (p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 280);
+          var line = (p.event || "Alert") + ". " + (p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 280);
+          if (!/[.!?]$/.test(line)) line += ".";
+          return spaceSentences(line);
         });
-        var body = parts.join("   \u00a0 \u00a0 \u00a0 • \u00a0 • \u00a0 • \u00a0 \u00a0 \u00a0   ");
-        txt.textContent = body;
+        var body = parts.join("\u00a0".repeat(140));
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
         frame.classList.add("has-alert"); stackTickers();
-        requestAnimationFrame(function () { spinEl(txt, 112); });
+        setTicker(txt, body, 150);
         writeBriefing();
       }).catch(function () {});
     }
