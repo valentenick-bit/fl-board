@@ -642,7 +642,7 @@ Cart shop:</textarea>
         i = (i + 1) % cams.length;
       }
       show();
-      setInterval(show, 15 * 1000);
+      setInterval(show, 10 * 1000);
     })();
     function greetWord() {
       var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
@@ -733,14 +733,21 @@ Cart shop:</textarea>
         return true;
       });
     }
+    function pageDwell(id) {
+      return id === "now" ? 20000 : 15000;
+    }
     function startRotate() {
       clearInterval(rot);
-      rot = setInterval(function () {
+      clearTimeout(rot);
+      function step() {
         pages = window.__storm ? warnList() : rotateList();
         if (!pages.length) return;
         i = (i + 1) % pages.length;
         showPage(pages[i]);
-      }, 15000);
+        rot = setTimeout(step, pageDwell(pages[i]));
+      }
+      var on = document.querySelector(".page.on");
+      rot = setTimeout(step, pageDwell(on ? on.id : "now"));
     }
     document.querySelectorAll(".dock").forEach(function (d) {
       d.addEventListener("click", function () {
