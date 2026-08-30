@@ -100,8 +100,7 @@
     .dock-more { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding-top:0; padding-bottom:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
     .dock-wrap.open .dock-more { max-height:72px; opacity:1; padding:4px 6px; pointer-events:auto; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
-    .quiet-photo { width:100%; height:140px; object-fit:cover; border-radius:12px; margin:8px 0; display:none; }
-    .quiet-photo.on { display:block; }
+    .quiet-photo { width:100%; height:32vh; min-height:180px; object-fit:cover; border-radius:16px; margin:10px 0 0; display:block; border:1px solid var(--hair); }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
     .tenday { display:flex; flex-direction:column; gap:0; margin:8px 0 12px; background:var(--sand-2); border:1px solid var(--hair); border-radius:16px; overflow:hidden; }
@@ -137,9 +136,11 @@
     html.dark .dock button { color:#e6d7b8; }
     html.dark .dock button.on { background:#2a2444; color:#f3ead8; }
     html.dark .ticker { background:#0e0c1c; }
-    html.dark .rowbtns button { background:#221e36; border-color:rgba(196,163,90,.35); color:#f3ead8; }
+    html.dark .rowbtns button, html.dark .rowbtns a { background:#2a2444; border:1px solid #c4a35a; color:#f3ead8; }
+    html.dark .rowbtns button.on { background:#c4a35a; color:#0e0c1c; }
+    html.dark #radio-status { color:#e6d7b8; }
     html.dark .card.music { background:#2a1e28; }
-    #now, #marine { background:linear-gradient(180deg, rgba(42,157,143,.18) 0%, transparent 42%); border-radius:16px; padding:8px 8px 4px; }
+    #now, #tenday, #marine { background:linear-gradient(180deg, rgba(42,157,143,.18) 0%, transparent 42%); border-radius:16px; padding:8px 8px 4px; }
     #live-heat { display:none; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#e07a5f; }
     #live-heat.on { display:block; }
     .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
@@ -162,7 +163,7 @@
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
       <section id="now" class="page on">
-        <h2 data-k="On the Key">Now</h2>
+        <h2 data-k="On the Key">Welcome</h2>
         <p class="sky" id="live-sky">Good morning. Mostly sunny in Englewood with a heat index near 102°. Afternoon storms are likely after 2 p.m. Beach and cart are best this morning before the storms build.</p>
         <div class="pills">
           <span class="pill go" id="pill-beach"><small>Beach</small><b>Checking</b></span><span class="pill go" id="pill-rip"><small>Rip current</small><b>Checking</b></span>
@@ -170,6 +171,10 @@
           <span class="pill go" id="pill-boat"><small>Boat</small><b>Checking</b></span><span class="pill win" id="pill-courts"><small>Courts</small><b>Checking</b></span>
         </div>
         <p class="pill-key">Green = go now. Gold = wait or keep it short. Coral = don’t.</p>
+        <img id="quiet-photo" class="quiet-photo on" alt="Manasota Key" src="https://commons.wikimedia.org/wiki/Special:FilePath/Englewood_Beach081915_024NEW.jpg?width=1600"/>
+      </section>
+      <section id="tenday" class="page">
+        <h2 data-k="On the Key">Weather</h2>
         <div class="hourly">
           <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
           <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
@@ -209,9 +214,6 @@
         <div class="tiles">
           <div class="tile wide"><label>UV index</label><div class="pbar-read"><strong id="live-uv">UV</strong> <span>NWS hourly</span></div><div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" style="left:88%"></i></div><div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div></div>
         </div>
-      </section>
-      <section id="tenday" class="page">
-        <h2 data-k="Forecast">10-day</h2>
         <div class="tenday">
           <div class="day">Sat <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><span>sun then storms</span><span><span class="hi">91&deg;</span> <span class="lo">76&deg;</span></span></div>
           <div class="day">Sun <svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span>showers likely</span><span><span class="hi">90&deg;</span> <span class="lo">76&deg;</span></span></div>
@@ -447,8 +449,8 @@ Cart shop:</textarea>
     </main>
     <div class="dock-wrap">
     <nav class="dock" id="dock">
-      <button type="button" data-p="now" class="on">Now</button>
-      <button type="button" data-p="tenday">10-day</button>
+      <button type="button" data-p="now" class="on">Welcome</button>
+      <button type="button" data-p="tenday">Weather</button>
       <button type="button" data-p="radar">Radar</button>
       <button type="button" data-p="marine">Marine</button>
       <button type="button" data-p="sky">Sky</button>
@@ -1535,8 +1537,7 @@ Cart shop:</textarea>
           if (el) el.textContent = "Pass API blocked. Use NASA Spot the Station.";
         });
       var photo = document.getElementById("quiet-photo");
-      var stormy = hours && hours[0] && /thunder|rain|shower/i.test(hours[0].shortForecast || "");
-      if (photo) photo.classList.toggle("on", !stormy);
+      if (photo) photo.classList.add("on");
       var ripTxt = (document.getElementById("live-rip") || {}).textContent || "";
       if (/high|warning|yes/i.test(ripTxt)) setPill("pill-rip", "no", "Rip current", "Don’t swim");
       else if (/moderate|advisory/i.test(ripTxt)) setPill("pill-rip", "win", "Rip current", "Be careful");
@@ -2083,7 +2084,7 @@ Cart shop:</textarea>
       }
       var SEP = "\u00a0".repeat(140);
       var html = [
-        para("Now", [
+        para("Welcome", [
           t("live-sky"),
           t("live-temp") ? "It is " + t("live-temp") + (t("live-feels") ? " and feels like " + t("live-feels") : "") : "",
           t("live-wind") ? "Wind is " + t("live-wind") + (t("live-gusts") ? " with gusts " + t("live-gusts") : "") : "",
