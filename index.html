@@ -12,6 +12,7 @@
 
     html, body { margin:0; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
     .frame { position:relative; width:min(430px,100vw); height:100dvh; max-height:100dvh; margin:0 auto; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
+    header.night { filter:brightness(.68); }
     header { background:var(--navy); color:#f7f1e6; padding:10px 12px 8px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
     header .brand { justify-self:start; }
     header .clock { justify-self:end; text-align:right; }
@@ -38,7 +39,8 @@
     .pill { display:block; text-align:center; border-radius:999px; padding:10px 8px; font-weight:700; color:#fff; font-size:14px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
-    .hourly { display:grid; grid-template-columns:repeat(auto-fit, minmax(52px, 1fr)); gap:8px; padding:4px 0 10px; }
+    .hourly { display:flex; flex-wrap:nowrap; gap:8px; padding:4px 0 10px; overflow:hidden; }
+    .hourly .hour { flex:1 1 0; min-width:0; }
     .hour { min-width:56px; background:#fff; border-radius:12px; text-align:center; padding:8px 4px; font-size:12px; }
     .hour b { display:block; font-size:16px; }
     .hour svg { width:28px; height:28px; display:block; margin:4px auto; }
@@ -324,7 +326,7 @@ Cart shop:</textarea>
       <section id="bolt" class="page">
         <h2>Lightning</h2>
         <div class="card"><b>Key</b><span id="live-bolt">If NWS mentions lightning, pool and cart go NO.</span></div>
-        <div class="card"><b>Distance class</b><span id="live-bolt-dist">No official mile count without a strike API. Class comes from NWS products.</span></div>
+        <div class="card"><b>Risk class</b><span id="live-bolt-dist">NWS product class only — not a measured mile count.</span></div>
         <iframe class="lite" title="Lightning" src="https://map.blitzortung.org/#6/26.96/-82.35"></iframe>
         <p id="pool-light">Pool: open unless a strike is close. Cart: same rule as Boat NO when thunder is in the hourly.</p>
       </section>
@@ -381,6 +383,7 @@ Cart shop:</textarea>
       <button type="button" data-p="house">House</button>
       <button type="button" data-p="radio">Radio</button>
       <button type="button" data-p="traffic">Roads</button>
+      <button type="button" id="stormbtn">Storm</button>
       <button type="button" id="morebtn">More</button>
     </nav>
     <nav class="dock dock-more" id="dock-more">
@@ -389,7 +392,6 @@ Cart shop:</textarea>
       <button type="button" data-p="news">Fox</button>
       <button type="button" data-p="contacts">Contacts</button>
       <button type="button" data-p="villa">Villa</button>
-      <button type="button" id="stormbtn">Storm</button>
       <button type="button" id="darkbtn">Dark</button>
           </nav>
     </div>
@@ -470,6 +472,9 @@ Cart shop:</textarea>
     })();
     function clock() {
       document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
+      var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
+      var head = document.querySelector("header");
+      if (head) head.classList.toggle("night", hr >= 22 || hr < 6);
     }
 
     function inQuietHours() {
@@ -582,7 +587,7 @@ Cart shop:</textarea>
         var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b && dockMore) dockMore.appendChild(b);
       });
-      ["stormbtn","darkbtn"].forEach(function (id) {
+      ["darkbtn"].forEach(function (id) {
         var more = document.getElementById("dock-more") || dock;
         var b = document.getElementById(id);
         if (b) more.appendChild(b);
@@ -665,6 +670,7 @@ Cart shop:</textarea>
         var out = [];
         blocks.forEach(function (b) {
           var sum = (b.match(/SUMMARY:(.+)/) || [])[1] || "";
+          sum = sum.replace(/^(BW|Maybe):\s*/i, "");
           var loc = (b.match(/LOCATION:(.+)/) || [])[1] || "";
           var ds = (b.match(/DTSTART(?:;[^:]*)?:(\d{8}(?:T\d{6}Z?)?)/) || [])[1] || "";
           if (!sum || !ds) return;
@@ -1133,11 +1139,6 @@ Cart shop:</textarea>
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           window.__wxRisk.cane = storms.length > 0;
           pagesFromDock();
-          if (storms.length && !window.__stormOff) {
-            window.__storm = true;
-            var sb = document.getElementById("stormbtn");
-            if (sb) sb.classList.add("on");
-          }
           if (el) el.textContent = storms.length ? storms.map(function (s) { return (s.name || s.id || "Storm") + " " + (s.classification || s.binNumber || ""); }).join(" · ") : "No active NHC storms in the file. Outlook map still updates.";
         }).catch(function () {
           var el = document.getElementById("live-cane");
@@ -1225,6 +1226,32 @@ Cart shop:</textarea>
       tmp.innerHTML = wxSvg(kind, 32);
       var inner = tmp.querySelector("svg");
       if (inner) el.innerHTML = inner.innerHTML;
+    }
+
+    var WX_IDS = ["live-temp","live-feels","live-sky","live-wind","live-gusts","live-rh","live-dew","live-pres","live-uv"];
+    function saveWxSnap() {
+      var snap = { t: Date.now() };
+      WX_IDS.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) snap[id] = el.textContent;
+      });
+      try { localStorage.setItem("bw-wx-snap", JSON.stringify(snap)); } catch (e) {}
+    }
+    function loadWxSnap(reason) {
+      var raw;
+      try { raw = localStorage.getItem("bw-wx-snap"); } catch (e) { return; }
+      if (!raw) return;
+      var snap;
+      try { snap = JSON.parse(raw); } catch (e) { return; }
+      WX_IDS.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && snap[id]) el.textContent = snap[id];
+      });
+      var sky = document.getElementById("live-sky");
+      if (sky && snap.t) {
+        var age = new Date(snap.t).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
+        sky.textContent = (snap["live-sky"] || sky.textContent) + " · cached " + age + (reason ? " (" + reason + ")" : "");
+      }
     }
     function refreshWeather() {
       var hdr = { "Accept": "application/geo+json" };
@@ -1325,7 +1352,7 @@ Cart shop:</textarea>
           setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now());
           if (hours.length && document.querySelector(".hourly")) {
             var box = document.querySelector(".hourly");
-            var n = Math.max(6, Math.min(11, Math.floor((box.clientWidth || 400) / 64)));
+            var n = Math.max(6, Math.min(10, Math.floor((box.clientWidth || 400) / 68)));
             box.innerHTML = hours.slice(0, n).map(function (h) {
               var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" });
               return '<div class="hour">' + when + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime()), 28) + '<b>' + h.temperature + '°</b></div>';
@@ -1411,11 +1438,13 @@ Cart shop:</textarea>
                 drawHistChart("pres-chart", prs, "#1b2a4a", lo, hi, '"');
               }
             }).catch(function () {});
+          saveWxSnap();
           refreshMarineSky(days, hours, obs);
           refreshExtras(hours, days);
         })
-        .catch(function () {});
+        .catch(function () { loadWxSnap("offline"); });
     }
+    loadWxSnap();
     refreshWeather();
     setInterval(refreshWeather, 5 * 60 * 1000);
     setInterval(function () {
@@ -1516,11 +1545,14 @@ Cart shop:</textarea>
         });
         var dist = document.getElementById("live-bolt-dist");
         if (dist) {
-          if (!keep.length) dist.textContent = "No active watch/warning. Treat as far / none unless the map shows a flash.";
+          if (!keep.length) dist.textContent = "No watch or warning. Use the map for flashes.";
           else if (keep.some(function (f) { return /warning/i.test((f.properties || {}).event || ""); })) dist.textContent = "Warning in effect — treat as close / overhead risk for the Key. Stay off the pool and cart.";
-          else dist.textContent = "Watch in the county — strikes possible within tens of miles. Not a measured distance.";
+          else dist.textContent = "Watch in the county. Risk is area-wide, not a mile reading.";
         }
-        if (keep.length && !window.__stormOff) {
+        var isWarnEarly = keep.some(function (f) {
+          return /warning/i.test(((f.properties || {}).event || ""));
+        });
+        if (isWarnEarly && !window.__stormOff) {
           window.__storm = true;
           var sb = document.getElementById("stormbtn");
           if (sb) sb.classList.add("on");
