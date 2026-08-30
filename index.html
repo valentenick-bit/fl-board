@@ -11,7 +11,8 @@
     * { box-sizing: border-box; }
 
     html, body { margin:0; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
-    .frame { position:relative; width:min(430px,100vw); height:100dvh; max-height:100dvh; margin:0 auto; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
+    html, body { background:var(--sand); }
+    .frame { position:relative; width:100vw; height:100dvh; max-width:none; max-height:100dvh; margin:0; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
     header.night { filter:brightness(.68); }
     header { background:var(--navy); color:#f7f1e6; padding:10px 12px 8px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
     header .brand { justify-self:start; }
@@ -93,10 +94,17 @@
     .day { display:grid; grid-template-columns:42px 28px 1fr auto; gap:8px; align-items:center; background:#fff; border-radius:10px; padding:4px 10px; font-size:12px; }
     .day svg { width:26px; height:26px; }
     .hi { font-weight:700; } .lo { color:var(--muted); }
-    .frame { width:min(430px,100vw); }
+    .map-tools { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 8px; }
+    .map-tools button { background:#fff; border:1px solid #d7cdbb; border-radius:999px; padding:8px 12px; font-weight:700; color:var(--navy); }
+    iframe:fullscreen, img:fullscreen, .frame:fullscreen {
+      width:100vw !important; height:100vh !important; max-width:none; border-radius:0; object-fit:contain; background:#111;
+    }
     @media (min-width: 800px) {
-      .frame { width:min(640px,100vw); }
       .day { padding:6px 10px; font-size:13px; }
+      iframe.full { height:68vh; }
+      iframe.lite { height:56vh; }
+      .tiles { grid-template-columns:repeat(4, 1fr); }
+      main { padding:12px 18px 8px; }
     }
     .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
     .pbar-read span { color:var(--muted); font-size:12px; }
@@ -208,8 +216,11 @@
       </section>
       <section id="radar" class="page">
         <h2>Radar</h2>
-        <p><a href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Open live KTBW radar</a> if the map below is blank (some browsers block the embed).</p>
-        <iframe class="full" title="KTBW" src="https://radar.weather.gov/station/KTBW/standard"></iframe>
+        <div class="map-tools">
+          <button type="button" class="fs-map" data-fs="radar-map">Full screen map</button>
+          <a href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Open KTBW</a>
+        </div>
+        <iframe id="radar-map" class="full" title="KTBW" src="https://radar.weather.gov/station/KTBW/standard"></iframe>
       </section>
       <section id="marine" class="page">
         <h2>Marine</h2>
@@ -331,6 +342,10 @@ Cart shop:</textarea>
       <section id="cane" class="page">
         <h2>Tropical</h2>
         <div class="card"><b>Atlantic / Gulf</b><span id="live-cane">Checking NHC…</span></div>
+        <div class="map-tools">
+          <button type="button" class="fs-map" data-fs="cane-img-2d">Full 2-day</button>
+          <button type="button" class="fs-map" data-fs="cane-img">Full 5-day</button>
+        </div>
         <img id="cane-img-2d" alt="NHC Atlantic 2-day outlook" style="width:100%;border-radius:12px;background:#111;margin-bottom:8px" src="https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png"/>
         <img id="cane-img" alt="NHC Atlantic 5-day outlook" style="width:100%;border-radius:12px;background:#111" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
         <p><a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener">NHC Atlantic / Gulf outlook</a></p>
@@ -339,13 +354,15 @@ Cart shop:</textarea>
         <h2>Lightning</h2>
         <div class="card"><b>Key</b><span id="live-bolt">If NWS mentions lightning, pool and cart go NO.</span></div>
         <div class="card"><b>Risk class</b><span id="live-bolt-dist">NWS product class only — not a measured mile count.</span></div>
-        <iframe class="lite" title="Lightning" src="https://map.blitzortung.org/#6/26.96/-82.35"></iframe>
+        <div class="map-tools"><button type="button" class="fs-map" data-fs="bolt-map">Full screen map</button></div>
+        <iframe id="bolt-map" class="lite" title="Lightning" src="https://map.blitzortung.org/#6/26.96/-82.35"></iframe>
         <p id="pool-light">Pool: open unless a strike is close. Cart: same rule as Boat NO when thunder is in the hourly.</p>
       </section>
       <section id="traffic" class="page">
         <h2>Traffic</h2>
         <div class="card"><b>Drives</b><span>I-75 to PGD / SRQ · US-41 through Venice / Englewood. Tap the map. Live speeds from FL511.</span></div>
-        <iframe class="lite" title="FL511" src="https://fl511.com/map/EmbeddedMap?lat=27.00&lng=-82.36&zoom=10&layers=TrafficSpeeds,Incidents,Congestion"></iframe>
+        <div class="map-tools"><button type="button" class="fs-map" data-fs="roads-map">Full screen map</button></div>
+        <iframe id="roads-map" class="lite" title="FL511" src="https://fl511.com/map/EmbeddedMap?lat=27.00&lng=-82.36&zoom=10&layers=TrafficSpeeds,Incidents,Congestion"></iframe>
         <p><a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a> · <a href="https://www.google.com/maps/dir/?api=1&destination=Sarasota+Bradenton+International+Airport" target="_blank" rel="noopener">To SRQ</a> · <a href="https://www.google.com/maps/dir/?api=1&destination=Punta+Gorda+Airport" target="_blank" rel="noopener">To PGD</a></p>
       </section>
       <section id="villa" class="page">
@@ -406,6 +423,7 @@ Cart shop:</textarea>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="darkbtn">Dark</button>
       <button type="button" id="refreshbtn">Refresh</button>
+      <button type="button" id="fullbtn">Full</button>
           </nav>
     </div>
     <div class="ticker-stack">
@@ -511,6 +529,25 @@ Cart shop:</textarea>
       e.preventDefault();
       location.reload();
     });
+    function goFull(el) {
+      if (!el) return;
+      var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+      if (req) req.call(el);
+    }
+    var fullBtn = document.getElementById("fullbtn");
+    if (fullBtn) fullBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      var frame = document.querySelector(".frame") || document.documentElement;
+      if (document.fullscreenElement) {
+        var exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
+      } else goFull(frame);
+    });
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".fs-map");
+      if (!btn) return;
+      goFull(document.getElementById(btn.getAttribute("data-fs")));
+    });
     var darkBtn = document.getElementById("darkbtn");
     if (darkBtn) {
       darkBtn.addEventListener("click", function () {
@@ -612,7 +649,7 @@ Cart shop:</textarea>
         var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b && dockMore) dockMore.appendChild(b);
       });
-      ["darkbtn", "refreshbtn"].forEach(function (id) {
+      ["darkbtn", "refreshbtn", "fullbtn"].forEach(function (id) {
         var dest = dockMore || dock;
         var b = document.getElementById(id);
         if (b) dest.appendChild(b);
