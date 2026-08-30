@@ -319,8 +319,10 @@ Cart shop:</textarea>
       </section>
       <section id="wink" class="page">
         <h2>WINK News</h2>
-        <p><a href="https://www.winknews.com/" target="_blank" rel="noopener">Open WINKNews.com</a> if the embed is blocked.</p>
-        <iframe class="full" title="WINK News" src="https://www.winknews.com/"></iframe>
+        <div id="wink-list">
+          <div class="card"><b>Southwest Florida headlines</b><span>Loading WINK…</span></div>
+        </div>
+        <p><a href="https://www.winknews.com/" target="_blank" rel="noopener">Open WINKNews.com</a></p>
       </section>
       <section id="cane" class="page">
         <h2>Tropical</h2>
@@ -740,6 +742,52 @@ Cart shop:</textarea>
         clearTimeout(hideT);
         hideT = setTimeout(close, 8000);
       });
+    })();
+
+    (function winkHeadlines() {
+      var box = document.getElementById("wink-list");
+      if (!box) return;
+      var feeds = [
+        "https://news.google.com/rss/search?q=site:winknews.com+when:1d&hl=en-US&gl=US&ceid=US:en",
+        "https://www.winknews.com/search/?f=rss&t=article&l=12"
+      ];
+      function cleanTitle(s) {
+        return String(s || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*WINK News.*$/i, "").trim();
+      }
+      function render(items) {
+        var seen = {};
+        var rows = [];
+        items.forEach(function (it) {
+          var title = cleanTitle(it.title);
+          var key = title.toLowerCase().slice(0, 48);
+          if (!title || seen[key]) return;
+          seen[key] = true;
+          rows.push({ title: title, link: it.link || it.url || "https://www.winknews.com/", when: it.pubDate || it.published || "" });
+        });
+        rows = rows.slice(0, 8);
+        if (!rows.length) {
+          box.innerHTML = '<div class="card"><b>WINK site blocks embeds</b><span><a href="https://www.winknews.com/" target="_blank" rel="noopener">Open WINKNews.com</a></span></div>';
+          return;
+        }
+        box.innerHTML = rows.map(function (r) {
+          var t = r.when ? new Date(r.when) : null;
+          var when = (t && !isNaN(t)) ? t.toLocaleString("en-US", { weekday:"short", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "WINK";
+          return '<div class="card"><b><a href="' + r.link + '" target="_blank" rel="noopener">' + r.title + "</a></b><span>" + when + "</span></div>";
+        }).join("");
+      }
+      function rssJson(rss) {
+        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && d.items) || []; })
+          .catch(function () { return []; });
+      }
+      function load() {
+        Promise.all(feeds.map(rssJson)).then(function (lists) {
+          render([].concat.apply([], lists));
+        });
+      }
+      load();
+      setInterval(load, 10 * 60 * 1000);
     })();
     startRotate();
     (function swipePages() {
