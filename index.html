@@ -85,7 +85,7 @@
     .break-ticker { display:none; font-weight:700; background:#111; color:#fff; }
     .break-ticker.on { display:block; }
     .ticker span, .alert-ticker span, .break-ticker span { display:inline-flex; will-change:transform; white-space:nowrap; }
-    .tseg { flex:none; padding-right:160px; }
+    .tseg { flex:none; padding:0; }
     .ticker .tseg b { font-weight:800; color:#e8d5a3; }
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
@@ -240,7 +240,6 @@
         <div class="card"><b>Gulf water history</b><span>Open-Meteo SST</span>
           <div class="tide" id="wtemp-chart"></div>
         </div>
-        <div class="card"><b>Next tides</b><span id="live-tides-next">Loading…</span></div>
         <div class="card"><b>Coastal waters TBW</b><span id="live-coastal">Loading…</span></div>
         <div class="card"><b>Passes</b><span>Venice Inlet / Stump Pass — morning window. Afternoon storms are the ride home risk.</span></div>
         <div class="card"><b>Saltwater report</b><span id="live-fish">Loading Lemon Bay / Stump Pass / Venice Inlet…</span></div>
@@ -1177,13 +1176,21 @@ Cart shop:</textarea>
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var preds = data.predictions || [];
-          var bits = preds.slice(0, 6).map(function (p) {
+          var now = Date.now();
+          var upcoming = preds.filter(function (p) {
+            var ms = new Date(String(p.t).replace(" ", "T")).getTime();
+            return !isNaN(ms) && ms >= now - 15 * 60 * 1000;
+          });
+          function fmtP(p) {
             return (p.type === "H" ? "High" : "Low") + " " + fmtTideClock(p.t.replace(" ", "T")) + " " + Number(p.v).toFixed(2) + " ft";
+          }
+          var nextH = upcoming.filter(function (p) { return p.type === "H"; })[0];
+          var nextL = upcoming.filter(function (p) { return p.type === "L"; })[0];
+          var pair = [nextH, nextL].filter(Boolean).sort(function (a, b) {
+            return new Date(String(a.t).replace(" ", "T")) - new Date(String(b.t).replace(" ", "T"));
           });
           var el1 = document.getElementById("live-tide-today");
-          var el2 = document.getElementById("live-tides-next");
-          if (el1) el1.textContent = bits.slice(0, 2).join(" · ") || "NOAA tides unavailable";
-          if (el2) el2.textContent = bits.join(" · ") || "NOAA tides unavailable";
+          if (el1) el1.textContent = pair.length ? pair.map(fmtP).join(" · ") : "NOAA tides unavailable";
           window.__bwCharts.preds = preds; drawTideChart(preds);
         }).catch(function () {});
       var day = new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0,10).replace(/-/g,"");
@@ -1941,7 +1948,6 @@ Cart shop:</textarea>
       ])) || "Weather tiles are still filling in.";
       var marB = sent(join([
         t("live-tide-today"),
-        t("live-tides-next"),
         t("live-surge"),
         t("live-sst") ? "Gulf water " + t("live-sst") : "",
         t("live-wtemp") ? "Inlet water " + t("live-wtemp") : "",
@@ -1986,7 +1992,10 @@ Cart shop:</textarea>
         var em = sent(join([t("live-nwr-alert"), t("live-prep"), t("live-cane"), t("live-bolt")]));
         if (em) bits.splice(1, 0, "<b>Emergency.</b> " + em);
       }
-      tick.innerHTML = bits.join(SEP);
+      var html = bits.join(SEP);
+      if (tick.getAttribute("data-hash") === html) return;
+      tick.setAttribute("data-hash", html);
+      tick.innerHTML = html;
       requestAnimationFrame(function () { spinEl(tick, 112); });
     }
     function spinEl(el, speed) {
@@ -1996,13 +2005,12 @@ Cart shop:</textarea>
       html = first ? first.innerHTML : el.innerHTML;
       html = String(html || "").trim();
       if (!html) return;
-      el.innerHTML = "<span class='tseg'></span><span class='tseg'></span>";
-      var segs = el.querySelectorAll(".tseg");
-      segs[0].innerHTML = html;
-      segs[1].innerHTML = html;
+      el.innerHTML = "<span class='tseg'>" + html + "</span><span class='tseg'>" + html + "</span>";
       el.style.display = "inline-flex";
-      var one = segs[0].getBoundingClientRect().width;
-      var dur = Math.max(18, one / (speed || 112));
+      var one = el.querySelector(".tseg").getBoundingClientRect().width;
+      if (!one) return;
+      var dur = Math.max(24, one / (speed || 112));
+      el.style.setProperty("--tick-w", one + "px");
       el.style.animation = "none";
       el.offsetHeight;
       el.style.animation = "tick " + dur + "s linear infinite";
@@ -2137,10 +2145,10 @@ Cart shop:</textarea>
 
     (function () {
       var style = document.createElement("style");
-      style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }";
+      style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--tick-w, 50%))); } }";
       document.head.appendChild(style);
       writeBriefing();
-      setInterval(writeBriefing, 60 * 1000);
+      setInterval(writeBriefing, 15 * 60 * 1000);
     })();
   </script>
 </body>
