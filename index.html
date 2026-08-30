@@ -797,6 +797,8 @@ Cart shop:</textarea>
           sum = sum.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").replace(/^(BW|Maybe):\s*/i, "").trim();
           var loc = (b.match(/LOCATION(?:;[^:]*)?:([^\n\r]+)/) || [])[1] || "";
           loc = loc.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").trim();
+          var desc = (b.match(/DESCRIPTION(?:;[^:]*)?:([^\n\r]+)/) || [])[1] || "";
+          desc = desc.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").replace(/<[^>]+>/g, " ").trim();
           var ds = (b.match(/DTSTART(?:;[^:]*)?:(\d{8}(?:T\d{6}Z?)?)/) || [])[1] || "";
           if (!sum || !ds) return;
           var when;
@@ -804,10 +806,18 @@ Cart shop:</textarea>
           else if (ds.indexOf("Z") >= 0) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":"+ds.slice(13,15)+"Z");
           else when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":00-04:00");
           if (isNaN(when.getTime()) || when.getTime() < Date.now() - 12*3600*1000) return;
-          out.push({ when: when, sum: sum, loc: loc });
+          out.push({ when: when, sum: sum, loc: loc, desc: desc });
         });
         out.sort(function (a,b) { return a.when - b.when; });
         return out.slice(0, 10);
+      }
+      function isLiveMusic(sum, loc, desc) {
+        var s = [sum, loc, desc].join(" ").toLowerCase();
+        if (/food truck|zumba|bakery|yoga|boat race|parade|craft festival|hoa|board meeting|committee/.test(s) && !/\b(music|band|dj|piano|concert)\b/.test(s)) return false;
+        if (/troll music|sandbar tiki|sand bar tiki|artur/.test(s)) return true;
+        if (/@/.test(sum) && !/http|zoom|meet\.google/.test(s)) return true;
+        if (/labor day/.test(s) && /celebrat|party|pool|high tide|\bdj\b/.test(s)) return true;
+        return /live\s*music|\bmusic\b|\bband\b|\bdjs?\b|concert|tribute|pian|\bcabana dogs\b|johnny d|jentgens|storm riders|floyd|oldies|rocket 88|generation gap|\b22n\b|open mic|karaoke|steel drum|reggae|acoustic|jazz|blues|\bduo\b|\btrio\b|singer|vocal|guitar|covers?\b|performing/.test(s);
       }
       function render(id, events) {
         var box = document.getElementById(id);
@@ -817,7 +827,7 @@ Cart shop:</textarea>
           var d = e.when.toLocaleString("en-US", allDay
             ? { weekday:"short", month:"short", day:"numeric", timeZone:"America/New_York" }
             : { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
-          var live = /live|music|band|dj|concert|tribute|piano|pianos|cabana dogs|johnny d|jentgens|storm riders|floyd|oldies|rocket 88|generation gap/i.test(e.sum + " " + (e.loc || ""));
+          var live = isLiveMusic(e.sum, e.loc, e.desc);
           var place = e.inside ? "BeachWalk" : "Englewood";
           if (!e.inside) {
             var at = (e.sum.match(/@\s*(.+)$/) || [])[1];
@@ -833,6 +843,7 @@ Cart shop:</textarea>
         var merged = bag.bw.concat(bag.eng);
         merged.sort(function (a, b) { return a.when - b.when; });
         render("ent-list", merged.slice(0, 14));
+        if (typeof writeBriefing === "function") writeBriefing();
       }
       function load(id, key, inside) {
         var raw = icsUrl(id);
@@ -1882,20 +1893,27 @@ Cart shop:</textarea>
     function writeBriefing() {
       var tick = document.getElementById("ticktext");
       if (!tick) return;
-      function t(id, d) {
+      function t(id) {
         var el = document.getElementById(id);
         var s = el && el.textContent ? el.textContent.replace(/\s+/g, " ").trim() : "";
-        return s || d || "";
+        if (!s) return "";
+        if (/^(loading|checking|updating|—|–|\.\.\.|…)/i.test(s)) return "";
+        return s.replace(/&deg;|°/g, " degrees");
+      }
+      function join(parts) {
+        return parts.filter(Boolean).join(". ").replace(/\.\s*\./g, ".");
       }
       function cards(id, fallback) {
         var box = document.getElementById(id);
         if (!box) return fallback;
-        var bits = Array.prototype.slice.call(box.querySelectorAll(".card"), 0, 4).map(function (c) {
+        var bits = Array.prototype.slice.call(box.querySelectorAll(".card"), 0, 6).map(function (c) {
           var b = c.querySelector("b");
           if (!b) return "";
-          var t = b.textContent.replace(/\s+/g, " ").trim();
-          if (c.classList.contains("music")) t = "Live music: " + t;
-          return t;
+          var line = b.textContent.replace(/\s+/g, " ").trim();
+          var place = c.querySelector(".place-tag");
+          if (place) line = place.textContent.replace(/\s+/g, " ").trim() + " — " + line;
+          if (c.classList.contains("music")) line = "Live music. " + line;
+          return line;
         }).filter(Boolean);
         return bits.length ? bits.join(". ") + "." : fallback;
       }
@@ -1906,27 +1924,69 @@ Cart shop:</textarea>
           .trim();
       }
       var SEP = "\u00a0".repeat(80);
-      var w = window.__briefWx || {};
-      var nowParts = [];
-      if (w.temp != null) nowParts.push("It is " + w.temp + " degrees" + (w.feel != null && w.feel !== w.temp ? " and feels like " + w.feel : "") + ".");
-      if (w.short) nowParts.push(w.short.replace(/\.$/, "") + " in Englewood.");
-      if (w.hi != null) nowParts.push("Today's high is near " + w.hi + " degrees.");
-      if (w.wind) nowParts.push(w.wind);
-      if (w.rain != null) nowParts.push("Rain chance this hour is " + w.rain + "%.");
-      if (w.detail) nowParts.push(w.detail);
-      if (!nowParts.length) nowParts.push(t("live-sky", "Weather is updating for Englewood."));
-      var nowB = sent(nowParts.join(" "));
-      var marB = sent([t("live-tide-today"), t("live-sst"), t("live-venf-wind"), t("live-rip") ? "Rip " + t("live-rip") : "", t("live-redtide") ? "Red tide " + t("live-redtide") : "", t("live-fish")].filter(Boolean).join(". "));
-      var skyB = sent([t("live-sun-label"), t("live-moon-label"), t("live-sky-watch")].filter(Boolean).join(". "));
+      var nowB = sent(join([
+        t("live-sky"),
+        t("live-temp") ? "Air " + t("live-temp") : "",
+        t("live-feels") ? "Feels like " + t("live-feels") : "",
+        t("live-wind") ? "Wind " + t("live-wind") : "",
+        t("live-gusts") ? "Gusts " + t("live-gusts") : "",
+        t("live-rh") ? "Humidity " + t("live-rh") : "",
+        t("live-dew"),
+        t("live-pres") ? "Pressure " + t("live-pres") + (t("live-pres-note") ? ", " + t("live-pres-note") : "") : "",
+        t("live-uv") ? "UV " + t("live-uv") : "",
+        t("live-rain-hr") ? "Rain per hour " + t("live-rain-hr") : "",
+        t("live-rain-ev") ? "Event rain " + t("live-rain-ev") : "",
+        t("live-rain3") ? "Next 3 hours " + t("live-rain3") : "",
+        t("live-aqi") ? "Air quality " + t("live-aqi") : ""
+      ])) || "Weather tiles are still filling in.";
+      var marB = sent(join([
+        t("live-tide-today"),
+        t("live-tides-next"),
+        t("live-surge"),
+        t("live-sst") ? "Gulf water " + t("live-sst") : "",
+        t("live-wtemp") ? "Inlet water " + t("live-wtemp") : "",
+        t("live-seas") ? "Seas " + t("live-seas") : "",
+        t("live-rip") ? "Rip tide " + t("live-rip") : "",
+        t("live-redtide") ? "Red tide " + t("live-redtide") : "",
+        t("live-craft") ? "Small craft " + t("live-craft") : "",
+        t("live-coastal"),
+        t("live-fish"),
+        t("live-gator")
+      ])) || "Marine tiles are still filling in.";
+      var skyB = sent(join([
+        t("live-sun-label"),
+        t("live-moon-label"),
+        t("live-planet1") ? "Tonight " + t("live-planet1") + (t("live-planet1d") ? ", " + t("live-planet1d") : "") : "",
+        t("live-planet2") ? "Overnight " + t("live-planet2") + (t("live-planet2d") ? ", " + t("live-planet2d") : "") : "",
+        t("live-planet3") ? "Dawn " + t("live-planet3") + (t("live-planet3d") ? ", " + t("live-planet3d") : "") : "",
+        t("live-planet4") ? "Stars " + t("live-planet4") + (t("live-planet4d") ? ", " + t("live-planet4d") : "") : "",
+        t("live-sky-watch"),
+        t("live-iss"),
+        t("live-horo-nick") ? "Nick, Gemini. " + t("live-horo-nick") : "",
+        t("live-horo-dayna") ? "Dayna, Aquarius. " + t("live-horo-dayna") : ""
+      ])) || "Sky tiles are still filling in.";
       var funB = sent(cards("ent-list", "Upcoming BeachWalk and Englewood events are on the Fun page."));
-      var houseB = sent([t("house-occ", "Villa"), t("house-seen", ""), t("cal-do", ""), t("cal-fly", "")].filter(Boolean).join(". "));
-      tick.innerHTML = [
+      var houseB = sent(join([
+        t("house-occ"),
+        t("house-seen"),
+        t("cal-do"),
+        t("cal-fly"),
+        t("cal-arrive"),
+        t("cal-leave"),
+        t("cal-flight")
+      ])) || "House details are on the House page.";
+      var bits = [
         "<b>Now.</b> " + nowB,
-        "<b>Marine.</b> " + (marB || "Marine details updating."),
-        "<b>Sky.</b> " + (skyB || "Sky details updating."),
+        "<b>Marine.</b> " + marB,
+        "<b>Sky.</b> " + skyB,
         "<b>Entertainment.</b> " + funB,
         "<b>House.</b> " + houseB
-      ].join(SEP);
+      ];
+      if (window.__storm || t("live-nwr-alert") || t("live-prep")) {
+        var em = sent(join([t("live-nwr-alert"), t("live-prep"), t("live-cane"), t("live-bolt")]));
+        if (em) bits.splice(1, 0, "<b>Emergency.</b> " + em);
+      }
+      tick.innerHTML = bits.join(SEP);
       requestAnimationFrame(function () { spinEl(tick, 112); });
     }
     function spinEl(el, speed) {
@@ -2054,6 +2114,7 @@ Cart shop:</textarea>
         if (!keep.length) {
           bar.className = "alert-ticker";
           frame.classList.remove("has-alert"); stackTickers();
+          writeBriefing();
           return;
         }
         var isWarn = keep.some(function (f) {
@@ -2068,6 +2129,7 @@ Cart shop:</textarea>
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
         frame.classList.add("has-alert"); stackTickers();
         requestAnimationFrame(function () { spinEl(txt, 112); });
+        writeBriefing();
       }).catch(function () {});
     }
     pollAlerts();
@@ -2078,7 +2140,7 @@ Cart shop:</textarea>
       style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }";
       document.head.appendChild(style);
       writeBriefing();
-      setInterval(writeBriefing, 5 * 60 * 1000);
+      setInterval(writeBriefing, 60 * 1000);
     })();
   </script>
 </body>
