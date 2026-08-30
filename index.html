@@ -42,7 +42,7 @@
     .pill b { font-size:15px; font-weight:800; line-height:1.15; }
     .pill-key { font-size:12px; color:var(--muted); margin:0 0 10px; letter-spacing:.02em; }
     .ent-h { margin:8px 0 6px; font-family:"Source Sans 3",system-ui,sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:800; }
-    #ent-bw .card, #ent-eng .card { padding:8px 10px; margin-bottom:6px; }
+    #ent-list .card { padding:8px 10px; margin-bottom:6px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
     .hourly { display:flex; flex-wrap:nowrap; gap:0; padding:6px 4px; overflow:hidden; background:rgba(255,255,255,.42); border:1px solid var(--hair); border-radius:16px; margin-bottom:12px; }
@@ -287,10 +287,7 @@
       <section id="ent" class="page">
         <h2 data-k="On and off the Key">Entertainment</h2>
         <p id="ent-count" class="pill-key">Loading BeachWalk and Englewood calendars…</p>
-        <h3 class="ent-h">BeachWalk</h3>
-        <div id="ent-bw"></div>
-        <h3 class="ent-h">Englewood</h3>
-        <div id="ent-eng"></div>
+        <div id="ent-list"></div>
         <p>
           <a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">BeachWalk calendar</a>
           ·
@@ -898,13 +895,11 @@ Cart shop:</textarea>
         if (cached.eng) bag.eng = cached.eng.map(function (e) { e.when = new Date(e.when); e.inside = false; return e; }).filter(function (e) { return e.when.getTime() > Date.now() - 12*3600*1000; });
       } catch (e) {}
       function paint() {
-        var merged = bag.bw.concat(bag.eng);
-        merged.sort(function (a, b) { return a.when - b.when; });
-        if (!bag.bw.length && !bag.eng.length) return;
-        render("ent-bw", bag.bw.slice(0, 8));
-        render("ent-eng", bag.eng.slice(0, 8));
+        var merged = bag.bw.concat(bag.eng).sort(function (a, b) { return a.when - b.when; });
+        if (!merged.length) return;
+        render("ent-list", merged.slice(0, 16));
         var note = document.getElementById("ent-count");
-        if (note) note.textContent = bag.bw.length + " BeachWalk · " + bag.eng.length + " Englewood";
+        if (note) note.textContent = merged.length + " upcoming";
         try {
           localStorage.setItem("bw-ent-cache", JSON.stringify({
             bw: bag.bw.slice(0, 40),
@@ -2021,13 +2016,9 @@ Cart shop:</textarea>
         return "<b>" + title + ".</b> " + body;
       }
       function events() {
-        var box = document.getElementById("ent-bw") || document.getElementById("ent-list");
-        var box2 = document.getElementById("ent-eng");
-        var nodes = [];
-        if (box) nodes = nodes.concat(Array.prototype.slice.call(box.querySelectorAll(".card")));
-        if (box2) nodes = nodes.concat(Array.prototype.slice.call(box2.querySelectorAll(".card")));
-        if (!nodes.length) return ["No events loaded yet."];
-        var bits = nodes.slice(0, 8).map(function (c) {
+        var box = document.getElementById("ent-list");
+        if (!box) return ["No events loaded yet."];
+        var bits = Array.prototype.slice.call(box.querySelectorAll(".card"), 0, 8).map(function (c) {
           var b = c.querySelector("b");
           if (!b) return "";
           var line = b.textContent.replace(/\s+/g, " ").trim();
