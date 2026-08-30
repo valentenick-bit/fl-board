@@ -488,6 +488,7 @@ Cart shop:</textarea>
       try { return localStorage.getItem("bw-radio"); } catch (e) { return null; }
     }
     var NOAA_URL = "https://radio.weatherusa.net/NWR/KHB32.mp3";
+    window.__radioWant = { url: "", label: "" };
     function playStation(url, label, opts) {
       opts = opts || {};
       var audio = document.getElementById("radioPlayer");
@@ -505,6 +506,8 @@ Cart shop:</textarea>
         scan.removeAttribute("src");
       }
       if (!url) {
+        window.__radioWant = { url: "", label: "" };
+        clearInterval(window.__nwrKeep);
         audio.pause();
         audio.removeAttribute("src");
         hideScan();
@@ -513,6 +516,8 @@ Cart shop:</textarea>
         return;
       }
       if (String(url).indexOf("scan:") === 0) {
+        window.__radioWant = { url: url, label: label || "" };
+        clearInterval(window.__nwrKeep);
         audio.pause();
         audio.removeAttribute("src");
         if (!opts.keepSaved) saveRadio(url);
@@ -524,6 +529,7 @@ Cart shop:</textarea>
         return;
       }
       hideScan();
+      window.__radioWant = { url: url, label: label || "" };
       if (!opts.keepSaved) saveRadio(url);
       if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert) {
         audio.pause();
@@ -531,7 +537,9 @@ Cart shop:</textarea>
         window.__forceRadio = true;
         return;
       }
-      if (audio.src !== url) audio.src = url;
+      var playUrl = url;
+      if (/weatherusa|NWR/i.test(url)) playUrl = url.split("?")[0] + "?r=" + Date.now();
+      audio.src = playUrl;
       audio.volume = window.__nwrAlert ? 0.32 : 0.18;
       if (status) status.textContent = "Starting " + (label || "station") + "…";
       var play = audio.play();
@@ -540,7 +548,35 @@ Cart shop:</textarea>
       }).catch(function () {
         if (status) status.textContent = "Tap a station once — Chrome blocks sound until a click.";
       });
+      clearInterval(window.__nwrKeep);
+      if (/weatherusa|NWR/i.test(url)) {
+        window.__nwrKeep = setInterval(function () {
+          if (!window.__radioWant || !/weatherusa|NWR/i.test(window.__radioWant.url || "")) return;
+          var a = document.getElementById("radioPlayer");
+          var st = document.getElementById("radio-status");
+          if (!a) return;
+          a.src = NOAA_URL.split("?")[0] + "?r=" + Date.now();
+          a.play().then(function () {
+            if (st) st.textContent = "Playing NOAA Tampa";
+          }).catch(function () {});
+        }, 3 * 60 * 1000);
+      }
     }
+    (function radioWatch() {
+      var audio = document.getElementById("radioPlayer");
+      if (!audio) return;
+      function reconnect() {
+        var want = window.__radioWant || {};
+        if (!want.url || String(want.url).indexOf("scan:") === 0) return;
+        playStation(want.url, want.label || "station", { keepSaved: true });
+      }
+      ["ended", "error", "stalled"].forEach(function (ev) {
+        audio.addEventListener(ev, function () {
+          clearTimeout(audio._re);
+          audio._re = setTimeout(reconnect, 1500);
+        });
+      });
+    })();
     document.querySelectorAll(".rowbtns button").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var scan = btn.getAttribute("data-scan");
@@ -1821,8 +1857,12 @@ Cart shop:</textarea>
       if (!el) return;
       html = String(html || "").trim();
       if (!html) return;
-      if (el.getAttribute("data-hash") === html) return;
-      el.setAttribute("data-hash", html);
+      var segs = el.querySelectorAll(".tseg");
+      if (segs.length >= 2) {
+        segs[0].innerHTML = html;
+        segs[1].innerHTML = html;
+        return;
+      }
       el.innerHTML = html;
       requestAnimationFrame(function () { spinEl(el, speed || 112); });
     }
