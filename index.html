@@ -1123,13 +1123,25 @@ Cart shop:</textarea>
     (function fishReport() {
       var el = document.getElementById("live-fish");
       if (!el) return;
-      var bite = "<b>Aug 27–30 · Lemon Bay / Stump Pass / Englewood Beach</b><br>" +
-        "<b>When:</b> First light and moving water. Be off the Gulf before the afternoon build.<br>" +
-        "<b>Passes & beach trough:</b> Snook 18–35 in. on live whitebait, threadfin herring, and pinfish. Tarpon rolling the first trough at dawn — free-line herring or a live crab.<br>" +
-        "<b>Lemon Bay & mangroves:</b> Redfish on pinfish and small mullet. Trout on grass edges. Juvenile tarpon 10–40 lb on a slow paddle tail or twitch bait.<br>" +
-        "<b>Nearshore:</b> Snapper, cobia, and Spanish while bait is up. Threadfin or pilchards on 2/0–5/0, just enough lead to hold bottom.<br>" +
-        "Check FWC seasons before you keep a fish.";
-      el.innerHTML = bite;
+      var fallback = "<b>Key bite · late August pattern</b><br>" +
+        "<b>When:</b> First light and moving water. Off the Gulf before the afternoon build.<br>" +
+        "<b>Passes & beach trough:</b> Snook on whitebait, threadfin, pinfish. Tarpon in the first trough at dawn — herring or a crab.<br>" +
+        "<b>Lemon Bay:</b> Redfish on pinfish and small mullet. Trout on grass. Juvenile tarpon on a slow paddle tail.<br>" +
+        "<b>Nearshore:</b> Snapper, cobia, Spanish on threadfin or pilchards.";
+      function load() {
+        var url = "https://corsproxy.io/?" + encodeURIComponent("https://www.floridasportsman.com/editorial/southwest-florida-weekend-fishing-forecast/402036");
+        fetch(url).then(function (r) { return r.text(); }).then(function (html) {
+          var text = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+          var m = /(Aug\.\s*\d+[\s\S]{0,40}|August\s+\d+[\s\S]{0,20})([\s\S]{200,900}?)(Bait Along the Beach|Nearshore|Inshore|Contact Info|$)/i.exec(text);
+          var chunk = m ? (m[1] + " " + m[2]).replace(/\s+/g, " ").trim() : "";
+          if (chunk.length < 80) { el.innerHTML = fallback; return; }
+          if (chunk.length > 520) chunk = chunk.slice(0, 517).replace(/\s+\S*$/, "") + "…";
+          el.innerHTML = "<b>Florida Sportsman SW</b> · " + chunk + ' <a href="https://www.floridasportsman.com/editorial/southwest-florida-weekend-fishing-forecast/402036" target="_blank" rel="noopener">Full forecast</a>';
+        }).catch(function () { el.innerHTML = fallback; });
+      }
+      el.innerHTML = fallback;
+      load();
+      setInterval(load, 12 * 60 * 60 * 1000);
     })();
     (function gatorWatch() {
       var el = document.getElementById("live-gator");
@@ -1142,7 +1154,7 @@ Cart shop:</textarea>
           .catch(function () { return []; });
       }
       function load() {
-        var q = "https://news.google.com/rss/search?q=alligator+(attack+OR+bite+OR+incident)+Florida+when:14d&hl=en-US&gl=US&ceid=US:en";
+        var q = "https://news.google.com/rss/search?q=alligator+(attack+OR+bite+OR+incident)+(Florida+OR+Sarasota+OR+Charlotte+OR+Englewood)+when:21d&hl=en-US&gl=US&ceid=US:en";
         rss(q).then(function (items) {
           var local = [];
           var state = [];
@@ -1487,36 +1499,104 @@ Cart shop:</textarea>
           if (ripEl) ripEl.textContent = rip;
           if (craftEl) craftEl.textContent = craft;
         }).catch(function () {});
-      var red = document.getElementById("live-redtide");
-      if (red) red.textContent = "SWFL not observed";
-      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://myfwc.com/research/redtide/statewide/"))
-        .then(function (r) { return r.text(); })
-        .then(function (html) {
-          var sw = /Southwest Florida[\s\S]{0,240}/i.exec(html);
-          if (red && sw) {
-            var line = sw[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 90);
-            if (/not observed/i.test(line)) red.textContent = "Not observed";
-            else if (/bloom|high|medium/i.test(line)) red.textContent = "Present — check FWC";
-            else red.textContent = "See FWC";
+      fetch("https://api.weather.gov/products?location=TBW&type=SRF", { headers: { "Accept": "application/ld+json", "User-Agent": "BeachWalkBoard" } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var id = d && d["@graph"] && d["@graph"][0] && d["@graph"][0].id;
+          if (!id) return null;
+          return fetch(id, { headers: { "Accept": "application/ld+json", "User-Agent": "BeachWalkBoard" } }).then(function (r) { return r.json(); });
+        })
+        .then(function (prod) {
+          var raw = (prod && (prod.productText || prod.product_text)) || "";
+          if (!raw) return;
+          var block = raw;
+          var cut = raw.split(/FLZ1(65|165|160|155)/i);
+          if (raw.search(/Coastal Sarasota|Coastal Charlotte|Englewood|Venice|Manasota/i) >= 0) {
+            var idx = raw.search(/Coastal Sarasota|Coastal Charlotte/i);
+            block = raw.slice(idx, idx + 500);
           }
+          var risk = (block.match(/Rip Current Risk\*[\.\s]*([A-Za-z ]+)/i) || [])[1] || (block.match(/Rip Current Risk[\.\s]*([A-Za-z]+)/i) || [])[1] || "";
+          risk = risk.replace(/\s+/g, " ").trim().split(" ")[0];
+          var ripEl = document.getElementById("live-rip");
+          if (ripEl && risk) ripEl.textContent = risk.charAt(0).toUpperCase() + risk.slice(1).toLowerCase();
+          if (/high/i.test(risk)) setPill("pill-rip", "no", "Rip current", "Don’t swim");
+          else if (/mod/i.test(risk)) setPill("pill-rip", "win", "Rip current", "Be careful");
+          else if (risk) setPill("pill-rip", "go", "Rip current", "Typical");
         }).catch(function () {});
+      var red = document.getElementById("live-redtide");
+      if (red) red.textContent = "Checking FWC…";
+      function paintRed(html) {
+        var text = String(html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+        var sw = /In Southwest Florida[\s\S]{0,180}|Southwest Florida[\s\S]{0,180}/i.exec(text);
+        var line = sw ? sw[0] : text;
+        if (/Southwest Florida[\s\S]{0,80}not observed|not observed[\s\S]{0,40}Southwest/i.test(text) || /K\.\s*brevis was not observed/i.test(text)) {
+          red.textContent = "Not observed SWFL";
+        } else if (/bloom|medium|high concentration/i.test(line) && /southwest|sarasota|charlotte|lee county/i.test(line)) {
+          red.textContent = "Present — check FWC";
+        } else if (/background|very low/i.test(line) && /southwest/i.test(line)) {
+          red.textContent = "Background / very low";
+        } else if (/not observed/i.test(text)) {
+          red.textContent = "Not observed SWFL";
+        }
+      }
+      fetch("https://corsproxy.io/?" + encodeURIComponent("https://myfwc.com/research/redtide/statewide/"))
+        .then(function (r) { return r.text(); })
+        .then(paintRed)
+        .catch(function () {
+          fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://myfwc.com/research/redtide/statewide/"))
+            .then(function (r) { return r.text(); })
+            .then(paintRed)
+            .catch(function () { if (red) red.textContent = "See FWC map"; });
+        });
       var seas = document.getElementById("live-seas");
       if (seas && days && days[0] && days[0].detailedForecast) {
         var m = /(\d+(?:\.\d+)?)\s*(?:to\s*)?(\d+)?\s*foot/i.exec(days[0].detailedForecast);
         seas.textContent = m ? (m[2] ? m[1] + "–" + m[2] + " ft" : m[1] + " ft") : "1–2 ft";
       }
-      var hour = new Date().getHours();
-      var p1 = document.getElementById("live-planet1");
-      if (p1) {
-        document.getElementById("live-planet1").textContent = "Venus";
-        document.getElementById("live-planet1d").textContent = "West after sunset";
-        document.getElementById("live-planet2").textContent = "Saturn";
-        document.getElementById("live-planet2d").textContent = "East late evening";
-        document.getElementById("live-planet3").textContent = "Jupiter";
-        document.getElementById("live-planet3d").textContent = "East before sunrise";
-        document.getElementById("live-planet4").textContent = "Summer Triangle";
-        document.getElementById("live-planet4d").textContent = hour < 6 ? "Pre-dawn" : "High after dusk";
+      function azWord(az) {
+        az = ((Number(az) % 360) + 360) % 360;
+        var pts = ["N","NE","E","SE","S","SW","W","NW"];
+        return pts[Math.round(az / 45) % 8];
       }
+      fetch("https://api.visibleplanets.dev/v3?latitude=26.96&longitude=-82.35")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var bodies = (d && (d.data || d.bodies || d)) || [];
+          if (!Array.isArray(bodies)) bodies = [];
+          bodies = bodies.filter(function (b) {
+            var n = (b.name || "").toLowerCase();
+            return /venus|mars|jupiter|saturn|mercury|moon/.test(n);
+          }).sort(function (a, b) { return (a.magnitude || 9) - (b.magnitude || 9); });
+          function put(i, body, when) {
+            var n = document.getElementById("live-planet" + i);
+            var dtl = document.getElementById("live-planet" + i + "d");
+            if (!n || !body) return;
+            n.textContent = body.name || "—";
+            var alt = body.altitude != null ? Math.round(body.altitude) + "°" : "";
+            var az = body.azimuth != null ? azWord(body.azimuth) : "";
+            if (dtl) dtl.textContent = [when, az, alt].filter(Boolean).join(" · ");
+          }
+          put(1, bodies[0], "Now");
+          put(2, bodies[1], "Now");
+          put(3, bodies[2], "Now");
+          var stars = document.getElementById("live-planet4");
+          var starsd = document.getElementById("live-planet4d");
+          if (stars) stars.textContent = "Above the Key";
+          if (starsd) starsd.textContent = bodies.length ? bodies.length + " bright bodies in the sky" : "Check after dusk";
+        }).catch(function () {});
+      fetch("https://api.visibleplanets.dev/v3?latitude=26.96&longitude=-82.35&time=" + encodeURIComponent(new Date(Date.now() + 6 * 3600 * 1000).toISOString()))
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var bodies = (d && (d.data || d.bodies || d)) || [];
+          if (!Array.isArray(bodies)) return;
+          bodies = bodies.filter(function (b) { return /venus|mars|jupiter|saturn|mercury|moon/i.test(b.name || ""); });
+          if (bodies[0]) {
+            var n = document.getElementById("live-planet3");
+            var dtl = document.getElementById("live-planet3d");
+            if (n) n.textContent = bodies[0].name;
+            if (dtl) dtl.textContent = "Later · " + azWord(bodies[0].azimuth || 0);
+          }
+        }).catch(function () {});
       function fillHoro(sign, id) {
         function clip(s) {
           s = String(s || "").replace(/\s+/g, " ").replace(/^[✨🪐💼❤️]+\s*/g, "").trim();
@@ -1532,12 +1612,12 @@ Cart shop:</textarea>
           if (!j) return "";
           if (typeof j === "string") return j;
           var d = j.data || j;
-          return j.content || j.horoscope || j.description || d.horoscope || d.horoscope_data || d.content || "";
+          return j.content || j.horoscope || j.description || j.prediction || d.horoscope || d.horoscope_data || d.content || d.prediction || "";
         }
         var urls = [
-          "https://api.cosmyday.com/content/daily/" + sign,
-          "https://freehoroscopeapi.com/api/v1/get-horoscope/daily?sign=" + sign,
-          "https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=" + sign + "&day=TODAY"
+          "https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=" + sign + "&day=TODAY",
+          "https://ohmanda.com/api/horoscope/" + sign + "/",
+          "https://corsproxy.io/?" + encodeURIComponent("https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign=" + sign + "&day=TODAY")
         ];
         function next(i) {
           if (i >= urls.length) {
@@ -1553,24 +1633,38 @@ Cart shop:</textarea>
       }
       fillHoro("gemini", "live-horo-nick");
       fillHoro("aquarius", "live-horo-dayna");
-      fetch("https://iss-api.polluxlabs.io/iss-pass?lat=26.96&lon=-82.35")
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var el = document.getElementById("live-iss");
-          var list = d.passes || d.response || d || [];
-          if (!Array.isArray(list)) list = list.passes || [];
-          if (el) {
-            if (!list.length) { el.textContent = "No pass list yet. Use NASA Spot the Station."; return; }
-            el.textContent = list.slice(0, 3).map(function (p) {
-              var when = new Date((p.risetime || p.start || p.start_time || 0) * (String(p.risetime || "").length === 10 ? 1000 : 1));
-              if (p.start_time) when = new Date(p.start_time);
-              return when.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + (p.duration ? " · " + Math.round(p.duration/60) + " min" : "");
-            }).join(" · ");
+      (function issLive() {
+        var el = document.getElementById("live-iss");
+        if (!el) return;
+        function xmlCities(next) {
+          var files = [
+            "https://spotthestation.nasa.gov/sightings/xml_files/United_States_Florida_Sarasota.xml",
+            "https://spotthestation.nasa.gov/sightings/xml_files/United_States_Florida_Venice.xml",
+            "https://spotthestation.nasa.gov/sightings/xml_files/United_States_Florida_Punta_Gorda.xml"
+          ];
+          function tryFile(i) {
+            if (i >= files.length) { next([]); return; }
+            fetch("https://corsproxy.io/?" + encodeURIComponent(files[i])).then(function (r) { return r.text(); }).then(function (xml) {
+              var titles = xml.match(/<title>([^<]+)<\/title>/g) || [];
+              var rows = titles.map(function (t) { return t.replace(/<\/?title>/g, "").replace(/&amp;/g, "&"); })
+                .filter(function (t) { return /ISS|Sighting|20\d\d/i.test(t) && !/Spot the Station/i.test(t); });
+              if (rows.length) next(rows.slice(0, 3));
+              else tryFile(i + 1);
+            }).catch(function () { tryFile(i + 1); });
           }
-        }).catch(function () {
-          var el = document.getElementById("live-iss");
-          if (el) el.textContent = "Pass API blocked. Use NASA Spot the Station.";
+          tryFile(0);
+        }
+        xmlCities(function (rows) {
+          if (rows && rows.length) {
+            el.textContent = rows.join(" · ");
+            return;
+          }
+          fetch("https://api.wheretheiss.at/v1/satellites/25544").then(function (r) { return r.json(); }).then(function (d) {
+            if (!d || d.latitude == null) { el.textContent = "Use NASA Spot the Station."; return; }
+            el.textContent = "ISS now " + Number(d.latitude).toFixed(1) + "°, " + Number(d.longitude).toFixed(1) + "°. Visible passes: NASA Spot the Station.";
+          }).catch(function () { el.textContent = "Use NASA Spot the Station."; });
         });
+      })();
       var photo = document.getElementById("quiet-photo");
       if (photo) photo.classList.add("on");
       var ripTxt = (document.getElementById("live-rip") || {}).textContent || "";
