@@ -272,14 +272,14 @@
       <section id="ent" class="page">
         <h2>Entertainment</h2>
         <div id="ent-list">
-          <div class="card music"><span class="music-tag">Live music</span><span class="place-tag">SandBar Tiki</span><b>Sun Aug 30 1–5p · Cabana Dogs @ SandBar Tiki</b><span>SandBar Tiki & Grille, Beach Rd</span></div>
+          <div class="card music"><span class="place-tag">SandBar Tiki</span><span class="music-tag">Live music</span><b>Sun Aug 30 1–5p · Cabana Dogs @ SandBar Tiki</b><span>SandBar Tiki & Grille, Beach Rd</span></div>
           <div class="card"><span class="place-tag">BeachWalk</span><b>Tue Sep 1 5:30p · French Atelier & Bakery Pop-Up</b><span>Capri Clubhouse</span></div>
-          <div class="card music"><span class="music-tag">Live music</span><span class="place-tag">Downtown Wellen</span><b>Fri Sep 4 6p · TL Jentgens + Fireworks</b><span>Downtown Wellen</span></div>
+          <div class="card music"><span class="place-tag">Downtown Wellen</span><span class="music-tag">Live music</span><b>Fri Sep 4 6p · TL Jentgens + Fireworks</b><span>Downtown Wellen</span></div>
           <div class="card"><span class="place-tag">Downtown Venice</span><b>Sat–Mon Sep 5–7 · Venice Craft Festival</b><span>Downtown Venice</span></div>
           <div class="card"><span class="place-tag">Indian Mound Park</span><b>Sat Sep 5 9a · Pioneer Days boat races</b><span>Indian Mound Park</span></div>
-          <div class="card music"><span class="music-tag">Live music</span><span class="place-tag">Artur's</span><b>Sat Sep 5 5:30p · Johnny D @ Artur's</b><span>Englewood</span></div>
-          <div class="card music"><span class="music-tag">Live music</span><span class="place-tag">Troll Music</span><b>Sat Sep 5 7:30p · Storm Riders</b><span>Troll Music, Venice</span></div>
-          <div class="card music"><span class="music-tag">Live music</span><span class="place-tag">BeachWalk</span><b>Sun Sep 6 1–5p · Labor Day Celebration</b><span>Pool / High Tide · DJ</span></div>
+          <div class="card music"><span class="place-tag">Artur's</span><span class="music-tag">Live music</span><b>Sat Sep 5 5:30p · Johnny D @ Artur's</b><span>Englewood</span></div>
+          <div class="card music"><span class="place-tag">Troll Music</span><span class="music-tag">Live music</span><b>Sat Sep 5 7:30p · Storm Riders</b><span>Troll Music, Venice</span></div>
+          <div class="card music"><span class="place-tag">BeachWalk</span><span class="music-tag">Live music</span><b>Sun Sep 6 1–5p · Labor Day Celebration</b><span>Pool / High Tide · DJ</span></div>
           <div class="card"><span class="place-tag">Pioneer Park</span><b>Mon Sep 7 9a · Pioneer Days Parade</b><span>Dearborn / Pioneer Park</span></div>
           <div class="card"><span class="place-tag">BeachWalk</span><b>Mon Sep 7 5–8p · Labor Day Food Trucks</b><span>Capri · Currywurst + Shaz Shack</span></div>
         </div>
@@ -461,6 +461,7 @@ Cart shop:</textarea>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="darkbtn">Dark</button>
       <button type="button" id="refreshbtn">Refresh</button>
+      <button type="button" id="simcanebtn">Sim cane</button>
           </nav>
     </div>
     <div class="ticker-stack">
@@ -480,14 +481,6 @@ Cart shop:</textarea>
       d.addEventListener("click", function (e) {
         var btn = e.target.closest("button"); if (!btn) return;
         var id = btn.getAttribute("data-p"); if (!id) return;
-        if (id === "radar" && window.__wxRisk && window.__wxRisk.warn) {
-          window.__storm = true;
-          window.__stormOff = false;
-          clearInterval(rot); clearTimeout(idle);
-        } else if (id !== "radar" && window.__storm) {
-          window.__storm = false;
-          window.__stormOff = true;
-        }
         showPage(id);
       });
     });
@@ -587,6 +580,22 @@ Cart shop:</textarea>
       e.preventDefault();
       location.reload();
     });
+    (function simCane() {
+      var btn = document.getElementById("simcanebtn");
+      function label() {
+        if (btn) btn.textContent = window.__simHurricane ? "End sim" : "Sim cane";
+      }
+      try { window.__simHurricane = localStorage.getItem("bw-sim-cane") !== "0"; } catch (e) { window.__simHurricane = true; }
+      label();
+      if (!btn) return;
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        window.__simHurricane = !window.__simHurricane;
+        try { localStorage.setItem("bw-sim-cane", window.__simHurricane ? "1" : "0"); } catch (err) {}
+        label();
+        pollAlerts();
+      });
+    })();
     var darkBtn = document.getElementById("darkbtn");
     if (darkBtn) {
       darkBtn.addEventListener("click", function () {
@@ -627,11 +636,24 @@ Cart shop:</textarea>
     })();
     clock(); setInterval(clock, 15000);
     var pages = ["now","tenday","radar","marine","sky","ent","house","radio","traffic"], i = 0, rot, idle;
+    function warnList() {
+      var ev = window.__wxRisk.warnTypes || "";
+      var list = ["radar"];
+      if (/hurricane|tropical|surge/.test(ev)) list.push("cane", "marine");
+      if (/thunder|tornado|severe|lightning/.test(ev)) list.push("bolt");
+      if (/flood/.test(ev) && list.indexOf("marine") < 0) list.push("marine");
+      list.push("contacts");
+      var seen = {};
+      return list.filter(function (id) {
+        if (seen[id] || !document.getElementById(id)) return false;
+        seen[id] = true;
+        return true;
+      });
+    }
     function startRotate() {
-      if (window.__storm) return;
       clearInterval(rot);
       rot = setInterval(function () {
-        pages = rotateList();
+        pages = window.__storm ? warnList() : rotateList();
         if (!pages.length) return;
         i = (i + 1) % pages.length;
         showPage(pages[i]);
@@ -651,7 +673,7 @@ Cart shop:</textarea>
       return allDockPages().filter(function (id) {
         if (id === "news" || id === "wink" || id === "contacts" || id === "villa") return false;
         if (id === "cane") return !!window.__wxRisk.cane;
-        if (id === "bolt") return !!(window.__wxRisk.bolt || window.__wxRisk.alert);
+        if (id === "bolt") return !!window.__wxRisk.bolt;
         return true;
       });
     }
@@ -803,7 +825,7 @@ Cart shop:</textarea>
             else if (e.loc) place = e.loc.split(",")[0].trim();
           }
           if (place.length > 28) place = place.slice(0, 26).replace(/\s+\S*$/, "") + "…";
-          return '<div class="card' + (live ? " music" : "") + '">' + (live ? '<span class="music-tag">Live music</span>' : "") + '<span class="place-tag">' + place + "</span><b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
+          return '<div class="card' + (live ? " music" : "") + '"><span class="place-tag">' + place + "</span>" + (live ? '<span class="music-tag">Live music</span>' : "") + "<b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
         }).join("");
       }
       var bag = { bw: [], eng: [] };
@@ -1413,7 +1435,12 @@ Cart shop:</textarea>
         function apply(d) {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
-          window.__wxRisk.cane = storms.length > 0;
+          window.__wxRisk.cane = storms.some(function (s) {
+            var lat = parseFloat(s.latitude != null ? s.latitude : s.lat);
+            var lon = parseFloat(s.longitude != null ? s.longitude : s.lon);
+            if (!isNaN(lat) && !isNaN(lon)) return lat >= 18 && lat <= 32 && lon <= -75 && lon >= -98;
+            return /gulf|florida|tampa|keys|cuba|yucatan/i.test(JSON.stringify(s));
+          }) || /hurricane|tropical|surge/.test(window.__wxRisk.warnTypes || "");
           pagesFromDock();
           if (!el) return;
           el.textContent = storms.length
@@ -1936,6 +1963,17 @@ Cart shop:</textarea>
         headers: { "Accept": "application/geo+json" }
       }).then(function (r) { return r.json(); }).then(function (data) {
         var feats = (data && data.features) || [];
+        try {
+          if (localStorage.getItem("bw-sim-cane") === "0") window.__simHurricane = false;
+          else if (window.__simHurricane !== false) window.__simHurricane = true;
+        } catch (e) { if (window.__simHurricane !== false) window.__simHurricane = true; }
+        if (window.__simHurricane) {
+          feats = feats.concat([{ properties: {
+            event: "Hurricane Warning",
+            headline: "SIMULATION ONLY — Hurricane Warning for coastal Sarasota and Charlotte including Englewood and Manasota Key. This is a board test, not an NWS product.",
+            description: "Practice loop: Radar, Cane, Marine, Emergency. NOAA Tampa may start. Tap More → Sim cane to end."
+          }}]);
+        }
         var keep = feats.filter(function (f) {
           var ev = ((f.properties || {}).event || "").toLowerCase();
           return ev.indexOf("warning") >= 0 || ev.indexOf("watch") >= 0;
@@ -1960,10 +1998,12 @@ Cart shop:</textarea>
           prep.textContent = tip;
         }
         window.__wxRisk.alert = !!keep.length;
-        window.__wxRisk.bolt = keep.some(function (f) {
-          var ev = ((f.properties || {}).event || "").toLowerCase();
-          return ev.indexOf("thunder") >= 0 || ev.indexOf("lightning") >= 0 || ev.indexOf("severe") >= 0;
-        });
+        window.__wxRisk.warnTypes = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
+        window.__wxRisk.bolt = /thunder|lightning/i.test((document.getElementById("live-bolt") || {}).textContent || "") ||
+          keep.some(function (f) {
+            var ev = ((f.properties || {}).event || "").toLowerCase();
+            return ev.indexOf("thunder") >= 0 || ev.indexOf("lightning") >= 0 || ev.indexOf("severe") >= 0 || ev.indexOf("tornado") >= 0;
+          });
         var dist = document.getElementById("live-bolt-dist");
         if (dist) {
           if (!keep.length) dist.textContent = "No watch or warning. Use the map for flashes.";
@@ -1998,14 +2038,17 @@ Cart shop:</textarea>
             } else playStation(prev.url || "", prev.url ? "previous station" : "Mute");
           }
         })(!!isWarnEarly);
-        if (isWarnEarly && !window.__stormOff) {
+        if (isWarnEarly) {
           window.__storm = true;
-          showPage("radar");
-          clearInterval(rot); clearTimeout(idle);
-        }
-        if (!isWarnEarly) {
-          window.__stormOff = false;
-          if (window.__storm) { window.__storm = false; startRotate(); }
+          pages = warnList();
+          if (pages.indexOf(document.querySelector(".page.on") && document.querySelector(".page.on").id) < 0) {
+            i = 0;
+            showPage(pages[0] || "radar");
+          }
+          startRotate();
+        } else if (window.__storm) {
+          window.__storm = false;
+          startRotate();
         }
         pagesFromDock();
         if (!keep.length) {
