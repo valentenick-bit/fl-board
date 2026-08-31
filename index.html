@@ -2225,11 +2225,22 @@ Cart shop:</textarea>
           }
           function parse(j) {
             if (!j) return "";
-            var d = j.data || j;
-            return j.horoscope || j.content || j.description || j.prediction || d.horoscope || d.content || "";
+            if (typeof j === "string") {
+              try { j = JSON.parse(j); } catch (e) { return j; }
+            }
+            var d = j.data || j.contents || j;
+            if (typeof d === "string") {
+              try { d = JSON.parse(d); } catch (e) {}
+            }
+            var txt = j.horoscope || j.content || j.description || j.prediction || j.data_horoscope
+              || (d && (d.horoscope || d.content || d.description || d.prediction || d.text)) || "";
+            return String(txt).replace(/^✨[^\n]*\n+/, "").replace(/\n+/g, " ").trim();
           }
           var urls = [
+            "https://api.cosmyday.com/content/daily/" + sign,
+            "https://freehoroscopeapi.com/api/v1/get-horoscope/daily?sign=" + sign,
             "https://ohmanda.com/api/horoscope/" + sign + "/",
+            "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://ohmanda.com/api/horoscope/" + sign + "/"),
             "https://corsproxy.io/?" + encodeURIComponent("https://ohmanda.com/api/horoscope/" + sign + "/")
           ];
           function next(i) {
