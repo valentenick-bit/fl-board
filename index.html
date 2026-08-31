@@ -1122,6 +1122,7 @@ Cart shop:</textarea>
           vendors: ((document.getElementById("vendors") || {}).value || ""),
           open: boxes("open"),
           close: boxes("close"),
+          deliveredMarks: window.__deliveredMarks || {},
           updated: new Date().toISOString()
         };
       }
@@ -1147,6 +1148,11 @@ Cart shop:</textarea>
         if (typeof paintWho === "function") paintWho();
         if (typeof writeWhoLine === "function") writeWhoLine();
         if (typeof nextTrash === "function") nextTrash();
+        if (h.deliveredMarks && typeof h.deliveredMarks === "object") {
+          window.__deliveredMarks = h.deliveredMarks;
+          try { localStorage.setItem("bw-deliv-marks", JSON.stringify(h.deliveredMarks)); } catch (e) {}
+          if (typeof window.__paintDeliveries === "function") window.__paintDeliveries();
+        }
         window.__houseUpdated = h.updated || "";
         var when = h.updated ? new Date(h.updated).toLocaleString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "";
         stamp("Shared house list" + (when ? " · " + when : "") + (src ? " · " + src : ""));
@@ -1476,6 +1482,11 @@ Cart shop:</textarea>
       setInterval(function () { load(ENG, "eng", false); load(BW, "bw", true); }, 15 * 60 * 1000);
     })();
 
+    window.__deliveredMarks = window.__deliveredMarks || {};
+    try {
+      var savedMarks = JSON.parse(localStorage.getItem("bw-deliv-marks") || "{}");
+      if (savedMarks && typeof savedMarks === "object") window.__deliveredMarks = savedMarks;
+    } catch (e) {}
     (function loadDeliveries() {
       var note = document.getElementById("deliv-note");
       var box = document.getElementById("deliv-list");
@@ -1485,21 +1496,52 @@ Cart shop:</textarea>
         "./deliveries.json",
         "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=137FOO1hZ9XB29x-LekMYlh-aLaBc1JT_")
       ];
+      function esc(s) {
+        return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
+      }
+      function pkgKey(item) {
+        return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim();
+      }
       function card(item, incoming) {
-        var who = item.who || "";
-        var title = item.title || "";
-        var detail = item.detail || "";
+        var who = esc(item.who || "");
+        var title = esc(item.title || "");
+        var detail = esc(item.detail || "");
+        var key = esc(pkgKey(item));
         if (incoming) {
-          return '<div class="card music"><span class="place-tag place-out">On the way</span><span class="music-tag">' + who + "</span><b>" + title + "</b><span>" + detail + "</span></div>";
+          return '<div class="card music"><span class="place-tag place-out">On the way</span><span class="music-tag">' + who + "</span><b>" + title + "</b><span>" + detail + '</span><label class="check"><input type="checkbox" data-deliv="' + key + '"> Mark delivered</label></div>';
         }
-        return '<div class="card"><span class="place-tag place-bw">Delivered</span><b>' + who + " · " + title + "</b><span>" + detail + "</span></div>";
+        var how = item.marked ? "Marked here" : "Delivered";
+        return '<div class="card"><span class="place-tag place-bw">' + how + "</span><b>" + who + " · " + title + "</b><span>" + detail + "</span></div>";
+      }
+      function split(data) {
+        var marks = window.__deliveredMarks || {};
+        var inc = [], del = (data.delivered || []).slice();
+        (data.incoming || []).forEach(function (x) {
+          var k = pkgKey(x);
+          if (marks[k]) {
+            del.unshift({ who: x.who, title: x.title, detail: (x.detail || "") + " · marked delivered", when: x.when, marked: true });
+          } else inc.push(x);
+        });
+        return { incoming: inc, delivered: del, updated: data.updated };
       }
       function paint(data) {
-        var inc = data.incoming || [];
-        var del = data.delivered || [];
-        box.innerHTML = inc.map(function (x) { return card(x, true); }).join("") + del.map(function (x) { return card(x, false); }).join("");
-        if (note) note.textContent = "Report " + (data.updated || "") + " · automation 8 a.m. and 6 p.m.";
+        if (data) window.__delivData = data;
+        var src = window.__delivData || { incoming: [], delivered: [] };
+        var view = split(src);
+        box.innerHTML = view.incoming.map(function (x) { return card(x, true); }).join("") + view.delivered.map(function (x) { return card(x, false); }).join("");
+        box.querySelectorAll("input[data-deliv]").forEach(function (cb) {
+          cb.addEventListener("change", function () {
+            if (!cb.checked) return;
+            window.__deliveredMarks = window.__deliveredMarks || {};
+            window.__deliveredMarks[cb.getAttribute("data-deliv")] = { at: new Date().toISOString() };
+            try { localStorage.setItem("bw-deliv-marks", JSON.stringify(window.__deliveredMarks)); } catch (e) {}
+            paint();
+            if (typeof saveHouse === "function") saveHouse();
+          });
+        });
+        if (note) note.textContent = "Report " + (src.updated || "") + " · automation 8 a.m. and 6 p.m. Check the box if no email arrived.";
       }
+      window.__paintDeliveries = function () { paint(); };
       function next(i) {
         if (i >= urls.length) {
           paint({
