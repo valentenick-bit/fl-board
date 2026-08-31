@@ -119,6 +119,15 @@
     html.dark .tg-row { border-top-color:#3a3458; }
     .pill-key { font-size:12px; color:var(--muted); margin:0 0 10px; letter-spacing:.02em; }
     .ent-h { margin:8px 0 6px; font-family:"Source Sans 3",system-ui,sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:800; }
+    #now h2 { font-size:40px; letter-spacing:-.02em; }
+    .today-stamp { margin:-6px 0 10px; font-size:15px; font-weight:700; color:var(--teal); letter-spacing:.04em; }
+    #now .sky { background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:16px; padding:12px 14px; }
+    .today-boards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    #now .ent-h { display:inline-block; background:var(--teal); color:#fff; padding:5px 10px; border-radius:999px; letter-spacing:.12em; }
+    #now #today-deliv + .ent-h, #now .today-boards div:last-child .ent-h { background:var(--coral); }
+    html.dark #now .sky { background:#2a2444; }
+    html.dark .today-stamp { color:#7fd3c6; }
+    @media (max-width:720px) { .today-boards { grid-template-columns:1fr; } }
     #ent-list .card { padding:8px 10px; margin-bottom:6px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
@@ -322,6 +331,7 @@
     <main>
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
+        <p class="today-stamp" id="today-stamp"></p>
         <p class="sky" id="live-sky">Good morning. Mostly sunny in Englewood with a heat index near 102°. Afternoon storms are likely after 2 p.m. Beach and cart are best this morning before the storms build.</p>
         <div class="pills">
           <div class="tg-head"><span></span><span>Morning</span><span>Afternoon</span></div>
@@ -334,10 +344,16 @@
         </div>
         <p class="pill-key">Morning is 6 a.m.–noon. Afternoon is noon–7 p.m. Green go · gold short window · coral don’t.</p>
         <p class="sky" id="do-hour">Checking the next hour…</p>
-        <h3 class="ent-h">Do today</h3>
-        <div id="today-do"></div>
-        <h3 class="ent-h">Expected deliveries</h3>
-        <div id="today-deliv"></div>
+        <div class="today-boards">
+          <div>
+            <h3 class="ent-h">Out and about</h3>
+            <div id="today-do"></div>
+          </div>
+          <div>
+            <h3 class="ent-h">Boxes on the way</h3>
+            <div id="today-deliv"></div>
+          </div>
+        </div>
       </section>
       <section id="cam" class="page">
         <h2 data-k="Gulf">Cam</h2>
@@ -902,6 +918,8 @@ Cart shop:</textarea>
     }
     function clock() {
       document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
+      var stamp = document.getElementById("today-stamp");
+      if (stamp) stamp.textContent = new Date().toLocaleString("en-US", { weekday:"long", month:"long", day:"numeric", timeZone:"America/New_York" }) + " on the Key";
       paintSkyHeader();
       applySunDark();
       stampGreet();
