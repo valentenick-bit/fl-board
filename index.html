@@ -149,6 +149,7 @@
     .card span.place-tag.place-bw { background:var(--teal); }
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
     iframe.full { width:100%; height:52vh; border:0; border-radius:12px; background:#111; }
+    img.radar-loop { width:100%; height:52vh; object-fit:contain; background:#111; border-radius:12px; display:block; }
     table { width:100%; border-collapse:collapse; }
     td { padding:10px 4px; border-bottom:1px solid #e2d9c8; font-size:15px; }
     a { color:var(--navy); font-weight:700; }
@@ -223,7 +224,8 @@
     html.kiosk .page.on > .tenday,
     html.kiosk .page.on > .keycam,
     html.kiosk .page.on > iframe.full,
-    html.kiosk .page.on > iframe.lite { flex:1 1 auto; min-height:0; }
+    html.kiosk .page.on > iframe.lite,
+    html.kiosk .page.on > img.radar-loop { flex:1 1 auto; min-height:0; }
     html.kiosk .keycam { height:auto; min-height:0; margin:6px 0; }
     html.kiosk .tide { height:64px; }
     html.kiosk .day { padding:4px 10px; }
@@ -231,7 +233,7 @@
     html.kiosk h2 { margin:0 0 6px; }
     html.kiosk .sky { margin:4px 0 8px; font-size:16px; }
     html.kiosk .pills { margin-bottom:8px; }
-    html.kiosk iframe.full, html.kiosk iframe.lite { height:auto; }
+    html.kiosk iframe.full, html.kiosk iframe.lite, html.kiosk img.radar-loop { height:auto; }
     html.kiosk .tenday { margin:6px 0 0; }
     html.phone main { overflow-y:auto; -webkit-overflow-scrolling:touch; }
     .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
@@ -372,8 +374,8 @@
       </section>
       <section id="radar" class="page">
         <h2 data-k="Over the Key">Radar</h2>
-        <p>Live loop over Englewood / Manasota Key. <a href="https://www.windy.com/-Radar-radar?radar,26.961,-82.353,10" target="_blank" rel="noopener">Open Windy</a> · <a href="https://www.rainviewer.com/united-states/weather-radar-map-live-englewood-florida.html" target="_blank" rel="noopener">RainViewer</a> · <a href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">NWS KTBW</a></p>
-        <iframe class="full" title="Englewood radar" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=%C2%B0F&metricWind=mph&zoom=10&overlay=radar&product=radar&level=surface&lat=26.961&lon=-82.353&detailLat=26.961&detailLon=-82.353&detail=true&message=true&marker=true&pressure=false&forecast=off"></iframe>
+        <p>KTBW Tampa Bay loop — covers Englewood and the Key. <a href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">NWS station page</a></p>
+        <img class="radar-loop" id="radar-loop" alt="KTBW radar loop" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
       </section>
       <section id="marine" class="page">
         <h2 data-k="Gulf and inlet">Marine</h2>
@@ -2809,6 +2811,12 @@ Cart shop:</textarea>
     loadWxSnap();
     refreshWeather();
     setInterval(refreshWeather, 5 * 60 * 1000);
+    (function radarLoop() {
+      var img = document.getElementById("radar-loop");
+      if (!img) return;
+      var base = "https://radar.weather.gov/ridge/standard/KTBW_loop.gif";
+      setInterval(function () { img.src = base + "?t=" + Date.now(); }, 3 * 60 * 1000);
+    })();
     setInterval(function () {
       if (window.__bwCharts && window.__bwCharts.preds) drawTideChart(window.__bwCharts.preds);
       if (window.__bwCharts && window.__bwCharts.surge) drawSurgeChart(window.__bwCharts.surge);
