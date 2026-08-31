@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>BeachWalk Board</title>
+  <script>
+    try {
+      if (localStorage.getItem("bw-kiosk") === "1") document.documentElement.classList.add("kiosk");
+      if (localStorage.getItem("bw-dark") === "1") document.documentElement.classList.add("dark");
+    } catch (e) {}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -139,6 +145,23 @@
       .tiles { grid-template-columns:repeat(4, 1fr); }
       main { padding:12px 18px 8px; }
     }
+    html.kiosk main { overflow:hidden; }
+    html.kiosk .page.on { height:100%; display:flex; flex-direction:column; min-height:0; }
+    html.kiosk .page.on > .hourly,
+    html.kiosk .page.on > .tenday,
+    html.kiosk .page.on > .keycam,
+    html.kiosk .page.on > iframe.full,
+    html.kiosk .page.on > iframe.lite { flex:1 1 auto; min-height:0; }
+    html.kiosk .keycam { height:auto; min-height:0; margin:6px 0; }
+    html.kiosk .tide { height:64px; }
+    html.kiosk .day { padding:4px 10px; }
+    html.kiosk .card { padding:8px 10px; margin-bottom:6px; }
+    html.kiosk h2 { margin:0 0 6px; }
+    html.kiosk .sky { margin:4px 0 8px; font-size:16px; }
+    html.kiosk .pills { margin-bottom:8px; }
+    html.kiosk iframe.full, html.kiosk iframe.lite { height:auto; }
+    html.kiosk .tenday { margin:6px 0 0; }
+    html.phone main { overflow-y:auto; -webkit-overflow-scrolling:touch; }
     .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
     .pbar-read span { color:var(--muted); font-size:12px; }
     .pbar { position:relative; display:flex; height:18px; border-radius:999px; overflow:hidden; background:#e2d9c8; }
@@ -149,27 +172,32 @@
     .pbar.uv .uv0 { background:#2a9d8f; flex:2; } .pbar.uv .uv1 { background:#c4a35a; flex:3; }
     .pbar.uv .uv2 { background:#e07a5f; flex:3; } .pbar.uv .uv3 { background:#1b2a4a; flex:3; }
 
-    html.dark { --sand:#16132a; --sand-2:#221e36; --navy:#0e0c1c; --muted:#c9bba0; --hair:rgba(196,163,90,.35); }
+    html.dark { --sand:#16132a; --sand-2:#221e36; --muted:#e4d6b4; --hair:rgba(196,163,90,.45); }
     html.dark body { background:#100e20; }
-    html.dark .frame { background:#16132a; color:#f3ead8; }
+    html.dark .frame { background:#16132a; color:#f7f1e6; }
     html.dark header { background:#0e0c1c; }
-    html.dark .sky { color:#e6d7b8; }
-    html.dark .tile, html.dark .card { background:#221e36; color:#f3ead8; }
-    html.dark .hourly { background:rgba(14,12,28,.45); }
-    html.dark .tenday { background:rgba(14,12,28,.45); }
-    html.dark .hour em, html.dark .hour b { color:#f3ead8; }
-    html.dark .wx-nowline { color:#c9bba0; }
-    html.dark .tbar { background:#2a2444; }
-    html.dark .dock { background:#100e20; }
-    html.dark .dock button { color:#e6d7b8; }
-    html.dark .dock button.on { background:#2a2444; color:#f3ead8; }
-    html.dark .ticker { background:#0e0c1c; }
-    html.dark .rowbtns button, html.dark .rowbtns a { background:#2a2444; border:1px solid #c4a35a; color:#f3ead8; }
-    html.dark .rowbtns button.on { background:#c4a35a; color:#0e0c1c; }
-    html.dark .switch i { background:#2a2444; border-color:#c4a35a; }
+    html.dark .sky, html.dark .wx-nowline, html.dark .pill-key, html.dark #who-line, html.dark #do-hour { color:#efe4c8; }
+    html.dark h2, html.dark .card b, html.dark .tile strong { color:#f7f1e6; }
+    html.dark .card span, html.dark .tile label, html.dark .lo, html.dark .pbar-read span, html.dark .pbar-scale { color:#e4d6b4; }
+    html.dark .tile, html.dark .card { background:#2a2444; color:#f7f1e6; }
+    html.dark .hourly, html.dark .tenday { background:#221e36; }
+    html.dark .hour, html.dark .hour em, html.dark .hour b, html.dark .day, html.dark .hi { color:#f7f1e6; }
+    html.dark .hour .pop, html.dark .dpop { color:#8fd4c8; }
+    html.dark .tbar { background:#3a3458; }
+    html.dark .dock, html.dark .dock-more { background:#100e20; }
+    html.dark .dock button { color:#efe4c8; opacity:.85; }
+    html.dark .dock button.on { background:#3a3458; color:#fff; opacity:1; }
+    html.dark .ticker { background:#0e0c1c; color:#f7f1e6; }
+    html.dark a { color:#f0d48a; }
+    html.dark td { color:#f7f1e6; border-bottom-color:#3a3458; }
+    html.dark .rowbtns button, html.dark .rowbtns a { background:#3a3458; border:1px solid #c4a35a; color:#f7f1e6; }
+    html.dark .rowbtns button.on { background:#c4a35a; color:#1b1328; }
+    html.dark .switch { color:#f7f1e6; }
+    html.dark .switch i { background:#3a3458; border-color:#c4a35a; }
     html.dark .switch input:checked + i { background:var(--teal); border-color:var(--teal); }
-    html.dark #radio-status { color:#e6d7b8; }
-    html.dark .card.music { background:#2a1e28; }
+    html.dark #radio-status, html.dark #deliv-note, html.dark #ent-count { color:#efe4c8; }
+    html.dark .card.music { background:#3a2430; }
+    html.dark textarea, html.dark input, html.dark .check label { background:#2a2444; color:#f7f1e6; border-color:#c4a35a; }
     #now, #tenday, #marine { background:linear-gradient(180deg, rgba(42,157,143,.18) 0%, transparent 42%); border-radius:16px; padding:8px 8px 4px; }
     #live-heat { display:none; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#e07a5f; }
     #live-heat.on { display:block; }
@@ -207,11 +235,7 @@
         <div class="keycam">
           <iframe id="keycam-frame" title="Gulf live cam" src="https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
         </div>
-        <p id="keycam-cap" class="pill-key">1 / 2 · Siesta Key Beach live</p>
-        <div class="rowbtns" id="keycam-btns" style="margin-top:6px">
-          <button type="button" class="on" data-cam="0">Siesta Key</button>
-          <button type="button" data-cam="1">Fort Myers Beach</button>
-        </div>
+        <p id="keycam-cap" class="pill-key">Siesta Key Beach live</p>
       </section>
       <section id="tenday" class="page">
         <h2 data-k="On the Key">Weather</h2>
@@ -500,6 +524,7 @@ Cart shop:</textarea>
       <button type="button" data-p="deliver">Pkgs</button>
       <button type="button" data-p="radio">Radio</button>
       <button type="button" data-p="traffic">Roads</button>
+      <button type="button" id="kioskbtn">Kiosk</button>
       <button type="button" id="morebtn">More</button>
     </nav>
     <nav class="dock dock-more" id="dock-more">
@@ -525,6 +550,7 @@ Cart shop:</textarea>
       document.querySelectorAll(".dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
       var idx = pages.indexOf(id);
       if (idx >= 0) i = idx;
+      try { localStorage.setItem("bw-page", id); } catch (e) {}
     }
     document.querySelectorAll(".dock").forEach(function (d) {
       d.addEventListener("click", function (e) {
@@ -659,8 +685,7 @@ Cart shop:</textarea>
     })();
     (function cycleKeyCams() {
       var cams = [
-        { src: "https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1", cap: "Siesta Key Beach live" },
-        { src: "https://www.youtube-nocookie.com/embed/rsQ_QCvOSJA?autoplay=1&mute=1&playsinline=1", cap: "Fort Myers Beach pier · Cape Weather live" }
+        { src: "https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1", cap: "Siesta Key Beach live" }
       ];
       var i = 0;
       var frame = document.getElementById("keycam-frame");
@@ -816,6 +841,26 @@ Cart shop:</textarea>
       location.reload();
     });
     
+    (function layoutMode() {
+      function apply() {
+        var on = false;
+        try { on = localStorage.getItem("bw-kiosk") === "1"; } catch (e) {}
+        document.documentElement.classList.toggle("kiosk", on);
+        document.documentElement.classList.toggle("phone", window.innerWidth <= 700 && !on);
+        var btn = document.getElementById("kioskbtn");
+        if (btn) {
+          btn.classList.toggle("on", on);
+          btn.textContent = on ? "Kiosk on" : "Kiosk";
+        }
+      }
+      apply();
+      var btn = document.getElementById("kioskbtn");
+      if (btn) btn.addEventListener("click", function () {
+        var on = !document.documentElement.classList.contains("kiosk");
+        try { localStorage.setItem("bw-kiosk", on ? "1" : "0"); } catch (e) {}
+        apply();
+      });
+    })();
     var darkBtn = document.getElementById("darkbtn");
     if (darkBtn) {
       darkBtn.addEventListener("click", function () {
@@ -894,6 +939,11 @@ Cart shop:</textarea>
       var on = document.querySelector(".page.on");
       rot = setTimeout(step, pageDwell(on ? on.id : "now"));
     }
+    (function restorePage() {
+      var last;
+      try { last = localStorage.getItem("bw-page"); } catch (e) {}
+      if (last && document.getElementById(last)) showPage(last);
+    })();
     document.querySelectorAll(".dock").forEach(function (d) {
       d.addEventListener("click", function () {
         clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
@@ -1035,13 +1085,27 @@ Cart shop:</textarea>
           var desc = (b.match(/DESCRIPTION(?:;[^:]*)?:([^\n\r]+)/) || [])[1] || "";
           desc = desc.replace(/\\[nN]/g, " ").replace(/\\,/g, ",").replace(/<[^>]+>/g, " ").trim();
           var ds = (b.match(/DTSTART(?:;[^:]*)?:(\d{8}(?:T\d{6}Z?)?)/) || [])[1] || "";
+          var de = (b.match(/DTEND(?:;[^:]*)?:(\d{8}(?:T\d{6}Z?)?)/) || [])[1] || "";
           if (!sum || !ds) return;
-          var when;
-          if (ds.length === 8) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T12:00:00-04:00");
-          else if (ds.indexOf("Z") >= 0) when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":"+ds.slice(13,15)+"Z");
-          else when = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T"+ds.slice(9,11)+":"+ds.slice(11,13)+":00-04:00");
-          if (isNaN(when.getTime()) || when.getTime() < Date.now() - 12*3600*1000) return;
-          out.push({ when: when, sum: sum, loc: loc, desc: desc });
+          function icsDate(s, endDay) {
+            if (!s) return null;
+            if (s.length === 8) {
+              var day = s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
+              return new Date(day + (endDay ? "T00:00:00-04:00" : "T12:00:00-04:00"));
+            }
+            if (s.indexOf("Z") >= 0) return new Date(s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8)+"T"+s.slice(9,11)+":"+s.slice(11,13)+":"+s.slice(13,15)+"Z");
+            return new Date(s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8)+"T"+s.slice(9,11)+":"+s.slice(11,13)+":00-04:00");
+          }
+          var allDay = ds.length === 8;
+          var when = icsDate(ds, false);
+          if (!when || isNaN(when.getTime())) return;
+          var end = icsDate(de, allDay);
+          if (allDay) {
+            if (end && de.length === 8) end = new Date(end.getTime() - 1000);
+            else end = new Date(ds.slice(0,4)+"-"+ds.slice(4,6)+"-"+ds.slice(6,8)+"T23:59:59-04:00");
+          } else if (!end) end = new Date(when.getTime() + 2 * 3600 * 1000);
+          if (end.getTime() < Date.now()) return;
+          out.push({ when: when, end: end, allDay: allDay, sum: sum, loc: loc, desc: desc });
         });
         out.sort(function (a,b) { return a.when - b.when; });
         return out.slice(0, 40);
@@ -1058,7 +1122,7 @@ Cart shop:</textarea>
         var box = document.getElementById(id);
         if (!box || !events.length) return;
         box.innerHTML = events.map(function (e) {
-          var allDay = e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum);
+          var allDay = !!e.allDay || (e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
           var d = e.when.toLocaleString("en-US", allDay
             ? { weekday:"short", month:"short", day:"numeric", timeZone:"America/New_York" }
             : { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
@@ -1077,11 +1141,14 @@ Cart shop:</textarea>
       var bag = { bw: [], eng: [] };
       try {
         var cached = JSON.parse(localStorage.getItem("bw-ent-cache") || "{}");
-        if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.inside = true; return e; }).filter(function (e) { return e.when.getTime() > Date.now() - 12*3600*1000; });
-        if (cached.eng) bag.eng = cached.eng.map(function (e) { e.when = new Date(e.when); e.inside = false; return e; }).filter(function (e) { return e.when.getTime() > Date.now() - 12*3600*1000; });
+        if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = true; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
+        if (cached.eng) bag.eng = cached.eng.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = false; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
       } catch (e) {}
       function paint() {
-        var merged = bag.bw.concat(bag.eng).sort(function (a, b) { return a.when - b.when; });
+        var merged = bag.bw.concat(bag.eng).filter(function (e) {
+          var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
+          return end.getTime() >= Date.now();
+        }).sort(function (a, b) { return a.when - b.when; });
         if (!merged.length) return;
         render("ent-list", merged.slice(0, 16));
         var note = document.getElementById("ent-count");
