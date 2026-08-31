@@ -836,6 +836,7 @@ Cart shop:</textarea>
     function clock() {
       document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
       paintSkyHeader();
+      applySunDark();
       stampGreet();
       writeWhoLine();
       writeHdrMeta();
@@ -968,16 +969,42 @@ Cart shop:</textarea>
         apply();
       });
     })();
+    function sunShouldDark() {
+      var rise = window.__bwCharts && window.__bwCharts.rise ? new Date(window.__bwCharts.rise).getTime() : 0;
+      var set = window.__bwCharts && window.__bwCharts.set ? new Date(window.__bwCharts.set).getTime() : 0;
+      var now = Date.now();
+      if (!rise || !set) {
+        var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
+        return hr >= 20 || hr < 7;
+      }
+      return now < rise || now >= set;
+    }
+    function applySunDark() {
+      var lock;
+      try { lock = localStorage.getItem("bw-dark-lock"); } catch (e) { lock = null; }
+      var on = (lock === "1" || lock === "0") ? lock === "1" : sunShouldDark();
+      document.documentElement.classList.toggle("dark", on);
+      var btn = document.getElementById("darkbtn");
+      if (btn) {
+        btn.classList.toggle("on", on);
+        btn.textContent = lock === "1" || lock === "0" ? (on ? "Dark on" : "Light") : (on ? "Night" : "Dark");
+      }
+    }
     var darkBtn = document.getElementById("darkbtn");
     if (darkBtn) {
       darkBtn.addEventListener("click", function () {
-        document.documentElement.classList.toggle("dark");
-        var on = document.documentElement.classList.contains("dark");
-        darkBtn.classList.toggle("on", on);
-        try { localStorage.setItem("bw-dark", on ? "1" : "0"); } catch (e) {}
+        var lock;
+        try { lock = localStorage.getItem("bw-dark-lock"); } catch (e) { lock = null; }
+        if (lock === "1" || lock === "0") {
+          try { localStorage.removeItem("bw-dark-lock"); } catch (e) {}
+        } else {
+          var want = !document.documentElement.classList.contains("dark");
+          try { localStorage.setItem("bw-dark-lock", want ? "1" : "0"); } catch (e) {}
+        }
+        applySunDark();
       });
-      darkBtn.classList.toggle("on", document.documentElement.classList.contains("dark"));
     }
+    applySunDark();
     window.__storm = false;
     try {
       localStorage.setItem("bw-seen", new Date().toISOString());
@@ -1793,6 +1820,7 @@ Cart shop:</textarea>
           var watch = document.getElementById("live-sky-watch");
           if (lab && r.sunrise && r.sunset) lab.textContent = "Sun path · " + hh(r.sunrise) + " to " + hh(r.sunset);
           window.__bwCharts.rise = r.sunrise; window.__bwCharts.set = r.sunset;
+          applySunDark();
           drawSunChart(r.sunrise, r.sunset);
           drawMoonChart();
           if (watch) {
