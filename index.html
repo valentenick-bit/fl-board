@@ -1376,11 +1376,9 @@ Cart shop:</textarea>
           return e && e.when && isTodayET(e.when) && (!e.end || new Date(e.end).getTime() >= Date.now());
         }).slice(0, 8);
         if (!evs.length) doBox.innerHTML = '<div class="card"><span>Nothing dated today on BeachWalk or Englewood.</span></div>';
+        else if (window.entCardHtml) doBox.innerHTML = evs.map(window.entCardHtml).join("");
         else doBox.innerHTML = evs.map(function (e) {
-          var allDay = !!e.allDay;
-          var t = allDay ? "All day" : new Date(e.when).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }).toLowerCase();
-          var place = e.inside ? "BeachWalk" : "Englewood";
-          return '<div class="card' + (e.live ? " music" : "") + '"><span class="place-tag ' + (e.inside ? "place-bw" : "place-out") + '">' + place + "</span>" + (e.live ? '<span class="music-tag">Live music</span>' : "") + "<b>" + t + " · " + (e.sum || "") + "</b></div>";
+          return '<div class="card"><b>' + (e.sum || "") + "</b></div>";
         }).join("");
       }
       if (delBox) {
@@ -1388,9 +1386,20 @@ Cart shop:</textarea>
         function key(item) { return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim(); }
         var inc = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks[key(x)]; });
         if (!inc.length) delBox.innerHTML = '<div class="card"><span>No packages on the way.</span></div>';
-        else delBox.innerHTML = inc.slice(0, 5).map(function (x) {
-          return '<div class="card music"><span class="place-tag place-out">On the way</span><b>' + (x.who || "") + " · " + (x.title || "") + "</b><span>" + (x.detail || "") + "</span></div>";
-        }).join("");
+        else if (window.delivCardHtml) {
+          delBox.innerHTML = inc.slice(0, 5).map(function (x) { return window.delivCardHtml(x, true); }).join("");
+          delBox.querySelectorAll("input[data-deliv]").forEach(function (cb) {
+            cb.addEventListener("change", function () {
+              if (!cb.checked) return;
+              window.__deliveredMarks = window.__deliveredMarks || {};
+              window.__deliveredMarks[cb.getAttribute("data-deliv")] = { at: new Date().toISOString() };
+              try { localStorage.setItem("bw-deliv-marks", JSON.stringify(window.__deliveredMarks)); } catch (e) {}
+              if (typeof window.__paintDeliveries === "function") window.__paintDeliveries();
+              else paintToday();
+              if (typeof saveHouse === "function") saveHouse();
+            });
+          });
+        }
       }
     }
     (function liveCals() {
@@ -1444,25 +1453,26 @@ Cart shop:</textarea>
         if (/labor day/.test(s) && /celebrat|party|pool|high tide|\bdj\b/.test(s)) return true;
         return /live\s*music|\bmusic\b|\bband\b|\bdjs?\b|concert|tribute|pian|\bcabana dogs\b|johnny d|jentgens|storm riders|floyd|oldies|rocket 88|generation gap|\b22n\b|open mic|karaoke|steel drum|reggae|acoustic|jazz|blues|\bduo\b|\btrio\b|singer|vocal|guitar|covers?\b|performing/.test(s);
       }
+      window.entCardHtml = function (e) {
+        var allDay = !!e.allDay || (e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
+        var d = e.when.toLocaleString("en-US", allDay
+          ? { weekday:"short", month:"short", day:"numeric", timeZone:"America/New_York" }
+          : { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
+        var live = e.live || isLiveMusic(e.sum, e.loc, e.desc);
+        var place = e.inside ? "BeachWalk" : "Englewood";
+        if (!e.inside) {
+          var at = (e.sum.match(/@\s*(.+)$/) || [])[1];
+          if (at) place = at.replace(/\s*\(.*$/, "").trim();
+          else if (e.loc) place = e.loc.split(",")[0].trim();
+        }
+        if (place.length > 28) place = place.slice(0, 26).replace(/\s+\S*$/, "") + "…";
+        var pclass = e.inside ? "place-tag place-bw" : "place-tag place-out";
+        return '<div class="card' + (live ? " music" : "") + '"><span class="' + pclass + '">' + place + "</span>" + (live ? '<span class="music-tag">Live music</span>' : "") + "<b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
+      };
       function render(id, events) {
         var box = document.getElementById(id);
         if (!box || !events.length) return;
-        box.innerHTML = events.map(function (e) {
-          var allDay = !!e.allDay || (e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
-          var d = e.when.toLocaleString("en-US", allDay
-            ? { weekday:"short", month:"short", day:"numeric", timeZone:"America/New_York" }
-            : { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
-          var live = isLiveMusic(e.sum, e.loc, e.desc);
-          var place = e.inside ? "BeachWalk" : "Englewood";
-          if (!e.inside) {
-            var at = (e.sum.match(/@\s*(.+)$/) || [])[1];
-            if (at) place = at.replace(/\s*\(.*$/, "").trim();
-            else if (e.loc) place = e.loc.split(",")[0].trim();
-          }
-          if (place.length > 28) place = place.slice(0, 26).replace(/\s+\S*$/, "") + "…";
-          var pclass = e.inside ? "place-tag place-bw" : "place-tag place-out";
-          return '<div class="card' + (live ? " music" : "") + '"><span class="' + pclass + '">' + place + "</span>" + (live ? '<span class="music-tag">Live music</span>' : "") + "<b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
-        }).join("");
+        box.innerHTML = events.map(window.entCardHtml).join("");
       }
       var bag = { bw: [], eng: [] };
       try {
@@ -1548,6 +1558,7 @@ Cart shop:</textarea>
         var how = item.marked ? "Marked here" : "Delivered";
         return '<div class="card"><span class="place-tag place-bw">' + how + "</span><b>" + who + " · " + title + "</b><span>" + detail + "</span></div>";
       }
+      window.delivCardHtml = card;
       function split(data) {
         var marks = window.__deliveredMarks || {};
         var inc = [], del = (data.delivered || []).slice();
