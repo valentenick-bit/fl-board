@@ -121,6 +121,7 @@
     .ent-h { margin:8px 0 6px; font-family:"Source Sans 3",system-ui,sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:800; }
     #now h2 { font-size:40px; letter-spacing:-.02em; }
     .today-stamp { margin:-6px 0 10px; font-size:15px; font-weight:700; color:var(--teal); letter-spacing:.04em; }
+    .best-chip { margin:0 0 12px; padding:10px 14px; border-radius:16px; background:var(--teal); color:#fff; font-weight:800; font-size:16px; letter-spacing:.01em; }
     #now .sky { background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:16px; padding:12px 14px; }
     .today-boards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     #now .ent-h { display:inline-block; background:var(--teal); color:#fff; padding:5px 10px; border-radius:999px; letter-spacing:.12em; }
@@ -347,6 +348,7 @@
           <div class="tg-row" id="pill-courts"><span class="tg-name">Courts</span><span class="tg-cell go" data-side="am">—</span><span class="tg-cell go" data-side="pm">—</span></div>
         </div>
         <p class="pill-key">Morning is 6 a.m.–noon. Afternoon is noon–7 p.m. Green go · gold short window · coral don’t.</p>
+        <div class="best-chip" id="best-window">Best window · checking hourly…</div>
         <p class="sky" id="do-hour">Checking the next hour…</p>
         <div class="today-boards">
           <div>
@@ -572,6 +574,7 @@ Cart shop:</textarea>
       <section id="hurr" class="page">
         <h2 data-k="Watch and warning">Hurricane</h2>
         <div class="card" id="hurr-stats"><b>No hurricane watch or warning</b><span>This page joins the rotation when NWS posts a hurricane or tropical-storm watch or warning for the Key.</span></div>
+        <div class="card" id="hurr-disc"><b>NHC discussion</b><span>Waiting on the latest forecast discussion…</span></div>
         <div class="hurr-stage">
           <img id="hurr-frame" alt="Hurricane view" src="https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif"/>
           <div class="hurr-cap" id="hurr-cap">Radar</div>
@@ -612,6 +615,12 @@ Cart shop:</textarea>
       <section id="contacts" class="page">
         <h2 data-k="If it goes bad">Emergency</h2>
         <div class="card music"><b>Right now</b><span id="live-prep">Checking watches for the Key…</span></div>
+        <div class="card"><b>Evac · BeachWalk</b>
+          <span>Sarasota County levels A–E. The Key itself is <b>Level A</b> (first out). BeachWalk on Englewood Rd is inland of the bridge — confirm Level B/C on the county lookup before a storm.</span>
+          <span>Do not go to a shelter until the county says it is open.</span>
+          <p>Nearest listed Englewood sites: Sports Complex, 1300 S River Rd · Buchan Airport Park, 1390 Old Englewood Rd.</p>
+          <p><a href="https://www.arcgis.com/apps/instant/lookup/index.html?appid=0219841617274028b5bf5867fcf4c57b" target="_blank" rel="noopener">Know your level</a> · <a href="https://www.scgov.net/government/emergency-services/emergency-management-4420" target="_blank" rel="noopener">Sarasota EM</a></p>
+        </div>
         <div class="dials">
           <h3>Call first</h3>
           <a class="dial" href="tel:911"><b>Life emergency</b><em>911</em></a>
@@ -640,6 +649,12 @@ Cart shop:</textarea>
           <a class="dial" href="tel:511"><b>Roads</b><em>511</em></a>
         </div>
       </section>
+      <section id="power" class="page">
+        <h2 data-k="FPL">Power</h2>
+        <div class="card"><b>Outages</b><span id="fpl-counts">Sarasota and Charlotte counts load with the map. Tap a row if the embed is blocked.</span></div>
+        <p><a href="https://www.fpl.com/powertracker" target="_blank" rel="noopener">Open FPL Power Tracker</a> · <a href="tel:8004688243">800-4-OUTAGE</a></p>
+        <iframe class="full" title="FPL Power Tracker" src="https://www.fpl.com/powertracker"></iframe>
+      </section>
     </main>
     <div class="dock-wrap">
     <nav class="dock" id="dock">
@@ -663,6 +678,7 @@ Cart shop:</textarea>
       <button type="button" data-p="news">Fox</button>
       <button type="button" data-p="wink">WINK</button>
       <button type="button" data-p="contacts">Emergency</button>
+      <button type="button" data-p="power">Power</button>
       <button type="button" data-p="villa">Villa</button>
       <button type="button" id="darkbtn">Dark mode</button>
       <button type="button" id="kioskbtn">Kiosk</button>
@@ -1040,6 +1056,54 @@ Cart shop:</textarea>
       if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm)) bits.push(window.__nextStorm + ".");
       el.textContent = bits.join(" ");
     }
+    function hourLabel(iso) {
+      return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
+    }
+    function writeBestWindow() {
+      var el = document.getElementById("best-window");
+      if (!el) return;
+      var hours = window.__hours || [];
+      if (!hours.length) { el.textContent = "Best window · waiting on hourly"; return; }
+      function ok(h, kind) {
+        var fx = String(h.shortForecast || "").toLowerCase();
+        var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+        var isolated = /isolated|slight|patchy/.test(fx);
+        var thunder = /thunder|t-storm|lightning/.test(fx) && !isolated && pop >= 50;
+        var wet = (!isolated && pop >= 40) || pop >= 55;
+        var wind = parseInt(h.windSpeed || "", 10) || 0;
+        if (thunder) return false;
+        if (kind === "boat") return !wet && wind < 15;
+        if (kind === "cart") return !thunder && wind < 20 && pop < 55;
+        return !wet && wind < 18;
+      }
+      function span(kind) {
+        var now = Date.now();
+        var start = null, last = null;
+        for (var i = 0; i < hours.length; i++) {
+          var t = new Date(hours[i].startTime).getTime();
+          var hr = parseInt(new Date(hours[i].startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
+          if (t + 3600000 < now || hr >= 20) continue;
+          if (ok(hours[i], kind)) {
+            if (!start) start = hours[i];
+            last = hours[i];
+          } else if (start) break;
+        }
+        if (!start) return null;
+        var a = hourLabel(start.startTime);
+        var b = last ? hourLabel(last.endTime || last.startTime) : a;
+        if (a === b) return a;
+        return a + "–" + b;
+      }
+      var beach = span("beach");
+      var cart = span("cart");
+      var boat = span("boat");
+      var bits = [];
+      bits.push(beach ? "Beach " + beach : "Beach later");
+      bits.push(cart ? "Cart " + cart : "Park the cart");
+      bits.push(boat ? "Launch " + boat : "Don’t launch");
+      el.textContent = "Best window · " + bits.join(" · ");
+      window.__bestWindow = el.textContent;
+    }
 
     function inQuietHours() {
       return sunShouldDark();
@@ -1245,7 +1309,7 @@ Cart shop:</textarea>
       if (/hurricane|tropical|surge/.test(ev)) list.push("hurr", "cane", "marine");
       if (/thunder|tornado|severe|lightning/.test(ev)) list.push("bolt");
       if (/flood|marine|small craft|gale|waterspout|rip|surf|coastal/.test(ev) && list.indexOf("marine") < 0) list.push("marine");
-      list.push("contacts");
+      list.push("contacts", "power");
       var seen = {};
       return list.filter(function (id) {
         if (seen[id] || !document.getElementById(id)) return false;
@@ -1342,6 +1406,38 @@ Cart shop:</textarea>
       }
       window.__hurrSlides = slides;
       if (document.getElementById("hurr") && document.getElementById("hurr").classList.contains("on")) showHurrSlide(true);
+      fetchHurrDisc(s);
+    }
+    function fetchHurrDisc(s) {
+      var el = document.getElementById("hurr-disc");
+      if (!el) return;
+      var bin = String((s && s.binNumber) || "").replace(/\D/g, "");
+      var urls = [];
+      if (bin) urls.push("https://www.nhc.noaa.gov/text/MIATCDAT" + bin + ".shtml");
+      urls.push("https://www.nhc.noaa.gov/text/MIATWDAT.shtml");
+      urls = urls.concat(urls.map(function (u) { return "https://corsproxy.io/?" + encodeURIComponent(u); }));
+      function clip(txt) {
+        txt = String(txt || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        var key = txt.match(/Key Messages?:([\s\S]{40,500})/i);
+        var spec = txt.match(/SPECIAL FEATURES[\s\S]{0,80}?(\.[\s\S]{80,420}?)(?:GULF|ATLANTIC|CARIBBEAN|\.\.\.)/i);
+        var body = (key && key[1]) || (spec && spec[1]) || txt;
+        body = body.replace(/^[\s.\-]+/, "").trim();
+        if (body.length > 420) body = body.slice(0, 417).replace(/\s+\S*$/, "") + "…";
+        return body;
+      }
+      function next(i) {
+        if (i >= urls.length) {
+          if (!el.dataset.ok) el.innerHTML = "<b>NHC discussion</b><span>Could not load the text product. Outlook maps still update.</span>";
+          return;
+        }
+        fetch(urls[i]).then(function (r) { return r.text(); }).then(function (t) {
+          var body = clip(t);
+          if (body.length < 40) return next(i + 1);
+          el.dataset.ok = "1";
+          el.innerHTML = "<b>NHC discussion</b><span>" + body + "</span>";
+        }).catch(function () { next(i + 1); });
+      }
+      next(0);
     }
     function showHurrSlide(reset) {
       var slides = window.__hurrSlides || [];
@@ -1363,7 +1459,7 @@ Cart shop:</textarea>
     }
     function rotateList() {
       return allDockPages().filter(function (id) {
-        if (id === "news" || id === "wink" || id === "contacts" || id === "villa") return false;
+        if (id === "news" || id === "wink" || id === "contacts" || id === "villa" || id === "power") return false;
         if (id === "cane") return !!window.__wxRisk.cane;
         if (id === "hurr") return !!window.__wxRisk.hurr;
         if (id === "bolt") return !!window.__wxRisk.bolt;
@@ -2207,6 +2303,8 @@ Cart shop:</textarea>
       writeDoHour();
     }
     function refreshExtras(hours, days) {
+      window.__hours = hours || [];
+      writeBestWindow();
       var nowMs = Date.now();
       var startH = 0;
       if (hours && hours.length) {
@@ -3105,6 +3203,7 @@ Cart shop:</textarea>
         para("Today", [
           t("live-sky"),
           t("do-hour"),
+          window.__bestWindow || "",
           window.__nextTide || "",
           window.__nextStorm || "",
           (function () {
