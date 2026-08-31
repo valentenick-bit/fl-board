@@ -1388,7 +1388,7 @@ Cart shop:</textarea>
       function isLiveMusic(sum, loc, desc) {
         var s = [sum, loc, desc].join(" ").toLowerCase();
         if (/food truck|zumba|bakery|yoga|boat race|parade|craft festival|hoa|board meeting|committee/.test(s) && !/\b(music|band|dj|piano|concert)\b/.test(s)) return false;
-        if (/troll music|sandbar tiki|sand bar tiki|artur/.test(s)) return true;
+        if (/troll music|sandbar tiki|sand bar tiki|artur|englewood moose|gulf cove moose|moose lodge/.test(s)) return true;
         if (/@/.test(sum) && !/http|zoom|meet\.google/.test(s)) return true;
         if (/labor day/.test(s) && /celebrat|party|pool|high tide|\bdj\b/.test(s)) return true;
         return /live\s*music|\bmusic\b|\bband\b|\bdjs?\b|concert|tribute|pian|\bcabana dogs\b|johnny d|jentgens|storm riders|floyd|oldies|rocket 88|generation gap|\b22n\b|open mic|karaoke|steel drum|reggae|acoustic|jazz|blues|\bduo\b|\btrio\b|singer|vocal|guitar|covers?\b|performing/.test(s);
@@ -2315,11 +2315,17 @@ Cart shop:</textarea>
       var h = parseInt(new Date(ms).toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
       return h >= 20 || h < 6;
     }
-    function wxKind(s, ms) {
+    function wxKind(s, ms, pop) {
       s = String(s || "").toLowerCase();
       var kind = "partly";
-      if (/thunder|t-storm|lightning/.test(s)) kind = "thunder";
-      else if (/rain|shower|drizzle/.test(s)) kind = "rain";
+      var p = pop == null ? null : Number(pop);
+      if (/severe|lightning storm/.test(s)) kind = "thunder";
+      else if (/thunder|t-storm/.test(s)) {
+        if (/isolated|slight|patchy/.test(s) && (p == null || p < 40)) kind = "partly";
+        else if (/scattered/.test(s) && (p == null || p < 50)) kind = "rain";
+        else kind = "thunder";
+      }
+      else if (/rain|shower|drizzle/.test(s)) kind = (p != null && p < 30 && /isolated|slight/.test(s)) ? "partly" : "rain";
       else if (/snow|sleet/.test(s)) kind = "snow";
       else if (/fog|mist|haze/.test(s)) kind = "fog";
       else if (/wind/.test(s) && /cloud|rain|sun/.test(s) === false) kind = "wind";
@@ -2346,10 +2352,10 @@ Cart shop:</textarea>
       };
       return '<svg viewBox="0 0 32 32" width="' + box + '" height="' + box + '">' + (inner[kind] || inner.partly) + "</svg>";
     }
-    function setHeaderIcon(text, ms) {
+    function setHeaderIcon(text, ms, pop) {
       var el = document.getElementById("live-wxicon");
       if (!el) return;
-      var kind = wxKind(text, ms);
+      var kind = wxKind(text, ms, pop);
       el.setAttribute("aria-label", kind);
       var tmp = document.createElement("div");
       tmp.innerHTML = wxSvg(kind, 32);
@@ -2434,6 +2440,8 @@ Cart shop:</textarea>
             return dirs[Math.round(d / 22.5) % 16];
           }
           var tempF = nowH.temperature != null ? nowH.temperature : c2f(obs.temperature && obs.temperature.value);
+          if (om.current && om.current.temperature_2m != null) tempF = Math.round(om.current.temperature_2m);
+          else if (obs.temperature && obs.temperature.value != null && obs.timestamp && (nowMs - new Date(obs.timestamp).getTime()) < 2 * 3600 * 1000) tempF = c2f(obs.temperature.value);
           var dewF = nowH.dewpoint && nowH.dewpoint.value != null ? Math.round(nowH.dewpoint.value) : c2f(obs.dewpoint && obs.dewpoint.value);
           if (nowH.dewpoint && nowH.dewpoint.unitCode && /degC/.test(nowH.dewpoint.unitCode)) dewF = c2f(nowH.dewpoint.value);
           var rh = (nowH.relativeHumidity && nowH.relativeHumidity.value != null) ? Math.round(nowH.relativeHumidity.value) : (obs.relativeHumidity && obs.relativeHumidity.value != null ? Math.round(obs.relativeHumidity.value) : null);
@@ -2513,7 +2521,7 @@ Cart shop:</textarea>
               detail: detail
             };
           }
-          setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now());
+          setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now(), nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value);
           (function markSky() {
             var hour = String(nowH.shortForecast || "").toLowerCase();
             var hourD = String(nowH.detailedForecast || "").toLowerCase();
@@ -2532,11 +2540,17 @@ Cart shop:</textarea>
           if (hours.length && document.querySelector(".hourly")) {
             var box = document.querySelector(".hourly");
             var n = Math.max(6, Math.min(8, Math.floor((box.clientWidth || 400) / 72)));
-            box.innerHTML = hours.slice(0, n).map(function (h, hi) {
+            var startH = 0;
+            for (var si = 0; si < hours.length; si++) {
+              var endH = hours[si].endTime ? new Date(hours[si].endTime).getTime() : new Date(hours[si].startTime).getTime() + 3600000;
+              if (endH > nowMs) { startH = si; break; }
+            }
+            box.innerHTML = hours.slice(startH, startH + n).map(function (h, hi) {
               var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
               var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
               var popHtml = pop >= 10 ? '<i class="pop">' + pop + "%</i>" : '<i class="pop mute">·</i>';
-              return '<div class="hour' + (hi === 0 ? " now" : "") + '"><em>' + when + "</em>" + popHtml + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime()), 26) + "<b>" + h.temperature + "°</b></div>";
+              var label = hi === 0 ? "now" : when;
+              return '<div class="hour' + (hi === 0 ? " now" : "") + '"><em>' + label + "</em>" + popHtml + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime(), pop), 26) + "<b>" + h.temperature + "°</b></div>";
             }).join("");
           }
           if (days.length && document.querySelector(".tenday")) {
