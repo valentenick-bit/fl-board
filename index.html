@@ -600,7 +600,7 @@ Cart shop:</textarea>
           <a class="dial" href="tel:9414743217"><b>Englewood water</b><em>941-474-3217</em></a>
           <a class="dial" href="tel:18009218101"><b>Frontier internet</b><em>800-921-8101</em></a>
         </div>
-        <p id="live-fpl" class="pill-key">FPL tracker updates when available.</p>
+        <span id="live-fpl" hidden></span>
         <div class="dials">
           <h3>After a storm</h3>
           <a class="dial" href="tel:8006213362"><b>FEMA</b><em>800-621-3362</em></a>
@@ -611,7 +611,6 @@ Cart shop:</textarea>
           <a class="dial" href="tel:9418619500"><b>Animal services</b><em>941-861-9500</em></a>
           <a class="dial" href="tel:511"><b>Roads</b><em>511</em></a>
         </div>
-        <p class="pill-key">3 days water and meds · full tanks · evacuation zone on scgov.net · <a href="https://www.fpl.com/powertracker" target="_blank" rel="noopener">FPL tracker</a></p>
       </section>
     </main>
     <div class="dock-wrap">
@@ -3101,15 +3100,26 @@ Cart shop:</textarea>
         var prep = document.getElementById("live-prep");
         if (prep) {
           var ev = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
-          var tip = "No watch or warning on the Englewood point. Keep 3 days of water, meds, and a full tank anyway.";
-          if (/hurricane|tropical storm|storm surge/.test(ev)) tip = "Tropical watch or warning. Know your zone on scgov.net. Fuel the truck and cart. Ice, water, meds, cash. Bring in chairs. Leave if they call your zone.";
-          else if (/tornado/.test(ev)) tip = "Tornado watch or warning. Interior room, no windows. Stay off the cart and pool.";
-          else if (/flash flood|flood/.test(ev)) tip = "Flood threat. Do not drive standing water. Move the truck to higher ground.";
-          else if (/heat/.test(ev)) tip = "Heat warning. AC first. Midday indoor only. Check on neighbors.";
-          else if (/rip/.test(ev)) tip = "Rip current. Swim only near a lifeguard. If pulled out, swim parallel to the beach.";
-          else if (/thunder|severe|wind/.test(ev)) tip = "Severe weather. Off the pool and cart. Interior room if a warning hits.";
-          else if (keep.length) tip = keep.map(function (f) { return (f.properties || {}).event; }).join(" · ") + ". Stay inside until it expires.";
-          prep.textContent = tip;
+          var tip = "No NWS watch or warning is up for the Englewood point. Still keep 3 days of water and meds, cash, paper maps, and full cart and truck tanks.";
+          if (/hurricane|tropical storm|storm surge/.test(ev)) tip = "Tropical system. Check your zone on scgov.net. Fuel the truck and cart, ice and water, meds, cash. Bring in chairs and the grill. Leave if they call your zone — don’t wait on the last bridge.";
+          else if (/tornado/.test(ev)) tip = "Get to an interior room with no windows. Stay off the cart, pool, and beach until this expires.";
+          else if (/flash flood|flood/.test(ev)) tip = "Do not drive standing water on Beach Road or the Key. Move the truck to higher ground if streets start to pond.";
+          else if (/heat/.test(ev)) tip = "Stay in AC through the afternoon. Drink water. Check on neighbors. Limit the cart to short shaded trips.";
+          else if (/rip/.test(ev)) tip = "Swim only near a lifeguard. If a current pulls you out, swim parallel to the beach until you are free, then back in.";
+          else if (/thunder|severe|wind/.test(ev)) tip = "Off the pool, courts, and cart while it is close. Interior room if this is a thunderstorm or tornado warning.";
+          else if (keep.length) tip = "Stay inside and off the water until NWS drops this.";
+          if (!keep.length) {
+            prep.textContent = tip;
+          } else {
+            prep.innerHTML = keep.map(function (f) {
+              var p = f.properties || {};
+              var until = p.expires ? new Date(p.expires).toLocaleString("en-US", { weekday:"short", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "";
+              var head = (p.headline || p.event || "Alert").replace(/\s+/g, " ").trim();
+              var inst = String(p.instruction || p.description || "").replace(/\s+/g, " ").trim();
+              if (inst.length > 280) inst = inst.slice(0, 277).replace(/\s+\S*$/, "") + "…";
+              return "<b>" + head + (until ? " · until " + until : "") + "</b> " + tip + (inst ? " NWS: " + inst : "");
+            }).join("<br><br>");
+          }
         }
         window.__wxRisk.alert = !!keep.length;
         window.__wxRisk.warnTypes = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
