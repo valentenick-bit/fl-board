@@ -26,6 +26,9 @@
     .brand small { letter-spacing:.16em; text-transform:uppercase; font-size:11px; opacity:.75; }
     #when { font-weight:700; }
     .flag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
+    .hdr-meta { grid-column:1 / -1; font-size:11px; letter-spacing:.04em; color:#c9c0b0; text-align:center; margin-top:4px; }
+    .who-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    .who-row .card b { display:block; margin-bottom:6px; }
     main { flex:1; padding:10px 12px 6px; overflow-y:auto; min-height:0; }
     .page { display:none; }
     .page.on { display:block; }
@@ -161,6 +164,7 @@
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
       <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div></div>
+      <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
@@ -173,6 +177,8 @@
           <span class="pill go" id="pill-boat"><small>Boat</small><b>Checking</b></span><span class="pill win" id="pill-courts"><small>Courts</small><b>Checking</b></span>
         </div>
         <p class="pill-key">Green = go now. Gold = wait or keep it short. Coral = don’t.</p>
+        <p class="sky" id="do-hour">Checking the next hour…</p>
+        <p class="pill-key" id="who-line"></p>
         <div class="keycam">
           <iframe id="keycam-frame" title="Gulf live cam" src="https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
         </div>
@@ -235,6 +241,7 @@
         <div class="tiles">
           <div class="tile"><label>Rip tide</label><strong id="live-rip">…</strong></div>
           <div class="tile"><label>Red tide</label><strong id="live-redtide">…</strong></div>
+          <div class="tile"><label>Beach bacteria</label><strong id="live-bacteria">…</strong></div>
           <div class="tile"><label>Seas</label><strong id="live-seas">…</strong></div>
           <div class="tile"><label>Small craft</label><strong id="live-craft">…</strong></div>
           <div class="tile"><label>Gulf SST</label><strong id="live-sst">—</strong></div>
@@ -279,14 +286,39 @@
       </section>
       <section id="house" class="page">
         <h2 data-k="Villa">House</h2>
+        <div class="who-row">
+          <div class="card"><b>Nick</b>
+            <div class="rowbtns" id="who-nick">
+              <button type="button" data-who="FL">FL</button>
+              <button type="button" data-who="CT">CT</button>
+            </div>
+          </div>
+          <div class="card"><b>Dayna</b>
+            <div class="rowbtns" id="who-dayna">
+              <button type="button" data-who="FL">FL</button>
+              <button type="button" data-who="CT">CT</button>
+            </div>
+          </div>
+        </div>
         <div class="card"><b id="house-occ">Occupied</b><span id="house-seen">Last seen —</span></div>
         <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
         <div class="card"><b>Fly</b><span id="cal-fly">Drop a flight number on the Fly calendar.</span></div>
         <div class="card"><b>Arrive FL</b><span id="cal-arrive">No Arrive FL event in range.</span></div>
         <div class="card"><b>Leave FL</b><span id="cal-leave">No Leave FL event in range.</span></div>
+        <div class="card"><b>Flights</b><span id="live-flights">Loading Gmail flight scan…</span></div>
         <div class="card"><b>Next flight</b><span id="cal-flight">None stored. Type a flight on Villa if you want it pinned.</span></div>
-        <div class="card"><b>Leave FL · cart</b><span>Plug the cart before you lock up. Leave it on the charger if you will be gone more than a night.</span></div>
-        <div class="card"><b>Trash / recycle</b><span>Sarasota County: garbage, recycle, and yard waste are the same weekday. Curb by 6 a.m. Confirm the BeachWalk day in TownSq. Bulk is by appointment with the hauler.</span></div>
+        <div class="card"><b>Trash / recycle</b>
+          <span id="live-trash">Curb by 6 a.m. Same weekday for garbage and recycle. Tap the BeachWalk day.</span>
+          <div class="rowbtns" id="trash-days">
+            <button type="button" data-day="0">Sun</button>
+            <button type="button" data-day="1">Mon</button>
+            <button type="button" data-day="2">Tue</button>
+            <button type="button" data-day="3">Wed</button>
+            <button type="button" data-day="4">Thu</button>
+            <button type="button" data-day="5">Fri</button>
+            <button type="button" data-day="6">Sat</button>
+          </div>
+        </div>
         <div class="card"><b>Vendors</b>
           <span>Castle after-hours 800-337-5850. Tap to edit the rest — saved on this device.</span>
           <textarea id="vendors" rows="4" style="width:100%;margin-top:8px;border:1px solid #d7cdbb;border-radius:8px;padding:8px;font:inherit">HVAC:
@@ -643,6 +675,105 @@ Cart shop:</textarea>
       var head = document.querySelector("header");
       if (head) head.classList.toggle("night", hr >= 22 || hr < 6);
       stampGreet();
+      writeWhoLine();
+      writeHdrMeta();
+    }
+    function whoGet(p) {
+      try { return localStorage.getItem("bw-who-" + p) || "FL"; } catch (e) { return "FL"; }
+    }
+    function whoSet(p, v) {
+      try { localStorage.setItem("bw-who-" + p, v); } catch (e) {}
+      paintWho();
+      writeWhoLine();
+    }
+    function paintWho() {
+      ["nick","dayna"].forEach(function (p) {
+        var row = document.getElementById("who-" + p);
+        if (!row) return;
+        var cur = whoGet(p);
+        row.querySelectorAll("button").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-who") === cur);
+        });
+      });
+      var occ = document.getElementById("house-occ");
+      var seen = document.getElementById("house-seen");
+      var n = whoGet("nick"), d = whoGet("dayna");
+      if (occ) occ.textContent = (n === "FL" || d === "FL") ? "Someone on the Key" : "Villa empty";
+      if (seen) seen.textContent = "Nick " + n + " · Dayna " + d;
+    }
+    function writeWhoLine() {
+      var el = document.getElementById("who-line");
+      if (!el) return;
+      function place(v) { return v === "FL" ? "on the Key" : "in Connecticut"; }
+      el.textContent = "Nick is " + place(whoGet("nick")) + ". Dayna is " + place(whoGet("dayna")) + ".";
+    }
+    document.querySelectorAll("#who-nick button, #who-dayna button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var p = b.parentElement.id === "who-nick" ? "nick" : "dayna";
+        whoSet(p, b.getAttribute("data-who"));
+      });
+    });
+    paintWho();
+    function trashDay() {
+      try { return parseInt(localStorage.getItem("bw-trash-day"), 10); } catch (e) { return 4; }
+    }
+    if (isNaN(trashDay())) try { localStorage.setItem("bw-trash-day", "4"); } catch (e) {}
+    function nextTrash() {
+      var want = trashDay();
+      if (isNaN(want)) want = 4;
+      var now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+      var add = (want - now.getDay() + 7) % 7;
+      var when = new Date(now);
+      when.setDate(now.getDate() + add);
+      var names = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      var el = document.getElementById("live-trash");
+      if (el) el.textContent = (add === 0 ? "Today" : add === 1 ? "Tomorrow" : names[want]) + " · curb by 6 a.m. Garbage and recycle same day.";
+      document.querySelectorAll("#trash-days button").forEach(function (b) {
+        b.classList.toggle("on", parseInt(b.getAttribute("data-day"), 10) === want);
+      });
+    }
+    document.querySelectorAll("#trash-days button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        try { localStorage.setItem("bw-trash-day", b.getAttribute("data-day")); } catch (e) {}
+        nextTrash();
+      });
+    });
+    nextTrash();
+    function writeHdrMeta() {
+      var el = document.getElementById("hdr-meta");
+      if (!el) return;
+      var tide = window.__nextTide || "Tide —";
+      var storm = window.__nextStorm || "Storms —";
+      var upd = window.__bwUpdated
+        ? "Updated " + new Date(window.__bwUpdated).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" })
+        : "Updated —";
+      el.textContent = tide + " · " + storm + " · " + upd;
+    }
+    function writeDoHour() {
+      var el = document.getElementById("do-hour");
+      if (!el) return;
+      function kind(id) {
+        var n = document.getElementById(id);
+        if (!n) return "";
+        if (/\bno\b/.test(n.className)) return "no";
+        if (/\bwin\b/.test(n.className)) return "win";
+        return "go";
+      }
+      var bits = [];
+      var bch = kind("pill-beach");
+      if (bch === "go") bits.push("Beach now.");
+      else if (bch === "win") bits.push("Beach if you keep it short.");
+      else bits.push("Stay off the beach.");
+      var cart = kind("pill-cart");
+      if (cart === "go") bits.push("Cart is fine.");
+      else if (cart === "win") bits.push("Cart for short trips.");
+      else bits.push("Park the cart.");
+      var boat = kind("pill-boat");
+      if (boat === "go") bits.push("Boat window is open.");
+      else bits.push("Stay in on the boat.");
+      if (window.__nextTide) bits.push(window.__nextTide + ".");
+      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm)) bits.push(window.__nextStorm + ".");
+      el.textContent = bits.join(" ");
     }
 
     function inQuietHours() {
@@ -1010,6 +1141,60 @@ Cart shop:</textarea>
       next(0);
       setInterval(function () { next(0); }, 30 * 60 * 1000);
     })();
+    (function loadKeyJson() {
+      var urls = ["key.json", "./key.json", "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1Cnwb8P1qLPc9G6rCZSy2Dw5zhjlAZp_D")];
+      function apply(d) {
+        if (!d) return;
+        if (d.fishing && document.getElementById("live-fish")) document.getElementById("live-fish").innerHTML = d.fishing;
+        if (d.redtide && document.getElementById("live-redtide")) document.getElementById("live-redtide").textContent = d.redtide;
+        if (d.bacteria && document.getElementById("live-bacteria")) document.getElementById("live-bacteria").textContent = d.bacteria;
+        if (d.fpl && document.getElementById("live-fpl")) document.getElementById("live-fpl").textContent = d.fpl;
+      }
+      function next(i) {
+        if (i >= urls.length) return;
+        fetch(urls[i]).then(function (r) { return r.json(); }).then(apply).catch(function () { next(i + 1); });
+      }
+      next(0);
+      setInterval(function () { next(0); }, 60 * 60 * 1000);
+    })();
+    (function loadFlights() {
+      var el = document.getElementById("live-flights");
+      if (!el) return;
+      var urls = ["flights.json", "./flights.json", "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1yUKC-eM8Cnx3MgtRbuRnQ_1CMkrfmF-y")];
+      function paint(d) {
+        var rows = (d && d.flights) || [];
+        if (!rows.length) { el.textContent = "No upcoming flights in the Gmail scan."; return; }
+        el.innerHTML = rows.slice(0, 4).map(function (f) {
+          return (f.who || "") + " · " + (f.flight || "") + " " + (f.from || "") + "→" + (f.to || "") + " " + (f.when || "") + (f.status ? " · " + f.status : "");
+        }).join("<br>");
+      }
+      function next(i) {
+        if (i >= urls.length) { el.textContent = "No flights.json yet. The morning Gmail scan will fill this."; return; }
+        fetch(urls[i]).then(function (r) { return r.json(); }).then(paint).catch(function () { next(i + 1); });
+      }
+      next(0);
+      setInterval(function () { next(0); }, 30 * 60 * 1000);
+    })();
+    (function fplCounts() {
+      var el = document.getElementById("live-fpl");
+      if (!el) return;
+      function grab(county, done) {
+        fetch("https://corsproxy.io/?" + encodeURIComponent("https://poweroutage.us/area/county/florida/" + county))
+          .then(function (r) { return r.text(); })
+          .then(function (html) {
+            var t = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+            var m = t.match(/([\d,]+)\s+customers out/i) || t.match(/outage[s]?:?\s*([\d,]+)/i);
+            done(county, m ? m[1] : "—");
+          }).catch(function () { done(county, "—"); });
+      }
+      var got = {};
+      function paint() {
+        if (got.charlotte == null || got.sarasota == null) return;
+        el.textContent = "Charlotte out " + got.charlotte + " · Sarasota out " + got.sarasota + " · FPL 800-468-8243";
+      }
+      grab("charlotte", function (c, n) { got[c] = n; paint(); });
+      grab("sarasota", function (c, n) { got[c] = n; paint(); });
+    })();
 
     (function extraDock() {
       var wrap = document.querySelector(".dock-wrap");
@@ -1329,6 +1514,9 @@ Cart shop:</textarea>
           });
           var el1 = document.getElementById("live-tide-today");
           if (el1) el1.textContent = pair.length ? pair.map(fmtP).join(" · ") : "NOAA tides unavailable";
+          window.__nextTide = pair[0] ? "Next " + fmtP(pair[0]) : "";
+          writeHdrMeta();
+          writeDoHour();
           window.__bwCharts.preds = preds; drawTideChart(preds);
         }).catch(function () {});
       var day = new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0,10).replace(/-/g,"");
@@ -1415,12 +1603,25 @@ Cart shop:</textarea>
       if (!el) return;
       el.className = "pill " + kind;
       el.innerHTML = "<small>" + title + "</small><b>" + detail + "</b>";
+      writeDoHour();
     }
     function refreshExtras(hours, days) {
       var nowH = hours && hours[0] ? hours[0] : {};
       var rain = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value) || 0;
       var fx = (nowH.shortForecast || "").toLowerCase();
       var storm = /thunder|storm|lightning/.test(fx);
+      window.__nextStorm = "No storm in the next hours";
+      if (hours && hours.length) {
+        for (var hi = 0; hi < hours.length; hi++) {
+          var hx = ((hours[hi].shortForecast || "") + " " + ((hours[hi].detailedForecast) || "")).toLowerCase();
+          if (/thunder|lightning|severe/.test(hx)) {
+            var when = hours[hi].startTime ? new Date(hours[hi].startTime).toLocaleTimeString("en-US", { hour:"numeric", timeZone:"America/New_York" }) : "";
+            window.__nextStorm = hi === 0 ? "Storms now" : ("Storms " + when);
+            break;
+          }
+        }
+      }
+      writeHdrMeta();
       var windStr = nowH.windSpeed || "";
       var windMph = parseInt(windStr, 10) || 0;
       if (storm) {
@@ -1788,6 +1989,8 @@ Cart shop:</textarea>
 
     var WX_IDS = ["live-temp","live-feels","live-sky","live-wind","live-gusts","live-rh","live-dew","live-pres","live-uv"];
     function saveWxSnap() {
+      window.__bwUpdated = Date.now();
+      writeHdrMeta();
       var snap = { t: Date.now() };
       WX_IDS.forEach(function (id) {
         var el = document.getElementById(id);
@@ -2171,7 +2374,14 @@ Cart shop:</textarea>
       var html = [
         para("Welcome", [
           t("live-sky"),
+          t("who-line"),
+          t("do-hour"),
+          window.__nextTide || "",
+          window.__nextStorm || ""
+        ]),
+        para("Weather", [
           t("live-temp") ? "It is " + t("live-temp") + (t("live-feels") ? " and feels like " + t("live-feels") : "") : "",
+          t("live-heat") ? "Heat index " + t("live-heat") : "",
           t("live-wind") ? "Wind is " + t("live-wind") + (t("live-gusts") ? " with gusts " + t("live-gusts") : "") : "",
           t("live-rh") ? "Humidity is " + t("live-rh") + (t("live-dew") ? ". " + t("live-dew") : "") : "",
           t("live-pres") ? "Pressure is " + t("live-pres") + (t("live-pres-note") ? " and " + t("live-pres-note").toLowerCase() : "") : "",
@@ -2183,7 +2393,8 @@ Cart shop:</textarea>
           t("live-nwr-alert") || "No watch or warning for the Englewood point right now",
           t("live-prep"),
           t("live-cane") ? "Atlantic and Gulf: " + t("live-cane") : "",
-          t("live-bolt")
+          t("live-bolt") ? "Lightning is " + t("live-bolt") : "",
+          t("live-fpl")
         ]),
         para("Marine", [
           t("live-tide-today") ? "Next tides are " + t("live-tide-today") : "",
@@ -2191,16 +2402,16 @@ Cart shop:</textarea>
           t("live-sst") ? "Gulf water is " + t("live-sst") : "",
           t("live-wtemp") ? "Inlet water is " + t("live-wtemp") : "",
           t("live-seas") ? "Seas are " + t("live-seas") : "",
-          t("live-rip") ? "Rip tide is " + t("live-rip") : "",
+          t("live-rip") ? "Rip current is " + t("live-rip") : "",
           t("live-redtide") ? "Red tide is " + t("live-redtide") : "",
-          t("live-craft") ? "Small craft advisory is " + t("live-craft") : "",
+          t("live-bacteria") ? "Beach bacteria is " + t("live-bacteria") : "",
+          t("live-craft") ? "Small craft is " + t("live-craft") : "",
           t("live-coastal"),
           t("live-fish"),
           t("live-gator")
         ]),
         para("Sky", [
           t("live-sun-label"),
-          t("live-moon-label"),
           t("live-planet1") ? "Tonight look for " + t("live-planet1") + (t("live-planet1d") ? " " + t("live-planet1d") : "") : "",
           t("live-planet2") ? "Overnight look for " + t("live-planet2") + (t("live-planet2d") ? " " + t("live-planet2d") : "") : "",
           t("live-planet3") ? "At dawn look for " + t("live-planet3") + (t("live-planet3d") ? " " + t("live-planet3d") : "") : "",
@@ -2209,7 +2420,15 @@ Cart shop:</textarea>
           t("live-horo-nick") ? "Nick, Gemini. " + t("live-horo-nick") : "",
           t("live-horo-dayna") ? "Dayna, Aquarius. " + t("live-horo-dayna") : ""
         ]),
-        para("Entertainment", events())
+        para("Entertainment", events()),
+        para("House", [
+          t("house-occ"),
+          t("house-seen"),
+          t("live-flights") ? "Flights: " + t("live-flights") : "",
+          t("cal-arrive"),
+          t("cal-leave"),
+          t("live-trash") ? "Trash: " + t("live-trash") : ""
+        ])
       ].join(SEP);
       setTicker(tick, html, 112);
     }
