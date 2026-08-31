@@ -2526,11 +2526,17 @@ Cart shop:</textarea>
             var hour = String(nowH.shortForecast || "").toLowerCase();
             var hourD = String(nowH.detailedForecast || "").toLowerCase();
             var pop = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value) || 0;
-            var raining = /rain|shower|drizzle/.test(hour) || (/storm/.test(hour) && /rain|shower/.test(hour + " " + hourD));
-            var boltNow = /thunder|lightning/.test(hour);
+            var isolated = /isolated|slight|patchy/.test(hour);
+            var likely = /likely|numerous|heavy|severe/.test(hour);
+            var wetWords = /rain|shower|drizzle|storm/.test(hour);
+            var thunderWords = /thunder|t-storm|lightning/.test(hour);
+            var raining = wetWords && !isolated && (likely || pop >= 40);
+            if (isolated && pop >= 55) raining = true;
+            var boltNow = thunderWords && !isolated && (likely || pop >= 50);
+            if (/severe|lightning storm/.test(hour)) boltNow = true;
             window.__wxNow = {
               rain: raining,
-              hard: raining && (/heavy|downpour|torrential/.test(hour + " " + hourD) || pop >= 80),
+              hard: raining && (likely || /heavy|downpour|torrential/.test(hour + " " + hourD) || pop >= 70),
               lightning: boltNow,
               hour: nowH.shortForecast || "",
               pop: pop
