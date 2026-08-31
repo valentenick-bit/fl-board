@@ -75,8 +75,20 @@
     td { padding:10px 4px; border-bottom:1px solid #e2d9c8; font-size:15px; }
     a { color:var(--navy); font-weight:700; }
     .rowbtns { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-    .rowbtns button, .rowbtns a { background:#fff; border:1px solid #d7cdbb; border-radius:999px; padding:10px 12px; font-weight:700; text-decoration:none; color:var(--navy); }
+    .rowbtns button, .rowbtns a { background:#fff; border:1px solid #d7cdbb; border-radius:999px; padding:10px 12px; font-weight:700; text-decoration:none; color:var(--navy); cursor:pointer; }
     .rowbtns button.on { background:var(--navy); color:#fff; }
+    #radio .rowbtns button { min-width:108px; }
+    #trash-days { gap:6px; }
+    #trash-days button { padding:8px 10px; min-width:44px; }
+    .switch { display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; font-weight:800; letter-spacing:.06em; }
+    .switch input { position:absolute; opacity:0; width:0; height:0; }
+    .switch i { width:52px; height:30px; border-radius:999px; background:#c9bba0; position:relative; display:inline-block; transition:background .2s; border:1px solid #d7cdbb; }
+    .switch i:after { content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:transform .2s; }
+    .switch input:checked + i { background:var(--teal); border-color:var(--teal); }
+    .switch input:checked + i:after { transform:translateX(22px); }
+    .switch .off { opacity:.55; }
+    .switch input:checked ~ .on-lab { opacity:1; }
+    .switch input:not(:checked) ~ .off-lab { opacity:1; }
     .dock { display:grid; grid-template-columns:repeat(6,1fr); gap:3px; padding:3px 6px 2px; background:var(--sand-2); }
     .dock button { min-height:30px; border:0; border-radius:999px; background:transparent; font-weight:600; font-size:11px; color:var(--navy); padding:4px 2px; opacity:.55; }
     .dock button.on { background:#fff; opacity:1; font-weight:800; box-shadow:0 0 0 1px var(--hair); }
@@ -143,6 +155,8 @@
     html.dark .ticker { background:#0e0c1c; }
     html.dark .rowbtns button, html.dark .rowbtns a { background:#2a2444; border:1px solid #c4a35a; color:#f3ead8; }
     html.dark .rowbtns button.on { background:#c4a35a; color:#0e0c1c; }
+    html.dark .switch i { background:#2a2444; border-color:#c4a35a; }
+    html.dark .switch input:checked + i { background:var(--teal); border-color:var(--teal); }
     html.dark #radio-status { color:#e6d7b8; }
     html.dark .card.music { background:#2a1e28; }
     #now, #tenday, #marine { background:linear-gradient(180deg, rgba(42,157,143,.18) 0%, transparent 42%); border-radius:16px; padding:8px 8px 4px; }
@@ -288,16 +302,20 @@
         <h2 data-k="Villa">House</h2>
         <div class="who-row">
           <div class="card"><b>Nick</b>
-            <div class="rowbtns" id="who-nick">
-              <button type="button" data-who="FL">FL</button>
-              <button type="button" data-who="CT">CT</button>
-            </div>
+            <label class="switch">
+              <span class="off-lab">CT</span>
+              <input type="checkbox" id="who-nick-tog" checked />
+              <i></i>
+              <span class="on-lab">FL</span>
+            </label>
           </div>
           <div class="card"><b>Dayna</b>
-            <div class="rowbtns" id="who-dayna">
-              <button type="button" data-who="FL">FL</button>
-              <button type="button" data-who="CT">CT</button>
-            </div>
+            <label class="switch">
+              <span class="off-lab">CT</span>
+              <input type="checkbox" id="who-dayna-tog" checked />
+              <i></i>
+              <span class="on-lab">FL</span>
+            </label>
           </div>
         </div>
         <div class="card"><b id="house-occ">Occupied</b><span id="house-seen">Last seen —</span></div>
@@ -520,7 +538,7 @@ Cart shop:</textarea>
       var audio = document.getElementById("radioPlayer");
       var status = document.getElementById("radio-status");
       if (!audio) return;
-      document.querySelectorAll(".rowbtns button").forEach(function (x) {
+      document.querySelectorAll("#radio .rowbtns button[data-stream], #radio .rowbtns button[data-scan]").forEach(function (x) {
         var scan = x.getAttribute("data-scan");
         var match = scan ? url === "scan:" + scan : (x.getAttribute("data-stream") || "") === (url || "");
         x.classList.toggle("on", match);
@@ -603,7 +621,7 @@ Cart shop:</textarea>
         });
       });
     })();
-    document.querySelectorAll(".rowbtns button").forEach(function (btn) {
+    document.querySelectorAll("#radio .rowbtns button[data-stream], #radio .rowbtns button[data-scan]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var scan = btn.getAttribute("data-scan");
         playStation(scan ? "scan:" + scan : btn.getAttribute("data-stream"), btn.textContent);
@@ -688,12 +706,8 @@ Cart shop:</textarea>
     }
     function paintWho() {
       ["nick","dayna"].forEach(function (p) {
-        var row = document.getElementById("who-" + p);
-        if (!row) return;
-        var cur = whoGet(p);
-        row.querySelectorAll("button").forEach(function (b) {
-          b.classList.toggle("on", b.getAttribute("data-who") === cur);
-        });
+        var tog = document.getElementById("who-" + p + "-tog");
+        if (tog) tog.checked = whoGet(p) === "FL";
       });
       var occ = document.getElementById("house-occ");
       var seen = document.getElementById("house-seen");
@@ -707,10 +721,11 @@ Cart shop:</textarea>
       function place(v) { return v === "FL" ? "on the Key" : "in Connecticut"; }
       el.textContent = "Nick is " + place(whoGet("nick")) + ". Dayna is " + place(whoGet("dayna")) + ".";
     }
-    document.querySelectorAll("#who-nick button, #who-dayna button").forEach(function (b) {
-      b.addEventListener("click", function () {
-        var p = b.parentElement.id === "who-nick" ? "nick" : "dayna";
-        whoSet(p, b.getAttribute("data-who"));
+    ["nick","dayna"].forEach(function (p) {
+      var tog = document.getElementById("who-" + p + "-tog");
+      if (!tog) return;
+      tog.addEventListener("change", function () {
+        whoSet(p, tog.checked ? "FL" : "CT");
       });
     });
     paintWho();
