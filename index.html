@@ -68,7 +68,7 @@
     .flash { position:absolute; inset:0; pointer-events:none; background:#fff; opacity:0; z-index:8; }
     .flash.on { animation:boltflash .45s ease-out; }
     @keyframes boltflash { 0% { opacity:0; } 12% { opacity:.55; } 28% { opacity:.08; } 40% { opacity:.35; } 100% { opacity:0; } }
-    .pill.go { animation:breathe 3.6s ease-in-out infinite; }
+    .pill .half.go { animation:breathe 3.6s ease-in-out infinite; }
     @keyframes breathe { 0%,100% { filter:brightness(1); } 50% { filter:brightness(1.12); } }
     .dock button.on { position:relative; }
     .dock button.on::after { content:""; position:absolute; left:18%; right:18%; bottom:2px; height:2px; border-radius:2px; background:var(--gold); animation:dockglow 2.8s ease-in-out infinite; }
@@ -107,9 +107,15 @@
     .feels { flex:1; min-width:0; text-align:right; }
     .sky { font-size:18px; line-height:1.45; color:#3d4a5c; margin:6px 0 16px; max-width:52rem; }
     .pills { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
-    .pill { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; text-align:center; border-radius:16px; padding:8px 8px 9px; font-weight:700; color:#fff; font-size:14px; min-height:52px; }
-    .pill small { font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.88; font-weight:700; }
-    .pill b { font-size:15px; font-weight:800; line-height:1.15; }
+    .pill { display:flex; flex-direction:column; text-align:center; border-radius:16px; overflow:hidden; font-weight:700; color:var(--navy); font-size:14px; min-height:64px; background:rgba(255,255,255,.45); border:1px solid var(--hair); }
+    .pill small { font-size:10px; letter-spacing:.12em; text-transform:uppercase; font-weight:800; padding:5px 6px 3px; color:var(--navy); }
+    .pill .halves { display:grid; grid-template-columns:1fr 1fr; min-height:44px; }
+    .pill .half { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:6px 4px 8px; color:#fff; }
+    .pill .half em { font-style:normal; font-size:9px; letter-spacing:.14em; text-transform:uppercase; opacity:.9; font-weight:700; }
+    .pill .half b { font-size:13px; font-weight:800; line-height:1.1; }
+    .pill .half.win { color:var(--navy); }
+    html.dark .pill { background:#2a2444; }
+    html.dark .pill small { color:#efe4c8; }
     .pill-key { font-size:12px; color:var(--muted); margin:0 0 10px; letter-spacing:.02em; }
     .ent-h { margin:8px 0 6px; font-family:"Source Sans 3",system-ui,sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:800; }
     #ent-list .card { padding:8px 10px; margin-bottom:6px; }
@@ -305,11 +311,14 @@
         <h2 data-k="On the Key">Welcome</h2>
         <p class="sky" id="live-sky">Good morning. Mostly sunny in Englewood with a heat index near 102°. Afternoon storms are likely after 2 p.m. Beach and cart are best this morning before the storms build.</p>
         <div class="pills">
-          <span class="pill go" id="pill-beach"><small>Beach</small><b>Checking</b></span><span class="pill go" id="pill-rip"><small>Rip current</small><b>Checking</b></span>
-          <span class="pill go" id="pill-pool"><small>Pool</small><b>Checking</b></span><span class="pill go" id="pill-cart"><small>Golf cart</small><b>Checking</b></span>
-          <span class="pill go" id="pill-boat"><small>Boat</small><b>Checking</b></span><span class="pill win" id="pill-courts"><small>Courts</small><b>Checking</b></span>
+          <div class="pill" id="pill-beach"><small>Beach</small><div class="halves"><span class="half go" data-side="am"><em>AM</em><b>—</b></span><span class="half go" data-side="pm"><em>PM</em><b>—</b></span></div></div>
+          <div class="pill" id="pill-rip"><small>Rip current</small><div class="halves"><span class="half go" data-side="am"><em>AM</em><b>—</b></span><span class="half go" data-side="pm"><em>PM</em><b>—</b></span></div></div>
+          <div class="pill" id="pill-pool"><small>Pool</small><div class="halves"><span class="half go" data-side="am"><em>AM</em><b>—</b></span><span class="half go" data-side="pm"><em>PM</em><b>—</b></span></div></div>
+          <div class="pill" id="pill-cart"><small>Golf cart</small><div class="halves"><span class="half go" data-side="am"><em>AM</em><b>—</b></span><span class="half go" data-side="pm"><em>PM</em><b>—</b></span></div></div>
+          <div class="pill" id="pill-boat"><small>Boat</small><div class="halves"><span class="half go" data-side="am"><em>AM</em><b>—</b></span><span class="half go" data-side="pm"><em>PM</em><b>—</b></span></div></div>
+          <div class="pill" id="pill-courts"><small>Courts</small><div class="halves"><span class="half win" data-side="am"><em>AM</em><b>—</b></span><span class="half win" data-side="pm"><em>PM</em><b>—</b></span></div></div>
         </div>
-        <p class="pill-key">Green = go now. Gold = wait or keep it short. Coral = don’t.</p>
+        <p class="pill-key">Left is morning, right is afternoon. Green = go. Gold = short window. Coral = don’t.</p>
         <p class="sky" id="do-hour">Checking the next hour…</p>
       </section>
       <section id="cam" class="page">
@@ -966,8 +975,12 @@ Cart shop:</textarea>
       function kind(id) {
         var n = document.getElementById(id);
         if (!n) return "";
-        if (/\bno\b/.test(n.className)) return "no";
-        if (/\bwin\b/.test(n.className)) return "win";
+        var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
+        var side = hr < 12 ? "am" : "pm";
+        var half = n.querySelector('[data-side="' + side + '"]') || n;
+        var cls = half.className || "";
+        if (/\bno\b/.test(cls)) return "no";
+        if (/\bwin\b/.test(cls)) return "win";
         return "go";
       }
       var bits = [];
@@ -1968,11 +1981,21 @@ Cart shop:</textarea>
         }).catch(function () {});
     }
     
-    function setPill(id, kind, title, detail) {
+    function setPill(id, kind, title, detail, side) {
       var el = document.getElementById(id);
       if (!el) return;
-      el.className = "pill " + kind;
-      el.innerHTML = "<small>" + title + "</small><b>" + detail + "</b>";
+      var lab = el.querySelector("small");
+      if (lab && title) lab.textContent = title;
+      var halves = side ? el.querySelectorAll('[data-side="' + side + '"]') : el.querySelectorAll(".half");
+      if (!halves.length) {
+        el.className = "pill " + kind;
+        return;
+      }
+      halves.forEach(function (h) {
+        var tag = h.getAttribute("data-side") === "pm" ? "PM" : "AM";
+        h.className = "half " + kind;
+        h.innerHTML = "<em>" + tag + "</em><b>" + detail + "</b>";
+      });
       writeDoHour();
     }
     function refreshExtras(hours, days) {
@@ -2005,28 +2028,49 @@ Cart shop:</textarea>
         }
       }
       writeHdrMeta();
-      var windStr = nowH.windSpeed || "";
-      var windMph = parseInt(windStr, 10) || 0;
       var warn = !!(window.__wxRisk && window.__wxRisk.warn && /thunder|tornado|severe/.test(window.__wxRisk.warnTypes || ""));
-      if (warn || thunderNow) {
-        setPill("pill-beach", "no", "Beach", "Don’t swim");
-        setPill("pill-cart", "no", "Golf cart", "Park it");
-        setPill("pill-boat", "no", "Boat", "Stay in");
-        setPill("pill-courts", "no", "Courts", "Stay off");
-        setPill("pill-pool", "no", "Pool", "Get out");
-      } else if (wetNow || windMph >= 18) {
-        setPill("pill-beach", "win", "Beach", "Keep it short");
-        setPill("pill-cart", "win", "Golf cart", "Short trips");
-        setPill("pill-boat", "win", "Boat", windMph >= 15 ? "Choppy" : "Watch the sky");
-        setPill("pill-courts", "win", "Courts", "Maybe later");
-        setPill("pill-pool", "win", "Pool", "If it’s not raining");
-      } else {
-        setPill("pill-beach", "go", "Beach", "Good to swim");
-        setPill("pill-cart", "go", "Golf cart", "Good to ride");
-        setPill("pill-boat", windMph >= 15 ? "win" : "go", "Boat", windMph >= 15 ? "Choppy" : "Good to launch");
-        setPill("pill-courts", "go", "Courts", "Good to play");
-        setPill("pill-pool", "go", "Pool", "Good to swim");
+      function rank(k) { return k === "no" ? 2 : k === "win" ? 1 : 0; }
+      function scoreHour(h) {
+        var fx = String((h && h.shortForecast) || "").toLowerCase();
+        var pop = (h && h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+        var isolated = /isolated|slight|patchy/.test(fx);
+        var likely = /likely|numerous|heavy|severe/.test(fx);
+        var thunder = /thunder|t-storm|lightning/.test(fx) && !isolated && (likely || pop >= 50);
+        var wet = (/rain|shower|drizzle|storm/.test(fx) && !isolated && pop >= 40) || pop >= 55;
+        var windMph = parseInt((h && h.windSpeed) || "", 10) || 0;
+        if (warn || thunder) return "no";
+        if (wet || windMph >= 18) return "win";
+        return "go";
       }
+      function windowKind(which) {
+        var worst = "go";
+        (hours || []).forEach(function (h) {
+          var hr = parseInt(new Date(h.startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
+          if (which === "am" && (hr < 6 || hr >= 12)) return;
+          if (which === "pm" && (hr < 12 || hr >= 19)) return;
+          var k = scoreHour(h);
+          if (rank(k) > rank(worst)) worst = k;
+        });
+        return worst;
+      }
+      function phrase(item, k) {
+        var map = {
+          beach: { go: "Swim", win: "Short", no: "No" },
+          cart: { go: "Ride", win: "Short", no: "Park" },
+          boat: { go: "Launch", win: "Choppy", no: "Stay in" },
+          courts: { go: "Play", win: "Later", no: "Off" },
+          pool: { go: "Swim", win: "Maybe", no: "Out" }
+        };
+        return (map[item] || map.beach)[k] || "—";
+      }
+      ["am","pm"].forEach(function (side) {
+        var k = windowKind(side);
+        setPill("pill-beach", k, "Beach", phrase("beach", k), side);
+        setPill("pill-cart", k, "Golf cart", phrase("cart", k), side);
+        setPill("pill-boat", k, "Boat", phrase("boat", k), side);
+        setPill("pill-courts", k, "Courts", phrase("courts", k), side);
+        setPill("pill-pool", k, "Pool", phrase("pool", k), side);
+      });
       fetch("https://api.open-meteo.com/v1/forecast?latitude=26.96&longitude=-82.35&current=uv_index,wind_speed_10m,wind_gusts_10m&hourly=uv_index&forecast_days=1&wind_speed_unit=mph&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .then(function (d) {
