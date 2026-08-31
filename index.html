@@ -1976,17 +1976,30 @@ Cart shop:</textarea>
       writeDoHour();
     }
     function refreshExtras(hours, days) {
-      var nowH = hours && hours[0] ? hours[0] : {};
+      var nowMs = Date.now();
+      var startH = 0;
+      if (hours && hours.length) {
+        for (var si = 0; si < hours.length; si++) {
+          var endH = hours[si].endTime ? new Date(hours[si].endTime).getTime() : new Date(hours[si].startTime).getTime() + 3600000;
+          if (endH > nowMs) { startH = si; break; }
+        }
+      }
+      var nowH = hours && hours[startH] ? hours[startH] : (hours && hours[0] ? hours[0] : {});
       var rain = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value) || 0;
       var fx = (nowH.shortForecast || "").toLowerCase();
-      var storm = /thunder|storm|lightning/.test(fx);
+      var isolated = /isolated|slight|patchy/.test(fx);
+      var likely = /likely|numerous|heavy|severe/.test(fx);
+      var thunderNow = /thunder|t-storm|lightning/.test(fx) && !isolated && (likely || rain >= 50);
+      var wetNow = (/rain|shower|drizzle|storm/.test(fx) && !isolated && rain >= 40) || rain >= 55;
       window.__nextStorm = "No storm in the next hours";
       if (hours && hours.length) {
-        for (var hi = 0; hi < hours.length; hi++) {
-          var hx = ((hours[hi].shortForecast || "") + " " + ((hours[hi].detailedForecast) || "")).toLowerCase();
-          if (/thunder|lightning|severe/.test(hx)) {
+        for (var hi = startH; hi < hours.length; hi++) {
+          var hx = String(hours[hi].shortForecast || "").toLowerCase();
+          var hp = (hours[hi].probabilityOfPrecipitation && hours[hi].probabilityOfPrecipitation.value) || 0;
+          var iso = /isolated|slight|patchy/.test(hx);
+          if ((/thunder|lightning|severe/.test(hx) && !iso && hp >= 40) || hp >= 55) {
             var when = hours[hi].startTime ? new Date(hours[hi].startTime).toLocaleTimeString("en-US", { hour:"numeric", timeZone:"America/New_York" }) : "";
-            window.__nextStorm = hi === 0 ? "Storms now" : ("Storms " + when);
+            window.__nextStorm = hi === startH ? "Storms now" : ("Storms " + when);
             break;
           }
         }
@@ -1994,16 +2007,17 @@ Cart shop:</textarea>
       writeHdrMeta();
       var windStr = nowH.windSpeed || "";
       var windMph = parseInt(windStr, 10) || 0;
-      if (storm) {
+      var warn = !!(window.__wxRisk && window.__wxRisk.warn && /thunder|tornado|severe/.test(window.__wxRisk.warnTypes || ""));
+      if (warn || thunderNow) {
         setPill("pill-beach", "no", "Beach", "Don’t swim");
         setPill("pill-cart", "no", "Golf cart", "Park it");
         setPill("pill-boat", "no", "Boat", "Stay in");
         setPill("pill-courts", "no", "Courts", "Stay off");
         setPill("pill-pool", "no", "Pool", "Get out");
-      } else if (rain >= 40 || windMph >= 18) {
+      } else if (wetNow || windMph >= 18) {
         setPill("pill-beach", "win", "Beach", "Keep it short");
         setPill("pill-cart", "win", "Golf cart", "Short trips");
-        setPill("pill-boat", "no", "Boat", "Stay in");
+        setPill("pill-boat", "win", "Boat", windMph >= 15 ? "Choppy" : "Watch the sky");
         setPill("pill-courts", "win", "Courts", "Maybe later");
         setPill("pill-pool", "win", "Pool", "If it’s not raining");
       } else {
