@@ -26,6 +26,35 @@
     header.sky-storm { background:linear-gradient(180deg,#1a4a48 0%,#1b2a4a 72%); border-bottom-color:#2a9d8f; }
     header.sky-warn { background:linear-gradient(180deg,#6b2f28 0%,#1b2a4a 78%); border-bottom-color:#e07a5f; }
     header.sky-night { background:linear-gradient(180deg,#12101c 0%,#0e0c1c 70%); border-bottom-color:#5c6b7a; }
+    header::before { animation:palm-drift 28s linear infinite; }
+    html.wind-2 header::before { animation-duration:10s; }
+    html.wind-3 header::before { animation-duration:3.2s; }
+    @keyframes palm-drift { from { background-position:0 bottom; } to { background-position:-120px bottom; } }
+    .rainlayer { display:none; position:absolute; inset:0; pointer-events:none; z-index:7; overflow:hidden; }
+    html.raining .rainlayer { display:block; }
+    html.raining .rainlayer span { position:absolute; top:-20px; width:2px; background:linear-gradient(rgba(255,255,255,0), rgba(230,240,255,.55)); animation:rain-fall linear infinite; border-radius:2px; }
+    html.raining-hard .rainlayer span { background:linear-gradient(rgba(255,255,255,0), rgba(230,240,255,.8)); }
+    @keyframes rain-fall { to { transform:translateY(110vh); } }
+    header.hot .temp, header.hot .feels strong { animation:heat-pulse 2.4s ease-in-out infinite; }
+    @keyframes heat-pulse { 0%,100% { text-shadow:0 0 0 transparent; } 50% { text-shadow:0 0 18px rgba(224,122,95,.7); } }
+    header.sky-night::after { content:""; position:absolute; inset:0; pointer-events:none; background-image:radial-gradient(#f7f1e6 1px, transparent 1px); background-size:42px 28px; opacity:.18; animation:stars 8s linear infinite; }
+    @keyframes stars { from { background-position:0 0; } to { background-position:42px 28px; } }
+    .wavebar { height:10px; flex-shrink:0; overflow:hidden; background:var(--navy); }
+    .wavebar svg { display:block; width:200%; height:10px; animation:wave 7s linear infinite; }
+    header.sky-warn + .wavebar svg path { fill:#e07a5f; }
+    header.sky-storm + .wavebar svg path { fill:#2a9d8f; }
+    header.sky-night + .wavebar svg path { fill:#12101c; }
+    @keyframes wave { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+    .flash { position:absolute; inset:0; pointer-events:none; background:#fff; opacity:0; z-index:8; }
+    .flash.on { animation:boltflash .45s ease-out; }
+    @keyframes boltflash { 0% { opacity:0; } 12% { opacity:.55; } 28% { opacity:.08; } 40% { opacity:.35; } 100% { opacity:0; } }
+    .pill.go { animation:breathe 3.6s ease-in-out infinite; }
+    @keyframes breathe { 0%,100% { filter:brightness(1); } 50% { filter:brightness(1.12); } }
+    .dock button.on { position:relative; }
+    .dock button.on::after { content:""; position:absolute; left:18%; right:18%; bottom:2px; height:2px; border-radius:2px; background:var(--gold); animation:dockglow 2.8s ease-in-out infinite; }
+    @keyframes dockglow { 0%,100% { opacity:.4; } 50% { opacity:1; } }
+    header .wxicon { animation:icon-float 4.5s ease-in-out infinite; }
+    @keyframes icon-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } }
     .brand .titles { display:flex; flex-direction:column; }
     header .brand { justify-self:start; }
     header .clock { justify-self:end; text-align:right; }
@@ -237,6 +266,11 @@
       <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
+    <div class="wavebar" aria-hidden="true">
+      <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
+    </div>
+    <div class="flash" id="stormflash"></div>
+    <div class="rainlayer" id="rainlayer"></div>
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
       <section id="now" class="page on">
@@ -705,6 +739,19 @@ Cart shop:</textarea>
       start();
       document.addEventListener("pointerdown", start, { once: true, capture: true });
     })();
+    (function makeRain() {
+      var layer = document.getElementById("rainlayer");
+      if (!layer || layer.childNodes.length) return;
+      for (var i = 0; i < 48; i++) {
+        var s = document.createElement("span");
+        s.style.left = (Math.random() * 100) + "%";
+        s.style.height = (10 + Math.random() * 16) + "px";
+        s.style.animationDuration = (0.55 + Math.random() * 0.7) + "s";
+        s.style.animationDelay = (-Math.random() * 1.2) + "s";
+        s.style.opacity = String(0.35 + Math.random() * 0.5);
+        layer.appendChild(s);
+      }
+    })();
     (function cycleKeyCams() {
       var cap = document.getElementById("keycam-cap");
       var full = "Siesta Key Beach live";
@@ -742,7 +789,37 @@ Cart shop:</textarea>
       else if (hr >= 22 || hr < 6) head.classList.add("sky-night","night");
       else if (storm) head.classList.add("sky-storm");
       else head.classList.add("sky-sun");
+      var tempTxt = (document.getElementById("live-temp") || {}).textContent || "";
+      var tempN = parseInt(tempTxt, 10);
+      head.classList.toggle("hot", tempN >= 90);
+      var nowx = window.__wxNow || {};
+      var gustEl = document.getElementById("live-gusts");
+      var gustN = parseInt((gustEl && gustEl.textContent) || "0", 10) || 0;
+      var windEl = document.getElementById("live-wind");
+      var windN = parseInt(((windEl && windEl.textContent) || "").replace(/^[^\d]*/, ""), 10) || 0;
+      var blow = Math.max(gustN, windN);
+      document.documentElement.classList.toggle("raining", !!nowx.rain);
+      document.documentElement.classList.toggle("raining-hard", !!nowx.hard);
+      document.documentElement.classList.toggle("lightning", !!nowx.lightning);
+      document.documentElement.classList.toggle("wind-2", blow >= 15 && blow < 25);
+      document.documentElement.classList.toggle("wind-3", blow >= 25);
       document.documentElement.classList.toggle("quiet", inQuietHours() && !(window.__nwrAlert));
+      var needFlash = !!(nowx.lightning || (window.__wxRisk && window.__wxRisk.bolt) || (warn && /thunder|lightning|severe/i.test((window.__wxRisk && window.__wxRisk.warnTypes) || "")));
+      if (needFlash && !window.__flashTimer) {
+        function strike() {
+          var fl = document.getElementById("stormflash");
+          if (!fl) return;
+          fl.classList.remove("on");
+          void fl.offsetWidth;
+          fl.classList.add("on");
+        }
+        strike();
+        window.__flashTimer = setInterval(strike, 5000);
+      }
+      if (!needFlash && window.__flashTimer) {
+        clearInterval(window.__flashTimer);
+        window.__flashTimer = 0;
+      }
     }
     function ringStormDock() {
       ["radar","cane","bolt","contacts"].forEach(function (id) {
@@ -2272,6 +2349,16 @@ Cart shop:</textarea>
             };
           }
           setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now());
+          (function markSky() {
+            var blob = ((nowH.shortForecast || "") + " " + (today.detailedForecast || "") + " " + (nowH.detailedForecast || "")).toLowerCase();
+            var pop = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value) || 0;
+            window.__wxNow = {
+              rain: /rain|shower|drizzle|storm/.test(blob) || pop >= 50,
+              hard: /heavy|downpour|torrential/.test(blob) || pop >= 80,
+              lightning: /thunder|lightning/.test(blob)
+            };
+            paintSkyHeader();
+          })();
           if (hours.length && document.querySelector(".hourly")) {
             var box = document.querySelector(".hourly");
             var n = Math.max(6, Math.min(8, Math.floor((box.clientWidth || 400) / 72)));
