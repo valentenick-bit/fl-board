@@ -152,8 +152,12 @@
     .dock-wrap.open .dock-more { max-height:72px; opacity:1; padding:4px 6px; pointer-events:auto; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
     .quiet-photo { width:100%; height:32vh; min-height:180px; object-fit:cover; border-radius:16px; margin:10px 0 0; display:block; border:1px solid var(--hair); }
-    .keycam { width:100%; height:34vh; min-height:200px; margin:10px 0 6px; border-radius:16px; overflow:hidden; border:1px solid var(--hair); background:#111; }
+    .keycam { width:100%; height:34vh; min-height:200px; margin:10px 0 6px; border-radius:16px; overflow:hidden; border:1px solid var(--hair); background:#111; position:relative; }
     .keycam iframe { width:100%; height:100%; border:0; display:block; }
+    #cam.page.on { display:flex; flex-direction:column; height:100%; min-height:0; }
+    #cam h2 { margin-bottom:6px; }
+    .keycam-full { flex:1; height:auto; min-height:0; margin:0; }
+    .cam-cap { position:absolute; left:10px; bottom:10px; margin:0; padding:4px 10px; border-radius:999px; background:rgba(14,12,28,.55); color:#f7f1e6; font-size:12px; letter-spacing:.04em; }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
     .tenday { display:flex; flex-direction:column; gap:0; margin:8px 0 12px; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:24px; overflow:hidden; }
@@ -299,10 +303,13 @@
         <p class="pill-key">Green = go now. Gold = wait or keep it short. Coral = don’t.</p>
         <p class="sky" id="do-hour">Checking the next hour…</p>
         <p class="pill-key" id="who-line"></p>
-        <div class="keycam">
+      </section>
+      <section id="cam" class="page">
+        <h2 data-k="Gulf">Cam</h2>
+        <div class="keycam keycam-full">
           <iframe id="keycam-frame" title="Gulf live cam" src="https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
+          <p id="keycam-cap" class="cam-cap">Siesta Key Beach live</p>
         </div>
-        <p id="keycam-cap" class="pill-key">Siesta Key Beach live</p>
       </section>
       <section id="tenday" class="page">
         <h2 data-k="On the Key">Weather</h2>
@@ -582,6 +589,7 @@ Cart shop:</textarea>
     <div class="dock-wrap">
     <nav class="dock" id="dock">
       <button type="button" data-p="now" class="on">Welcome</button>
+      <button type="button" data-p="cam">Cam</button>
       <button type="button" data-p="tenday">Weather</button>
       <button type="button" data-p="radar">Radar</button>
       <button type="button" data-p="marine">Marine</button>
@@ -1008,7 +1016,7 @@ Cart shop:</textarea>
       if (wait < 5000) wait += 24 * 60 * 60 * 1000;
       setTimeout(function () { location.reload(); }, wait);
     })();
-    var pages = ["now","tenday","radar","marine","sky","ent","house","deliver","radio","traffic"], i = 0, rot, idle;
+    var pages = ["now","cam","tenday","radar","marine","sky","ent","house","deliver","radio","traffic"], i = 0, rot, idle;
     function warnList() {
       var ev = window.__wxRisk.warnTypes || "";
       var list = ["radar"];
@@ -1024,7 +1032,7 @@ Cart shop:</textarea>
       });
     }
     function pageDwell(id) {
-      return id === "now" ? 20000 : 15000;
+      return (id === "now" || id === "cam") ? 20000 : 15000;
     }
     function startRotate() {
       clearInterval(rot);
@@ -1095,11 +1103,16 @@ Cart shop:</textarea>
         var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b && dockMore) dockMore.appendChild(b);
       });
-      ["darkbtn", "refreshbtn"].forEach(function (id) {
+      ["darkbtn", "refreshbtn", "kioskbtn"].forEach(function (id) {
         var dest = dockMore || dock;
         var b = document.getElementById(id);
         if (b) dest.appendChild(b);
       });
+      if (saved.indexOf("cam") < 0) {
+        var camBtn = document.querySelector('.dock button[data-p="cam"]');
+        var nowBtn = document.querySelector('.dock button[data-p="now"]');
+        if (camBtn && nowBtn && nowBtn.parentNode) nowBtn.parentNode.insertBefore(camBtn, nowBtn.nextSibling);
+      }
       pagesFromDock();
     })();
     (function dragDock() {
