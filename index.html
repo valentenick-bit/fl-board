@@ -48,11 +48,15 @@
     #ent-list .card { padding:8px 10px; margin-bottom:6px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
-    .hourly { display:flex; flex-wrap:nowrap; gap:0; padding:6px 4px; overflow:hidden; background:rgba(255,255,255,.42); border:1px solid var(--hair); border-radius:16px; margin-bottom:12px; }
+    .hourly { display:flex; flex-wrap:nowrap; gap:0; padding:10px 4px 8px; overflow:hidden; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:24px; margin-bottom:12px; }
     .hourly .hour { flex:1 1 0; min-width:0; background:transparent; border-radius:0; }
-    .hour { min-width:56px; background:transparent; border-radius:0; text-align:center; padding:8px 4px; font-size:12px; }
-    .hour b { display:block; font-size:16px; }
-    .hour svg { width:28px; height:28px; display:block; margin:4px auto; }
+    .hour { min-width:52px; background:transparent; border-radius:0; text-align:center; padding:4px 2px; font-size:11px; color:var(--muted); }
+    .hour em { display:block; font-style:normal; font-weight:700; color:var(--navy); font-size:12px; }
+    .hour .pop { display:block; font-size:10px; font-weight:800; color:#4a90a4; min-height:14px; }
+    .hour .pop.mute { color:transparent; }
+    .hour b { display:block; font-size:16px; color:var(--navy); }
+    .hour svg { width:26px; height:26px; display:block; margin:2px auto; }
+    .wx-nowline { margin:0 0 10px; font-size:15px; color:var(--muted); }
     .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
     .tile { background:var(--sand-2); border:1px solid var(--hair); border-radius:16px; padding:10px; min-height:72px; }
     .tile label { display:block; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
@@ -120,11 +124,14 @@
     .keycam iframe { width:100%; height:100%; border:0; display:block; }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
-    .tenday { display:flex; flex-direction:column; gap:0; margin:8px 0 12px; background:var(--sand-2); border:1px solid var(--hair); border-radius:16px; overflow:hidden; }
-    .day { display:grid; grid-template-columns:42px 28px 1fr auto; gap:8px; align-items:center; background:transparent; border-radius:0; padding:6px 12px; font-size:12px; border-bottom:1px solid var(--hair); }
+    .tenday { display:flex; flex-direction:column; gap:0; margin:8px 0 12px; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:24px; overflow:hidden; }
+    .day { display:grid; grid-template-columns:36px 26px 36px 28px 1fr 28px; gap:6px; align-items:center; background:transparent; border-radius:0; padding:7px 12px; font-size:13px; border-bottom:1px solid var(--hair); font-weight:700; }
     .day:last-child { border-bottom:0; }
-    .day svg { width:26px; height:26px; }
-    .hi { font-weight:700; } .lo { color:var(--muted); }
+    .day svg { width:24px; height:24px; }
+    .day .dpop { font-size:11px; color:#4a90a4; font-weight:800; }
+    .hi { font-weight:800; text-align:right; } .lo { color:var(--muted); text-align:right; font-weight:700; }
+    .tbar { display:block; height:8px; border-radius:999px; background:#e2d9c8; position:relative; overflow:hidden; }
+    .tbar i { position:absolute; top:0; height:100%; border-radius:999px; background:linear-gradient(90deg,#2a9d8f,#c4a35a,#e07a5f); }
     @media (min-width: 800px) {
       .day { padding:6px 10px; font-size:13px; }
       iframe.full { height:68vh; }
@@ -149,6 +156,10 @@
     html.dark .sky { color:#e6d7b8; }
     html.dark .tile, html.dark .card { background:#221e36; color:#f3ead8; }
     html.dark .hourly { background:rgba(14,12,28,.45); }
+    html.dark .tenday { background:rgba(14,12,28,.45); }
+    html.dark .hour em, html.dark .hour b { color:#f3ead8; }
+    html.dark .wx-nowline { color:#c9bba0; }
+    html.dark .tbar { background:#2a2444; }
     html.dark .dock { background:#100e20; }
     html.dark .dock button { color:#e6d7b8; }
     html.dark .dock button.on { background:#2a2444; color:#f3ead8; }
@@ -204,6 +215,7 @@
       </section>
       <section id="tenday" class="page">
         <h2 data-k="On the Key">Weather</h2>
+        <p class="wx-nowline" id="wx-nowline">Englewood · updating</p>
         <div class="hourly">
           <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
           <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
@@ -2161,10 +2173,12 @@ Cart shop:</textarea>
           setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now());
           if (hours.length && document.querySelector(".hourly")) {
             var box = document.querySelector(".hourly");
-            var n = Math.max(6, Math.min(10, Math.floor((box.clientWidth || 400) / 68)));
+            var n = Math.max(6, Math.min(8, Math.floor((box.clientWidth || 400) / 72)));
             box.innerHTML = hours.slice(0, n).map(function (h) {
-              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" });
-              return '<div class="hour">' + when + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime()), 28) + '<b>' + h.temperature + '°</b></div>';
+              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
+              var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+              var popHtml = pop >= 10 ? '<i class="pop">' + pop + "%</i>" : '<i class="pop mute">·</i>';
+              return '<div class="hour"><em>' + when + "</em>" + popHtml + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime()), 26) + "<b>" + h.temperature + "°</b></div>";
             }).join("");
           }
           if (days.length && document.querySelector(".tenday")) {
@@ -2178,21 +2192,38 @@ Cart shop:</textarea>
               var nxt = days[i+1] || {};
               byDate[key] = {
                 fx: d.shortForecast || "",
-                hi: d.temperature,
-                lo: /night/i.test(nxt.name || "") ? nxt.temperature : ""
+                hi: Number(d.temperature),
+                lo: /night/i.test(nxt.name || "") ? Number(nxt.temperature) : Number(d.temperature) - 12,
+                pop: (d.probabilityOfPrecipitation && d.probabilityOfPrecipitation.value) || 0
               };
             }
-            var html = "";
+            var rows = [];
             for (var n = 0; n < 10; n++) {
               var dt = new Date();
               dt.setDate(dt.getDate() + n);
               var key = dt.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-              var label = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
-              var row = byDate[key];
-              if (row) html += '<div class="day">' + label + wxSvg(wxKind(row.fx), 26) + '<span>' + row.fx + '</span><span><span class="hi">' + row.hi + '°</span> <span class="lo">' + (row.lo !== "" ? row.lo + "°" : "") + '</span></span></div>';
-              else html += '<div class="day">' + label + wxSvg("thunder", 26) + '<span>Typical early Sep · afternoon storms</span><span><span class="hi">90°</span> <span class="lo">76°</span></span></div>';
+              var label = n === 0 ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
+              rows.push({ label: label, row: byDate[key] || { fx: "afternoon storms", hi: 90, lo: 76, pop: 40 } });
             }
-            td.innerHTML = html;
+            var minAll = 120, maxAll = 0;
+            rows.forEach(function (r) {
+              if (r.row.lo < minAll) minAll = r.row.lo;
+              if (r.row.hi > maxAll) maxAll = r.row.hi;
+            });
+            if (maxAll <= minAll) maxAll = minAll + 1;
+            function tbar(lo, hi) {
+              var left = ((lo - minAll) / (maxAll - minAll)) * 100;
+              var wid = Math.max(10, ((hi - lo) / (maxAll - minAll)) * 100);
+              return '<span class="tbar"><i style="left:' + left.toFixed(1) + "%;width:" + wid.toFixed(1) + '%"></i></span>';
+            }
+            td.innerHTML = rows.map(function (r) {
+              var pop = r.row.pop >= 10 ? '<span class="dpop">' + r.row.pop + "%</span>" : "<span></span>";
+              return '<div class="day"><span>' + r.label + "</span>" + wxSvg(wxKind(r.row.fx), 24) + pop + '<span class="lo">' + r.row.lo + "°</span>" + tbar(r.row.lo, r.row.hi) + '<span class="hi">' + r.row.hi + "°</span></div>";
+            }).join("");
+            var nowline = document.getElementById("wx-nowline");
+            if (nowline && rows[0]) {
+              nowline.textContent = "Englewood · " + (rows[0].row.fx || "") + " · H " + rows[0].row.hi + "° / L " + rows[0].row.lo + "°";
+            }
           }
           fetch("https://api.weather.gov/stations/KVNC/observations?limit=36", { headers: hdr })
             .then(function (r) { return r.json(); })
