@@ -456,7 +456,8 @@
           </div>
         </div>
         <div class="card"><b>Vendors</b>
-          <span>Castle after-hours 800-337-5850. Tap to edit the rest — saved on this device.</span>
+          <span>Castle after-hours 800-337-5850. Shared with every board when house.json is on GitHub/Drive.</span>
+          <p id="house-sync" class="pill-key">House list is loading…</p>
           <textarea id="vendors" rows="4" style="width:100%;margin-top:8px;border:1px solid #d7cdbb;border-radius:8px;padding:8px;font:inherit">HVAC:
 Pest:
 Cart shop:</textarea>
@@ -896,6 +897,7 @@ Cart shop:</textarea>
       try { localStorage.setItem("bw-who-" + p, v); } catch (e) {}
       paintWho();
       writeWhoLine();
+      if (typeof saveHouse === "function") saveHouse();
     }
     function paintWho() {
       ["nick","dayna"].forEach(function (p) {
@@ -943,6 +945,7 @@ Cart shop:</textarea>
     document.querySelectorAll("#trash-days button").forEach(function (b) {
       b.addEventListener("click", function () {
         try { localStorage.setItem("bw-trash-day", b.getAttribute("data-day")); } catch (e) {}
+        if (typeof saveHouse === "function") saveHouse();
         nextTrash();
       });
     });
@@ -1059,11 +1062,13 @@ Cart shop:</textarea>
       var seen = document.getElementById("house-seen");
       if (seen) seen.textContent = "Last seen " + new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
     } catch (e) {}
-    document.querySelectorAll("input[data-list]").forEach(function (box) {
+    document.querySelectorAll("input[data-list]").forEach(function (box, idx) {
+      box.setAttribute("data-i", String(idx));
       var key = "bw-" + box.getAttribute("data-list") + "-" + box.parentNode.textContent.trim();
       try { box.checked = localStorage.getItem(key) === "1"; } catch (e) {}
       box.addEventListener("change", function () {
         try { localStorage.setItem(key, box.checked ? "1" : "0"); } catch (e) {}
+        if (typeof saveHouse === "function") saveHouse();
       });
     });
     (function tickerHold() {
@@ -1079,7 +1084,90 @@ Cart shop:</textarea>
       var el = document.getElementById("vendors");
       if (!el) return;
       try { var s = localStorage.getItem("bw-vendors"); if (s) el.value = s; } catch (e) {}
-      el.addEventListener("change", function () { try { localStorage.setItem("bw-vendors", el.value); } catch (e) {} });
+      el.addEventListener("change", function () { try { localStorage.setItem("bw-vendors", el.value); } catch (e) {} if (typeof saveHouse === "function") saveHouse(); });
+      el.addEventListener("blur", function () { if (typeof saveHouse === "function") saveHouse(); });
+    })();
+    window.saveHouse = function () {};
+    (function houseShare() {
+      var note = document.getElementById("house-sync");
+      var SAVE = "https://fl-board.valente-nick.workers.dev/house";
+      var urls = [
+        SAVE,
+        "house.json",
+        "./house.json",
+        "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1-bK-lSI32CYoEPS9QkuBWnXbgq7L3Hew")
+      ];
+      function boxes(kind) {
+        return Array.prototype.map.call(document.querySelectorAll('input[data-list="' + kind + '"]'), function (b) { return !!b.checked; });
+      }
+      function stamp(msg) { if (note) note.textContent = msg; }
+      function snapshot() {
+        return {
+          nick: (typeof whoGet === "function" ? whoGet("nick") : "FL"),
+          dayna: (typeof whoGet === "function" ? whoGet("dayna") : "FL"),
+          trashDay: (typeof trashDay === "function" ? trashDay() : 4),
+          vendors: ((document.getElementById("vendors") || {}).value || ""),
+          open: boxes("open"),
+          close: boxes("close"),
+          updated: new Date().toISOString()
+        };
+      }
+      function apply(h, src) {
+        if (!h || typeof h !== "object") return;
+        if (h.nick) try { localStorage.setItem("bw-who-nick", h.nick); } catch (e) {}
+        if (h.dayna) try { localStorage.setItem("bw-who-dayna", h.dayna); } catch (e) {}
+        if (h.trashDay != null) try { localStorage.setItem("bw-trash-day", String(h.trashDay)); } catch (e) {}
+        if (typeof h.vendors === "string") {
+          var v = document.getElementById("vendors");
+          if (v) v.value = h.vendors;
+          try { localStorage.setItem("bw-vendors", h.vendors); } catch (e) {}
+        }
+        ["open","close"].forEach(function (kind) {
+          var arr = h[kind] || [];
+          document.querySelectorAll('input[data-list="' + kind + '"]').forEach(function (b, i) {
+            if (arr[i] == null) return;
+            b.checked = !!arr[i];
+            var key = "bw-" + kind + "-" + b.parentNode.textContent.trim();
+            try { localStorage.setItem(key, b.checked ? "1" : "0"); } catch (e) {}
+          });
+        });
+        if (typeof paintWho === "function") paintWho();
+        if (typeof writeWhoLine === "function") writeWhoLine();
+        if (typeof nextTrash === "function") nextTrash();
+        window.__houseUpdated = h.updated || "";
+        var when = h.updated ? new Date(h.updated).toLocaleString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "";
+        stamp("Shared house list" + (when ? " · " + when : "") + (src ? " · " + src : ""));
+      }
+      window.saveHouse = function () {
+        var data = snapshot();
+        try { localStorage.setItem("bw-house", JSON.stringify(data)); } catch (e) {}
+        stamp("Saving house list…");
+        fetch(SAVE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(function (r) {
+          if (!r.ok) throw new Error("no");
+          stamp("Saved for every device · " + new Date().toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }));
+        }).catch(function () {
+          stamp("Saved on this device. Add house.json to GitHub or the /house Worker route to share.");
+        });
+      };
+      function pull() {
+        function next(i) {
+          if (i >= urls.length) return;
+          fetch(urls[i] + (urls[i].indexOf("http") === 0 ? "" : "")).then(function (r) { return r.json(); }).then(function (h) {
+            if (!h || (!h.nick && !h.dayna && h.vendors == null)) return next(i + 1);
+            var incoming = h.updated ? Date.parse(h.updated) : 0;
+            var mine = window.__houseUpdated ? Date.parse(window.__houseUpdated) : 0;
+            if (incoming && mine && incoming < mine) return;
+            apply(h, "live");
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
+      }
+      try {
+        var cached = JSON.parse(localStorage.getItem("bw-house") || "null");
+        if (cached) apply(cached, "this device");
+      } catch (e) {}
+      pull();
+      setInterval(pull, 60 * 1000);
     })();
     clock(); setInterval(clock, 15000);
     (function midnightReload() {
