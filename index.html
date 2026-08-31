@@ -18,7 +18,27 @@
 
     html, body { margin:0; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
     html, body { background:var(--sand); }
-    .frame { position:relative; width:100vw; height:100dvh; max-width:none; max-height:100dvh; margin:0; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
+    .frame { position:relative; width:100vw; height:100dvh; max-width:none; max-height:100dvh; margin:0; background:transparent; display:flex; flex-direction:column; overflow:hidden; }
+    .skyback { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; transition:background 1.4s ease; background:var(--sand); }
+    .frame > *:not(.skyback) { position:relative; z-index:1; }
+    .flash, .rainlayer { z-index:7; }
+    html.sky-clear .skyback { background:linear-gradient(180deg,#f6e4b8 0%,#f3eee4 42%,#efe4c8 100%); }
+    html.sky-clear .skyback .sun { display:block; }
+    html.sky-partly .skyback { background:linear-gradient(180deg,#cfdce8 0%,#e8dfcf 55%,#f3eee4 100%); }
+    html.sky-cloud .skyback { background:linear-gradient(180deg,#8b98a6 0%,#b7c0c8 48%,#c5cdd4 100%); }
+    html.sky-rain .skyback { background:linear-gradient(180deg,#5d6b78 0%,#7d8a96 55%,#8b96a3 100%); }
+    html.sky-storm .skyback { background:linear-gradient(180deg,#2c3848 0%,#3d4a5c 50%,#5c6b7a 100%); }
+    html.sky-night .skyback { background:linear-gradient(180deg,#07060f 0%,#12101c 45%,#1b2a4a 100%); }
+    .skyback .sun { display:none; position:absolute; top:8%; right:12%; width:90px; height:90px; border-radius:50%; background:radial-gradient(circle,#ffe08a 0%,#c4a35a 55%,transparent 72%); opacity:.55; animation:sun-pulse 6s ease-in-out infinite; }
+    @keyframes sun-pulse { 0%,100% { transform:scale(1); opacity:.5; } 50% { transform:scale(1.08); opacity:.7; } }
+    .skyback .cloud { position:absolute; background:rgba(255,255,255,.42); border-radius:40px; filter:blur(1px); animation:cloud-drift linear infinite; opacity:0; }
+    html.sky-partly .skyback .cloud, html.sky-cloud .skyback .cloud, html.sky-rain .skyback .cloud, html.sky-storm .skyback .cloud { opacity:.7; }
+    html.sky-cloud .skyback .cloud { background:rgba(230,235,240,.7); }
+    html.sky-rain .skyback .cloud, html.sky-storm .skyback .cloud { background:rgba(160,170,180,.55); }
+    html.sky-night .skyback .cloud { opacity:.12; background:rgba(200,210,230,.25); }
+    @keyframes cloud-drift { from { transform:translateX(-30%); } to { transform:translateX(120vw); } }
+    main { background:transparent; }
+    .page { background:transparent; }
     header.night { filter:brightness(.68); }
     header { background:var(--navy); color:#f7f1e6; padding:10px 12px 8px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; border-bottom:2px solid var(--gold); position:relative; overflow:hidden; transition:background .6s ease, border-color .6s ease; }
     header::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.14; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='48' viewBox='0 0 120 48'%3E%3Cpath d='M8 46 C18 28 14 16 22 8 C16 18 20 30 12 44' fill='none' stroke='%23c4a35a' stroke-width='1.4'/%3E%3Cpath d='M20 46 C22 32 28 22 36 12 C30 24 26 34 24 46' fill='none' stroke='%23c4a35a' stroke-width='1.2'/%3E%3Ccircle cx='108' cy='10' r='5' fill='none' stroke='%23c4a35a' stroke-width='1'/%3E%3Cpath d='M108 16 v8' stroke='%23c4a35a' stroke-width='1'/%3E%3C/svg%3E"); background-repeat:repeat-x; background-position:left bottom; }
@@ -219,7 +239,15 @@
 
     html.dark { --sand:#16132a; --sand-2:#221e36; --muted:#e4d6b4; --hair:rgba(196,163,90,.45); }
     html.dark body { background:#100e20; }
-    html.dark .frame { background:#16132a; color:#f7f1e6; }
+    html.dark .frame { background:transparent; color:#f7f1e6; }
+    html.dark.sky-clear .skyback { background:linear-gradient(180deg,#3a3224 0%,#2a2430 50%,#1b1824 100%); }
+    html.dark.sky-partly .skyback { background:linear-gradient(180deg,#2a3038 0%,#221e36 55%,#1b1824 100%); }
+    html.dark.sky-cloud .skyback { background:linear-gradient(180deg,#232830 0%,#1c2028 55%,#161820 100%); }
+    html.dark.sky-rain .skyback { background:linear-gradient(180deg,#1a2028 0%,#14181e 55%,#101418 100%); }
+    html.dark.sky-storm .skyback { background:linear-gradient(180deg,#12141a 0%,#0e1016 55%,#0a0c10 100%); }
+    html.dark.sky-night .skyback { background:linear-gradient(180deg,#07060f 0%,#0c0a14 55%,#101018 100%); }
+    html.dark.sky-clear .skyback .sun { opacity:.22; }
+    html.dark .skyback .cloud { background:rgba(180,190,210,.18); }
     html.dark header.sky-night { background:linear-gradient(180deg,#12101c 0%,#0e0c1c 70%); }
     html.dark .sky, html.dark .wx-nowline, html.dark .pill-key, html.dark #who-line, html.dark #do-hour { color:#efe4c8; }
     html.dark h2, html.dark .card b, html.dark .tile strong { color:#f7f1e6; }
@@ -243,7 +271,7 @@
     html.dark #radio-status, html.dark #deliv-note, html.dark #ent-count { color:#efe4c8; }
     html.dark .card.music { background:#3a2430; }
     html.dark textarea, html.dark input, html.dark .check label { background:#2a2444; color:#f7f1e6; border-color:#c4a35a; }
-    #now, #tenday, #marine { background:linear-gradient(180deg, rgba(42,157,143,.18) 0%, transparent 42%); border-radius:16px; padding:8px 8px 4px; }
+    #now, #tenday, #marine { background:transparent; border-radius:16px; padding:8px 8px 4px; }
     #live-heat { display:none; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#e07a5f; }
     #live-heat.on { display:block; }
     .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
@@ -253,6 +281,7 @@
 </head>
 <body>
   <div class="frame">
+    <div class="skyback" id="skyback"><i class="sun"></i></div>
     <header>
       <div class="brand">
         <span class="titles"><b>BEACHWALK</b><small>Manasota Key</small></span>
@@ -739,6 +768,22 @@ Cart shop:</textarea>
       start();
       document.addEventListener("pointerdown", start, { once: true, capture: true });
     })();
+    (function makeClouds() {
+      var box = document.getElementById("skyback");
+      if (!box) return;
+      for (var i = 0; i < 6; i++) {
+        var c = document.createElement("i");
+        c.className = "cloud";
+        var w = 90 + Math.random() * 160;
+        c.style.width = w + "px";
+        c.style.height = (28 + Math.random() * 36) + "px";
+        c.style.top = (6 + Math.random() * 42) + "%";
+        c.style.left = (-20 - Math.random() * 40) + "%";
+        c.style.animationDuration = (28 + Math.random() * 36) + "s";
+        c.style.animationDelay = (-Math.random() * 30) + "s";
+        box.appendChild(c);
+      }
+    })();
     (function makeRain() {
       var layer = document.getElementById("rainlayer");
       if (!layer || layer.childNodes.length) return;
@@ -801,6 +846,17 @@ Cart shop:</textarea>
       document.documentElement.classList.toggle("raining", !!nowx.rain);
       document.documentElement.classList.toggle("raining-hard", !!nowx.hard);
       document.documentElement.classList.toggle("lightning", !!nowx.lightning);
+      ["sky-clear","sky-partly","sky-cloud","sky-rain","sky-storm","sky-night"].forEach(function (c) {
+        document.documentElement.classList.remove(c);
+      });
+      var cover = nowx.cover || "clear";
+      var skyClass = "sky-clear";
+      if (cover === "storm" || nowx.lightning) skyClass = "sky-storm";
+      else if (cover === "rain" || nowx.rain) skyClass = "sky-rain";
+      else if (hr >= 22 || hr < 6) skyClass = "sky-night";
+      else if (cover === "cloud") skyClass = "sky-cloud";
+      else if (cover === "partly") skyClass = "sky-partly";
+      document.documentElement.classList.add(skyClass);
       document.documentElement.classList.toggle("wind-2", blow >= 15 && blow < 25);
       document.documentElement.classList.toggle("wind-3", blow >= 25);
       document.documentElement.classList.toggle("quiet", inQuietHours() && !(window.__nwrAlert));
@@ -2355,7 +2411,12 @@ Cart shop:</textarea>
             window.__wxNow = {
               rain: /rain|shower|drizzle|storm/.test(blob) || pop >= 50,
               hard: /heavy|downpour|torrential/.test(blob) || pop >= 80,
-              lightning: /thunder|lightning/.test(blob)
+              lightning: /thunder|lightning/.test(blob),
+              cover: /thunder|lightning/.test(blob) ? "storm"
+                : (/rain|shower/.test(blob) || pop >= 50) ? "rain"
+                : /overcast|cloudy|mostly cloudy/.test(blob) ? "cloud"
+                : /partly|mostly sunny|few clouds/.test(blob) ? "partly"
+                : "clear"
             };
             paintSkyHeader();
           })();
