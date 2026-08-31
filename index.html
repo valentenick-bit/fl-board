@@ -159,6 +159,10 @@
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
     iframe.full { width:100%; height:52vh; border:0; border-radius:12px; background:#111; }
     .radar-crop { width:100%; height:52vh; overflow:hidden; border-radius:12px; background:#111; }
+    .hurr-stage { position:relative; width:100%; height:52vh; overflow:hidden; border-radius:12px; background:#111; }
+    .hurr-stage img { width:100%; height:100%; object-fit:contain; display:block; background:#111; }
+    .hurr-cap { position:absolute; left:10px; bottom:10px; background:rgba(18,16,28,.72); color:#f7f1e6; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; padding:5px 9px; border-radius:999px; }
+    #hurr-stats span { display:block; margin-top:4px; }
     img.radar-loop { width:100%; height:100%; object-fit:cover; transform:scale(1.85); transform-origin:50% 82%; display:block; }
     table { width:100%; border-collapse:collapse; }
     td { padding:10px 4px; border-bottom:1px solid #e2d9c8; font-size:15px; }
@@ -244,7 +248,8 @@
     html.kiosk .page.on > iframe.full,
     html.kiosk .page.on > iframe.lite,
     html.kiosk .page.on > img.radar-loop,
-    html.kiosk .page.on > .radar-crop { flex:1 1 auto; min-height:0; }
+    html.kiosk .page.on > .radar-crop,
+    html.kiosk .page.on > .hurr-stage { flex:1 1 auto; min-height:0; }
     html.kiosk .keycam { height:auto; min-height:0; margin:6px 0; }
     html.kiosk .tide { height:64px; }
     html.kiosk .day { padding:4px 10px; }
@@ -565,6 +570,14 @@ Cart shop:</textarea>
         <img id="cane-img" alt="NHC Atlantic 5-day outlook" style="width:100%;border-radius:12px;background:#111" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
         <p><a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener">NHC Atlantic / Gulf outlook</a></p>
       </section>
+      <section id="hurr" class="page">
+        <h2 data-k="Watch and warning">Hurricane</h2>
+        <div class="card" id="hurr-stats"><b>No hurricane watch or warning</b><span>This page joins the rotation when NWS posts a hurricane or tropical-storm watch or warning for the Key.</span></div>
+        <div class="hurr-stage">
+          <img id="hurr-frame" alt="Hurricane view" src="https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif"/>
+          <div class="hurr-cap" id="hurr-cap">Radar</div>
+        </div>
+      </section>
       <section id="bolt" class="page">
         <h2 data-k="Storms">Lightning</h2>
         <span id="live-bolt" hidden>Clear</span>
@@ -646,6 +659,7 @@ Cart shop:</textarea>
     </nav>
     <nav class="dock dock-more" id="dock-more">
       <button type="button" data-p="cane">Cane</button>
+      <button type="button" data-p="hurr">Hur</button>
       <button type="button" data-p="bolt">Bolt</button>
       <button type="button" data-p="news">Fox</button>
       <button type="button" data-p="wink">WINK</button>
@@ -677,6 +691,7 @@ Cart shop:</textarea>
           frame.src = base + "&t=" + Date.now();
         }
       }
+      if (id === "hurr" && typeof showHurrSlide === "function") showHurrSlide(true);
     }
     document.querySelectorAll(".dock").forEach(function (d) {
       d.addEventListener("click", function (e) {
@@ -1228,7 +1243,7 @@ Cart shop:</textarea>
     function warnList() {
       var ev = window.__wxRisk.warnTypes || "";
       var list = ["radar"];
-      if (/hurricane|tropical|surge/.test(ev)) list.push("cane", "marine");
+      if (/hurricane|tropical|surge/.test(ev)) list.push("hurr", "cane", "marine");
       if (/thunder|tornado|severe|lightning/.test(ev)) list.push("bolt");
       if (/flood|marine|small craft|gale|waterspout|rip|surf|coastal/.test(ev) && list.indexOf("marine") < 0) list.push("marine");
       list.push("contacts");
@@ -1240,6 +1255,7 @@ Cart shop:</textarea>
       });
     }
     function pageDwell(id) {
+      if (id === "hurr") return 36000;
       return (id === "now" || id === "cam") ? 20000 : 15000;
     }
     function startRotate() {
@@ -1266,7 +1282,83 @@ Cart shop:</textarea>
       });
     });
 
-    window.__wxRisk = { alert: false, cane: false, bolt: false };
+    window.__wxRisk = { alert: false, cane: false, bolt: false, hurr: false };
+    window.__hurrSlides = [];
+    window.__hurrI = 0;
+    window.__hurrTick = "";
+    function stormWord(s) {
+      var cls = (s && s.classification) || "";
+      return cls === "HU" ? "Hurricane" : cls === "TS" ? "Tropical Storm" : cls === "TD" ? "Tropical Depression" : cls === "PTC" ? "Potential tropical" : cls || "Storm";
+    }
+    function nhcGraphic(s, kind) {
+      var id = String((s && s.id) || "").toUpperCase();
+      var bin = String((s && s.binNumber) || "").replace(/\s/g, "").toUpperCase();
+      if (!bin && id) {
+        var n = parseInt(id.replace(/\D/g, "").slice(0, 2), 10);
+        if (n) bin = "AT" + n;
+      }
+      if (!id || !bin) return "";
+      var file = kind === "cone" ? id + "_5day_cone_with_line_and_wind+pngnow.png"
+        : kind === "ir" ? id + "_ir_clean+gifnow.gif"
+        : id + "_vis_clean+gifnow.gif";
+      return "https://www.nhc.noaa.gov/storm_graphics/" + bin + "/refresh/" + file;
+    }
+    function paintHurr(storms) {
+      storms = storms || [];
+      var threat = storms.filter(function (s) {
+        var lat = parseFloat(s.latitude);
+        var lon = parseFloat(String(s.longitude || "").replace(/[wW]/, ""));
+        if (/[wW]/.test(String(s.longitude || ""))) lon = -Math.abs(lon);
+        var gulf = !isNaN(lat) && !isNaN(lon) && lat >= 15 && lat <= 33 && lon <= -75 && lon >= -100;
+        return gulf || /HU|TS/.test(s.classification || "");
+      });
+      var s = threat[0] || storms[0];
+      var box = document.getElementById("hurr-stats");
+      var slides = [
+        { src: "https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif", cap: "Radar" },
+        { src: "https://cdn.star.nesdis.noaa.gov/GOES16/ABI/SECTOR/gm/GEOCOLOR/GOES16-GM-GEOCOLOR-1000x1000.gif", cap: "Satellite" },
+        { src: "https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png", cap: "Path" }
+      ];
+      if (s) {
+        var cone = nhcGraphic(s, "cone");
+        var ir = nhcGraphic(s, "ir");
+        if (ir) slides[1] = { src: ir, cap: "Satellite" };
+        if (cone) slides[2] = { src: cone, cap: "Path" };
+        var word = stormWord(s);
+        var move = [s.movementDir || s.direction || "", s.movementSpeed || s.speed || ""].join(" ").trim();
+        var line = word + " " + (s.name || "Unnamed") + ". " +
+          (s.intensity ? s.intensity + " kt. " : "") +
+          (s.pressure ? s.pressure + " mb. " : "") +
+          [s.latitude || "", s.longitude || ""].join(" ").trim() +
+          (move ? ". Moving " + move : "") + ".";
+        window.__hurrTick = line;
+        if (box) box.innerHTML = "<b>" + word + " " + (s.name || "") + "</b><span>" +
+          (s.intensity ? s.intensity + " kt" : "—") + " · " +
+          (s.pressure ? s.pressure + " mb" : "—") + " · " +
+          [s.latitude || "", s.longitude || ""].join(" ") +
+          (move ? " · " + move : "") + "</span>";
+      } else {
+        window.__hurrTick = "";
+        if (box && !window.__wxRisk.hurr) box.innerHTML = "<b>No hurricane watch or warning</b><span>This page joins the rotation when NWS posts a hurricane or tropical-storm watch or warning for the Key.</span>";
+      }
+      window.__hurrSlides = slides;
+      if (document.getElementById("hurr") && document.getElementById("hurr").classList.contains("on")) showHurrSlide(true);
+    }
+    function showHurrSlide(reset) {
+      var slides = window.__hurrSlides || [];
+      if (!slides.length) return;
+      if (reset) window.__hurrI = 0;
+      var s = slides[window.__hurrI % slides.length];
+      window.__hurrI += 1;
+      var img = document.getElementById("hurr-frame");
+      var cap = document.getElementById("hurr-cap");
+      if (img) img.src = s.src + (s.src.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+      if (cap) cap.textContent = s.cap;
+    }
+    setInterval(function () {
+      var pg = document.getElementById("hurr");
+      if (pg && pg.classList.contains("on")) showHurrSlide(false);
+    }, 10000);
     function allDockPages() {
       return Array.from(document.querySelectorAll(".dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); });
     }
@@ -1274,6 +1366,7 @@ Cart shop:</textarea>
       return allDockPages().filter(function (id) {
         if (id === "news" || id === "wink" || id === "contacts" || id === "villa") return false;
         if (id === "cane") return !!window.__wxRisk.cane;
+        if (id === "hurr") return !!(window.__wxRisk.hurr || window.__wxRisk.cane);
         if (id === "bolt") return !!window.__wxRisk.bolt;
         return true;
       });
@@ -2449,6 +2542,7 @@ Cart shop:</textarea>
             return /gulf|florida|tampa|keys|cuba|yucatan/i.test(JSON.stringify(s));
           }) || /hurricane|tropical|surge/.test(window.__wxRisk.warnTypes || "");
           pagesFromDock();
+          paintHurr(storms);
           if (!el) return;
           el.textContent = storms.length
             ? storms.map(function (s) {
@@ -3036,6 +3130,10 @@ Cart shop:</textarea>
           t("live-rain-mo") ? "Rain so far this month is " + t("live-rain-mo") : "",
           t("live-aqi") ? "Air quality is " + t("live-aqi") : ""
         ]),
+        para("Hurricane", [
+          window.__hurrTick || "",
+          window.__wxRisk && window.__wxRisk.hurr ? "A hurricane or tropical watch or warning is up for the Key. Open the Hurricane page for radar, satellite, and the cone." : ""
+        ]),
         para("Emergency", [
           t("live-nwr-alert") || "No watch or warning for the Englewood point right now",
           t("live-prep"),
@@ -3141,6 +3239,7 @@ Cart shop:</textarea>
         }
         window.__wxRisk.alert = !!keep.length;
         window.__wxRisk.warnTypes = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
+        window.__wxRisk.hurr = /hurricane|tropical storm|storm surge/.test(window.__wxRisk.warnTypes || "");
         window.__wxRisk.bolt = /thunder|lightning/i.test((document.getElementById("live-bolt") || {}).textContent || "") ||
           keep.some(function (f) {
             var ev = ((f.properties || {}).event || "").toLowerCase();
@@ -3212,6 +3311,7 @@ Cart shop:</textarea>
           return spaceSentences(line);
         });
         var body = parts.join("\u00a0".repeat(140));
+        if (window.__hurrTick) body += "\u00a0".repeat(360) + spaceSentences("Hurricane tracker. " + window.__hurrTick);
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
         frame.classList.add("has-alert"); stackTickers();
         setTicker(txt, body, 150);
