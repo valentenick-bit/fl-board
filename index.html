@@ -308,7 +308,7 @@
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <main>
       <section id="now" class="page on">
-        <h2 data-k="On the Key">Welcome</h2>
+        <h2 data-k="On the Key">Today</h2>
         <p class="sky" id="live-sky">Good morning. Mostly sunny in Englewood with a heat index near 102°. Afternoon storms are likely after 2 p.m. Beach and cart are best this morning before the storms build.</p>
         <div class="pills">
           <div class="pill" id="pill-beach"><small>Beach</small><div class="halves"><span class="half go" data-side="am"><em>AM</em><b>—</b></span><span class="half go" data-side="pm"><em>PM</em><b>—</b></span></div></div>
@@ -320,6 +320,10 @@
         </div>
         <p class="pill-key">Left is morning, right is afternoon. Green = go. Gold = short window. Coral = don’t.</p>
         <p class="sky" id="do-hour">Checking the next hour…</p>
+        <h3 class="ent-h">Do today</h3>
+        <div id="today-do"></div>
+        <h3 class="ent-h">Expected deliveries</h3>
+        <div id="today-deliv"></div>
       </section>
       <section id="cam" class="page">
         <h2 data-k="Gulf">Cam</h2>
@@ -606,7 +610,7 @@ Cart shop:</textarea>
     </main>
     <div class="dock-wrap">
     <nav class="dock" id="dock">
-      <button type="button" data-p="now" class="on">Welcome</button>
+      <button type="button" data-p="now" class="on">Today</button>
       <button type="button" data-p="cam">Cam</button>
       <button type="button" data-p="tenday">Weather</button>
       <button type="button" data-p="radar">Radar</button>
@@ -1361,6 +1365,34 @@ Cart shop:</textarea>
       });
     })();
 
+    function isTodayET(d) {
+      return new Date(d).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) === new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+    }
+    function paintToday() {
+      var doBox = document.getElementById("today-do");
+      var delBox = document.getElementById("today-deliv");
+      if (doBox) {
+        var evs = (window.__entAll || []).filter(function (e) {
+          return e && e.when && isTodayET(e.when) && (!e.end || new Date(e.end).getTime() >= Date.now());
+        }).slice(0, 8);
+        if (!evs.length) doBox.innerHTML = '<div class="card"><span>Nothing dated today on BeachWalk or Englewood.</span></div>';
+        else doBox.innerHTML = evs.map(function (e) {
+          var allDay = !!e.allDay;
+          var t = allDay ? "All day" : new Date(e.when).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }).toLowerCase();
+          var place = e.inside ? "BeachWalk" : "Englewood";
+          return '<div class="card' + (e.live ? " music" : "") + '"><span class="place-tag ' + (e.inside ? "place-bw" : "place-out") + '">' + place + "</span>" + (e.live ? '<span class="music-tag">Live music</span>' : "") + "<b>" + t + " · " + (e.sum || "") + "</b></div>";
+        }).join("");
+      }
+      if (delBox) {
+        var marks = window.__deliveredMarks || {};
+        function key(item) { return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim(); }
+        var inc = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks[key(x)]; });
+        if (!inc.length) delBox.innerHTML = '<div class="card"><span>No packages on the way.</span></div>';
+        else delBox.innerHTML = inc.slice(0, 5).map(function (x) {
+          return '<div class="card music"><span class="place-tag place-out">On the way</span><b>' + (x.who || "") + " · " + (x.title || "") + "</b><span>" + (x.detail || "") + "</span></div>";
+        }).join("");
+      }
+    }
     (function liveCals() {
       var BW = "605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947@group.calendar.google.com";
       var ENG = "a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6@group.calendar.google.com";
@@ -1443,6 +1475,9 @@ Cart shop:</textarea>
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
+        merged.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
+        window.__entAll = merged;
+        paintToday();
         if (!merged.length) return;
         render("ent-list", merged.slice(0, 16));
         var note = document.getElementById("ent-count");
@@ -1540,6 +1575,7 @@ Cart shop:</textarea>
           });
         });
         if (note) note.textContent = "Report " + (src.updated || "") + " · automation 8 a.m. and 6 p.m. Check the box if no email arrived.";
+        if (typeof paintToday === "function") paintToday();
       }
       window.__paintDeliveries = function () { paint(); };
       function next(i) {
@@ -2907,11 +2943,22 @@ Cart shop:</textarea>
       }
       var SEP = "\u00a0".repeat(140);
       var html = [
-        para("Welcome", [
+        para("Today", [
           t("live-sky"),
           t("do-hour"),
           window.__nextTide || "",
-          window.__nextStorm || ""
+          window.__nextStorm || "",
+          (function () {
+            var n = ((window.__entAll || []).filter(function (e) { return e && e.when && isTodayET(e.when); }) || []).length;
+            return n ? n + " thing" + (n === 1 ? "" : "s") + " on the calendars today." : "No dated events today.";
+          })(),
+          (function () {
+            var marks = window.__deliveredMarks || {};
+            var inc = ((window.__delivData || {}).incoming || []).filter(function (x) {
+              return !marks[[x.who || "", x.title || "", x.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim()];
+            });
+            return inc.length ? inc.length + " package" + (inc.length === 1 ? "" : "s") + " on the way." : "No packages on the way.";
+          })()
         ]),
         para("Weather", [
           t("live-temp") ? "It is " + t("live-temp") + (t("live-feels") ? " and feels like " + t("live-feels") : "") : "",
