@@ -2404,7 +2404,7 @@ Cart shop:</textarea>
       writeHdrMeta();
       var warn = !!(window.__wxRisk && window.__wxRisk.warn && /thunder|tornado|severe/.test(window.__wxRisk.warnTypes || ""));
       function rank(k) { return k === "no" ? 2 : k === "win" ? 1 : 0; }
-      function scoreHour(h) {
+      function scoreHour(h, kind) {
         var fx = String((h && h.shortForecast) || "").toLowerCase();
         var pop = (h && h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
         var isolated = /isolated|slight|patchy/.test(fx);
@@ -2412,20 +2412,36 @@ Cart shop:</textarea>
         var thunder = /thunder|t-storm|lightning/.test(fx) && !isolated && (likely || pop >= 50);
         var wet = (/rain|shower|drizzle|storm/.test(fx) && !isolated && pop >= 40) || pop >= 55;
         var windMph = parseInt((h && h.windSpeed) || "", 10) || 0;
+        if (kind === "boat") {
+          if (warn || thunder) return "no";
+          if (wet || windMph >= 15) return "win";
+          return "go";
+        }
+        if (kind === "cart") {
+          if (warn || thunder) return "no";
+          if (wet || windMph >= 20) return "win";
+          return "go";
+        }
         if (warn || thunder) return "no";
         if (wet || windMph >= 18) return "win";
         return "go";
       }
-      function windowKind(which) {
+      function windowKind(which, kind) {
         var worst = "go";
+        var seen = 0;
+        var today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
         (hours || []).forEach(function (h) {
-          var hr = parseInt(new Date(h.startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
+          if (!h || !h.startTime) return;
+          var d = new Date(h.startTime);
+          if (d.toLocaleDateString("en-CA", { timeZone: "America/New_York" }) !== today) return;
+          var hr = parseInt(d.toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
           if (which === "am" && (hr < 6 || hr >= 12)) return;
           if (which === "pm" && (hr < 12 || hr >= 19)) return;
-          var k = scoreHour(h);
+          seen++;
+          var k = scoreHour(h, kind);
           if (rank(k) > rank(worst)) worst = k;
         });
-        return worst;
+        return seen ? worst : "win";
       }
       function phrase(item, k) {
         var map = {
@@ -2438,12 +2454,16 @@ Cart shop:</textarea>
         return (map[item] || map.beach)[k] || "—";
       }
       ["am","pm"].forEach(function (side) {
-        var k = windowKind(side);
-        setPill("pill-beach", k, "Beach", phrase("beach", k), side);
-        setPill("pill-cart", k, "Golf cart", phrase("cart", k), side);
-        setPill("pill-boat", k, "Boat", phrase("boat", k), side);
-        setPill("pill-courts", k, "Courts", phrase("courts", k), side);
-        setPill("pill-pool", k, "Pool", phrase("pool", k), side);
+        var beach = windowKind(side, "beach");
+        var cart = windowKind(side, "cart");
+        var boat = windowKind(side, "boat");
+        var courts = windowKind(side, "beach");
+        var pool = windowKind(side, "beach");
+        setPill("pill-beach", beach, "Beach", phrase("beach", beach), side);
+        setPill("pill-cart", cart, "Golf cart", phrase("cart", cart), side);
+        setPill("pill-boat", boat, "Boat", phrase("boat", boat), side);
+        setPill("pill-courts", courts, "Courts", phrase("courts", courts), side);
+        setPill("pill-pool", pool, "Pool", phrase("pool", pool), side);
       });
       fetch("https://api.open-meteo.com/v1/forecast?latitude=26.96&longitude=-82.35&current=uv_index,wind_speed_10m,wind_gusts_10m&hourly=uv_index&forecast_days=1&wind_speed_unit=mph&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
