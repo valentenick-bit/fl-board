@@ -142,6 +142,7 @@
     .hour svg { width:26px; height:26px; display:block; margin:2px auto; }
     .wx-nowline { margin:0 0 10px; font-size:15px; color:var(--muted); }
     .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+    .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:10px 0; }
     .tile { background:var(--sand-2); border:1px solid var(--hair); border-radius:16px; padding:10px; min-height:72px; }
     .tile label { display:block; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
     .tile strong { font-family:Fraunces,Georgia,serif; font-size:20px; }
@@ -651,9 +652,17 @@ Cart shop:</textarea>
       </section>
       <section id="power" class="page">
         <h2 data-k="FPL">Power</h2>
-        <div class="card"><b>Outages</b><span id="fpl-counts">Sarasota and Charlotte counts load with the map. Tap a row if the embed is blocked.</span></div>
-        <p><a href="https://www.fpl.com/powertracker" target="_blank" rel="noopener">Open FPL Power Tracker</a> · <a href="tel:8004688243">800-4-OUTAGE</a></p>
-        <iframe class="full" title="FPL Power Tracker" src="https://www.fpl.com/powertracker"></iframe>
+        <div class="card"><b>Why no map inside the board</b><span>FPL sets frame-ancestors to itself, so the tracker cannot load in our page. County counts try a public FPL file. The official map opens in a new tab.</span></div>
+        <div class="row3">
+          <div class="card"><b>Sarasota</b><span id="fpl-sar">Checking…</span></div>
+          <div class="card"><b>Charlotte</b><span id="fpl-cha">Checking…</span></div>
+          <div class="card"><b>FPL system</b><span id="fpl-tot">Checking…</span></div>
+        </div>
+        <p id="fpl-counts">Waiting on FPL county file…</p>
+        <div class="dials">
+          <a class="dial" href="https://www.fplmaps.com/" target="_blank" rel="noopener"><b>Open live FPL map</b><em>fplmaps.com</em></a>
+          <a class="dial" href="tel:8004688243"><b>Report outage</b><em>800-4-OUTAGE</em></a>
+        </div>
       </section>
     </main>
     <div class="dock-wrap">
@@ -2668,6 +2677,80 @@ Cart shop:</textarea>
           }).catch(function () { next(i + 1); });
         }
         next(0);
+      })();
+      (function pollFpl() {
+        function set(id, txt) { var n = document.getElementById(id); if (n) n.textContent = txt; }
+        function fmt(n) { return Number(n || 0).toLocaleString("en-US"); }
+        function pick(rows, name) {
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var nm = String(r.County || r.COUNTY || r.county || r.name || r.Name || "").toLowerCase();
+            if (nm.indexOf(name) >= 0) return r;
+          }
+          return null;
+        }
+        function outOf(r) {
+          if (!r) return null;
+          return r.CustomersOut != null ? r.CustomersOut
+            : r.outages != null ? r.outages
+            : r.OUT != null ? r.OUT
+            : r.out != null ? r.out
+            : r.Number_Impacted_Customers != null ? r.Number_Impacted_Customers
+            : r.customersOut;
+        }
+        function servedOf(r) {
+          if (!r) return null;
+          return r.CustomersServed != null ? r.CustomersServed
+            : r.customers != null ? r.customers
+            : r.TOTAL != null ? r.TOTAL
+            : r.TotalServed;
+        }
+        function apply(rows, stamp) {
+          if (!Array.isArray(rows) || !rows.length) return false;
+          var sar = pick(rows, "sarasota");
+          var cha = pick(rows, "charlotte");
+          var totOut = 0, totServe = 0;
+          rows.forEach(function (r) {
+            totOut += Number(outOf(r) || 0);
+            totServe += Number(servedOf(r) || 0);
+          });
+          function line(r) {
+            if (!r) return "No row";
+            var o = outOf(r), s = servedOf(r);
+            return fmt(o) + " out" + (s ? " of " + fmt(s) : "");
+          }
+          set("fpl-sar", line(sar));
+          set("fpl-cha", line(cha));
+          set("fpl-tot", fmt(totOut) + " out" + (totServe ? " of " + fmt(totServe) : ""));
+          set("fpl-counts", stamp || "FPL county file");
+          var hid = document.getElementById("live-fpl");
+          if (hid) hid.textContent = "Sarasota " + line(sar) + ". Charlotte " + line(cha) + ".";
+          return true;
+        }
+        var raw = [
+          "https://www.fplmaps.com/data/Customer_Data.json",
+          "https://www.fplmaps.com/data/thematic-2.json"
+        ];
+        var urls = [];
+        raw.forEach(function (u) {
+          urls.push(u);
+          urls.push("https://corsproxy.io/?" + encodeURIComponent(u));
+          urls.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(u));
+        });
+        function next(i) {
+          if (i >= urls.length) {
+            set("fpl-counts", "FPL file is gated. Use Open live FPL map.");
+            return;
+          }
+          fetch(urls[i]).then(function (r) { return r.json(); }).then(function (d) {
+            var rows = Array.isArray(d) ? d
+              : (d.counties || d.Counties || d.data || d.areas || d.features || []);
+            if (rows.length && rows[0] && rows[0].attributes) rows = rows.map(function (f) { return f.attributes; });
+            if (!apply(rows, "Live FPL file")) next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
+        setInterval(function () { next(0); }, 5 * 60 * 1000);
       })();
       var bolt = document.getElementById("live-bolt");
       var fx = ((hours && hours[0] && hours[0].shortForecast) || "") + " " + ((days && days[0] && days[0].detailedForecast) || "");
