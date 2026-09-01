@@ -237,6 +237,35 @@
     .dock-wrap.open .dock-more { max-height:140px; opacity:1; padding:4px 6px; pointer-events:auto; }
     .dock-wrap { position:relative; z-index:8; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
+    #setbtn { font-size:16px; letter-spacing:0; }
+    .settings {
+      display:none; position:absolute; left:8px; right:8px; bottom:58px; z-index:12;
+      max-height:72vh; overflow:auto; background:var(--sand-2); color:var(--navy);
+      border:1px solid var(--hair); border-radius:16px; padding:14px 16px 18px;
+      box-shadow:0 12px 40px rgba(15,18,30,.28);
+    }
+    .settings.open { display:block; }
+    .settings h3 { margin:14px 0 8px; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); }
+    .settings h3:first-child { margin-top:0; }
+    .settings label { display:block; font-size:14px; font-weight:700; margin:8px 0 4px; }
+    .settings select, .settings input[type="text"] {
+      width:100%; max-width:280px; padding:8px 10px; border-radius:10px;
+      border:1px solid var(--hair); font:inherit; background:#fff;
+    }
+    .settings .set-row { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 10px; }
+    .settings .set-row button, .settings .done {
+      padding:8px 12px; border-radius:999px; border:1px solid var(--hair);
+      background:#fff; font:inherit; font-weight:700; cursor:pointer;
+    }
+    .settings .set-row button.on { background:var(--navy); color:#fff; border-color:var(--navy); }
+    .settings .done { background:var(--teal); color:#fff; border:0; margin-top:8px; }
+    .settings .hint { font-size:13px; color:var(--muted); margin:0 0 8px; }
+    html.dark .settings { background:#221e36; color:#f7f1e6; }
+    html.dark .settings select, html.dark .settings input[type="text"], html.dark .settings .set-row button { background:#2a2444; color:#f7f1e6; border-color:#3a3458; }
+    html.dark .settings .set-row button.on { background:#e6c56a; color:#1b1328; }
+    html.text-lg { font-size:18px; }
+    html.text-lg .temp, html.text-lg .feels strong { font-size:60px; }
+    html.text-lg .sky { font-size:20px; }
     .quiet-photo { width:100%; height:32vh; min-height:180px; object-fit:cover; border-radius:16px; margin:10px 0 0; display:block; border:1px solid var(--hair); }
     .keycam { width:100%; height:34vh; min-height:200px; margin:10px 0 6px; border-radius:16px; overflow:hidden; border:1px solid var(--hair); background:#111; position:relative; }
     .keycam iframe { width:100%; height:100%; border:0; display:block; }
@@ -614,7 +643,7 @@ Cart shop:</textarea>
       <section id="bolt" class="page">
         <h2 data-k="Storms">Lightning</h2>
         <span id="live-bolt" hidden>Clear</span>
-        <iframe class="lite" title="Lightning" src="https://map.blitzortung.org/#6/26.96/-82.35"></iframe>
+        <iframe class="lite" id="bolt-map" title="Lightning" src="https://map.blitzortung.org/#6/26.96/-82.35"></iframe>
       </section>
       <section id="traffic" class="page">
         <h2 data-k="The drive">Traffic</h2>
@@ -722,7 +751,102 @@ Cart shop:</textarea>
       <button type="button" id="darkbtn">Dark mode</button>
       <button type="button" id="kioskbtn">Kiosk</button>
       <button type="button" id="refreshbtn">Refresh</button>
+      <button type="button" id="setbtn" title="Settings">⚙ Settings</button>
           </nav>
+    </div>
+    <div class="settings" id="settings" hidden>
+      <h3>Display</h3>
+      <label>Dark mode</label>
+      <div class="set-row" id="set-dark">
+        <button type="button" data-v="auto">Auto</button>
+        <button type="button" data-v="day">Always day</button>
+        <button type="button" data-v="night">Always night</button>
+      </div>
+      <label>Kiosk</label>
+      <div class="set-row" id="set-kiosk">
+        <button type="button" data-v="0">Off</button>
+        <button type="button" data-v="1">On</button>
+      </div>
+      <label>Quiet hours</label>
+      <div class="set-row" id="set-quiet">
+        <button type="button" data-v="1">Follow dark clock</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <label>Text size</label>
+      <div class="set-row" id="set-text">
+        <button type="button" data-v="default">Default</button>
+        <button type="button" data-v="large">Larger</button>
+      </div>
+      <label>Page rotation</label>
+      <div class="set-row" id="set-rot">
+        <button type="button" data-v="10">10s</button>
+        <button type="button" data-v="15">15s</button>
+        <button type="button" data-v="20">20s</button>
+      </div>
+      <p class="hint">Today and Cam stay a little longer than the other pages.</p>
+      <h3>Sound</h3>
+      <label>Default station</label>
+      <select id="set-station"></select>
+      <label>Volume</label>
+      <div class="set-row" id="set-vol">
+        <button type="button" data-v="whisper">Whisper</button>
+        <button type="button" data-v="room">Room</button>
+      </div>
+      <label>NOAA when there is a warning</label>
+      <div class="set-row" id="set-noaa">
+        <button type="button" data-v="1">On</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <label>Start radio on load</label>
+      <div class="set-row" id="set-radioauto">
+        <button type="button" data-v="1">On</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <h3>Location</h3>
+      <label>Home ZIP</label>
+      <input id="set-zip" type="text" inputmode="numeric" maxlength="5" placeholder="34223" />
+      <p class="hint" id="set-zip-hint">Weather and alerts follow this ZIP. Tides and BeachWalk calendars stay on the Key.</p>
+      <label>Trash day</label>
+      <div class="set-row" id="set-trash">
+        <button type="button" data-v="0">Sun</button>
+        <button type="button" data-v="1">Mon</button>
+        <button type="button" data-v="2">Tue</button>
+        <button type="button" data-v="3">Wed</button>
+        <button type="button" data-v="4">Thu</button>
+        <button type="button" data-v="5">Fri</button>
+        <button type="button" data-v="6">Sat</button>
+      </div>
+      <h3>What shows</h3>
+      <label>Cam in the night rotation</label>
+      <div class="set-row" id="set-camnight">
+        <button type="button" data-v="0">Off</button>
+        <button type="button" data-v="1">On</button>
+      </div>
+      <label>Lightning chip</label>
+      <div class="set-row" id="set-chipbolt">
+        <button type="button" data-v="1">On</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <label>Named-storm chip</label>
+      <div class="set-row" id="set-chipcane">
+        <button type="button" data-v="1">On</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <label>Trash chip</label>
+      <div class="set-row" id="set-chiptrash">
+        <button type="button" data-v="1">On</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <label>Briefing ticker</label>
+      <div class="set-row" id="set-brief">
+        <button type="button" data-v="1">On</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <p class="hint">Weather and breaking tickers still appear only when there is something to say.</p>
+      <div class="set-row">
+        <button type="button" id="set-dockreset">Restore default page order</button>
+      </div>
+      <button type="button" class="done" id="set-done">Done</button>
     </div>
     <div class="ticker-stack">
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
@@ -732,6 +856,27 @@ Cart shop:</textarea>
   </div>
   <script>
     window.__wxRisk = window.__wxRisk || { alert: false, cane: false, bolt: false, hurr: false };
+    var SET_DEFAULTS = {
+      dark: "auto", kiosk: "0", quiet: "1", text: "default", rotate: 15,
+      station: "", vol: "whisper", noaa: "1", radioauto: "1",
+      zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL",
+      camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", brief: "1"
+    };
+    function getSet() {
+      var s = {};
+      try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e) { s = {}; }
+      Object.keys(SET_DEFAULTS).forEach(function (k) { if (s[k] == null) s[k] = SET_DEFAULTS[k]; });
+      return s;
+    }
+    function putSet(part) {
+      var s = getSet();
+      Object.keys(part || {}).forEach(function (k) { s[k] = part[k]; });
+      try { localStorage.setItem("bw-set", JSON.stringify(s)); } catch (e) {}
+      return s;
+    }
+    function homeLat() { return Number(getSet().lat) || 26.9595; }
+    function homeLon() { return Number(getSet().lon) || -82.3543; }
+    function homePoint() { return homeLat() + "," + homeLon(); }
     function showPage(id) {
       document.querySelectorAll(".page.on").forEach(function (p) { p.classList.remove("on"); });
       document.querySelectorAll(".page").forEach(function (p) { if (p.id === id) p.classList.add("on"); });
@@ -765,7 +910,8 @@ Cart shop:</textarea>
     window.__radioWant = { url: "", label: "" };
     function setLoudness(audio, url) {
       var noaa = /weatherusa|NWR/i.test(url || "");
-      audio.volume = noaa ? (window.__nwrAlert ? 0.62 : 0.55) : 0.22;
+      var room = getSet().vol === "room";
+      audio.volume = noaa ? (window.__nwrAlert ? (room ? 0.8 : 0.62) : (room ? 0.7 : 0.55)) : (room ? 0.55 : 0.22);
     }
     function playStation(url, label, opts) {
       opts = opts || {};
@@ -868,6 +1014,7 @@ Cart shop:</textarea>
       else if (saved) btn = document.querySelector('.rowbtns button[data-stream="' + saved + '"]');
       if (!btn) btn = document.querySelector('.rowbtns button[data-stream*="tam949"]');
       if (!btn) return;
+      if (getSet().radioauto === "0") return;
       function start() {
         if (window.__nwrAlert) {
           playStation(NOAA_URL, "NOAA Tampa (warning)", { keepSaved: true });
@@ -1101,7 +1248,7 @@ Cart shop:</textarea>
             if (!when) when = t <= nowMs + 3600000 ? "this hour" : new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
           }
         });
-        var on = !!(nowx.lightning || alertBolt || soon);
+        var on = getSet().chipBolt !== "0" && !!(nowx.lightning || alertBolt || soon);
         bolt.classList.toggle("on", on);
         if (on) {
           var line = alertBolt ? "Warning up for the Key." : nowx.lightning ? "Thunder in the current hour." : ("Thunder possible " + when + ".");
@@ -1119,7 +1266,7 @@ Cart shop:</textarea>
           var named = !/invest|one|two|three|four|five/i.test(s.name || "") && (s.classification || "") !== "DB";
           return basin && named && (s.name || "");
         });
-        cane.classList.toggle("on", gulfAtl.length > 0);
+        cane.classList.toggle("on", getSet().chipCane !== "0" && gulfAtl.length > 0);
         if (gulfAtl.length) {
           cane.querySelector("span").textContent = gulfAtl.map(function (s) {
             var cls = s.classification || "";
@@ -1135,7 +1282,7 @@ Cart shop:</textarea>
         var now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
         var add = (want - now.getDay() + 7) % 7;
         var names = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-        var show = add === 0 || add === 1;
+        var show = getSet().chipTrash !== "0" && (add === 0 || add === 1);
         trash.classList.toggle("on", show);
         if (show) {
           trash.querySelector("span").textContent = add === 0
@@ -1255,6 +1402,7 @@ Cart shop:</textarea>
     }
 
     function inQuietHours() {
+      if (getSet().quiet === "0") return false;
       return sunShouldDark();
     }
     try {
@@ -1298,6 +1446,7 @@ Cart shop:</textarea>
       return now < (rise - pad) || now >= (set + pad);
     }
     function camOffHours() {
+      if (getSet().camNight === "1") return false;
       var rise = window.__bwCharts && window.__bwCharts.rise ? new Date(window.__bwCharts.rise).getTime() : 0;
       var set = window.__bwCharts && window.__bwCharts.set ? new Date(window.__bwCharts.set).getTime() : 0;
       var now = Date.now();
@@ -1309,8 +1458,12 @@ Cart shop:</textarea>
       return now >= (set + pad) || now < (rise - pad);
     }
     function applySunDark() {
+      var mode = getSet().dark;
       var lock;
       try { lock = localStorage.getItem("bw-dark-lock"); } catch (e) { lock = null; }
+      if (mode === "night") lock = "1";
+      if (mode === "day") lock = "0";
+      if (mode === "auto") lock = null;
       var on = (lock === "1" || lock === "0") ? lock === "1" : sunShouldDark();
       document.documentElement.classList.toggle("dark", on);
       var btn = document.getElementById("darkbtn");
@@ -1479,7 +1632,8 @@ Cart shop:</textarea>
     }
     function pageDwell(id) {
       if (id === "hurr") return 36000;
-      return (id === "now" || id === "cam") ? 20000 : 15000;
+      var base = (Number(getSet().rotate) || 15) * 1000;
+      return (id === "now" || id === "cam") ? Math.max(base, 20000) : base;
     }
     function startRotate() {
       clearInterval(rot);
@@ -1681,7 +1835,7 @@ Cart shop:</textarea>
         var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b && dockMore) dockMore.appendChild(b);
       });
-      ["darkbtn", "refreshbtn", "kioskbtn"].forEach(function (id) {
+      ["darkbtn", "refreshbtn", "kioskbtn", "setbtn"].forEach(function (id) {
         var dest = dockMore || dock;
         var b = document.getElementById(id);
         if (b) dest.appendChild(b);
@@ -2096,6 +2250,178 @@ Cart shop:</textarea>
       });
     })();
 
+    (function settingsPanel() {
+      var panel = document.getElementById("settings");
+      var gear = document.getElementById("setbtn");
+      if (!panel || !gear) return;
+      function mark(rowId, val) {
+        var row = document.getElementById(rowId);
+        if (!row) return;
+        row.querySelectorAll("button[data-v]").forEach(function (b) {
+          b.classList.toggle("on", String(b.getAttribute("data-v")) === String(val));
+        });
+      }
+      function paint() {
+        var s = getSet();
+        mark("set-dark", s.dark);
+        mark("set-kiosk", s.kiosk);
+        mark("set-quiet", s.quiet);
+        mark("set-text", s.text);
+        mark("set-rot", String(s.rotate));
+        mark("set-vol", s.vol);
+        mark("set-noaa", s.noaa);
+        mark("set-radioauto", s.radioauto);
+        mark("set-camnight", s.camNight);
+        mark("set-chipbolt", s.chipBolt);
+        mark("set-chipcane", s.chipCane);
+        mark("set-chiptrash", s.chipTrash);
+        mark("set-brief", s.brief);
+        mark("set-trash", String(typeof trashDay === "function" ? trashDay() : 4));
+        var zip = document.getElementById("set-zip");
+        if (zip) zip.value = s.zip || "34223";
+        var hint = document.getElementById("set-zip-hint");
+        if (hint) hint.textContent = (s.place || "Englewood FL") + " · " + Number(s.lat).toFixed(3) + ", " + Number(s.lon).toFixed(3) + ". Tides and BeachWalk calendars stay on the Key.";
+        var sel = document.getElementById("set-station");
+        if (sel && !sel.options.length) {
+          var opts = [["", "Mute"],
+            ["https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac", "94.9 Magic"],
+            ["https://oom-cmg.streamguys1.com/tam1055/tam1055-sgplayer-aac", "105.5 Dove"],
+            ["https://stream.revma.ihrhls.com/zc5096", "104.9 Seaview"],
+            ["https://stream.revma.ihrhls.com/zc641", "107.9 WSRZ"],
+            ["https://radio.weatherusa.net/NWR/KHB32.mp3", "NOAA Tampa"]];
+          opts.forEach(function (o) {
+            var op = document.createElement("option");
+            op.value = o[0]; op.textContent = o[1];
+            sel.appendChild(op);
+          });
+        }
+        if (sel) sel.value = savedRadio() != null ? savedRadio() : (s.station || "");
+      }
+      function applySkin() {
+        var s = getSet();
+        document.documentElement.classList.toggle("text-lg", s.text === "large");
+        var brief = document.querySelector(".ticker");
+        if (brief) brief.style.display = s.brief === "0" ? "none" : "";
+        try { localStorage.setItem("bw-kiosk", s.kiosk === "1" ? "1" : "0"); } catch (e) {}
+        document.documentElement.classList.toggle("kiosk", s.kiosk === "1");
+        var kbtn = document.getElementById("kioskbtn");
+        if (kbtn) { kbtn.classList.toggle("on", s.kiosk === "1"); kbtn.textContent = s.kiosk === "1" ? "Kiosk on" : "Kiosk"; }
+        if (typeof applySunDark === "function") applySunDark();
+        var bolt = document.getElementById("bolt-map");
+        if (bolt) bolt.src = "https://map.blitzortung.org/#6/" + homeLat() + "/" + homeLon();
+        if (typeof writeTodayChips === "function") writeTodayChips();
+        if (typeof pagesFromDock === "function") pagesFromDock();
+        var audio = document.getElementById("radioPlayer");
+        if (audio && audio.src) setLoudness(audio, audio.src);
+      }
+      function tap(rowId, key, after) {
+        var row = document.getElementById(rowId);
+        if (!row) return;
+        row.addEventListener("click", function (e) {
+          var b = e.target.closest("button[data-v]");
+          if (!b) return;
+          var part = {};
+          part[key] = b.getAttribute("data-v");
+          if (key === "rotate") part.rotate = parseInt(b.getAttribute("data-v"), 10);
+          putSet(part);
+          if (key === "dark") {
+            try {
+              if (part.dark === "auto") localStorage.removeItem("bw-dark-lock");
+              else localStorage.setItem("bw-dark-lock", part.dark === "night" ? "1" : "0");
+            } catch (e2) {}
+          }
+          if (key === "kiosk") {
+            try { localStorage.setItem("bw-kiosk", part.kiosk); } catch (e2) {}
+          }
+          paint();
+          applySkin();
+          if (after) after(part[key]);
+        });
+      }
+      tap("set-dark", "dark");
+      tap("set-kiosk", "kiosk");
+      tap("set-quiet", "quiet");
+      tap("set-text", "text");
+      tap("set-rot", "rotate");
+      tap("set-vol", "vol");
+      tap("set-noaa", "noaa");
+      tap("set-radioauto", "radioauto");
+      tap("set-camnight", "camNight");
+      tap("set-chipbolt", "chipBolt");
+      tap("set-chipcane", "chipCane");
+      tap("set-chiptrash", "chipTrash");
+      tap("set-brief", "brief");
+      var trashRow = document.getElementById("set-trash");
+      if (trashRow) trashRow.addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-v]");
+        if (!b) return;
+        var day = b.getAttribute("data-v");
+        try { localStorage.setItem("bw-trash-day", day); } catch (e2) {}
+        if (typeof saveHouse === "function") saveHouse();
+        if (typeof nextTrash === "function") nextTrash();
+        paint();
+      });
+      var sel = document.getElementById("set-station");
+      if (sel) sel.addEventListener("change", function () {
+        putSet({ station: sel.value });
+        saveRadio(sel.value);
+        if (typeof playStation === "function") {
+          var lab = (sel.options[sel.selectedIndex] || {}).textContent || "station";
+          playStation(sel.value, lab);
+        }
+      });
+      var zip = document.getElementById("set-zip");
+      if (zip) zip.addEventListener("change", function () {
+        var z = String(zip.value || "").replace(/\D/g, "").slice(0, 5);
+        zip.value = z;
+        if (z.length !== 5) return;
+        fetch("https://api.zippopotam.us/us/" + z).then(function (r) { return r.json(); }).then(function (d) {
+          var p = (d.places && d.places[0]) || {};
+          var lat = parseFloat(p.latitude);
+          var lon = parseFloat(p.longitude);
+          if (isNaN(lat) || isNaN(lon)) throw new Error("no");
+          var place = (p["place name"] || "") + " " + (p["state abbreviation"] || "");
+          putSet({ zip: z, lat: lat, lon: lon, place: place.trim() });
+          paint();
+          applySkin();
+          if (typeof refreshWeather === "function") refreshWeather();
+        }).catch(function () {
+          var hint = document.getElementById("set-zip-hint");
+          if (hint) hint.textContent = "ZIP " + z + " did not resolve. Weather still uses the last good point.";
+        });
+      });
+      var reset = document.getElementById("set-dockreset");
+      if (reset) reset.addEventListener("click", function () {
+        try {
+          localStorage.removeItem("bw-dock-v5");
+          localStorage.removeItem("bw-dock-v4");
+          localStorage.removeItem("bw-dock-v3");
+          localStorage.removeItem("bw-dock");
+        } catch (e) {}
+        location.reload();
+      });
+      function openSet() {
+        panel.hidden = false;
+        panel.classList.add("open");
+        paint();
+        var wrap = document.querySelector(".dock-wrap");
+        if (wrap) wrap.classList.add("open");
+      }
+      function closeSet() {
+        panel.classList.remove("open");
+        panel.hidden = true;
+      }
+      gear.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (panel.classList.contains("open")) closeSet();
+        else openSet();
+      });
+      var done = document.getElementById("set-done");
+      if (done) done.addEventListener("click", closeSet);
+      applySkin();
+    })();
+
     (function winkHeadlines() {
       var box = document.getElementById("wink-list");
       if (!box) return;
@@ -2442,7 +2768,7 @@ Cart shop:</textarea>
           if (el && row && row.v) el.textContent = Math.round(parseFloat(row.v)) + "°";
         }).catch(function () {});
       if (coast && days && days[0]) coast.textContent = days[0].detailedForecast || days[0].shortForecast || "";
-      fetch("https://api.sunrise-sunset.org/json?lat=26.96&lng=-82.35&formatted=0")
+      fetch("https://api.sunrise-sunset.org/json?lat=" + homeLat() + "&lng=" + homeLon() + "&formatted=0")
         .then(function (r) { return r.json(); })
         .then(function (j) {
           var r = (j && j.results) || {};
@@ -2582,7 +2908,7 @@ Cart shop:</textarea>
         setPill("pill-courts", courts, "Courts", phrase("courts", courts), side);
         setPill("pill-pool", pool, "Pool", phrase("pool", pool), side);
       });
-      fetch("https://api.open-meteo.com/v1/forecast?latitude=26.96&longitude=-82.35&current=uv_index,wind_speed_10m,wind_gusts_10m&hourly=uv_index&forecast_days=1&wind_speed_unit=mph&timezone=America%2FNew_York")
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=uv_index,wind_speed_10m,wind_gusts_10m&hourly=uv_index&forecast_days=1&wind_speed_unit=mph&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var uv = d.current && d.current.uv_index;
@@ -2594,7 +2920,7 @@ Cart shop:</textarea>
             if (needle) needle.style.left = Math.min(100, (uv / 11) * 100) + "%";
           }
         }).catch(function () {});
-      fetch("https://api.weather.gov/alerts/active?point=26.96,-82.35", { headers: { "Accept": "application/geo+json" } })
+      fetch("https://api.weather.gov/alerts/active?point=" + homePoint(), { headers: { "Accept": "application/geo+json" } })
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var feats = (d && d.features) || [];
@@ -2710,7 +3036,7 @@ Cart shop:</textarea>
             .sort(function (a, b) { return (a.magnitude || 9) - (b.magnitude || 9); });
         }
         function askSky(iso, slot, label) {
-          var url = "https://api.visibleplanets.dev/v3?latitude=26.96&longitude=-82.35&aboveHorizon=true";
+          var url = "https://api.visibleplanets.dev/v3?latitude=" + homeLat() + "&longitude=" + homeLon() + "&aboveHorizon=true";
           if (iso) url += "&time=" + encodeURIComponent(iso);
           var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
           var t = ctrl ? setTimeout(function () { ctrl.abort(); }, 5000) : null;
@@ -2776,7 +3102,7 @@ Cart shop:</textarea>
           fetch("https://api.wheretheiss.at/v1/satellites/25544").then(function (r) { return r.json(); }).then(function (d) {
             if (!d || d.latitude == null) { issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact passes."; return; }
             var lat = Number(d.latitude), lon = Number(d.longitude);
-            var R = 6371, p1 = 26.96 * Math.PI/180, p2 = lat * Math.PI/180, dl = (lon + 82.35) * Math.PI/180;
+            var R = 6371, p1 = homeLat() * Math.PI/180, p2 = lat * Math.PI/180, dl = (lon - homeLon()) * Math.PI/180;
             var a = Math.sin((p2-p1)/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
             var km = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
             var vis = d.visibility === "daylight" ? "in daylight" : (d.visibility === "eclipsed" ? "in Earth's shadow" : "sunlit");
@@ -2793,7 +3119,7 @@ Cart shop:</textarea>
       if (/high|warning|yes/i.test(ripTxt)) setPill("pill-rip", "no", "Rip current", "Don’t swim");
       else if (/moderate|advisory/i.test(ripTxt)) setPill("pill-rip", "win", "Rip current", "Be careful");
       else setPill("pill-rip", "go", "Rip current", "Typical");
-      fetch("https://api.open-meteo.com/v1/forecast?latitude=26.96&longitude=-82.35&daily=precipitation_sum&past_days=31&forecast_days=1&precipitation_unit=inch&timezone=America%2FNew_York")
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&daily=precipitation_sum&past_days=31&forecast_days=1&precipitation_unit=inch&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var days = (d.daily && d.daily.time) || [];
@@ -2811,7 +3137,7 @@ Cart shop:</textarea>
           if (el) el.textContent = total.toFixed(2) + '" in ' + name;
           if (pts.length) drawHistChart("rainmo-chart", pts, "#4a90a4", 0, Math.max(1, total), '"');
         }).catch(function () {});
-      fetch("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=26.96&longitude=-82.35&current=us_aqi,pm2_5")
+      fetch("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=us_aqi,pm2_5")
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var aqi = d.current && d.current.us_aqi;
@@ -3106,10 +3432,10 @@ Cart shop:</textarea>
     }
     function refreshWeather() {
       var hdr = { "Accept": "application/geo+json" };
-      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=26.9595&longitude=-82.3543&current=temperature_2m,apparent_temperature,relative_humidity_2m&temperature_unit=fahrenheit&timezone=America/New_York")
+      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m&temperature_unit=fahrenheit&timezone=America/New_York")
         .then(function (r) { return r.json(); })
         .catch(function () { return null; });
-      fetch("https://api.weather.gov/points/26.9595,-82.3543", { headers: hdr })
+      fetch("https://api.weather.gov/points/" + homePoint(), { headers: hdr })
         .then(function (r) { return r.json(); })
         .then(function (pt) {
           var p = pt.properties || {};
@@ -3349,7 +3675,7 @@ Cart shop:</textarea>
         });
     }
     function applyOpenMeteoFallback() {
-      fetch("https://api.open-meteo.com/v1/forecast?latitude=26.9595&longitude=-82.3543&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York")
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York")
         .then(function (r) { return r.json(); })
         .then(function (om) {
           if (!om || !om.current) return;
@@ -3677,7 +4003,7 @@ Cart shop:</textarea>
       var txt = document.getElementById("alerttext");
       var frame = document.querySelector(".frame");
       if (!bar || !txt) return;
-      fetch("https://api.weather.gov/alerts/active?point=26.96,-82.35", {
+      fetch("https://api.weather.gov/alerts/active?point=" + homePoint(), {
         headers: { "Accept": "application/geo+json" }
       }).then(function (r) { return r.json(); }).then(function (data) {
         var feats = (data && data.features) || [];
@@ -3747,7 +4073,7 @@ Cart shop:</textarea>
             }
             window.__nwrAlert = true;
             window.__forceRadio = true;
-            if (!playing || String(playing).indexOf("KHB32") < 0) {
+            if (getSet().noaa !== "0" && (!playing || String(playing).indexOf("KHB32") < 0)) {
               playStation(NOAA_URL, "NOAA Tampa (warning)", { keepSaved: true });
             }
           } else if (window.__nwrAlert) {
@@ -3820,7 +4146,7 @@ Cart shop:</textarea>
         tick.style.animation = "tick 80s linear infinite";
       }
       function fillOm() {
-        fetch("https://api.open-meteo.com/v1/forecast?latitude=26.9595&longitude=-82.3543&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m&hourly=precipitation_probability,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York")
+        fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m&hourly=precipitation_probability,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York")
           .then(function (r) { return r.json(); })
           .then(function (om) {
             if (!om || !om.current) return;
