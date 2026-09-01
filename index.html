@@ -3137,11 +3137,57 @@ Cart shop:</textarea>
               }
             }).catch(function () {});
           saveWxSnap();
-          refreshMarineSky(days, hours, obs);
-          writeBriefing();
-          refreshExtras(hours, days);
+          try { refreshMarineSky(days, hours, obs); } catch (e) {}
+          try { writeBriefing(); } catch (e) {}
+          try { refreshExtras(hours, days); } catch (e) {}
+          if (!hours.length) applyOpenMeteoFallback();
         })
-        .catch(function () { loadWxSnap("offline"); });
+        .catch(function () {
+          loadWxSnap("offline");
+          applyOpenMeteoFallback();
+        });
+    }
+    function applyOpenMeteoFallback() {
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=26.9595&longitude=-82.3543&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York")
+        .then(function (r) { return r.json(); })
+        .then(function (om) {
+          if (!om || !om.current) return;
+          var tempF = Math.round(om.current.temperature_2m);
+          var feelF = Math.round(om.current.apparent_temperature);
+          var rh = om.current.relative_humidity_2m;
+          var wind = Math.round(om.current.wind_speed_10m);
+          var gust = om.current.wind_gusts_10m != null ? Math.round(om.current.wind_gusts_10m) : null;
+          var tempEl = document.getElementById("live-temp");
+          var feelEl = document.getElementById("live-feels");
+          if (tempEl) { tempEl.innerHTML = tempF + "&deg;"; if (typeof paintTemp === "function") paintTemp(tempEl, tempF); }
+          if (feelEl) { feelEl.innerHTML = feelF + "&deg;"; if (typeof paintTemp === "function") paintTemp(feelEl, feelF); }
+          var code = om.current.weather_code;
+          var word = code >= 95 ? "storms" : code >= 80 ? "showers" : code >= 61 ? "rain" : code >= 51 ? "drizzle" : code >= 45 ? "fog" : code >= 3 ? "cloudy" : code >= 2 ? "partly cloudy" : code >= 1 ? "mainly clear" : "clear";
+          var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+          var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
+          var skyEl = document.getElementById("live-sky");
+          if (skyEl) skyEl.textContent = greet + " " + word.charAt(0).toUpperCase() + word.slice(1) + " in Englewood. It is " + tempF + "° and feels like " + feelF + "°. Wind " + wind + " mph" + (gust != null ? ", gusts " + gust : "") + ".";
+          var times = (om.hourly && om.hourly.time) || [];
+          var pops = (om.hourly && om.hourly.precipitation_probability) || [];
+          var winds = (om.hourly && om.hourly.wind_speed_10m) || [];
+          var codes = (om.hourly && om.hourly.weather_code) || [];
+          var hours = [];
+          for (var i = 0; i < times.length && i < 36; i++) {
+            var c = codes[i] || 0;
+            var short = c >= 95 ? "Thunderstorms" : c >= 61 ? "Rain" : c >= 3 ? "Cloudy" : "Clear";
+            hours.push({
+              startTime: times[i],
+              endTime: times[i + 1] || times[i],
+              shortForecast: short,
+              windSpeed: String(Math.round(winds[i] || 0)) + " mph",
+              probabilityOfPrecipitation: { value: pops[i] }
+            });
+          }
+          window.__hours = hours;
+          writeBestWindow();
+          writeHdrMeta();
+          saveWxSnap();
+        }).catch(function () {});
     }
     loadWxSnap();
     refreshWeather();
