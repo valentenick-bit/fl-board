@@ -1529,7 +1529,12 @@ Cart shop:</textarea>
     function pagesFromDock() {
       pages = rotateList();
       var on = document.querySelector(".page.on");
-      i = pages.indexOf(on ? on.id : "");
+      var cur = on ? on.id : "now";
+      if (cur === "cam" && pages.indexOf("cam") < 0) {
+        showPage("now");
+        cur = "now";
+      }
+      i = pages.indexOf(cur);
       if (i < 0) i = 0;
     }
     (function restoreDockOrder() {
@@ -2721,12 +2726,47 @@ Cart shop:</textarea>
           raw,
           "https://corsproxy.io/?" + encodeURIComponent(raw),
           "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw),
+          "https://api.allorigins.win/get?url=" + encodeURIComponent(raw),
           "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(raw)
         ];
+        function asStorms(d) {
+          if (!d) return null;
+          if (typeof d.contents === "string") {
+            try { d = JSON.parse(d.contents); } catch (e) { return null; }
+          }
+          var storms = d.activeStorms || d.storms || d.data;
+          return Array.isArray(storms) ? storms : null;
+        }
+        function fromRss(items) {
+          var seen = {}, out = [];
+          (items || []).forEach(function (it) {
+            var t = String(it.title || "");
+            var m = t.match(/(Hurricane|Tropical Storm|Tropical Depression|Potential Tropical Cyclone)\s+([A-Za-z]+|\d+)/i);
+            if (!m) return;
+            var key = m[2].toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            var cls = /hurricane/i.test(m[1]) ? "HU" : /storm/i.test(m[1]) ? "TS" : /depression/i.test(m[1]) ? "TD" : "PTC";
+            out.push({ name: m[2], classification: cls, latitude: "", longitude: "", intensity: "" });
+          });
+          return out;
+        }
+        function rssFallback() {
+          fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent("https://www.nhc.noaa.gov/index-at.xml"))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              var storms = fromRss(d && d.items);
+              if (storms && storms.length) apply({ activeStorms: storms });
+              else fail();
+            }).catch(fail);
+        }
         function next(i) {
-          if (i >= urls.length) return fail();
-          fetch(urls[i]).then(function (r) { return r.json(); }).then(function (d) {
-            if (d && (d.activeStorms || d.storms)) apply(d);
+          if (i >= urls.length) return rssFallback();
+          fetch(urls[i]).then(function (r) { return r.text(); }).then(function (t) {
+            var d;
+            try { d = JSON.parse(t); } catch (e) { return next(i + 1); }
+            var storms = asStorms(d);
+            if (storms) apply({ activeStorms: storms });
             else next(i + 1);
           }).catch(function () { next(i + 1); });
         }
