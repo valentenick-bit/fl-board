@@ -703,6 +703,7 @@ Cart shop:</textarea>
     </div>
   </div>
   <script>
+    window.__wxRisk = window.__wxRisk || { alert: false, cane: false, bolt: false, hurr: false };
     function showPage(id) {
       document.querySelectorAll(".page.on").forEach(function (p) { p.classList.remove("on"); });
       document.querySelectorAll(".page").forEach(function (p) { if (p.id === id) p.classList.add("on"); });
@@ -1333,7 +1334,7 @@ Cart shop:</textarea>
     })();
     var pages = ["now","cam","tenday","radar","marine","sky","ent","house","deliver","radio","traffic"], i = 0, rot, idle;
     function warnList() {
-      var ev = window.__wxRisk.warnTypes || "";
+      var ev = (window.__wxRisk && window.__wxRisk.warnTypes) || "";
       var list = ["radar"];
       if (/hurricane|tropical|surge/.test(ev)) list.push("hurr", "cane", "marine");
       if (/thunder|tornado|severe|lightning/.test(ev)) list.push("bolt");
@@ -1374,7 +1375,7 @@ Cart shop:</textarea>
       });
     });
 
-    window.__wxRisk = { alert: false, cane: false, bolt: false, hurr: false };
+    window.__wxRisk = window.__wxRisk || { alert: false, cane: false, bolt: false, hurr: false };
     window.__hurrSlides = [];
     window.__hurrI = 0;
     window.__hurrTick = "";
@@ -1504,9 +1505,10 @@ Cart shop:</textarea>
       return allDockPages().filter(function (id) {
         if (id === "news" || id === "wink" || id === "contacts" || id === "villa" || id === "power") return false;
         if (id === "cam" && camOffHours()) return false;
-        if (id === "cane") return !!window.__wxRisk.cane;
-        if (id === "hurr") return !!window.__wxRisk.hurr;
-        if (id === "bolt") return !!window.__wxRisk.bolt;
+        var risk = window.__wxRisk || {};
+        if (id === "cane") return !!risk.cane;
+        if (id === "hurr") return !!risk.hurr;
+        if (id === "bolt") return !!risk.bolt;
         return true;
       });
     }
