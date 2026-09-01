@@ -121,7 +121,9 @@
     .ent-h { margin:8px 0 6px; font-family:"Source Sans 3",system-ui,sans-serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:800; }
     #now h2 { font-size:40px; letter-spacing:-.02em; }
     .today-stamp { margin:-6px 0 10px; font-size:15px; font-weight:700; color:var(--teal); letter-spacing:.04em; }
-    .best-chip { margin:0 0 12px; padding:10px 14px; border-radius:16px; background:var(--teal); color:#fff; font-weight:800; font-size:16px; letter-spacing:.01em; }
+    .best-chip { margin:10px 0 12px; padding:12px 14px; border-radius:16px; background:var(--teal); color:#fff; }
+    .best-chip b { display:block; font-size:12px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:6px; }
+    .best-chip span { display:block; font-weight:700; font-size:16px; line-height:1.35; }
     #now .sky { background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:16px; padding:12px 14px; }
     .today-boards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     #now .ent-h { display:inline-block; background:var(--teal); color:#fff; padding:5px 10px; border-radius:999px; letter-spacing:.12em; }
@@ -338,7 +340,7 @@
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
         <p class="today-stamp" id="today-stamp"></p>
-        <p class="sky" id="live-sky">Good morning. Mostly sunny in Englewood with a heat index near 102°. Afternoon storms are likely after 2 p.m. Beach and cart are best this morning before the storms build.</p>
+        <p class="sky" id="live-sky">Good evening.</p>
         <div class="pills">
           <div class="tg-head"><span></span><span>Morning</span><span>Afternoon</span></div>
           <div class="tg-row" id="pill-beach"><span class="tg-name">Beach</span><span class="tg-cell go" data-side="am">—</span><span class="tg-cell go" data-side="pm">—</span></div>
@@ -348,9 +350,8 @@
           <div class="tg-row" id="pill-boat"><span class="tg-name">Boat</span><span class="tg-cell go" data-side="am">—</span><span class="tg-cell go" data-side="pm">—</span></div>
           <div class="tg-row" id="pill-courts"><span class="tg-name">Courts</span><span class="tg-cell go" data-side="am">—</span><span class="tg-cell go" data-side="pm">—</span></div>
         </div>
-        <p class="pill-key">Morning is 6 a.m.–noon. Afternoon is noon–7 p.m. Green go · gold short window · coral don’t.</p>
-        <div class="best-chip" id="best-window">Best window · checking hourly…</div>
-        <p class="sky" id="do-hour">Checking the next hour…</p>
+        <div class="best-chip" id="best-window"><b>Best window</b><span>Checking hourly…</span></div>
+        <p class="sky" id="do-hour" hidden></p>
         <div class="today-boards">
           <div>
             <h3 class="ent-h">Out and about</h3>
@@ -961,6 +962,7 @@ Cart shop:</textarea>
       if (stamp) stamp.textContent = new Date().toLocaleString("en-US", { weekday:"long", month:"long", day:"numeric", timeZone:"America/New_York" }) + " on the Key";
       paintSkyHeader();
       applySunDark();
+      if (typeof pagesFromDock === "function") pagesFromDock();
       stampGreet();
       writeWhoLine();
       writeHdrMeta();
@@ -1106,12 +1108,18 @@ Cart shop:</textarea>
       var beach = span("beach");
       var cart = span("cart");
       var boat = span("boat");
-      var bits = [];
-      bits.push(beach ? "Beach " + beach : "Beach later");
-      bits.push(cart ? "Cart " + cart : "Park the cart");
-      bits.push(boat ? "Launch " + boat : "Don’t launch");
-      el.textContent = "Best window · " + bits.join(" · ");
-      window.__bestWindow = el.textContent;
+      var pool = span("beach");
+      var courts = span("cart");
+      var lines = [];
+      lines.push(beach ? "Beach " + beach + " — lower rain chance and wind under 18." : "Beach is off until the rain or storm risk drops.");
+      lines.push(cart ? "Cart " + cart + "." : "Park the cart through the next wet or windy hours.");
+      lines.push(boat ? "Launch " + boat + " — wind under 15 and no soaking rain." : "Don’t launch. Wait for a drier, lighter-wind hour.");
+      lines.push(pool ? "Pool " + pool + "." : "Pool is a short-or-skip until storms ease.");
+      lines.push(courts ? "Courts " + courts + "." : "Courts later if the afternoon cells miss.");
+      if (window.__nextTide) lines.push(window.__nextTide + ".");
+      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm)) lines.push(window.__nextStorm + ".");
+      el.innerHTML = "<b>Best window</b><span>" + lines.join(" ") + "</span>";
+      window.__bestWindow = lines.join(" ");
     }
 
     function inQuietHours() {
@@ -1156,6 +1164,17 @@ Cart shop:</textarea>
         return hr >= 20 || hr < 7;
       }
       return now < (rise - pad) || now >= (set + pad);
+    }
+    function camOffHours() {
+      var rise = window.__bwCharts && window.__bwCharts.rise ? new Date(window.__bwCharts.rise).getTime() : 0;
+      var set = window.__bwCharts && window.__bwCharts.set ? new Date(window.__bwCharts.set).getTime() : 0;
+      var now = Date.now();
+      var pad = 60 * 60 * 1000;
+      if (!rise || !set) {
+        var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
+        return hr >= 21 || hr < 6;
+      }
+      return now >= (set + pad) || now < (rise - pad);
     }
     function applySunDark() {
       var lock;
@@ -1420,28 +1439,42 @@ Cart shop:</textarea>
     function fetchHurrDisc(s) {
       var el = document.getElementById("hurr-disc");
       if (!el) return;
-      var bin = String((s && s.binNumber) || "").replace(/\D/g, "");
+      var bin = String((s && s.binNumber) || "").replace(/\D/g, "") || "5";
+      var id = String((s && s.id) || "al052026").toLowerCase();
+      var yr = (id.match(/20\d{2}/) || ["2026"])[0];
+      var raw = [
+        "https://www.nhc.noaa.gov/text/MIATCDAT" + bin + ".shtml",
+        "https://www.nhc.noaa.gov/archive/" + yr + "/" + id.replace(/20\d{2}/, "") + "/" + id + ".discus.latest.shtml",
+        "https://www.nhc.noaa.gov/text/MIATWDAT.shtml"
+      ];
       var urls = [];
-      if (bin) urls.push("https://www.nhc.noaa.gov/text/MIATCDAT" + bin + ".shtml");
-      urls.push("https://www.nhc.noaa.gov/text/MIATWDAT.shtml");
-      urls = urls.concat(urls.map(function (u) { return "https://corsproxy.io/?" + encodeURIComponent(u); }));
-      function clip(txt) {
-        txt = String(txt || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-        var key = txt.match(/Key Messages?:([\s\S]{40,500})/i);
-        var spec = txt.match(/SPECIAL FEATURES[\s\S]{0,80}?(\.[\s\S]{80,420}?)(?:GULF|ATLANTIC|CARIBBEAN|\.\.\.)/i);
-        var body = (key && key[1]) || (spec && spec[1]) || txt;
-        body = body.replace(/^[\s.\-]+/, "").trim();
-        if (body.length > 420) body = body.slice(0, 417).replace(/\s+\S*$/, "") + "…";
-        return body;
+      raw.forEach(function (u) {
+        urls.push(u);
+        urls.push("https://corsproxy.io/?" + encodeURIComponent(u));
+        urls.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(u));
+      });
+      function extract(html) {
+        var text = String(html || "");
+        var pre = text.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+        if (pre) text = pre[1];
+        text = text.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+        var km = text.match(/Key Messages?:(.{80,700}?)(?:FORECAST POSITIONS|\$\$|NNNN)/i);
+        if (km) return km[1].replace(/^\s*\d+\.\s*/g, "").trim();
+        var spec = text.match(/SPECIAL FEATURES(.{80,700}?)(?:GULF OF|ATLANTIC|CARIBBEAN)/i);
+        if (spec) return spec[1].trim();
+        var disc = text.match(/Discussion Number.{0,80}?(.{120,500}?)(?:Key Messages|FORECAST POSITIONS)/i);
+        if (disc) return disc[1].trim();
+        return text.length > 80 ? text.slice(0, 420) : "";
       }
       function next(i) {
         if (i >= urls.length) {
-          if (!el.dataset.ok) el.innerHTML = "<b>NHC discussion</b><span>Could not load the text product. Outlook maps still update.</span>";
+          if (!el.dataset.ok) el.innerHTML = "<b>NHC discussion</b><span>Text product did not load. Open hurricanes.gov for the written discussion.</span>";
           return;
         }
         fetch(urls[i]).then(function (r) { return r.text(); }).then(function (t) {
-          var body = clip(t);
-          if (body.length < 40) return next(i + 1);
+          var body = extract(t);
+          if (body.length < 60) return next(i + 1);
+          if (body.length > 480) body = body.slice(0, 477).replace(/\s+\S*$/, "") + "…";
           el.dataset.ok = "1";
           el.innerHTML = "<b>NHC discussion</b><span>" + body + "</span>";
         }).catch(function () { next(i + 1); });
@@ -1469,6 +1502,7 @@ Cart shop:</textarea>
     function rotateList() {
       return allDockPages().filter(function (id) {
         if (id === "news" || id === "wink" || id === "contacts" || id === "villa" || id === "power") return false;
+        if (id === "cam" && camOffHours()) return false;
         if (id === "cane") return !!window.__wxRisk.cane;
         if (id === "hurr") return !!window.__wxRisk.hurr;
         if (id === "bolt") return !!window.__wxRisk.bolt;
