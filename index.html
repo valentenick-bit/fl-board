@@ -308,6 +308,7 @@
     html.kiosk .sky { margin:4px 0 8px; font-size:16px; }
     html.kiosk .pills { margin-bottom:8px; }
     html.kiosk iframe.full, html.kiosk iframe.lite, html.kiosk img.radar-loop, html.kiosk .radar-crop { height:auto; }
+    .radar-crop.wide img { transform:scale(1.35); transform-origin:50% 50%; }
     html.kiosk .tenday { margin:6px 0 0; }
     html.phone main { overflow-y:auto; -webkit-overflow-scrolling:touch; }
     .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
@@ -430,7 +431,7 @@
       </section>
       <section id="tenday" class="page">
         <h2 data-k="On the Key">Weather</h2>
-        <p class="wx-nowline" id="wx-nowline">Englewood · updating</p>
+        <p class="wx-nowline" id="wx-nowline">Updating…</p>
         <div class="hourly">
           <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
           <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
@@ -453,7 +454,7 @@
         </div>
         <div class="marine-graphs">
           <div class="card"><b>Air quality</b><span id="live-aqi">—</span>
-            <div id="live-aqi-note" class="card" style="background:transparent;padding:0;margin:0">Englewood</div>
+            <div id="live-aqi-note" class="card" style="background:transparent;padding:0;margin:0">Home ZIP</div>
           </div>
           <div class="card"><b>Rain this month</b><span id="live-rain-mo">—</span>
             <div class="tide" id="rainmo-chart"></div>
@@ -466,13 +467,13 @@
       </section>
       <section id="radar" class="page">
         <h2 data-k="Over the Key">Radar</h2>
-        <p>KTBW loop cropped on Englewood / the Key. <a href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
+        <p id="radar-note">Radar follows the home ZIP. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
         <div class="radar-crop"><img class="radar-loop" id="radar-loop" alt="KTBW radar loop" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/></div>
       </section>
       <section id="marine" class="page">
         <h2 data-k="Gulf and inlet">Marine</h2>
         <div class="marine-graphs">
-        <div class="card"><b>Manasota tide</b><span id="live-tide-today">Loading tides…</span>
+        <div class="card"><b id="tide-title">Tide</b><span id="live-tide-today">Loading tides…</span>
           <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/></svg></div>
         </div>
         <div class="card"><b>Ocean surge</b><span id="live-surge">vs predicted tide</span>
@@ -612,17 +613,12 @@ Cart shop:</textarea>
           <p style="margin:8px 0 0"><b>Marine now.</b> <span id="live-nwr-marine">Coastal waters update with the Marine page.</span></p>
         </div>
       </section>
-      <section id="news" class="page">
-        <h2 data-k="National">Fox News</h2>
-        <p><a href="https://www.foxnews.com/" target="_blank" rel="noopener">Open FoxNews.com</a> if the embed is blocked.</p>
-        <iframe class="full" title="Fox News" src="https://www.foxnews.com/"></iframe>
-      </section>
       <section id="wink" class="page">
-        <h2 data-k="Southwest Florida">WINK News</h2>
+        <h2 data-k="Near home">Local news</h2>
+        <p class="pill-key" id="news-note">Headlines follow the home ZIP.</p>
         <div id="wink-list">
-          <div class="card"><b>Southwest Florida headlines</b><span>Loading WINK…</span></div>
+          <div class="card"><b>Local headlines</b><span>Loading…</span></div>
         </div>
-        <p><a href="https://www.winknews.com/" target="_blank" rel="noopener">Open WINKNews.com</a></p>
       </section>
       <section id="cane" class="page">
         <h2 data-k="Atlantic and Gulf">Tropical</h2>
@@ -743,8 +739,7 @@ Cart shop:</textarea>
       <button type="button" data-p="cane">Tropical</button>
       <button type="button" data-p="hurr">Hurricane</button>
       <button type="button" data-p="bolt">Bolt</button>
-      <button type="button" data-p="news">Fox</button>
-      <button type="button" data-p="wink">WINK</button>
+      <button type="button" data-p="wink">News</button>
       <button type="button" data-p="contacts">Emergency</button>
       <button type="button" data-p="power">Power</button>
       <button type="button" data-p="villa">Villa</button>
@@ -877,6 +872,53 @@ Cart shop:</textarea>
     function homeLat() { return Number(getSet().lat) || 26.9595; }
     function homeLon() { return Number(getSet().lon) || -82.3543; }
     function homePoint() { return homeLat() + "," + homeLon(); }
+    function homePlace() {
+      return String(getSet().place || "Englewood FL").replace(/\s+FL$/i, "").trim() || "Englewood";
+    }
+    function homeTide() { return getSet().tide || "8725809"; }
+    function homeRadar() { return getSet().radar || "KTBW"; }
+    function applyRadar() {
+      var st = homeRadar();
+      var img = document.getElementById("radar-loop");
+      var note = document.getElementById("radar-note");
+      var link = document.getElementById("radar-link");
+      var crop = document.querySelector(".radar-crop");
+      var url = "https://radar.weather.gov/ridge/standard/" + st + "_loop.gif";
+      if (img) {
+        img.alt = st + " radar loop";
+        img.src = url + "?t=" + Date.now();
+      }
+      if (link) link.href = "https://radar.weather.gov/station/" + st + "/standard";
+      if (note) {
+        note.innerHTML = st + " loop on " + homePlace() + ". <a id=\"radar-link\" href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">Full NWS view</a>";
+      }
+      if (crop) crop.classList.toggle("wide", String(getSet().zip || "") !== "34223");
+      window.__radarBase = url;
+    }
+    function resolveHomeGeo() {
+      fetch("https://api.weather.gov/points/" + homePoint(), { headers: { "Accept": "application/geo+json", "User-Agent": "BeachWalkBoard" } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var st = (d.properties && d.properties.radarStation) || "KTBW";
+          putSet({ radar: st });
+          applyRadar();
+        }).catch(function () { applyRadar(); });
+      fetch("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/lat/" + homeLat() + "/lng/" + homeLon() + "/radius/30/stations.json?type=tidepredictions")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var list = (d && (d.stations || d)) || [];
+          if (!Array.isArray(list) || !list.length) return;
+          var pick = list[0];
+          putSet({ tide: pick.id || pick.stationId || "8725809", tideName: pick.name || pick.id || "Tide" });
+          var title = document.getElementById("tide-title");
+          if (title) title.textContent = (getSet().tideName || homePlace() + " tide");
+        }).catch(function () {
+          var title = document.getElementById("tide-title");
+          if (title) title.textContent = homePlace() + " tide";
+        });
+      var aqi = document.getElementById("live-aqi-note");
+      if (aqi && /^Home ZIP|Englewood/.test(aqi.textContent || "")) aqi.textContent = homePlace();
+    }
     function showPage(id) {
       document.querySelectorAll(".page.on").forEach(function (p) { p.classList.remove("on"); });
       document.querySelectorAll(".page").forEach(function (p) { if (p.id === id) p.classList.add("on"); });
@@ -2311,6 +2353,13 @@ Cart shop:</textarea>
         if (bolt) bolt.src = "https://map.blitzortung.org/#6/" + homeLat() + "/" + homeLon();
         if (typeof writeTodayChips === "function") writeTodayChips();
         if (typeof pagesFromDock === "function") pagesFromDock();
+        if (typeof resolveHomeGeo === "function") resolveHomeGeo();
+        if (typeof window.__reloadLocalNews === "function") window.__reloadLocalNews();
+        if (typeof stampGreet === "function") stampGreet();
+        var nowline = document.getElementById("wx-nowline");
+        if (nowline && /Englewood|Updating/.test(nowline.textContent || "")) {
+          nowline.textContent = homePlace() + " · updating";
+        }
         var audio = document.getElementById("radioPlayer");
         if (audio && audio.src) setLoudness(audio, audio.src);
       }
@@ -2422,48 +2471,69 @@ Cart shop:</textarea>
       applySkin();
     })();
 
-    (function winkHeadlines() {
+    function localNewsRss() {
+      var place = (typeof homePlace === "function" ? homePlace() : "Englewood");
+      var zip = (getSet().zip || "34223");
+      var q = encodeURIComponent(place + " " + zip + " when:1d");
+      return "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
+    }
+    (function localHeadlines() {
       var box = document.getElementById("wink-list");
       if (!box) return;
-      var feeds = [
-        "https://news.google.com/rss/search?q=site:winknews.com+when:1d&hl=en-US&gl=US&ceid=US:en",
-        "https://www.winknews.com/search/?f=rss&t=article&l=12"
-      ];
+      function parseRss(xml) {
+        var out = [];
+        if (!xml) return out;
+        var parts = String(xml).split(/<item[\s>]/i);
+        for (var i = 1; i < parts.length; i++) {
+          var chunk = parts[i];
+          function tag(name) {
+            var m = chunk.match(new RegExp("<" + name + "[^>]*>([\\s\\S]*?)</" + name + ">", "i"));
+            if (!m) return "";
+            return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+          }
+          out.push({ title: tag("title"), link: tag("link"), pubDate: tag("pubDate") });
+        }
+        return out;
+      }
       function cleanTitle(s) {
-        return String(s || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*WINK News.*$/i, "").trim();
+        return String(s || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News|Google News).*$/i, "").trim();
       }
       function render(items) {
-        var seen = {};
-        var rows = [];
+        var seen = {}, rows = [];
         items.forEach(function (it) {
           var title = cleanTitle(it.title);
           var key = title.toLowerCase().slice(0, 48);
           if (!title || seen[key]) return;
           seen[key] = true;
-          rows.push({ title: title, link: it.link || it.url || "https://www.winknews.com/", when: it.pubDate || it.published || "" });
+          rows.push({ title: title, link: it.link || "#", when: it.pubDate || "" });
         });
-        rows = rows.slice(0, 8);
+        rows = rows.slice(0, 10);
+        var note = document.getElementById("news-note");
+        if (note) note.textContent = homePlace() + " " + (getSet().zip || "") + " · last day";
         if (!rows.length) {
-          box.innerHTML = '<div class="card"><b>WINK site blocks embeds</b><span><a href="https://www.winknews.com/" target="_blank" rel="noopener">Open WINKNews.com</a></span></div>';
+          box.innerHTML = '<div class="card"><b>No local headlines yet</b><span>The ZIP search came back empty. Try again in a few minutes.</span></div>';
           return;
         }
         box.innerHTML = rows.map(function (r) {
           var t = r.when ? new Date(r.when) : null;
-          var when = (t && !isNaN(t)) ? t.toLocaleString("en-US", { weekday:"short", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "WINK";
+          var when = (t && !isNaN(t)) ? t.toLocaleString("en-US", { weekday:"short", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : homePlace();
           return '<div class="card"><b><a href="' + r.link + '" target="_blank" rel="noopener">' + r.title + "</a></b><span>" + when + "</span></div>";
         }).join("");
       }
-      function rssJson(rss) {
-        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
-          .then(function (r) { return r.json(); })
-          .then(function (d) { return (d && d.items) || []; })
-          .catch(function () { return []; });
-      }
       function load() {
-        Promise.all(feeds.map(rssJson)).then(function (lists) {
-          render([].concat.apply([], lists));
-        });
+        var raw = localNewsRss();
+        var urls = [raw, "https://corsproxy.io/?" + encodeURIComponent(raw)];
+        function next(i) {
+          if (i >= urls.length) return render([]);
+          fetch(urls[i]).then(function (r) { return r.text(); }).then(function (t) {
+            var items = parseRss(t);
+            if (items.length) render(items);
+            else next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
       }
+      window.__reloadLocalNews = load;
       load();
       setInterval(load, 10 * 60 * 1000);
     })();
@@ -2687,7 +2757,7 @@ Cart shop:</textarea>
     function refreshMarineSky(days, hours, obs) {
       fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" +
         new Date().toISOString().slice(0,10).replace(/-/g,"") +
-        "&range=36&datum=MLLW&station=8725809&time_zone=lst_ldt&units=english&interval=hilo&format=json")
+        "&range=36&datum=MLLW&station=" + homeTide() + "&time_zone=lst_ldt&units=english&interval=hilo&format=json")
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var preds = data.predictions || [];
@@ -2749,11 +2819,11 @@ Cart shop:</textarea>
           if (coast && line) coast.textContent = line;
           if (nwrM && line) nwrM.textContent = line;
         }).catch(function () {
-          if (nwrM) nwrM.textContent = "Coastal waters Englewood to Bonita Beach — see Marine page if this is blank.";
+          if (nwrM) nwrM.textContent = "Coastal waters near " + homePlace() + " — see Marine page if this is blank.";
         });
       if (windEl && document.getElementById("live-wind")) windEl.textContent = document.getElementById("live-wind").textContent;
       if (gustEl && document.getElementById("live-gusts")) gustEl.textContent = document.getElementById("live-gusts").textContent;
-      fetch("https://marine-api.open-meteo.com/v1/marine?latitude=26.93&longitude=-82.37&current=sea_surface_temperature&temperature_unit=fahrenheit")
+      fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=sea_surface_temperature&temperature_unit=fahrenheit")
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var el = document.getElementById("live-sst");
@@ -3316,7 +3386,7 @@ Cart shop:</textarea>
       if (bolt && !/Warning|Watch/i.test(bolt.textContent || "")) {
         bolt.textContent = /thunder|lightning/i.test(fx) ? "In the forecast" : "Clear";
       }
-      fetch("https://marine-api.open-meteo.com/v1/marine?latitude=26.93&longitude=-82.37&hourly=sea_surface_temperature&past_days=1&forecast_days=1&temperature_unit=fahrenheit")
+      fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + homeLat() + "&longitude=" + homeLon() + "&hourly=sea_surface_temperature&past_days=1&forecast_days=1&temperature_unit=fahrenheit")
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var hs = (d.hourly && d.hourly.time) || [];
@@ -3539,7 +3609,7 @@ Cart shop:</textarea>
             var short = nowH.shortForecast || today.shortForecast || "Conditions updating";
             var detail = String(today.detailedForecast || nowH.detailedForecast || "").replace(/\s+/g, " ").trim();
             if (detail.length > 240) detail = detail.slice(0, 237).replace(/\s+\S*$/, "") + ".";
-            var bits = [greet, short.replace(/\.$/, "") + " in Englewood."];
+            var bits = [greet, short.replace(/\.$/, "") + " in " + homePlace() + "."];
             if (tempF != null) bits.push("It is " + tempF + "°" + (feelF != null && feelF !== tempF ? " and feels like " + feelF + "°" : "") + ".");
             if (today.temperature != null && today.name && !/night/i.test(today.name)) bits.push("Today's high is near " + today.temperature + "°.");
             if (detail && detail.toLowerCase().indexOf(short.toLowerCase()) < 0) bits.push(detail);
@@ -3642,7 +3712,7 @@ Cart shop:</textarea>
             }).join("");
             var nowline = document.getElementById("wx-nowline");
             if (nowline && rows[0]) {
-              nowline.textContent = "Englewood · " + (rows[0].row.fx || "") + " · H " + rows[0].row.hi + "° / L " + rows[0].row.lo + "°";
+              nowline.textContent = homePlace() + " · " + (rows[0].row.fx || "") + " · H " + rows[0].row.hi + "° / L " + rows[0].row.lo + "°";
             }
           }
           fetch("https://api.weather.gov/stations/KVNC/observations?limit=36", { headers: hdr })
@@ -3693,7 +3763,7 @@ Cart shop:</textarea>
           var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
           var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
           var skyEl = document.getElementById("live-sky");
-          if (skyEl) skyEl.textContent = greet + " " + word.charAt(0).toUpperCase() + word.slice(1) + " in Englewood. It is " + tempF + "° and feels like " + feelF + "°. Wind " + wind + " mph" + (gust != null ? ", gusts " + gust : "") + ".";
+          if (skyEl) skyEl.textContent = greet + " " + word.charAt(0).toUpperCase() + word.slice(1) + " in " + homePlace() + ". It is " + tempF + "° and feels like " + feelF + "°. Wind " + wind + " mph" + (gust != null ? ", gusts " + gust : "") + ".";
           var times = (om.hourly && om.hourly.time) || [];
           var pops = (om.hourly && om.hourly.precipitation_probability) || [];
           var winds = (om.hourly && om.hourly.wind_speed_10m) || [];
@@ -3720,10 +3790,14 @@ Cart shop:</textarea>
     refreshWeather();
     setInterval(refreshWeather, 5 * 60 * 1000);
     (function radarLoop() {
+      applyRadar();
+      resolveHomeGeo();
       var img = document.getElementById("radar-loop");
       if (!img) return;
-      var base = "https://radar.weather.gov/ridge/standard/KTBW_loop.gif";
-      setInterval(function () { img.src = base + "?t=" + Date.now(); }, 3 * 60 * 1000);
+      setInterval(function () {
+        var base = window.__radarBase || ("https://radar.weather.gov/ridge/standard/" + homeRadar() + "_loop.gif");
+        img.src = base + "?t=" + Date.now();
+      }, 3 * 60 * 1000);
     })();
     setInterval(function () {
       if (window.__bwCharts && window.__bwCharts.preds) drawTideChart(window.__bwCharts.preds);
@@ -3795,17 +3869,17 @@ Cart shop:</textarea>
           .join(" ");
       }
       var foxRss = "https://moxie.foxnews.com/google-publisher/latest.xml";
-      var winkRss = "https://corsproxy.io/?" + encodeURIComponent("https://news.google.com/rss/search?q=site:winknews.com+(breaking+OR+%22just+in%22)+when:1d&hl=en-US&gl=US&ceid=US:en");
-      Promise.all([rssXml(foxRss), rssXml(winkRss)]).then(function (both) {
+      var localRss = "https://corsproxy.io/?" + encodeURIComponent(localNewsRss());
+      Promise.all([rssXml(foxRss), rssXml(localRss)]).then(function (both) {
         var foxHits = (both[0] || []).filter(isBreak).map(function (it) {
           return { src: "Fox", title: (it.title || "").replace(/\s+/g, " ") };
         });
-        var winkHits = (both[1] || []).filter(isBreak).map(function (it) {
-          return { src: "WINK", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*-\s*WINK News.*$/i, "") };
+        var localHits = (both[1] || []).filter(isBreak).map(function (it) {
+          return { src: "Local", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News).*$/i, "") };
         });
         var seen = {};
         var hits = [];
-        foxHits.concat(winkHits).forEach(function (h) {
+        foxHits.concat(localHits).forEach(function (h) {
           var k = keyOf(h.title);
           if (!k || seen[k]) return;
           seen[k] = true;
@@ -4162,7 +4236,7 @@ Cart shop:</textarea>
             var code = om.current.weather_code || 0;
             var word = code >= 95 ? "Storms" : code >= 61 ? "Rain" : code >= 3 ? "Cloudy" : "Clear";
             if (sky && /^Good (morning|afternoon|evening)\.?$/i.test((sky.textContent || "").trim())) {
-              sky.textContent = g + " " + word + " in Englewood. It is " + t + "° and feels like " + f + "°.";
+              sky.textContent = g + " " + word + " in " + homePlace() + ". It is " + t + "° and feels like " + f + "°.";
             }
             var chip = document.getElementById("best-window");
             if (chip && /Checking/i.test(chip.textContent || "")) {
