@@ -213,7 +213,7 @@
     .break-ticker { display:none; font-weight:700; background:#111; color:#fff; }
     .break-ticker.on { display:block; }
     .ticker span, .alert-ticker span, .break-ticker span { display:inline-flex; will-change:transform; white-space:nowrap; }
-    .tseg { flex:none; padding:0; }
+    .tseg { flex:none; padding:0 480px 0 0; }
     .ticker .tseg b { font-weight:800; color:#e8d5a3; }
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
@@ -1114,18 +1114,20 @@ Cart shop:</textarea>
       var beach = span("beach");
       var cart = span("cart");
       var boat = span("boat");
-      var pool = span("beach");
-      var courts = span("cart");
+      function clean(s) { return String(s || "").replace(/tomorrow /g, ""); }
+      var tom = /tomorrow/.test(beach || "") || /tomorrow/.test(cart || "") || /tomorrow/.test(boat || "");
+      var when = tom ? "Tomorrow " : "";
       var lines = [];
-      lines.push(beach ? "Beach " + beach + " — lower rain chance and wind under 18." : "Beach is off until the rain or storm risk drops.");
-      lines.push(cart ? "Cart " + cart + "." : "Park the cart through the next wet or windy hours.");
-      lines.push(boat ? "Launch " + boat + " — wind under 15 and no soaking rain." : "Don’t launch. Wait for a drier, lighter-wind hour.");
-      lines.push(pool ? "Pool " + pool + "." : "Pool is a short-or-skip until storms ease.");
-      lines.push(courts ? "Courts " + courts + "." : "Courts later if the afternoon cells miss.");
-      if (window.__nextTide) lines.push(window.__nextTide + ".");
-      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm)) lines.push(window.__nextStorm + ".");
-      el.innerHTML = "<b>Best window</b><span>" + lines.join(" ") + "</span>";
-      window.__bestWindow = lines.join(" ");
+      if (beach) lines.push("Beach " + clean(beach));
+      else lines.push("Beach later");
+      if (cart) lines.push("Cart " + clean(cart));
+      else lines.push("Park the cart");
+      if (boat) lines.push("Launch " + clean(boat));
+      else lines.push("Don’t launch");
+      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm) && !tom) lines.push(window.__nextStorm);
+      var text = when + lines.join(" · ");
+      el.innerHTML = "<b>Best window</b><span>" + text + "</span>";
+      window.__bestWindow = text;
     }
 
     function inQuietHours() {
