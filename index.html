@@ -1070,7 +1070,11 @@ Cart shop:</textarea>
       el.textContent = bits.join(" ");
     }
     function hourLabel(iso) {
-      return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
+      var d = new Date(iso);
+      var t = d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
+      var day = d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      var today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      return day === today ? t : "tomorrow " + t;
     }
     function writeBestWindow() {
       var el = document.getElementById("best-window");
@@ -2969,6 +2973,8 @@ Cart shop:</textarea>
           var windDir = nowH.windDirection || degToCard(obs.windDirection && obs.windDirection.value);
           if (!windTxt && obs.windSpeed && obs.windSpeed.value != null) windTxt = kph2mph(obs.windSpeed.value) + " mph";
           var gust = obs.windGust && obs.windGust.value != null ? kph2mph(obs.windGust.value) : null;
+          if (gust == null && om.current && om.current.wind_gusts_10m != null) gust = Math.round(om.current.wind_gusts_10m);
+          if (gust == null && om.current && om.current.wind_gusts_10m != null) gust = Math.round(om.current.wind_gusts_10m);
           var pres = pa2inhg(obs.barometricPressure && obs.barometricPressure.value);
           var tempEl = document.getElementById("live-temp");
           var feelEl = document.getElementById("live-feels");
