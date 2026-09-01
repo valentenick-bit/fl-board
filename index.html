@@ -1063,7 +1063,16 @@ Cart shop:</textarea>
     }
     document.querySelectorAll("#trash-days button").forEach(function (b) {
       b.addEventListener("click", function () {
-        try { localStorage.setItem("bw-trash-day", b.getAttribute("data-day")); } catch (e) {}
+        var day = b.getAttribute("data-day");
+        var now = new Date().toISOString();
+        try {
+          localStorage.setItem("bw-trash-day", day);
+          var h = JSON.parse(localStorage.getItem("bw-house") || "{}") || {};
+          h.trashDay = parseInt(day, 10);
+          h.updated = now;
+          localStorage.setItem("bw-house", JSON.stringify(h));
+        } catch (e) {}
+        window.__houseUpdated = now;
         if (typeof saveHouse === "function") saveHouse();
         nextTrash();
       });
@@ -1431,7 +1440,7 @@ Cart shop:</textarea>
             if (!h || (!h.nick && !h.dayna && h.vendors == null)) return next(i + 1);
             var incoming = h.updated ? Date.parse(h.updated) : 0;
             var mine = window.__houseUpdated ? Date.parse(window.__houseUpdated) : 0;
-            if (incoming && mine && incoming < mine) return;
+            if (mine && (!incoming || incoming <= mine)) return;
             apply(h, "live");
           }).catch(function () { next(i + 1); });
         }
