@@ -1080,7 +1080,7 @@ Cart shop:</textarea>
       var el = document.getElementById("best-window");
       if (!el) return;
       var hours = window.__hours || [];
-      if (!hours.length) { el.textContent = "Best window · waiting on hourly"; return; }
+      if (!hours.length) { el.innerHTML = "<b>Best window</b><span>Waiting on the hourly forecast to write the next stretch.</span>"; return; }
       function ok(h, kind) {
         var fx = String(h.shortForecast || "").toLowerCase();
         var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
@@ -1114,18 +1114,26 @@ Cart shop:</textarea>
       var beach = span("beach");
       var cart = span("cart");
       var boat = span("boat");
-      function clean(s) { return String(s || "").replace(/tomorrow /g, ""); }
-      var tom = /tomorrow/.test(beach || "") || /tomorrow/.test(cart || "") || /tomorrow/.test(boat || "");
-      var when = tom ? "Tomorrow " : "";
-      var lines = [];
-      if (beach) lines.push("Beach " + clean(beach));
-      else lines.push("Beach later");
-      if (cart) lines.push("Cart " + clean(cart));
-      else lines.push("Park the cart");
-      if (boat) lines.push("Launch " + clean(boat));
-      else lines.push("Don’t launch");
-      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm) && !tom) lines.push(window.__nextStorm);
-      var text = when + lines.join(" · ");
+      function piece(s) {
+        if (!s) return null;
+        return { tom: /tomorrow/.test(s), t: String(s).replace(/tomorrow /g, "") };
+      }
+      var b = piece(beach), c = piece(cart), o = piece(boat);
+      var tom = !!(b && b.tom) || !!(c && c.tom) || !!(o && o.tom);
+      var day = tom ? "Tomorrow" : "Today";
+      var parts = [];
+      if (b && c && o && b.t === c.t && c.t === o.t) {
+        parts.push(day + " the best stretch for the beach, a cart ride, and a launch is " + b.t + ".");
+      } else if (b && c && b.t === c.t) {
+        parts.push(day + " the beach and cart look best " + b.t + ".");
+        parts.push(o ? "A launch window is " + o.t + "." : "Leave the boat on the lift.");
+      } else {
+        parts.push(b ? (day + " the beach looks best " + b.t + ".") : "Stay off the beach until the rain risk drops.");
+        parts.push(c ? "The cart is fine " + c.t + "." : "Park the cart through the next wet hours.");
+        parts.push(o ? "If you launch, do it " + o.t + "." : "Don’t launch until the wind and rain ease.");
+      }
+      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm) && !tom) parts.push(window.__nextStorm.replace(/\.$/, "") + ".");
+      var text = parts.join(" ").replace(/\s+/g, " ").trim();
       el.innerHTML = "<b>Best window</b><span>" + text + "</span>";
       window.__bestWindow = text;
     }
