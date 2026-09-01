@@ -237,7 +237,7 @@
     .dock-wrap.open .dock-more { max-height:140px; opacity:1; padding:4px 6px; pointer-events:auto; }
     .dock-wrap { position:relative; z-index:8; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
-    #setbtn { font-size:16px; letter-spacing:0; }
+    #setbtn { min-width:44px; }
     .settings {
       display:none; position:absolute; left:8px; right:8px; bottom:58px; z-index:12;
       max-height:72vh; overflow:auto; background:var(--sand-2); color:var(--navy);
@@ -743,10 +743,9 @@ Cart shop:</textarea>
       <button type="button" data-p="contacts">Emergency</button>
       <button type="button" data-p="power">Power</button>
       <button type="button" data-p="villa">Villa</button>
-      <button type="button" id="darkbtn">Dark mode</button>
       <button type="button" id="kioskbtn">Kiosk</button>
       <button type="button" id="refreshbtn">Refresh</button>
-      <button type="button" id="setbtn" title="Settings">⚙ Settings</button>
+      <button type="button" id="setbtn" title="Settings">⚙</button>
           </nav>
     </div>
     <div class="settings" id="settings" hidden>
@@ -1300,7 +1299,7 @@ Cart shop:</textarea>
       var blow = Math.max(gustN, windN);
       var scale = Math.max(0, Math.min(1, blow / 28));
       var card = ((windEl && windEl.textContent) || "").replace(/[0-9].*/, "").replace(/mph/ig, "").trim().split(/\s+/).pop() || "";
-      var dir = /E/.test(card) && !/W/.test(card) ? -1 : 1;
+      var dir = /E/.test(card) && !/W/.test(card) ? 1 : (/W/.test(card) && !/E/.test(card) ? -1 : 0);
       var root = document.documentElement;
       root.style.setProperty("--wind", scale.toFixed(3));
       root.style.setProperty("--wind-dir", String(dir));
@@ -2048,7 +2047,7 @@ Cart shop:</textarea>
         var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b && dockMore) dockMore.appendChild(b);
       });
-      ["darkbtn", "refreshbtn", "kioskbtn", "setbtn"].forEach(function (id) {
+      ["refreshbtn", "kioskbtn", "setbtn"].forEach(function (id) {
         var dest = dockMore || dock;
         var b = document.getElementById(id);
         if (b) dest.appendChild(b);
@@ -2627,6 +2626,7 @@ Cart shop:</textarea>
       function openSet() {
         panel.hidden = false;
         panel.classList.add("open");
+        panel.scrollTop = 0;
         paint();
         var wrap = document.querySelector(".dock-wrap");
         if (wrap) wrap.classList.add("open");
@@ -3884,26 +3884,54 @@ Cart shop:</textarea>
               dt.setDate(dt.getDate() + n);
               var key = dt.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
               var label = n === 0 ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
-              rows.push({ label: label, row: byDate[key] || { fx: "afternoon storms", hi: 90, lo: 76, pop: 40 } });
+              rows.push({ key: key, label: label, row: byDate[key] || null });
             }
-            var minAll = 120, maxAll = 0;
-            rows.forEach(function (r) {
-              if (r.row.lo < minAll) minAll = r.row.lo;
-              if (r.row.hi > maxAll) maxAll = r.row.hi;
-            });
-            if (maxAll <= minAll) maxAll = minAll + 1;
-            function tbar(lo, hi) {
-              var left = ((lo - minAll) / (maxAll - minAll)) * 100;
-              var wid = Math.max(10, ((hi - lo) / (maxAll - minAll)) * 100);
-              return '<span class="tbar"><i style="left:' + left.toFixed(1) + "%;width:" + wid.toFixed(1) + '%"></i></span>';
+            function paintTen(list) {
+              var minAll = 120, maxAll = 0;
+              list.forEach(function (r) {
+                if (!r.row) return;
+                if (r.row.lo < minAll) minAll = r.row.lo;
+                if (r.row.hi > maxAll) maxAll = r.row.hi;
+              });
+              if (maxAll <= minAll) maxAll = minAll + 1;
+              function tbar(lo, hi) {
+                var left = ((lo - minAll) / (maxAll - minAll)) * 100;
+                var wid = Math.max(10, ((hi - lo) / (maxAll - minAll)) * 100);
+                return '<span class="tbar"><i style="left:' + left.toFixed(1) + "%;width:" + wid.toFixed(1) + '%"></i></span>';
+              }
+              td.innerHTML = list.map(function (r) {
+                if (!r.row) return "";
+                var pop = r.row.pop >= 10 ? '<span class="dpop">' + r.row.pop + "%</span>" : "<span></span>";
+                return '<div class="day' + (r.label === "Today" ? " today" : "") + '"><span>' + r.label + "</span>" + wxSvg(wxKind(r.row.fx), 24) + pop + '<span class="lo">' + r.row.lo + "°</span>" + tbar(r.row.lo, r.row.hi) + '<span class="hi">' + r.row.hi + "°</span></div>";
+              }).join("");
+              var nowline = document.getElementById("wx-nowline");
+              if (nowline && list[0] && list[0].row) {
+                nowline.textContent = homePlace() + " · " + (list[0].row.fx || "") + " · H " + list[0].row.hi + "° / L " + list[0].row.lo + "°";
+              }
             }
-            td.innerHTML = rows.map(function (r) {
-              var pop = r.row.pop >= 10 ? '<span class="dpop">' + r.row.pop + "%</span>" : "<span></span>";
-              return '<div class="day' + (r.label === "Today" ? " today" : "") + '"><span>' + r.label + "</span>" + wxSvg(wxKind(r.row.fx), 24) + pop + '<span class="lo">' + r.row.lo + "°</span>" + tbar(r.row.lo, r.row.hi) + '<span class="hi">' + r.row.hi + "°</span></div>";
-            }).join("");
-            var nowline = document.getElementById("wx-nowline");
-            if (nowline && rows[0]) {
-              nowline.textContent = homePlace() + " · " + (rows[0].row.fx || "") + " · H " + rows[0].row.hi + "° / L " + rows[0].row.lo + "°";
+            function omWord(c) {
+              return c >= 95 ? "Thunderstorms" : c >= 80 ? "Showers" : c >= 61 ? "Rain" : c >= 3 ? "Cloudy" : c >= 2 ? "Partly cloudy" : "Sunny";
+            }
+            var need = rows.some(function (r) { return !r.row; });
+            if (!need) { paintTen(rows); }
+            else {
+              fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=America%2FNew_York")
+                .then(function (r) { return r.json(); })
+                .then(function (om) {
+                  var times = (om.daily && om.daily.time) || [];
+                  var his = (om.daily && om.daily.temperature_2m_max) || [];
+                  var los = (om.daily && om.daily.temperature_2m_min) || [];
+                  var pops = (om.daily && om.daily.precipitation_probability_max) || [];
+                  var codes = (om.daily && om.daily.weather_code) || [];
+                  rows.forEach(function (r) {
+                    if (r.row) return;
+                    var ix = times.indexOf(r.key);
+                    if (ix < 0) return;
+                    r.row = { fx: omWord(codes[ix] || 0), hi: Math.round(his[ix]), lo: Math.round(los[ix]), pop: pops[ix] || 0 };
+                  });
+                  paintTen(rows);
+                })
+                .catch(function () { paintTen(rows.filter(function (r) { return r.row; })); });
             }
           }
           fetch("https://api.weather.gov/stations/KVNC/observations?limit=36", { headers: hdr })
