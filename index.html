@@ -123,6 +123,14 @@
     .best-chip { margin:10px 0 12px; padding:12px 14px; border-radius:16px; background:var(--teal); color:#fff; }
     .best-chip b { display:block; font-size:12px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:6px; }
     .best-chip span { display:block; font-weight:700; font-size:16px; line-height:1.35; }
+    .today-chips { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
+    .today-chip { display:none; flex:1 1 160px; padding:10px 12px; border-radius:14px; color:#fff; }
+    .today-chip.on { display:block; }
+    .today-chip b { display:block; font-size:11px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:4px; }
+    .today-chip span { display:block; font-weight:700; font-size:15px; line-height:1.3; }
+    .today-chip.bolt { background:#b42318; }
+    .today-chip.cane { background:#1b2a4a; box-shadow:inset 0 0 0 1px #e6c56a; }
+    .today-chip.trash { background:#c4a35a; color:#1b2a4a; }
     #now .sky { background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:16px; padding:12px 14px; }
     .today-boards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     #now .ent-h { display:inline-block; background:var(--teal); color:#fff; padding:5px 10px; border-radius:999px; letter-spacing:.12em; }
@@ -351,6 +359,11 @@
           <div class="tg-row" id="pill-courts"><span class="tg-name">Courts</span><span class="tg-cell go" data-side="am">—</span><span class="tg-cell go" data-side="pm">—</span></div>
         </div>
         <div class="best-chip" id="best-window"><b>Best window</b><span>Checking hourly…</span></div>
+        <div class="today-chips">
+          <div class="today-chip bolt" id="chip-bolt"><b>Lightning</b><span></span></div>
+          <div class="today-chip cane" id="chip-cane"><b>Named storm</b><span></span></div>
+          <div class="today-chip trash" id="chip-trash"><b>Trash</b><span></span></div>
+        </div>
         <p class="sky" id="do-hour" hidden></p>
         <div class="today-boards">
           <div>
@@ -1027,6 +1040,7 @@ Cart shop:</textarea>
       var names = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
       var el = document.getElementById("live-trash");
       if (el) el.textContent = (add === 0 ? "Today" : add === 1 ? "Tomorrow" : names[want]) + " · curb by 6 a.m. Garbage and recycle same day.";
+      if (typeof writeTodayChips === "function") writeTodayChips();
       document.querySelectorAll("#trash-days button").forEach(function (b) {
         b.classList.toggle("on", parseInt(b.getAttribute("data-day"), 10) === want);
       });
@@ -1039,6 +1053,73 @@ Cart shop:</textarea>
       });
     });
     nextTrash();
+    function writeTodayChips() {
+      var bolt = document.getElementById("chip-bolt");
+      var cane = document.getElementById("chip-cane");
+      var trash = document.getElementById("chip-trash");
+      if (bolt) {
+        var nowx = window.__wxNow || {};
+        var types = (window.__wxRisk && window.__wxRisk.warnTypes) || "";
+        var alertBolt = /thunder|lightning|severe thunderstorm/.test(types);
+        var hours = window.__hours || [];
+        var soon = false;
+        var when = "";
+        var nowMs = Date.now();
+        hours.slice(0, 4).forEach(function (h) {
+          if (!h || !h.startTime) return;
+          var t = new Date(h.startTime).getTime();
+          if (t > nowMs + 3 * 3600000) return;
+          var fx = String(h.shortForecast || "").toLowerCase();
+          var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+          if (/thunder|lightning/.test(fx) && pop >= 30) {
+            soon = true;
+            if (!when) when = t <= nowMs + 3600000 ? "this hour" : new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+          }
+        });
+        var on = !!(nowx.lightning || alertBolt || soon);
+        bolt.classList.toggle("on", on);
+        if (on) {
+          var line = alertBolt ? "Warning up for the Key." : nowx.lightning ? "Thunder in the current hour." : ("Thunder possible " + when + ".");
+          bolt.querySelector("span").textContent = line + " Stay off the water and the pool.";
+        }
+      }
+      if (cane) {
+        var storms = window.__namedStorms || [];
+        var gulfAtl = storms.filter(function (s) {
+          var id = String(s.id || "").toLowerCase();
+          var lat = parseFloat(s.latitudeNumeric != null ? s.latitudeNumeric : String(s.latitude || "").replace(/[nNsS]/g, ""));
+          var lon = s.longitudeNumeric != null ? Number(s.longitudeNumeric) : parseFloat(String(s.longitude || "").replace(/[wW]/, ""));
+          if (/[wW]/.test(String(s.longitude || ""))) lon = -Math.abs(lon);
+          var basin = /^al/.test(id) || (!isNaN(lat) && !isNaN(lon) && lat >= 5 && lat <= 40 && lon <= -20 && lon >= -100);
+          var named = !/invest|one|two|three|four|five/i.test(s.name || "") && (s.classification || "") !== "DB";
+          return basin && named && (s.name || "");
+        });
+        cane.classList.toggle("on", gulfAtl.length > 0);
+        if (gulfAtl.length) {
+          cane.querySelector("span").textContent = gulfAtl.map(function (s) {
+            var cls = s.classification || "";
+            var word = cls === "HU" ? "Hurricane" : cls === "TS" ? "Tropical Storm" : cls === "TD" ? "Tropical Depression" : cls === "PTC" ? "Potential tropical cyclone" : "Storm";
+            var where = [s.latitude || "", s.longitude || ""].join(" ").trim();
+            return word + " " + s.name + (s.intensity ? ", " + s.intensity + " kt" : "") + (where ? " · " + where : "") + ".";
+          }).join(" ");
+        }
+      }
+      if (trash) {
+        var want = trashDay();
+        if (isNaN(want)) want = 4;
+        var now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+        var add = (want - now.getDay() + 7) % 7;
+        var names = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        var show = add === 0 || add === 1;
+        trash.classList.toggle("on", show);
+        if (show) {
+          trash.querySelector("span").textContent = add === 0
+            ? "Garbage and recycle today. Curb by 6 a.m."
+            : "Tomorrow is " + names[want] + " trash. Set it out tonight. Garbage and recycle same day.";
+        }
+      }
+    }
+    writeTodayChips();
     function writeHdrMeta() {
       var el = document.getElementById("hdr-meta");
       if (!el) return;
@@ -2383,6 +2464,7 @@ Cart shop:</textarea>
     function refreshExtras(hours, days) {
       window.__hours = hours || [];
       writeBestWindow();
+      writeTodayChips();
       var nowMs = Date.now();
       var startH = 0;
       if (hours && hours.length) {
@@ -2730,6 +2812,8 @@ Cart shop:</textarea>
         function apply(d) {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
+          window.__namedStorms = storms;
+          if (typeof writeTodayChips === "function") writeTodayChips();
           window.__wxRisk.cane = storms.some(function (s) {
             var lat = parseLonLat(s.latitude != null ? s.latitude : s.lat);
             var lon = parseLonLat(s.longitude != null ? s.longitude : s.lon);
@@ -3620,6 +3704,7 @@ Cart shop:</textarea>
           else if (keep.some(function (f) { return /watch/i.test((f.properties || {}).event || ""); })) boltEl.textContent = "Watch";
           else if (!/In the forecast/i.test(boltEl.textContent || "")) boltEl.textContent = "Clear";
         }
+        if (typeof writeTodayChips === "function") writeTodayChips();
         var isWarnEarly = keep.some(function (f) {
           return /warning/i.test(((f.properties || {}).event || ""));
         });
