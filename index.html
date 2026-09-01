@@ -3320,15 +3320,31 @@ Cart shop:</textarea>
       var bar = document.getElementById("breakbar");
       var txt = document.getElementById("breaktext");
       if (!bar || !txt) return;
-      function rssJson(rss) {
-        return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
-          .then(function (r) { return r.json(); })
-          .then(function (data) { return (data && data.items) || []; })
-          .catch(function () { return []; });
+      function parseRss(xml) {
+        var out = [];
+        if (!xml) return out;
+        var parts = String(xml).split(/<item[\s>]/i);
+        for (var i = 1; i < parts.length; i++) {
+          var chunk = parts[i];
+          function tag(name) {
+            var m = chunk.match(new RegExp("<" + name + "[^>]*>([\\s\\S]*?)</" + name + ">", "i"));
+            if (!m) return "";
+            return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+          }
+          out.push({ title: tag("title"), description: tag("description"), pubDate: tag("pubDate") });
+        }
+        return out;
+      }
+      function rssXml(url) {
+        return fetch(url).then(function (r) { return r.text(); }).then(parseRss).catch(function () { return []; });
       }
       function isBreak(it) {
-        var s = ((it.title || "") + " " + (it.description || "")).toLowerCase();
-        return /breaking|just in|developing|alert:/.test(s) || (it.title || "").indexOf("BREAKING") >= 0;
+        var title = String(it.title || "");
+        var head = title.replace(/^\s*/, "");
+        if (!/^(BREAKING|Breaking|Just [Ii]n|JUST IN)\b/.test(head) && title.indexOf("BREAKING") !== 0) return false;
+        var when = Date.parse(it.pubDate || "");
+        if (when && Date.now() - when > 8 * 60 * 60 * 1000) return false;
+        return true;
       }
       function keyOf(title) {
         return String(title || "")
@@ -3344,8 +3360,8 @@ Cart shop:</textarea>
           .join(" ");
       }
       var foxRss = "https://moxie.foxnews.com/google-publisher/latest.xml";
-      var winkRss = "https://news.google.com/rss/search?q=site:winknews.com+when:1d&hl=en-US&gl=US&ceid=US:en";
-      Promise.all([rssJson(foxRss), rssJson(winkRss)]).then(function (both) {
+      var winkRss = "https://corsproxy.io/?" + encodeURIComponent("https://news.google.com/rss/search?q=site:winknews.com+(breaking+OR+%22just+in%22)+when:1d&hl=en-US&gl=US&ceid=US:en");
+      Promise.all([rssXml(foxRss), rssXml(winkRss)]).then(function (both) {
         var foxHits = (both[0] || []).filter(isBreak).map(function (it) {
           return { src: "Fox", title: (it.title || "").replace(/\s+/g, " ") };
         });
