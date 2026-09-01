@@ -218,7 +218,8 @@
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
     .dock-more { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding-top:0; padding-bottom:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
-    .dock-wrap.open .dock-more { max-height:72px; opacity:1; padding:4px 6px; pointer-events:auto; }
+    .dock-wrap.open .dock-more { max-height:140px; opacity:1; padding:4px 6px; pointer-events:auto; }
+    .dock-wrap { position:relative; z-index:8; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
     .quiet-photo { width:100%; height:32vh; min-height:180px; object-fit:cover; border-radius:16px; margin:10px 0 0; display:block; border:1px solid var(--hair); }
     .keycam { width:100%; height:34vh; min-height:200px; margin:10px 0 6px; border-radius:16px; overflow:hidden; border:1px solid var(--hair); background:#111; position:relative; }
@@ -1516,6 +1517,7 @@ Cart shop:</textarea>
       if (i < 0) i = 0;
     }
     (function restoreDockOrder() {
+      try {
       var raw;
       try { raw = localStorage.getItem("bw-dock-v5") || localStorage.getItem("bw-dock-v4"); } catch (e) { raw = null; }
       if (!raw) {
@@ -1553,6 +1555,7 @@ Cart shop:</textarea>
         if (camBtn && nowBtn && nowBtn.parentNode) nowBtn.parentNode.insertBefore(camBtn, nowBtn.nextSibling);
       }
       pagesFromDock();
+      } catch (e) {}
     })();
     (function dragDock() {
       var hold, start, dragging = false, lifted = null, home = null, skipClick = false;
@@ -3588,6 +3591,74 @@ Cart shop:</textarea>
       document.head.appendChild(style);
       writeBriefing();
       setInterval(writeBriefing, 15 * 60 * 1000);
+    })();
+  </script>
+  <script>
+    (function bootSafe() {
+      var wrap = document.querySelector(".dock-wrap");
+      var more = document.getElementById("morebtn");
+      if (more && wrap) {
+        more.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          wrap.classList.toggle("open");
+          more.classList.toggle("on", wrap.classList.contains("open"));
+        });
+      }
+      var tick = document.getElementById("ticktext");
+      if (tick && !tick.style.animation) {
+        tick.style.display = "inline-block";
+        tick.style.paddingLeft = "100%";
+        tick.style.animation = "tick 80s linear infinite";
+      }
+      function fillOm() {
+        fetch("https://api.open-meteo.com/v1/forecast?latitude=26.9595&longitude=-82.3543&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m&hourly=precipitation_probability,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York")
+          .then(function (r) { return r.json(); })
+          .then(function (om) {
+            if (!om || !om.current) return;
+            var t = Math.round(om.current.temperature_2m);
+            var f = Math.round(om.current.apparent_temperature);
+            var te = document.getElementById("live-temp");
+            var fe = document.getElementById("live-feels");
+            if (te && /77/.test(te.textContent)) te.innerHTML = t + "&deg;";
+            if (fe && /78/.test(fe.textContent)) fe.innerHTML = f + "&deg;";
+            var sky = document.getElementById("live-sky");
+            var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+            var g = hr < 12 ? "Good morning." : hr < 17 ? "Good afternoon." : "Good evening.";
+            var code = om.current.weather_code || 0;
+            var word = code >= 95 ? "Storms" : code >= 61 ? "Rain" : code >= 3 ? "Cloudy" : "Clear";
+            if (sky && /^Good (morning|afternoon|evening)\.?$/i.test((sky.textContent || "").trim())) {
+              sky.textContent = g + " " + word + " in Englewood. It is " + t + "° and feels like " + f + "°.";
+            }
+            var chip = document.getElementById("best-window");
+            if (chip && /Checking/i.test(chip.textContent || "")) {
+              var pops = (om.hourly && om.hourly.precipitation_probability) || [];
+              var winds = (om.hourly && om.hourly.wind_speed_10m) || [];
+              var times = (om.hourly && om.hourly.time) || [];
+              var now = Date.now();
+              var start = null, last = null;
+              for (var i = 0; i < times.length && i < 18; i++) {
+                var ts = new Date(times[i]).getTime();
+                if (ts + 3600000 < now) continue;
+                var hrn = parseInt(new Date(times[i]).toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+                if (hrn >= 20) break;
+                if ((pops[i] || 0) < 40 && (winds[i] || 0) < 18) {
+                  if (!start) start = times[i];
+                  last = times[i];
+                } else if (start) break;
+              }
+              function hh(iso) {
+                return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+              }
+              var win = start ? hh(start) + (last && last !== start ? "–" + hh(last) : "") : "after the rain risk drops";
+              chip.innerHTML = "<b>Best window</b><span>Beach and cart " + win + ". Wind " + Math.round(om.current.wind_speed_10m) + " mph now.</span>";
+            }
+          }).catch(function () {});
+      }
+      fillOm();
+      if (typeof refreshWeather === "function") {
+        try { refreshWeather(); } catch (e) { fillOm(); }
+      }
     })();
   </script>
 </body>
