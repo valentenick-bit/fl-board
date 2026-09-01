@@ -234,10 +234,11 @@
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
     .dock-more { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding-top:0; padding-bottom:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
-    .dock-wrap.open .dock-more { max-height:140px; opacity:1; padding:4px 6px; pointer-events:auto; }
+    .dock-wrap.open .dock-more { max-height:170px; opacity:1; padding:4px 6px; pointer-events:auto; display:flex; flex-wrap:wrap; align-items:center; }
     .dock-wrap { position:relative; z-index:8; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
-    #setbtn { min-width:44px; }
+    #setbtn { min-width:40px; margin-left:auto; order:99; display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; }
+    #setbtn svg { width:18px; height:18px; display:block; }
     .settings {
       display:none; position:absolute; left:8px; right:8px; bottom:58px; z-index:12;
       max-height:72vh; overflow:auto; background:var(--sand-2); color:var(--navy);
@@ -730,7 +731,7 @@ Cart shop:</textarea>
       <button type="button" data-p="sky">Sky</button>
       <button type="button" data-p="ent">Fun</button>
       <button type="button" data-p="house">House</button>
-      <button type="button" data-p="deliver">Pkgs</button>
+      <button type="button" data-p="deliver">Delivery</button>
       <button type="button" data-p="radio">Radio</button>
       <button type="button" data-p="traffic">Roads</button>
       <button type="button" id="morebtn" onclick="var w=document.querySelector('.dock-wrap'); if(!w) return; w.classList.toggle('open'); this.classList.toggle('on', w.classList.contains('open')); event.stopPropagation();">More</button>
@@ -743,9 +744,8 @@ Cart shop:</textarea>
       <button type="button" data-p="contacts">Emergency</button>
       <button type="button" data-p="power">Power</button>
       <button type="button" data-p="villa">Villa</button>
-      <button type="button" id="kioskbtn">Kiosk</button>
       <button type="button" id="refreshbtn">Refresh</button>
-      <button type="button" id="setbtn" title="Settings">⚙</button>
+      <button type="button" id="setbtn" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54A.49.49 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.7 8.48a.49.49 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.82 14.52a.49.49 0 0 0-.12.64l1.92 3.32c.14.24.4.34.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.05.24.26.42.5.42h3.8c.24 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.21.12.47.02.61-.22l1.92-3.32a.49.49 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg></button>
           </nav>
     </div>
     <div class="settings" id="settings" hidden>
@@ -2047,7 +2047,7 @@ Cart shop:</textarea>
         var b = document.querySelector('.dock button[data-p="' + id + '"]');
         if (b && dockMore) dockMore.appendChild(b);
       });
-      ["refreshbtn", "kioskbtn", "setbtn"].forEach(function (id) {
+      ["refreshbtn", "setbtn"].forEach(function (id) {
         var dest = dockMore || dock;
         var b = document.getElementById(id);
         if (b) dest.appendChild(b);
@@ -2648,8 +2648,9 @@ Cart shop:</textarea>
 
     function localNewsRss() {
       var place = (typeof homePlace === "function" ? homePlace() : "Englewood");
+      var st = (typeof homeState === "function" ? homeState() : "FL");
       var zip = (getSet().zip || "34223");
-      var q = encodeURIComponent(place + " " + zip + " when:1d");
+      var q = encodeURIComponent('"' + place + '" ' + st + " when:7d");
       return "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
     }
     (function localHeadlines() {
@@ -2658,33 +2659,40 @@ Cart shop:</textarea>
       function parseRss(xml) {
         var out = [];
         if (!xml) return out;
-        var parts = String(xml).split(/<item[\s>]/i);
-        for (var i = 1; i < parts.length; i++) {
-          var chunk = parts[i];
+        var text = String(xml);
+        var chunks = text.split(/<item[\s>]|<entry[\s>]/i);
+        for (var i = 1; i < chunks.length; i++) {
+          var chunk = chunks[i];
           function tag(name) {
             var m = chunk.match(new RegExp("<" + name + "[^>]*>([\\s\\S]*?)</" + name + ">", "i"));
-            if (!m) return "";
-            return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+            if (!m) {
+              var alt = chunk.match(new RegExp("<" + name + "[^>]+href=[\"']([^\"']+)[\"']", "i"));
+              return alt ? alt[1] : "";
+            }
+            return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, " ").trim();
           }
-          out.push({ title: tag("title"), link: tag("link"), pubDate: tag("pubDate") });
+          var title = tag("title");
+          var link = tag("link") || tag("id");
+          var when = tag("pubDate") || tag("updated") || tag("published");
+          if (title) out.push({ title: title, link: link, pubDate: when });
         }
         return out;
       }
       function cleanTitle(s) {
-        return String(s || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News|Google News).*$/i, "").trim();
+        return String(s || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News|Google News|YourSun).*$/i, "").trim();
       }
       function render(items) {
         var seen = {}, rows = [];
         items.forEach(function (it) {
           var title = cleanTitle(it.title);
           var key = title.toLowerCase().slice(0, 48);
-          if (!title || seen[key]) return;
+          if (!title || /google news/i.test(title) || seen[key]) return;
           seen[key] = true;
           rows.push({ title: title, link: it.link || "#", when: it.pubDate || "" });
         });
         rows = rows.slice(0, 10);
         var note = document.getElementById("news-note");
-        if (note) note.textContent = homePlace() + " " + (getSet().zip || "") + " · last day";
+        if (note) note.textContent = homePlace() + " " + (getSet().zip || "") + " · last 7 days";
         if (!rows.length) {
           box.innerHTML = '<div class="card"><b>No local headlines yet</b><span>The ZIP search came back empty. Try again in a few minutes.</span></div>';
           return;
@@ -2695,18 +2703,49 @@ Cart shop:</textarea>
           return '<div class="card"><b><a href="' + r.link + '" target="_blank" rel="noopener">' + r.title + "</a></b><span>" + when + "</span></div>";
         }).join("");
       }
-      function load() {
-        var raw = localNewsRss();
-        var urls = [raw, "https://corsproxy.io/?" + encodeURIComponent(raw)];
-        function next(i) {
-          if (i >= urls.length) return render([]);
-          fetch(urls[i]).then(function (r) { return r.text(); }).then(function (t) {
-            var items = parseRss(t);
-            if (items.length) render(items);
-            else next(i + 1);
-          }).catch(function () { next(i + 1); });
+      function feeds() {
+        var place = homePlace();
+        var st = homeState();
+        var zip = getSet().zip || "34223";
+        var qs = [place + " " + st + " when:7d", zip + " when:7d"];
+        if (st === "FL") {
+          qs.push("site:winknews.com (" + place + " OR " + zip + ") when:7d");
+          qs.push("site:yoursun.com " + place + " when:7d");
         }
-        next(0);
+        return qs.map(function (q) {
+          return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
+        });
+      }
+      function pull(url) {
+        var tries = [
+          url,
+          "https://api.allorigins.win/get?url=" + encodeURIComponent(url),
+          "https://corsproxy.io/?" + encodeURIComponent(url),
+          "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(url)
+        ];
+        function one(i) {
+          if (i >= tries.length) return Promise.resolve([]);
+          return fetch(tries[i]).then(function (r) { return r.text(); }).then(function (t) {
+            var items = [];
+            try {
+              var j = JSON.parse(t);
+              if (j && j.contents) items = parseRss(j.contents);
+              else if (j && j.items) items = j.items.map(function (it) {
+                return { title: it.title, link: it.link || it.url, pubDate: it.pubDate || it.published };
+              });
+            } catch (e) {
+              items = parseRss(t);
+            }
+            if (items.length) return items;
+            return one(i + 1);
+          }).catch(function () { return one(i + 1); });
+        }
+        return one(0);
+      }
+      function load() {
+        Promise.all(feeds().map(pull)).then(function (lists) {
+          render([].concat.apply([], lists));
+        });
       }
       window.__reloadLocalNews = load;
       load();
