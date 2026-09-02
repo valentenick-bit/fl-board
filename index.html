@@ -3395,8 +3395,13 @@ Cart shop:</textarea>
     })();
 
     window.__feeds = window.__feeds || {};
-    function touchFeed(key, ok, detail) {
+    function noteFeed(key, ok, detail) {
+      window.__feeds = window.__feeds || {};
       window.__feeds[key] = { ok: ok !== false, detail: detail || "", at: Date.now() };
+    }
+    function touchFeed(key, ok, detail) {
+      noteFeed(key, ok, detail);
+      if (window.__paintingHealth) return;
       if (typeof paintHealth === "function") paintHealth();
       if (typeof paintStamps === "function") paintStamps();
     }
@@ -3572,7 +3577,7 @@ Cart shop:</textarea>
           if (v === "ok" || val === "chart") out.ok.push(key);
           else if (v === "failed") out.bad.push(key + (val ? (": " + val) : ""));
           else out.hold.push(key);
-          touchFeed(key, v === "ok" || val === "chart", val || v);
+          noteFeed(key, v === "ok" || val === "chart", val || v);
         });
         return out;
       }
@@ -3590,7 +3595,11 @@ Cart shop:</textarea>
       return { wx: wx, marine: marine, sky: sky };
     }
     function paintHealth() {
-      var probed = typeof probeBoardCards === "function" ? probeBoardCards() : null;
+      if (window.__paintingHealth) return;
+      window.__paintingHealth = true;
+      var probed = null;
+      try {
+        probed = typeof probeBoardCards === "function" ? probeBoardCards() : null;
       var fail = document.getElementById("health-fail");
       var stale = document.getElementById("health-stale");
       var all = document.getElementById("health-all");
@@ -3627,6 +3636,9 @@ Cart shop:</textarea>
       if (fail) fail.innerHTML = bad.length ? bad.map(function (s) { return '<span class="health-bad">' + s + "</span>"; }).join("<br>") : '<span class="health-ok">Nothing marked failed.</span>';
       if (stale) stale.textContent = old.length ? old.join(" · ") : "Nothing stale over its limit.";
       if (all) all.textContent = rows.length ? rows.join(" · ") : "Feeds have not reported in yet. Open a few pages and wait one refresh.";
+      } finally {
+        window.__paintingHealth = false;
+      }
     }
     function wireAcFilter() {
       var input = document.getElementById("ac-filter-date");
