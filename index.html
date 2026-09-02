@@ -229,7 +229,7 @@
     .break-ticker { display:none; font-weight:700; background:#111; color:#fff; }
     .break-ticker.on { display:block; }
     .ticker span, .alert-ticker span, .break-ticker span { display:inline-flex; will-change:transform; white-space:nowrap; }
-    .tseg { flex:none; padding:0 480px 0 0; }
+    .tseg { flex:none; padding:0; }
     .ticker .tseg b { font-weight:800; color:#e8d5a3; }
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
@@ -4177,14 +4177,11 @@ Cart shop:</textarea>
       if (!el) return;
       html = String(html || "").trim();
       if (!html) return;
-      var segs = el.querySelectorAll(".tseg");
-      if (segs.length >= 2) {
-        segs[0].innerHTML = html;
-        segs[1].innerHTML = html;
-        return;
-      }
-      el.innerHTML = html;
-      requestAnimationFrame(function () { spinEl(el, speed || 112); });
+      var same = el.getAttribute("data-html") === html;
+      el.setAttribute("data-html", html);
+      el.innerHTML = "<span class='tseg'>" + html + "</span>";
+      el.style.display = "inline-flex";
+      requestAnimationFrame(function () { spinEl(el, speed || 112, !same); });
     }
     function pollBreaking() {
       var bar = document.getElementById("breakbar");
@@ -4412,21 +4409,21 @@ Cart shop:</textarea>
       } catch (e) {}
     }
 
-    function spinEl(el, speed) {
+    function spinEl(el, speed, restart) {
       if (!el) return;
-      var html = "";
       var first = el.querySelector(".tseg");
-      html = first ? first.innerHTML : el.innerHTML;
-      html = String(html || "").trim();
-      if (!html) return;
-      el.innerHTML = "<span class='tseg'>" + html + "</span><span class='tseg'>" + html + "</span>";
-      el.style.display = "inline-flex";
-      var one = el.querySelector(".tseg").getBoundingClientRect().width;
+      if (!first) return;
+      var bar = el.parentElement;
+      var from = bar ? bar.clientWidth : 360;
+      var one = first.getBoundingClientRect().width || first.scrollWidth;
       if (!one) return;
-      var dur = Math.max(24, one / (speed || 112));
+      var dur = Math.max(18, (from + one) / (speed || 112));
+      el.style.setProperty("--tick-from", from + "px");
       el.style.setProperty("--tick-w", one + "px");
-      el.style.animation = "none";
-      el.offsetHeight;
+      if (restart !== false) {
+        el.style.animation = "none";
+        el.offsetHeight;
+      }
       el.style.animation = "tick " + dur + "s linear infinite";
     }
     function pollAlerts() {
@@ -4559,7 +4556,7 @@ Cart shop:</textarea>
 
     (function () {
       var style = document.createElement("style");
-      style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--tick-w, 50%))); } }";
+      style.textContent = "@keyframes tick { from { transform: translateX(var(--tick-from, 100%)); } to { transform: translateX(calc(-1 * var(--tick-w, 50%))); } }";
       document.head.appendChild(style);
       if (!document.querySelector(".page.on")) {
         var n = document.getElementById("now");
@@ -4579,11 +4576,7 @@ Cart shop:</textarea>
       var more = document.getElementById("morebtn");
       /* More: inline onclick on #morebtn */
       var tick = document.getElementById("ticktext");
-      if (tick && !tick.style.animation) {
-        tick.style.display = "inline-block";
-        tick.style.paddingLeft = "100%";
-        tick.style.animation = "tick 80s linear infinite";
-      }
+      if (tick && typeof writeBriefing === "function") writeBriefing();
       function fillOm() {
         fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m&hourly=precipitation_probability,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York")
           .then(function (r) { return r.json(); })
