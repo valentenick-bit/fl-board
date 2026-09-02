@@ -210,7 +210,7 @@
     iframe.full { width:100%; height:52vh; border:0; border-radius:12px; background:#111; }
     .radar-crop { width:100%; height:52vh; overflow:hidden; border-radius:12px; background:#111; }
     .radar-stage { position:relative; }
-    .radar-stage img#radar-view { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#111; transform:none; }
+    .radar-stage img#radar-view { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; background:#111; transform:none; }
     .radar-stage .cam-cap { position:absolute; left:10px; top:10px; z-index:3; margin:0; padding:4px 10px; border-radius:999px; background:rgba(14,12,28,.55); color:#f7f1e6; font-size:12px; max-width:70%; }
     .radar-stage .cam-pills { position:absolute; left:10px; bottom:10px; z-index:3; }
     .hurr-stage { position:relative; width:100%; height:52vh; overflow:hidden; border-radius:12px; background:#111; }
@@ -458,7 +458,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v87</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v88</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1069,7 +1069,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 87;
+    window.BOARD_VER = 88;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1095,7 +1095,7 @@ Cart shop:</textarea>
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
           return r;
@@ -3689,7 +3689,7 @@ function showPage(id) {
 
     function probeBoardCards() {
       window.__boardReadyAt = window.__boardReadyAt || Date.now();
-      var grace = Date.now() - window.__boardReadyAt < 45000;
+      var grace = Date.now() - window.__boardReadyAt < 90000;
       function txt(id) {
         var el = document.getElementById(id);
         return el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : "";
@@ -3711,8 +3711,9 @@ function showPage(id) {
         s = String(s || "").replace(/\s+/g, " ").trim();
         if (/did not load|timed out|not wired|video unavailable|no data was found/i.test(s)) return "failed";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
+        if (/^(loading|checking|updating)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc/i.test(s))
+          return grace ? "placeholder" : "failed";
         if (!s || /^(—|–|…|\.{1,3}|n\/a)$/i.test(s)) return grace ? "placeholder" : "failed";
-        if (/^(loading|checking|updating)\b/i.test(s)) return grace ? "placeholder" : "failed";
         return "ok";
       }
       var groups = {
