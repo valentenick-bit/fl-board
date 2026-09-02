@@ -693,33 +693,10 @@ Cart shop:</textarea>
           <span id="evac-body">Sarasota County levels A–E. The Key itself is Level A (first out). BeachWalk on Englewood Rd is inland of the bridge. Do not go to a shelter until the county says it is open. Nearest listed Englewood sites: Sports Complex, 1300 S River Rd · Buchan Airport Park, 1390 Old Englewood Rd.</span>
           <p id="evac-links"><a href="https://www.arcgis.com/apps/instant/lookup/index.html?appid=0219841617274028b5bf5867fcf4c57b" target="_blank" rel="noopener">Know your level</a> · <a href="https://www.scgov.net/government/emergency-services/emergency-management-4420" target="_blank" rel="noopener">Sarasota EM</a></p>
         </div>
-        <div class="dials">
-          <h3>Call first</h3>
-          <a class="dial" href="tel:911"><b>Life emergency</b><em>911</em></a>
-          <a class="dial" href="tel:9418615800"><b>Sarasota Sheriff</b><em>941-861-5800</em></a>
-          <a class="dial" href="tel:9418615000"><b>Sarasota 311</b><em>941-861-5000</em></a>
-          <a class="dial" href="tel:9418334000"><b>Charlotte EM</b><em>941-833-4000</em></a>
-          <a class="dial" href="tel:8002221222"><b>Poison</b><em>800-222-1222</em></a>
-          <a class="dial" href="tel:8003375850"><b>Castle after hours</b><em>800-337-5850</em></a>
-        </div>
-        <div class="dials">
-          <h3>House utilities</h3>
-          <a class="dial" href="tel:8004688243"><b>FPL power</b><em>800-468-8243</em></a>
-          <a class="dial" href="tel:8778326747"><b>TECO gas leak</b><em>877-832-6747</em></a>
-          <a class="dial" href="tel:9414743217"><b>Englewood water</b><em>941-474-3217</em></a>
-          <a class="dial" href="tel:18009218101"><b>Frontier internet</b><em>800-921-8101</em></a>
-        </div>
+        <div class="dials" id="emerg-call"></div>
+        <div class="dials" id="emerg-util"></div>
         <span id="live-fpl" hidden></span>
-        <div class="dials">
-          <h3>After a storm</h3>
-          <a class="dial" href="tel:8006213362"><b>FEMA</b><em>800-621-3362</em></a>
-          <a class="dial" href="tel:8882255353"><b>Flood insurance</b><em>888-225-5353</em></a>
-          <a class="dial" href="tel:8003423557"><b>Florida emergency info</b><em>800-342-3557</em></a>
-          <a class="dial" href="tel:9413799300"><b>Red Cross Sarasota</b><em>941-379-9300</em></a>
-          <a class="dial" href="tel:211"><b>Suncoast 211</b><em>211</em></a>
-          <a class="dial" href="tel:9418619500"><b>Animal services</b><em>941-861-9500</em></a>
-          <a class="dial" href="tel:511"><b>Roads</b><em>511</em></a>
-        </div>
+        <div class="dials" id="emerg-after"></div>
       </section>
       <section id="power" class="page">
         <h2 data-k="FPL">Power</h2>
@@ -802,8 +779,6 @@ Cart shop:</textarea>
       </div>
       <p class="hint">Today and Cam stay a little longer than the other pages.</p>
       <h3>Sound</h3>
-      <label>Default station</label>
-      <select id="set-station"></select>
       <label>Volume</label>
       <div class="set-row" id="set-vol">
         <button type="button" data-v="whisper">Whisper</button>
@@ -1004,6 +979,99 @@ Cart shop:</textarea>
         if (evacB) evacB.textContent = "Look up your county evacuation zone and open shelters before a storm. Do not drive toward a shelter until emergency management says it is open. " + (getSet().county || place) + " is the NWS county for ZIP " + zip + ".";
         if (evacL) evacL.innerHTML = '<a href="https://www.ready.gov/evacuation" target="_blank" rel="noopener">Ready.gov evac</a> · <a href="https://www.weather.gov/" target="_blank" rel="noopener">Weather.gov</a>';
       }
+      paintEmerg();
+    }
+    function paintEmerg() {
+      function dial(name, tel) {
+        if (!tel) return "";
+        var clean = String(tel).replace(/[^\d]/g, "");
+        return '<a class="dial" href="tel:' + clean + '"><b>' + name + "</b><em>" + tel + "</em></a>";
+      }
+      var st = homeState();
+      var zip = getSet().zip || "";
+      var county = String(getSet().county || "").toLowerCase();
+      var pack = {
+        sheriff: ["Local sheriff / police", "911"],
+        info: null,
+        em: ["County emergency management", "911"],
+        extra: zip === "34223" ? ["Castle after hours", "800-337-5850"] : null,
+        power: ["Power outage", ""],
+        gas: ["Gas leak", "911"],
+        water: ["Water utility", ""],
+        net: ["Internet", ""],
+        state: ["State emergency info", ""],
+        redcross: ["Red Cross", "800-733-2767"],
+        animal: ["Animal services", ""],
+        two11: ["211", "211"]
+      };
+      if (st === "FL") {
+        pack.power = ["FPL power", "800-468-8243"];
+        pack.gas = ["TECO gas leak", "877-832-6747"];
+        pack.net = ["Frontier internet", "800-921-8101"];
+        pack.state = ["Florida emergency info", "800-342-3557"];
+        pack.two11 = ["Florida 211", "211"];
+        if (/sarasota/.test(county) || zip.indexOf("342") === 0) {
+          pack.sheriff = ["Sarasota Sheriff", "941-861-5800"];
+          pack.info = ["Sarasota 311", "941-861-5000"];
+          pack.em = ["Sarasota EM", "941-861-5000"];
+          pack.water = ["Englewood water", "941-474-3217"];
+          pack.redcross = ["Red Cross Sarasota", "941-379-9300"];
+          pack.animal = ["Sarasota animal services", "941-861-9500"];
+        }
+        if (/charlotte/.test(county) || /339[0-9]{2}/.test(zip)) {
+          pack.sheriff = ["Charlotte Sheriff", "941-639-2101"];
+          pack.em = ["Charlotte EM", "941-833-4000"];
+          pack.water = ["Charlotte water", "941-764-4300"];
+        }
+        if (/lee/.test(county) || /3390[0-9]|3391[0-9]|3393[0-1]/.test(zip)) {
+          pack.sheriff = ["Lee Sheriff", "239-477-1000"];
+          pack.em = ["Lee EM", "239-533-0622"];
+          pack.power = ["FPL power", "800-468-8243"];
+        }
+        if (/hillsborough|pinellas|pasco/.test(county)) {
+          pack.power = ["TECO / Duke outage", "877-588-1010"];
+          pack.em = ["County EM", "813-272-6900"];
+        }
+      } else if (st === "CT") {
+        pack.power = ["Eversource", "800-286-2000"];
+        pack.gas = ["Eversource gas", "877-944-5325"];
+        pack.net = ["Frontier", "800-921-8101"];
+        pack.water = ["CT Water", "800-286-5700"];
+        pack.state = ["CT Alert / DEMHS", "860-256-0800"];
+        pack.two11 = ["Connecticut 211", "211"];
+        pack.redcross = ["Red Cross CT", "877-287-3327"];
+        if (/hartford/.test(county) || zip.indexOf("060") === 0 || zip.indexOf("061") === 0) {
+          pack.sheriff = ["South Windsor police", "860-644-2551"];
+          pack.em = ["South Windsor EM", "860-644-2511"];
+          pack.animal = ["South Windsor ACO", "860-644-2511"];
+        }
+      } else {
+        pack.state = ["Ready.gov", "202-646-2500"];
+        pack.power = ["Utility outage", "911"];
+      }
+      var call = document.getElementById("emerg-call");
+      if (call) call.innerHTML = "<h3>Call first</h3>" +
+        dial("Life emergency", "911") +
+        dial(pack.sheriff[0], pack.sheriff[1]) +
+        (pack.info ? dial(pack.info[0], pack.info[1]) : "") +
+        dial(pack.em[0], pack.em[1]) +
+        dial("Poison", "800-222-1222") +
+        (pack.extra ? dial(pack.extra[0], pack.extra[1]) : "");
+      var util = document.getElementById("emerg-util");
+      if (util) util.innerHTML = "<h3>House utilities</h3>" +
+        (pack.power[1] ? dial(pack.power[0], pack.power[1]) : "") +
+        dial(pack.gas[0], pack.gas[1]) +
+        (pack.water[1] ? dial(pack.water[0], pack.water[1]) : "") +
+        (pack.net[1] ? dial(pack.net[0], pack.net[1]) : "");
+      var after = document.getElementById("emerg-after");
+      if (after) after.innerHTML = "<h3>After a storm</h3>" +
+        dial("FEMA", "800-621-3362") +
+        dial("Flood insurance", "888-225-5353") +
+        (pack.state[1] ? dial(pack.state[0], pack.state[1]) : "") +
+        dial(pack.redcross[0], pack.redcross[1]) +
+        dial(pack.two11[0], pack.two11[1]) +
+        (pack.animal[1] ? dial(pack.animal[0], pack.animal[1]) : "") +
+        dial("Roads", "511");
     }
     function resolveHomeGeo() {
       paintHomeChrome();
@@ -1244,7 +1312,7 @@ Cart shop:</textarea>
       var sel = document.getElementById("set-station");
       if (sel) {
         sel.innerHTML = "";
-        [["", "Mute"]].concat(list).concat([[noaaUrl(), noaaName()]]).forEach(function (o) {
+        [["Mute", ""]].concat(list.slice(0, 4)).forEach(function (o) {
           var op = document.createElement("option");
           op.value = o[1]; op.textContent = o[0] || "Mute";
           sel.appendChild(op);
@@ -2624,21 +2692,6 @@ Cart shop:</textarea>
         if (zip) zip.value = s.zip || "34223";
         var hint = document.getElementById("set-zip-hint");
         if (hint) hint.textContent = (s.place || "Englewood FL") + " · " + Number(s.lat).toFixed(3) + ", " + Number(s.lon).toFixed(3) + ". Tides and BeachWalk calendars stay on the Key.";
-        var sel = document.getElementById("set-station");
-        if (sel && !sel.options.length) {
-          var opts = [["", "Mute"],
-            ["https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac", "94.9 Magic"],
-            ["https://oom-cmg.streamguys1.com/tam1055/tam1055-sgplayer-aac", "105.5 Dove"],
-            ["https://stream.revma.ihrhls.com/zc5096", "104.9 Seaview"],
-            ["https://stream.revma.ihrhls.com/zc641", "107.9 WSRZ"],
-            ["https://radio.weatherusa.net/NWR/KHB32.mp3", "NOAA Tampa"]];
-          opts.forEach(function (o) {
-            var op = document.createElement("option");
-            op.value = o[0]; op.textContent = o[1];
-            sel.appendChild(op);
-          });
-        }
-        if (sel) sel.value = savedRadio() != null ? savedRadio() : (s.station || "");
       }
       function applySkin() {
         var s = getSet();
@@ -2738,14 +2791,7 @@ Cart shop:</textarea>
         paint();
       });
       var sel = document.getElementById("set-station");
-      if (sel) sel.addEventListener("change", function () {
-        putSet({ station: sel.value });
-        saveRadio(sel.value);
-        if (typeof playStation === "function") {
-          var lab = (sel.options[sel.selectedIndex] || {}).textContent || "station";
-          playStation(sel.value, lab);
-        }
-      });
+      if (sel) sel.remove();
       var zip = document.getElementById("set-zip");
       if (zip) zip.addEventListener("change", function () {
         var z = String(zip.value || "").replace(/\D/g, "").slice(0, 5);
@@ -3160,30 +3206,73 @@ Cart shop:</textarea>
           window.__bwCharts.preds = preds; drawTideChart(preds);
         }).catch(function () {});
       var day = new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0,10).replace(/-/g,"");
-      Promise.all([
-        fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=" + homeTide() + "&time_zone=lst_ldt&units=english&format=json").then(function (r) { return r.json(); }),
-        fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=" + homeTide() + "&time_zone=lst_ldt&units=english&interval=h&format=json").then(function (r) { return r.json(); })
-      ]).then(function (pair) {
-        var obs = ((pair[0] || {}).data) || [];
-        var pr = ((pair[1] || {}).predictions) || [];
-        var pmap = {};
-        pr.forEach(function (p) { pmap[p.t] = parseFloat(p.v); });
-        var pts = [];
-        obs.forEach(function (o) {
-          var pred = pmap[o.t];
-          if (pred == null) return;
-          var v = parseFloat(o.v) - pred;
-          if (isNaN(v)) return;
-          pts.push({ t: new Date(o.t.replace(" ", "T")).getTime(), v: v });
-        });
-        if (pts.length < 3) {
-          pts = obs.slice(-24).map(function (o, i, arr) {
-            return { t: new Date(o.t.replace(" ", "T")).getTime(), v: parseFloat(o.v) - parseFloat(arr[0].v) };
-          }).filter(function (p) { return !isNaN(p.t) && !isNaN(p.v); });
+      function surgeFromStation(id, label) {
+        if (!id) return Promise.resolve(false);
+        return Promise.all([
+          fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=" + id + "&time_zone=lst_ldt&units=english&format=json").then(function (r) { return r.json(); }),
+          fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=" + id + "&time_zone=lst_ldt&units=english&interval=h&format=json").then(function (r) { return r.json(); })
+        ]).then(function (pair) {
+          var obs = ((pair[0] || {}).data) || [];
+          var pr = ((pair[1] || {}).predictions) || [];
+          if (!obs.length) return false;
+          var pmap = {};
+          pr.forEach(function (p) { pmap[p.t] = parseFloat(p.v); });
+          var pts = [];
+          obs.forEach(function (o) {
+            var pred = pmap[o.t];
+            var v = pred != null ? parseFloat(o.v) - pred : parseFloat(o.v);
+            if (isNaN(v)) return;
+            pts.push({ t: new Date(String(o.t).replace(" ", "T")).getTime(), v: pred != null ? v : NaN, raw: parseFloat(o.v) });
+          });
+          var vs = pts.filter(function (p) { return !isNaN(p.v); });
+          if (vs.length < 3) {
+            var raws = pts.map(function (p) { return p.raw; }).filter(function (v) { return !isNaN(v); });
+            var mean = raws.reduce(function (a, b) { return a + b; }, 0) / (raws.length || 1);
+            vs = pts.filter(function (p) { return !isNaN(p.raw); }).map(function (p) {
+              return { t: p.t, v: p.raw - mean };
+            });
+          }
+          if (vs.length < 3) return false;
+          window.__bwCharts.surge = vs;
+          drawSurgeChart(vs);
+          var lab = document.getElementById("live-surge");
+          if (lab && label) lab.textContent = (lab.textContent || "") + " · " + label;
+          return true;
+        }).catch(function () { return false; });
+      }
+      function surgeFallbackTide() {
+        var preds = (window.__bwCharts && window.__bwCharts.preds) || [];
+        if (preds.length < 4) {
+          var lab = document.getElementById("live-surge");
+          if (lab) lab.textContent = "No live water-level gauge near this ZIP";
+          return;
         }
-        window.__bwCharts.surge = pts;
-        drawSurgeChart(pts);
-      }).catch(function () {});
+        var pts = preds.map(function (p) {
+          return { t: new Date(String(p.t).replace(" ", "T")).getTime(), v: parseFloat(p.v) };
+        }).filter(function (p) { return !isNaN(p.t) && !isNaN(p.v); });
+        var mean = pts.reduce(function (a, b) { return a + b.v; }, 0) / pts.length;
+        var rel = pts.map(function (p) { return { t: p.t, v: p.v - mean }; });
+        window.__bwCharts.surge = rel;
+        drawSurgeChart(rel);
+        var lab = document.getElementById("live-surge");
+        if (lab) lab.textContent = "Predicted tide vs mean · no live gauge";
+      }
+      fetch("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/lat/" + homeLat() + "/lng/" + homeLon() + "/radius/50/stations.json?type=waterlevels")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var st = ((d && d.stations) || [])[0];
+          var id = st && (st.id || st.stationId);
+          var name = st && (st.name || id);
+          if (id) putSet({ wlStation: id });
+          return surgeFromStation(id, name);
+        })
+        .then(function (ok) {
+          if (ok) return true;
+          var fallback = homeState() === "FL" ? "8725520" : homeTide();
+          return surgeFromStation(fallback, "nearby NOAA");
+        })
+        .then(function (ok) { if (!ok) surgeFallbackTide(); })
+        .catch(function () { surgeFallbackTide(); });
       var windEl = document.getElementById("live-venf-wind");
       var gustEl = document.getElementById("live-venf-gust");
       var coast = document.getElementById("live-coastal");
