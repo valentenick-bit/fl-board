@@ -334,6 +334,21 @@
     html.dark .hour, html.dark .hour em, html.dark .hour b, html.dark .day, html.dark .hi { color:#f7f1e6; }
     html.dark .hour .pop, html.dark .dpop { color:#8fd4c8; }
     html.dark .tbar { background:#3a3458; }
+    html.dark .tide svg [stroke="#d7cdbb"],
+    html.dark .sunpath svg [stroke="#d7cdbb"],
+    html.dark .moonpath svg [stroke="#d7cdbb"] { stroke:#6d6482; }
+    html.dark .tide svg [stroke="#1b2a4a"],
+    html.dark .sunpath svg [stroke="#1b2a4a"],
+    html.dark .moonpath svg [stroke="#1b2a4a"] { stroke:#efe4c8; }
+    html.dark .tide svg [fill="#1b2a4a"],
+    html.dark .sunpath svg [fill="#1b2a4a"],
+    html.dark .moonpath svg [fill="#1b2a4a"] { fill:#efe4c8; }
+    html.dark .tide svg [fill="#5c6b7a"],
+    html.dark .sunpath svg [fill="#5c6b7a"],
+    html.dark .moonpath svg [fill="#5c6b7a"] { fill:#d4c9ae; }
+    html.dark .tide svg text,
+    html.dark .sunpath svg text,
+    html.dark .moonpath svg text { fill:#d4c9ae; }
     html.dark .dock, html.dark .dock-more { background:#100e20; }
     html.dark .dock button { color:#efe4c8; opacity:.85; }
     html.dark .dock button.on { background:#3a3458; color:#fff; opacity:1; }
@@ -1066,7 +1081,22 @@ Cart shop:</textarea>
       });
     });
     function saveRadio(url) {
-      try { localStorage.setItem("bw-radio", url == null ? "" : url); } catch (e) {}
+      var v = url == null ? "" : String(url);
+      try { localStorage.setItem("bw-radio", v); } catch (e) {}
+      putSet({ station: v });
+    }
+    function markRadioOn(url) {
+      var cur = url == null ? (savedRadio() != null ? savedRadio() : "") : url;
+      document.querySelectorAll("#radio .rowbtns button[data-stream], #radio .rowbtns button[data-scan]").forEach(function (x) {
+        var scan = x.getAttribute("data-scan");
+        var match = scan ? cur === "scan:" + scan : (x.getAttribute("data-stream") || "") === (cur || "");
+        x.classList.toggle("on", match);
+      });
+      var sel = document.getElementById("set-station");
+      if (sel) {
+        var has = Array.prototype.some.call(sel.options, function (o) { return o.value === (cur || ""); });
+        if (has) sel.value = cur || "";
+      }
     }
     function savedRadio() {
       try { return localStorage.getItem("bw-radio"); } catch (e) { return null; }
@@ -1083,11 +1113,7 @@ Cart shop:</textarea>
       var audio = document.getElementById("radioPlayer");
       var status = document.getElementById("radio-status");
       if (!audio) return;
-      document.querySelectorAll("#radio .rowbtns button[data-stream], #radio .rowbtns button[data-scan]").forEach(function (x) {
-        var scan = x.getAttribute("data-scan");
-        var match = scan ? url === "scan:" + scan : (x.getAttribute("data-stream") || "") === (url || "");
-        x.classList.toggle("on", match);
-      });
+      markRadioOn(url || "");
       var scan = document.getElementById("scan-frame");
       function hideScan() {
         if (!scan) return;
@@ -1224,6 +1250,13 @@ Cart shop:</textarea>
           sel.appendChild(op);
         });
       }
+      var playing = window.__radioWant && window.__radioWant.url != null ? window.__radioWant.url : (savedRadio() != null ? savedRadio() : "");
+      markRadioOn(playing);
+      if (sel) {
+        var saved = savedRadio() != null ? savedRadio() : (getSet().station || "");
+        var has = Array.prototype.some.call(sel.options, function (o) { return o.value === saved; });
+        if (has) sel.value = saved;
+      }
     }
     function fillZipRadio() {
       var wfo = getSet().wfo || "TBW";
@@ -1271,7 +1304,7 @@ Cart shop:</textarea>
           playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
           return;
         }
-        if (inQuietHours()) { playStation("", "Mute"); return; }
+        if (inQuietHours()) { playStation("", "Mute", { keepSaved: true }); return; }
         playStation(btn.getAttribute("data-stream"), btn.textContent);
       }
       start();
