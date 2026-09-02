@@ -297,6 +297,7 @@
       border:1px solid var(--hair); font:inherit; background:var(--sand);
     }
     .settings .set-row { display:flex; flex-wrap:wrap; gap:4px; margin:0; padding:3px; background:var(--sand); border-radius:999px; }
+    #set-horo { border-radius:16px; }
     .settings .set-row button, .settings .done {
       padding:7px 11px; border-radius:999px; border:0;
       background:transparent; font:inherit; font-weight:700; cursor:pointer; color:var(--navy);
@@ -574,8 +575,7 @@
           <div class="tile"><label>Dawn</label><strong id="live-planet3">…</strong><div id="live-planet3d"></div></div>
           <div class="tile"><label>Stars</label><strong id="live-planet4">…</strong><div id="live-planet4d"></div></div>
         </div>
-        <div class="card"><b>Nick · Gemini</b><span id="live-horo-nick">Loading…</span></div>
-        <div class="card"><b>Dayna · Aquarius</b><span id="live-horo-dayna">Loading…</span></div>
+        <div id="horo-box"></div>
         <div class="card"><b id="iss-title">ISS</b><span id="live-iss">Loading passes…</span></div>
         <p><a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener">ISS</a> · <a href="https://nightsky.jpl.nasa.gov/planner" target="_blank" rel="noopener">NASA planner</a></p>
       </section>
@@ -902,6 +902,24 @@ Cart shop:</textarea>
         </div>
       </div>
       <div class="set-card">
+        <h3>Horoscopes</h3>
+        <div class="set-row" id="set-horo">
+          <button type="button" data-v="aries">Aries</button>
+          <button type="button" data-v="taurus">Taurus</button>
+          <button type="button" data-v="gemini">Gemini</button>
+          <button type="button" data-v="cancer">Cancer</button>
+          <button type="button" data-v="leo">Leo</button>
+          <button type="button" data-v="virgo">Virgo</button>
+          <button type="button" data-v="libra">Libra</button>
+          <button type="button" data-v="scorpio">Scorpio</button>
+          <button type="button" data-v="sagittarius">Sag</button>
+          <button type="button" data-v="capricorn">Cap</button>
+          <button type="button" data-v="aquarius">Aquarius</button>
+          <button type="button" data-v="pisces">Pisces</button>
+        </div>
+        <p class="hint">Tap the signs to show on the Sky page. Off all of them to hide the cards.</p>
+      </div>
+      <div class="set-card">
         <h3>Tickers</h3>
         <div class="set-line"><label>Briefing</label>
           <div class="set-row" id="set-brief">
@@ -959,13 +977,27 @@ Cart shop:</textarea>
       zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1",
       brief: "1", briefWx: "1", briefSports: "1",
-      breakOn: "1", breakNat: "1", breakLoc: "1"
+      breakOn: "1", breakNat: "1", breakLoc: "1",
+      horo: "gemini,aquarius"
     };
     function getSet() {
       var s = {};
       try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e) { s = {}; }
       Object.keys(SET_DEFAULTS).forEach(function (k) { if (s[k] == null) s[k] = SET_DEFAULTS[k]; });
       return s;
+    }
+    var ZODIAC = ["aries","taurus","gemini","cancer","leo","virgo","libra","scorpio","sagittarius","capricorn","aquarius","pisces"];
+    function horoSigns() {
+      return String(getSet().horo || "").toLowerCase().split(",").map(function (s) { return s.trim(); }).filter(function (s) { return ZODIAC.indexOf(s) >= 0; });
+    }
+    function paintHoroCards() {
+      var box = document.getElementById("horo-box");
+      if (!box) return;
+      var signs = horoSigns();
+      box.innerHTML = signs.map(function (sign) {
+        var name = sign.charAt(0).toUpperCase() + sign.slice(1);
+        return "<div class='card'><b>" + name + "</b><span id='live-horo-" + sign + "'>Loading…</span></div>";
+      }).join("");
     }
     function putSet(part) {
       var s = getSet();
@@ -2855,6 +2887,14 @@ Cart shop:</textarea>
         mark("set-breaknat", s.breakNat);
         mark("set-breakloc", s.breakLoc);
         mark("set-trash", String(typeof trashDay === "function" ? trashDay() : 4));
+        (function markHoro() {
+          var on = horoSigns();
+          var row = document.getElementById("set-horo");
+          if (!row) return;
+          row.querySelectorAll("button[data-v]").forEach(function (b) {
+            b.classList.toggle("on", on.indexOf(b.getAttribute("data-v")) >= 0);
+          });
+        })();
         var zip = document.getElementById("set-zip");
         if (zip) zip.value = s.zip || "34223";
         var hint = document.getElementById("set-zip-hint");
@@ -2917,6 +2957,20 @@ Cart shop:</textarea>
           if (after) after(part[key]);
         });
       }
+      var horoRow = document.getElementById("set-horo");
+      if (horoRow) horoRow.addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-v]");
+        if (!b) return;
+        var sign = b.getAttribute("data-v");
+        var cur = horoSigns();
+        var i = cur.indexOf(sign);
+        if (i >= 0) cur.splice(i, 1);
+        else cur.push(sign);
+        putSet({ horo: cur.join(",") });
+        paint();
+        if (typeof window.loadHoros === "function") window.loadHoros();
+        else paintHoroCards();
+      });
       tap("set-dark", "dark");
       tap("set-kiosk", "kiosk");
       tap("set-quiet", "quiet", function () {
@@ -3848,8 +3902,12 @@ Cart shop:</textarea>
           }
           next(0);
         }
-        fillHoro("gemini", "live-horo-nick");
-        fillHoro("aquarius", "live-horo-dayna");
+        window.fillHoro = fillHoro;
+        window.loadHoros = function () {
+          paintHoroCards();
+          horoSigns().forEach(function (sign) { fillHoro(sign, "live-horo-" + sign); });
+        };
+        window.loadHoros();
         var issEl = document.getElementById("live-iss");
         if (issEl) {
           fetch("https://api.wheretheiss.at/v1/satellites/25544").then(function (r) { return r.json(); }).then(function (d) {
