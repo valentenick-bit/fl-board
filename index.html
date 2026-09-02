@@ -1341,6 +1341,24 @@ Cart shop:</textarea>
       if (hr < 17) return "Good afternoon.";
       return "Good evening.";
     }
+    function upcomingHourLines(hours, limit) {
+      var now = Date.now();
+      var out = [];
+      (hours || []).forEach(function (h) {
+        if (out.length >= (limit || 3) || !h || !h.startTime) return;
+        var t0 = new Date(h.startTime).getTime();
+        var t1 = h.endTime ? new Date(h.endTime).getTime() : t0 + 3600000;
+        if (isNaN(t0) || t1 <= now) return;
+        var fx = String(h.shortForecast || "").replace(/\.$/, "").trim();
+        if (!fx) return;
+        var label = t0 <= now ? "this hour" : new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+        var pop = h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value;
+        var bit = fx + " " + label;
+        if (pop != null && pop >= 20) bit += ", " + pop + "% rain";
+        out.push(bit);
+      });
+      return out;
+    }
     function stampGreet() {
       var el = document.getElementById("live-sky");
       if (!el) return;
@@ -4015,21 +4033,20 @@ Cart shop:</textarea>
             var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
             var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
             var short = nowH.shortForecast || today.shortForecast || "Conditions updating";
-            var detail = String(today.detailedForecast || nowH.detailedForecast || "").replace(/\s+/g, " ").trim();
-            if (detail.length > 240) detail = detail.slice(0, 237).replace(/\s+\S*$/, "") + ".";
             var bits = [greet, short.replace(/\.$/, "") + " in " + homePlace() + "."];
             if (tempF != null) bits.push("It is " + tempF + "°" + (feelF != null && feelF !== tempF ? " and feels like " + feelF + "°" : "") + ".");
-            if (today.temperature != null && today.name && !/night/i.test(today.name)) bits.push("Today's high is near " + today.temperature + "°.");
-            if (detail && detail.toLowerCase().indexOf(short.toLowerCase()) < 0) bits.push(detail);
-            else if (detail) bits.push(detail);
+            if (hrNow < 17 && today.temperature != null && today.name && !/night/i.test(today.name)) {
+              bits.push("Today's high is near " + today.temperature + "°.");
+            }
             var windBit = (windDir + " " + windTxt).trim();
             if (windBit) bits.push("Wind " + windBit + (gust != null ? ", gusts " + gust + " mph" : "") + ".");
             var rainHr = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value != null) ? nowH.probabilityOfPrecipitation.value : null;
-            if (rainHr != null) bits.push("Rain chance this hour is " + rainHr + "%.");
-            var blob = (short + " " + detail).toLowerCase();
-            if (/thunder|storm|lightning/i.test(blob)) bits.push("Beach and cart are best before the storms build.");
+            var ahead = upcomingHourLines(hours, 3);
+            if (ahead.length) bits.push(ahead.join(". ") + ".");
+            else if (rainHr != null) bits.push("Rain chance this hour is " + rainHr + "%.");
+            var blob = (short + " " + ahead.join(" ")).toLowerCase();
+            if (/thunder|storm|lightning/i.test(blob)) bits.push("Stay off the water if thunder is close.");
             else if (/rain|shower/i.test(blob)) bits.push("Keep a cover plan for beach and cart.");
-            else bits.push("A good window for beach and cart.");
             skyEl.textContent = bits.join(" ").replace(/\s+/g, " ").trim();
             window.__briefWx = {
               temp: tempF,
@@ -4038,7 +4055,7 @@ Cart shop:</textarea>
               hi: today.temperature,
               wind: windBit,
               rain: rainHr,
-              detail: detail
+              detail: ahead.join(". ")
             };
           }
           setHeaderIcon(nowH.shortForecast || today.shortForecast || "", nowH.startTime ? new Date(nowH.startTime).getTime() : Date.now(), nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value);
