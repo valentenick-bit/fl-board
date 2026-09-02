@@ -240,30 +240,52 @@
     #setbtn { grid-column:6; display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; }
     #setbtn svg { width:18px; height:18px; display:block; }
     .settings {
-      display:none; position:absolute; left:8px; right:8px; bottom:58px; z-index:12;
-      max-height:72vh; overflow:auto; background:var(--sand-2); color:var(--navy);
-      border:1px solid var(--hair); border-radius:16px; padding:14px 16px 18px;
-      box-shadow:0 12px 40px rgba(15,18,30,.28);
+      display:none; position:absolute; left:10px; right:10px; bottom:62px; z-index:12;
+      max-height:78vh; overflow:auto; color:var(--navy);
+      background:rgba(247,241,230,.97);
+      border:1px solid var(--hair); border-radius:22px; padding:0 0 14px;
+      box-shadow:0 18px 50px rgba(15,18,30,.32);
+      backdrop-filter:blur(12px);
     }
     .settings.open { display:block; }
-    .settings h3 { margin:14px 0 8px; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); }
-    .settings h3:first-child { margin-top:0; }
+    .settings-head {
+      position:sticky; top:0; z-index:2;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:12px 16px 10px;
+      background:rgba(247,241,230,.97);
+      border-bottom:1px solid var(--hair);
+    }
+    .settings-head strong { font-size:18px; letter-spacing:-.02em; }
+    .settings-head span { display:block; font-size:12px; color:var(--muted); font-weight:600; margin-top:1px; }
+    .set-card {
+      margin:12px 12px 0; padding:12px 14px 10px;
+      background:#fff; border:1px solid var(--hair); border-radius:16px;
+    }
+    .settings h3 { margin:0 0 10px; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); }
+    .set-line { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--hair); }
+    .set-line:first-of-type { border-top:0; padding-top:0; }
+    .set-line > label { margin:0; flex:1 1 auto; }
     .settings label { display:block; font-size:14px; font-weight:700; margin:8px 0 4px; }
     .settings select, .settings input[type="text"] {
-      width:100%; max-width:280px; padding:8px 10px; border-radius:10px;
-      border:1px solid var(--hair); font:inherit; background:#fff;
+      width:100%; padding:10px 12px; border-radius:12px;
+      border:1px solid var(--hair); font:inherit; background:var(--sand);
     }
-    .settings .set-row { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 10px; }
+    .settings .set-row { display:flex; flex-wrap:wrap; gap:4px; margin:0; padding:3px; background:var(--sand); border-radius:999px; }
     .settings .set-row button, .settings .done {
-      padding:8px 12px; border-radius:999px; border:1px solid var(--hair);
-      background:#fff; font:inherit; font-weight:700; cursor:pointer;
+      padding:7px 11px; border-radius:999px; border:0;
+      background:transparent; font:inherit; font-weight:700; cursor:pointer; color:var(--navy);
     }
-    .settings .set-row button.on { background:var(--navy); color:#fff; border-color:var(--navy); }
-    .settings .done { background:var(--teal); color:#fff; border:0; margin-top:8px; }
-    .settings .hint { font-size:13px; color:var(--muted); margin:0 0 8px; }
-    html.dark .settings { background:#221e36; color:#f7f1e6; }
-    html.dark .settings select, html.dark .settings input[type="text"], html.dark .settings .set-row button { background:#2a2444; color:#f7f1e6; border-color:#3a3458; }
+    .settings .set-row button.on { background:var(--navy); color:#fff; }
+    .settings .done { background:var(--teal); color:#fff; margin:0; padding:8px 16px; }
+    .settings .hint { font-size:12px; color:var(--muted); margin:8px 0 0; line-height:1.35; }
+    .settings #set-dockreset { width:100%; background:var(--sand); border-radius:12px; padding:10px; font-weight:800; }
+    html.dark .settings, html.dark .settings-head { background:rgba(34,30,54,.97); color:#f7f1e6; }
+    html.dark .set-card { background:#2a2444; border-color:#3a3458; }
+    html.dark .set-line { border-top-color:#3a3458; }
+    html.dark .settings select, html.dark .settings input[type="text"], html.dark .settings .set-row { background:#1b1730; color:#f7f1e6; border-color:#3a3458; }
+    html.dark .settings .set-row button { color:#efe4c8; }
     html.dark .settings .set-row button.on { background:#e6c56a; color:#1b1328; }
+    html.dark .settings #set-dockreset { background:#1b1730; color:#f7f1e6; }
     html.text-lg { font-size:18px; }
     html.text-lg .temp, html.text-lg .feels strong { font-size:60px; }
     html.text-lg .sky { font-size:20px; }
@@ -741,127 +763,162 @@ Cart shop:</textarea>
           </nav>
     </div>
     <div class="settings" id="settings" hidden>
-      <h3>Display</h3>
-      <label>Dark mode</label>
-      <div class="set-row" id="set-dark">
-        <button type="button" data-v="auto">Auto</button>
-        <button type="button" data-v="day">Always day</button>
-        <button type="button" data-v="night">Always night</button>
+      <div class="settings-head">
+        <div><strong>Settings</strong><span>Board look, sound, and what rotates</span></div>
+        <button type="button" class="done" id="set-done">Done</button>
       </div>
-      <label>Kiosk</label>
-      <div class="set-row" id="set-kiosk">
-        <button type="button" data-v="0">Off</button>
-        <button type="button" data-v="1">On</button>
+      <div class="set-card">
+        <h3>Display</h3>
+        <div class="set-line"><label>Dark mode</label>
+          <div class="set-row" id="set-dark">
+            <button type="button" data-v="auto">Auto</button>
+            <button type="button" data-v="day">Day</button>
+            <button type="button" data-v="night">Night</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Kiosk</label>
+          <div class="set-row" id="set-kiosk">
+            <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Text size</label>
+          <div class="set-row" id="set-text">
+            <button type="button" data-v="default">Default</button>
+            <button type="button" data-v="large">Larger</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Page turn</label>
+          <div class="set-row" id="set-rot">
+            <button type="button" data-v="10">10s</button>
+            <button type="button" data-v="15">15s</button>
+            <button type="button" data-v="20">20s</button>
+          </div>
+        </div>
+        <p class="hint">Today and Cam stay a little longer than the other pages.</p>
       </div>
-      <label>Quiet hours</label>
-      <div class="set-row" id="set-quiet">
-        <button type="button" data-v="1">Follow dark mode</button>
-        <button type="button" data-v="custom">Set times</button>
-        <button type="button" data-v="0">Off</button>
+      <div class="set-card">
+        <h3>Quiet hours</h3>
+        <div class="set-row" id="set-quiet">
+          <button type="button" data-v="1">Follow dark</button>
+          <button type="button" data-v="custom">Set times</button>
+          <button type="button" data-v="0">Off</button>
+        </div>
+        <div id="set-quiet-times" hidden>
+          <label>Starts</label>
+          <select id="set-quiet-start"></select>
+          <label>Ends</label>
+          <select id="set-quiet-end"></select>
+          <p class="hint">15-minute steps. Overnight windows are fine.</p>
+        </div>
       </div>
-      <div id="set-quiet-times" hidden>
-        <label>Quiet starts</label>
-        <select id="set-quiet-start"></select>
-        <label>Quiet ends</label>
-        <select id="set-quiet-end"></select>
-        <p class="hint">15-minute steps. Overnight windows are fine (10:00 p.m. to 7:00 a.m.).</p>
+      <div class="set-card">
+        <h3>Sound</h3>
+        <div class="set-line"><label>Volume</label>
+          <div class="set-row" id="set-vol">
+            <button type="button" data-v="whisper">Whisper</button>
+            <button type="button" data-v="room">Room</button>
+          </div>
+        </div>
+        <div class="set-line"><label>NOAA on warning</label>
+          <div class="set-row" id="set-noaa">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Radio on load</label>
+          <div class="set-row" id="set-radioauto">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
       </div>
-      <label>Text size</label>
-      <div class="set-row" id="set-text">
-        <button type="button" data-v="default">Default</button>
-        <button type="button" data-v="large">Larger</button>
+      <div class="set-card">
+        <h3>Location</h3>
+        <label>Home ZIP</label>
+        <input id="set-zip" type="text" inputmode="numeric" maxlength="5" placeholder="34223" />
+        <p class="hint" id="set-zip-hint">Weather and alerts follow this ZIP. Tides and BeachWalk calendars stay on the Key.</p>
+        <label>Trash day</label>
+        <div class="set-row" id="set-trash">
+          <button type="button" data-v="0">Sun</button>
+          <button type="button" data-v="1">Mon</button>
+          <button type="button" data-v="2">Tue</button>
+          <button type="button" data-v="3">Wed</button>
+          <button type="button" data-v="4">Thu</button>
+          <button type="button" data-v="5">Fri</button>
+          <button type="button" data-v="6">Sat</button>
+        </div>
       </div>
-      <label>Page rotation</label>
-      <div class="set-row" id="set-rot">
-        <button type="button" data-v="10">10s</button>
-        <button type="button" data-v="15">15s</button>
-        <button type="button" data-v="20">20s</button>
+      <div class="set-card">
+        <h3>What shows</h3>
+        <div class="set-line"><label>Cam at night</label>
+          <div class="set-row" id="set-camnight">
+            <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Lightning chip</label>
+          <div class="set-row" id="set-chipbolt">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Named storm chip</label>
+          <div class="set-row" id="set-chipcane">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Trash chip</label>
+          <div class="set-row" id="set-chiptrash">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
       </div>
-      <p class="hint">Today and Cam stay a little longer than the other pages.</p>
-      <h3>Sound</h3>
-      <label>Volume</label>
-      <div class="set-row" id="set-vol">
-        <button type="button" data-v="whisper">Whisper</button>
-        <button type="button" data-v="room">Room</button>
+      <div class="set-card">
+        <h3>Tickers</h3>
+        <div class="set-line"><label>Briefing</label>
+          <div class="set-row" id="set-brief">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Weather</label>
+          <div class="set-row" id="set-briefwx">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Sports</label>
+          <div class="set-row" id="set-briefsports">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <p class="hint">Weather is the Today greeting plus lightning and named-storm chips. Sports is scores within about 150 miles.</p>
+        <div class="set-line"><label>Breaking news</label>
+          <div class="set-row" id="set-break">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>National</label>
+          <div class="set-row" id="set-breaknat">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Local</label>
+          <div class="set-row" id="set-breakloc">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
       </div>
-      <label>NOAA when there is a warning</label>
-      <div class="set-row" id="set-noaa">
-        <button type="button" data-v="1">On</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <label>Start radio on load</label>
-      <div class="set-row" id="set-radioauto">
-        <button type="button" data-v="1">On</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <h3>Location</h3>
-      <label>Home ZIP</label>
-      <input id="set-zip" type="text" inputmode="numeric" maxlength="5" placeholder="34223" />
-      <p class="hint" id="set-zip-hint">Weather and alerts follow this ZIP. Tides and BeachWalk calendars stay on the Key.</p>
-      <label>Trash day</label>
-      <div class="set-row" id="set-trash">
-        <button type="button" data-v="0">Sun</button>
-        <button type="button" data-v="1">Mon</button>
-        <button type="button" data-v="2">Tue</button>
-        <button type="button" data-v="3">Wed</button>
-        <button type="button" data-v="4">Thu</button>
-        <button type="button" data-v="5">Fri</button>
-        <button type="button" data-v="6">Sat</button>
-      </div>
-      <h3>What shows</h3>
-      <label>Cam in the night rotation</label>
-      <div class="set-row" id="set-camnight">
-        <button type="button" data-v="0">Off</button>
-        <button type="button" data-v="1">On</button>
-      </div>
-      <label>Lightning chip</label>
-      <div class="set-row" id="set-chipbolt">
-        <button type="button" data-v="1">On</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <label>Named-storm chip</label>
-      <div class="set-row" id="set-chipcane">
-        <button type="button" data-v="1">On</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <label>Trash chip</label>
-      <div class="set-row" id="set-chiptrash">
-        <button type="button" data-v="1">On</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <label>Briefing ticker</label>
-      <div class="set-row" id="set-brief">
-        <button type="button" data-v="1">On</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <label>Briefing includes</label>
-      <div class="set-row" id="set-briefwx">
-        <button type="button" data-v="1">Weather</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <div class="set-row" id="set-briefsports">
-        <button type="button" data-v="1">Sports</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <p class="hint">Weather uses the Today greeting plus lightning and named-storm chips when they are on. Sports is scores within about 150 miles of the ZIP.</p>
-      <label>Breaking news ticker</label>
-      <div class="set-row" id="set-break">
-        <button type="button" data-v="1">On</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <label>Breaking includes</label>
-      <div class="set-row" id="set-breaknat">
-        <button type="button" data-v="1">National</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <div class="set-row" id="set-breakloc">
-        <button type="button" data-v="1">Local</button>
-        <button type="button" data-v="0">Off</button>
-      </div>
-      <div class="set-row">
+      <div class="set-card">
         <button type="button" id="set-dockreset">Restore default page order</button>
       </div>
-      <button type="button" class="done" id="set-done">Done</button>
     </div>
     <div class="ticker-stack">
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
@@ -2033,9 +2090,8 @@ Cart shop:</textarea>
       rot = setTimeout(step, pageDwell(on ? on.id : "now"));
     }
     (function restorePage() {
-      var last;
-      try { last = localStorage.getItem("bw-page"); } catch (e) {}
-      if (last && document.getElementById(last)) showPage(last);
+      showPage("now");
+      i = 0;
     })();
     document.querySelectorAll(".dock").forEach(function (d) {
       d.addEventListener("click", function () {
