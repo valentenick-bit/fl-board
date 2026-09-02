@@ -208,6 +208,11 @@
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
     iframe.full { width:100%; height:52vh; border:0; border-radius:12px; background:#111; }
     .radar-crop { width:100%; height:52vh; overflow:hidden; border-radius:12px; background:#111; }
+    .radar-stage { position:relative; }
+    .radar-stage img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:none; background:#111; }
+    .radar-stage img.on { display:block; }
+    .radar-stage .cam-cap { position:absolute; left:10px; top:10px; z-index:2; margin:0; }
+    .radar-stage .cam-pills { bottom:10px; }
     .hurr-stage { position:relative; width:100%; height:52vh; overflow:hidden; border-radius:12px; background:#111; }
     .hurr-stage img { width:100%; height:100%; object-fit:contain; display:block; background:#111; }
     .hurr-cap { position:absolute; left:10px; bottom:10px; background:rgba(18,16,28,.72); color:#f7f1e6; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; padding:5px 9px; border-radius:999px; }
@@ -452,7 +457,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v84</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v85</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -549,10 +554,16 @@
           <small class="stamp" data-feed="alerts"></small>
         </div>
         <p id="radar-note">Radar follows the home ZIP. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
-        <div class="radar-crop"><img class="radar-loop" id="radar-loop" alt="KTBW radar loop" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/></div>
-        <div class="marine-graphs" style="margin-top:10px">
-          <div class="card"><b>Gulf satellite</b><img id="radar-gulf" alt="GOES Gulf" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg" style="width:100%;border-radius:10px;background:#111"/></div>
-          <div class="card"><b>Atlantic tropics</b><img id="radar-atl" alt="GOES Atlantic tropics" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg" style="width:100%;border-radius:10px;background:#111"/></div>
+        <div class="radar-crop radar-stage" id="radar-stage">
+          <img class="radar-loop on" id="radar-loop" alt="KTBW radar loop" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
+          <img class="radar-sat" id="radar-gulf" alt="GOES Gulf" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"/>
+          <img class="radar-sat" id="radar-atl" alt="GOES Atlantic tropics" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg"/>
+          <p id="radar-cap" class="cam-cap">Local radar loop</p>
+          <div class="cam-pills" id="radar-pills">
+            <button type="button" data-radar="loop" class="on">Radar</button>
+            <button type="button" data-radar="gulf">Gulf sat</button>
+            <button type="button" data-radar="atl">Atlantic tropics</button>
+          </div>
         </div>
       </section>
       <section id="marine" class="page">
@@ -1059,7 +1070,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 84;
+    window.BOARD_VER = 85;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1490,6 +1501,41 @@ Cart shop:</textarea>
       if (cap) cap.textContent = "Siesta Key Beach live";
       if (typeof noteFeed === "function") noteFeed("cam", true, "siesta youtube");
     }
+
+    function showRadarView(id, bust) {
+      var views = [
+        { id: "loop", el: "radar-loop", label: "Local radar loop" },
+        { id: "gulf", el: "radar-gulf", label: "Gulf of America · GOES-East GeoColor", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg" },
+        { id: "atl", el: "radar-atl", label: "Atlantic tropics · Caribbean / approaches · GOES-East", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg" }
+      ];
+      var i = 0;
+      for (var n = 0; n < views.length; n++) if (views[n].id === id) i = n;
+      window.__radarI = i;
+      var v = views[i];
+      ["radar-loop","radar-gulf","radar-atl"].forEach(function (rid) {
+        var img = document.getElementById(rid);
+        if (img) img.classList.toggle("on", rid === v.el);
+      });
+      document.querySelectorAll("#radar-pills button").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-radar") === v.id);
+      });
+      var cap = document.getElementById("radar-cap");
+      if (cap) cap.textContent = v.label;
+      if (bust && v.src) {
+        var img = document.getElementById(v.el);
+        if (img) img.src = v.src + "?t=" + Date.now();
+      }
+      if (bust && v.id === "loop" && typeof applyRadar === "function") applyRadar();
+    }
+    function tickRadarRotate() {
+      var on = document.querySelector(".page.on");
+      if (!on || on.id !== "radar") return;
+      if (window.__radarHold && Date.now() < window.__radarHold) return;
+      var order = ["loop","gulf","atl"];
+      window.__radarI = ((window.__radarI || 0) + 1) % order.length;
+      showRadarView(order[window.__radarI], true);
+    }
+
     function refreshSatStills() {
       var n = Date.now();
       [["radar-gulf","https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"],
@@ -1510,6 +1556,9 @@ function showPage(id) {
       try { localStorage.setItem("bw-page", id); } catch (e) {}
       if (id === "cam") {
         if (typeof refreshKeyCam === "function") refreshKeyCam(true);
+      }
+      if (id === "radar") {
+        if (typeof showRadarView === "function") showRadarView(["loop","gulf","atl"][window.__radarI || 0], false);
       }
       if (id === "hurr" && typeof showHurrSlide === "function") showHurrSlide(true);
     }
@@ -2472,7 +2521,7 @@ function showPage(id) {
     function pageDwell(id) {
       if (id === "hurr") return 36000;
       var base = (Number(getSet().rotate) || 15) * 1000;
-      return (id === "now" || id === "cam") ? Math.max(base, 20000) : base;
+      return (id === "now" || id === "cam") ? Math.max(base, 20000) : (id === "radar") ? Math.max(base, 36000) : base;
     }
     function startRotate() {
       clearInterval(rot);
@@ -3881,6 +3930,17 @@ function showPage(id) {
     if (typeof refreshKeyCam === "function") refreshKeyCam(true);
     setInterval(function () { if (typeof refreshKeyCam === "function") refreshKeyCam(true); }, 5 * 60 * 1000);
 
+
+    (function wireRadarViews() {
+      var box = document.getElementById("radar-pills");
+      if (box) box.addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-radar]");
+        if (!b) return;
+        window.__radarHold = Date.now() + 45000;
+        showRadarView(b.getAttribute("data-radar"), true);
+      });
+      setInterval(function () { if (typeof tickRadarRotate === "function") tickRadarRotate(); }, 8000);
+    })();
     setInterval(function () { if (typeof refreshSatStills === "function") refreshSatStills(); }, 5 * 60 * 1000);
 
     (function moveCamAfterRadar() {
