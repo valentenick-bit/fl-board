@@ -448,7 +448,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v78</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v79</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1047,7 +1047,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 78;
+    window.BOARD_VER = 79;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1073,12 +1073,13 @@ Cart shop:</textarea>
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
           return r;
         }, function (err) {
-          if (!optional) logCrash("net", u.slice(0, 70) + " " + (err && err.message || err));
+          var msg = String(err && err.message || err || "");
+          if (!optional && !/abort/i.test(msg) && err && err.name !== "AbortError") logCrash("net", u.slice(0, 70) + " " + msg);
           throw err;
         });
       };
@@ -4479,7 +4480,7 @@ Cart shop:</textarea>
           var url = "https://api.visibleplanets.dev/v3?latitude=" + homeLat() + "&longitude=" + homeLon() + "&aboveHorizon=true";
           if (iso) url += "&time=" + encodeURIComponent(iso);
           var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-          var t = ctrl ? setTimeout(function () { ctrl.abort(); }, 5000) : null;
+          var t = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 8000) : null;
           fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
             .then(function (r) { return r.json(); })
             .then(function (d) { applyBodies(bodiesFrom(d), slot, label); touchFeed("planets", true, label || "sky"); })
