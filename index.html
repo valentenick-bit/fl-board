@@ -796,20 +796,30 @@ Cart shop:</textarea>
         <div class="card"><b>Last updates</b><span id="health-all"></span></div>
         <div class="card">
           <b>Not built yet</b>
-          <ul class="check-list">
+          <span class="stamp">Ship something and it leaves this list. New ideas we agree on get added here.</span>
+          <ul class="check-list" id="idea-backlog">
             <li>Shared occupancy, vendors, and villa checks across every device</li>
-            <li>Delivery scan that other screens see when you mark delivered</li>
+            <li>Delivery “delivered” checkbox that other screens see</li>
             <li>Automatic BeachWalk / Englewood / Moose calendar wiring</li>
-            <li>Best-window chips for pool, beach, boat, walk as four yes/no answers</li>
-            <li>Live music tonight as its own card</li>
+            <li>Beach / pool / boat / walk as four yes-or-no chips</li>
+            <li>Tonight-only live music card</li>
             <li>Cart vs truck from wind, rain, and dark</li>
-            <li>Local saltwater bite line for Manasota, not a news story</li>
+            <li>Manasota saltwater bite line, not a fishing news story</li>
             <li>Flight card that flips to “leave for RSW / PGD in 2 hours”</li>
-            <li>Portrait kiosk layout vs phone layout as a real setting</li>
-            <li>Quiet hours that dim the screen; NOAA can still break in</li>
+            <li>Real portrait-kiosk vs phone layout setting</li>
+            <li>Quiet hours dim the screen; NOAA can still break in</li>
             <li>Generator / fuel / water last-checked on Emergency</li>
             <li>Bridge and low-road status in flood or surge</li>
-            <li>Clubhouse / commercial mode, Instacart, HOA pay, multi-community</li>
+            <li>Last-opened stamp: which phone viewed the board and when</li>
+            <li>Seasonal pool-salt / leak reminders</li>
+            <li>Restaurant reservation links for the regular places</li>
+            <li>Stale-feed chip on Today, not only on Status</li>
+            <li>Update stamps on every living card</li>
+            <li>Clubhouse / commercial mode</li>
+            <li>Shared grocery list / Instacart</li>
+            <li>HOA message slot and HOA pay</li>
+            <li>Multi-community switcher</li>
+            <li>Website / cyber security: lock who can open the board, lock house data, and stop the public URL from leaking occupancy, deliveries, and vendor notes</li>
           </ul>
         </div>
       </section>
@@ -1951,13 +1961,26 @@ Cart shop:</textarea>
       var t = d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
       var day = d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
       var today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-      return day === today ? t : "tomorrow " + t;
+      var tomDate = new Date(Date.now() + 36 * 3600 * 1000).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      if (day === today) return t;
+      if (day === tomDate || day > today) {
+        var name = d.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
+        var todayName = new Date().toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
+        var days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        var a = days.indexOf(todayName), b = days.indexOf(name);
+        var ahead = (b - a + 7) % 7;
+        return (ahead === 1 ? "tomorrow " : name + " ") + t;
+      }
+      return t;
     }
     function writeBestWindow() {
       var el = document.getElementById("best-window");
       if (!el) return;
       var hours = window.__hours || [];
-      if (!hours.length) { el.innerHTML = "<b>Best window</b><span>Waiting on the hourly forecast to write the next stretch.</span>"; return; }
+      if (!hours.length) {
+        el.innerHTML = "<b>Best window</b><span>Waiting on the hourly forecast.</span>";
+        return;
+      }
       function ok(h, kind) {
         var fx = String(h.shortForecast || "").toLowerCase();
         var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
@@ -1970,13 +1993,22 @@ Cart shop:</textarea>
         if (kind === "cart") return !thunder && wind < 20 && pop < 55;
         return !wet && wind < 18;
       }
-      function span(kind) {
+      function etDay(iso) {
+        return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      }
+      var todayKey = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      function span(kind, onlyToday) {
         var now = Date.now();
         var start = null, last = null;
         for (var i = 0; i < hours.length; i++) {
-          var t = new Date(hours[i].startTime).getTime();
+          if (!hours[i] || !hours[i].startTime) continue;
+          var t0 = new Date(hours[i].startTime).getTime();
+          var t1 = hours[i].endTime ? new Date(hours[i].endTime).getTime() : t0 + 3600000;
           var hr = parseInt(new Date(hours[i].startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
-          if (t + 3600000 < now || hr >= 20) continue;
+          if (isNaN(t0) || t1 <= now) continue;
+          if (hr >= 20) continue;
+          if (onlyToday && etDay(hours[i].startTime) !== todayKey) continue;
+          if (!onlyToday && etDay(hours[i].startTime) === todayKey) continue;
           if (ok(hours[i], kind)) {
             if (!start) start = hours[i];
             last = hours[i];
@@ -1985,31 +2017,47 @@ Cart shop:</textarea>
         if (!start) return null;
         var a = hourLabel(start.startTime);
         var b = last ? hourLabel(last.endTime || last.startTime) : a;
-        if (a === b) return a;
+        b = String(b).replace(/^tomorrow /i, "").replace(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) /i, "");
+        if (a.replace(/^tomorrow /i, "").replace(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) /i, "") === b) return a;
         return a + "–" + b;
       }
-      var beach = span("beach");
-      var cart = span("cart");
-      var boat = span("boat");
-      function piece(s) {
-        if (!s) return null;
-        return { tom: /tomorrow/.test(s), t: String(s).replace(/tomorrow /g, "") };
+      function line(todayS, tomS, name) {
+        if (todayS) return name + " " + todayS;
+        if (tomS) return name + " " + tomS;
+        return null;
       }
-      var b = piece(beach), c = piece(cart), o = piece(boat);
-      var tom = !!(b && b.tom) || !!(c && c.tom) || !!(o && o.tom);
-      var day = tom ? "Tomorrow" : "Today";
+      var beachT = span("beach", true), cartT = span("cart", true), boatT = span("boat", true);
+      var beachN = span("beach", false), cartN = span("cart", false), boatN = span("boat", false);
+      var todayBits = [line(beachT, null, "beach"), line(cartT, null, "cart"), line(boatT, null, "boat")].filter(Boolean);
+      var tomBits = [line(null, beachN, "beach"), line(null, cartN, "cart"), line(null, boatN, "boat")].filter(Boolean);
       var parts = [];
-      if (b && c && o && b.t === c.t && c.t === o.t) {
-        parts.push(day + " the best stretch for the beach, a cart ride, and a launch is " + b.t + ".");
-      } else if (b && c && b.t === c.t) {
-        parts.push(day + " the beach and cart look best " + b.t + ".");
-        parts.push(o ? "A launch window is " + o.t + "." : "Leave the boat on the lift.");
+      if (todayBits.length) {
+        if (beachT && cartT && boatT && beachT === cartT && cartT === boatT) {
+          parts.push("Best stretch left today for the beach, cart, and a launch is " + beachT + ".");
+        } else if (beachT && cartT && beachT === cartT) {
+          parts.push("Beach and cart look best " + beachT + " today.");
+          parts.push(boatT ? "Launch window " + boatT + "." : "Leave the boat on the lift today.");
+        } else {
+          if (beachT) parts.push("Beach " + beachT + ".");
+          else parts.push("No clean beach window left today.");
+          if (cartT) parts.push("Cart " + cartT + ".");
+          if (boatT) parts.push("Boat " + boatT + ".");
+        }
       } else {
-        parts.push(b ? (day + " the beach looks best " + b.t + ".") : "Stay off the beach until the rain risk drops.");
-        parts.push(c ? "The cart is fine " + c.t + "." : "Park the cart through the next wet hours.");
-        parts.push(o ? "If you launch, do it " + o.t + "." : "Don’t launch until the wind and rain ease.");
+        parts.push("No good outdoor stretch left today.");
+        if (tomBits.length) {
+          var same = beachN && cartN && boatN && beachN === cartN && cartN === boatN;
+          if (same) parts.push("Next look is " + beachN + ".");
+          else {
+            if (beachN) parts.push("Beach next " + beachN + ".");
+            if (cartN) parts.push("Cart next " + cartN + ".");
+            if (boatN) parts.push("Boat next " + boatN + ".");
+          }
+        }
       }
-      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm) && !tom) parts.push(window.__nextStorm.replace(/\.$/, "") + ".");
+      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm) && todayBits.length) {
+        parts.push(window.__nextStorm.replace(/\.$/, "") + ".");
+      }
       var text = parts.join(" ").replace(/\s+/g, " ").trim();
       el.innerHTML = "<b>Best window</b><span>" + text + "</span>";
       window.__bestWindow = text;
