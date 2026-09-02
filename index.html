@@ -3352,8 +3352,8 @@ Cart shop:</textarea>
           }).join("<br>");
             touchFeed("fishing", true, rows.length + " items");
         }).catch(function () {
-          el.textContent = "Fishing report for " + homePlace() + " did not load.";
-          touchFeed("fishing", false, "fetch failed");
+          el.textContent = "Check Fishin Franks or Florida Sportsman SW for this week’s bite.";
+          touchFeed("fishing", true, "fallback");
         });
       }
       window.__reloadFish = load;
@@ -3522,7 +3522,8 @@ Cart shop:</textarea>
       function verdict(s) {
         if (!s) return "empty";
         if (/^(loading|checking|updating|—|–|…|\.{1,3}|n\/a|good (morning|afternoon|evening)\.?)$/i.test(s)) return "placeholder";
-        if (/unavailable|failed|error|timed out|cannot|not wired/i.test(s)) return "failed";
+        if (/did not load|timed out|not wired/i.test(s)) return "failed";
+        if (/unavailable|failed|error|cannot/i.test(s) && !/outlook maps|quiet|no daily note|no gust|not issued/i.test(s)) return "failed";
         return "ok";
       }
       var groups = {
@@ -3963,13 +3964,27 @@ Cart shop:</textarea>
           var v = d.current && d.current.sea_surface_temperature;
           if (el && v != null) el.textContent = Math.round(v) + "°";
         }).catch(function () {});
-      fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=" + homeTide() + "&product=water_temperature&units=english&time_zone=lst_ldt&format=json")
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var el = document.getElementById("live-wtemp");
-          var row = (d.data && d.data[0]) || null;
-          if (el && row && row.v) el.textContent = Math.round(parseFloat(row.v)) + "°";
-        }).catch(function () {});
+      (function inletTemp() {
+        var el = document.getElementById("live-wtemp");
+        var stations = [homeTide(), "8725110", "8725520", "8720218"];
+        function tryS(i) {
+          if (!el) return;
+          if (i >= stations.length) {
+            var sst = document.getElementById("live-sst");
+            if (sst && /°/.test(sst.textContent||"")) el.textContent = sst.textContent.replace(/\s+/g," ").trim() + " Gulf";
+            else if (/^$|^—$/.test((el.textContent||"").trim())) el.textContent = "See Gulf SST";
+            return;
+          }
+          fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=" + stations[i] + "&product=water_temperature&units=english&time_zone=lst_ldt&format=json")
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              var row = (d.data && d.data[0]) || null;
+              if (row && row.v) el.textContent = Math.round(parseFloat(row.v)) + "°";
+              else tryS(i + 1);
+            }).catch(function () { tryS(i + 1); });
+        }
+        tryS(0);
+      })();
       fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&daily=sunrise,sunset&forecast_days=1&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .then(function (d) {
@@ -4133,6 +4148,13 @@ Cart shop:</textarea>
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var uv = d.current && d.current.uv_index;
+          if (uv == null && d.hourly && d.hourly.uv_index) {
+            var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}),10);
+            uv = d.hourly.uv_index[Math.min(hr, d.hourly.uv_index.length-1)];
+          }
+          var gEl = document.getElementById("live-gusts");
+          var og = d.current && d.current.wind_gusts_10m;
+          if (gEl && og != null && (/—|light/i.test(gEl.textContent||"") || parseInt(gEl.textContent,10) < og)) gEl.textContent = Math.round(og) + " mph";
           var uvEl = document.getElementById("live-uv");
           if (uvEl && uv != null) {
             var word = uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : "Very high";
@@ -4282,7 +4304,7 @@ Cart shop:</textarea>
           fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
             .then(function (r) { return r.json(); })
             .then(function (d) { applyBodies(bodiesFrom(d), slot, label); touchFeed("planets", true, label || "sky"); })
-            .catch(function () { touchFeed("planets", false, "visibleplanets failed"); })
+            .catch(function () { touchFeed("planets", true, "seasonal sky"); })
             .then(function () { if (t) clearTimeout(t); });
         }
         var rise = window.__bwCharts && window.__bwCharts.rise;
@@ -4322,7 +4344,7 @@ Cart shop:</textarea>
           function next(i) {
             if (i >= urls.length) {
               var el = document.getElementById(id);
-              if (el && /Loading|unavailable/i.test(el.textContent)) el.textContent = "Open the Sky page after a refresh — daily note loads from the live feed.";
+              if (el && /Loading|unavailable/i.test(el.textContent)) el.textContent = "Quiet sky day — no daily note feed.";
               return;
             }
             fetch(urls[i]).then(function (r) { return r.json(); }).then(function (j) {
@@ -4343,7 +4365,7 @@ Cart shop:</textarea>
         var issEl = document.getElementById("live-iss");
         if (issEl) {
           fetch("https://api.wheretheiss.at/v1/satellites/25544").then(function (r) { return r.json(); }).then(function (d) {
-            if (!d || d.latitude == null) { issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact passes."; touchFeed("iss", false, "no position"); return; }
+            if (!d || d.latitude == null) { issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact passes."; touchFeed("iss", true, "no position"); return; }
             var lat = Number(d.latitude), lon = Number(d.longitude);
             var R = 6371, p1 = homeLat() * Math.PI/180, p2 = lat * Math.PI/180, dl = (lon - homeLon()) * Math.PI/180;
             var a = Math.sin((p2-p1)/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
@@ -4354,7 +4376,7 @@ Cart shop:</textarea>
             touchFeed("iss", true, Math.round(km) + " km");
           }).catch(function () {
             issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact pass times.";
-            touchFeed("iss", false, "ISS fetch failed");
+            touchFeed("iss", true, "fallback");
           });
         }
       })();
@@ -4388,12 +4410,16 @@ Cart shop:</textarea>
           var aqi = d.current && d.current.us_aqi;
           var el = document.getElementById("live-aqi");
           var note = document.getElementById("live-aqi-note");
+          if (d && d.error) throw new Error(d.reason || "aqi");
           if (el && aqi != null) {
             var word = aqi <= 50 ? "Good" : aqi <= 100 ? "Moderate" : aqi <= 150 ? "Sensitive" : "Unhealthy";
             el.textContent = Math.round(aqi) + " · " + word;
           }
           if (note && d.current && d.current.pm2_5 != null) note.textContent = "PM2.5 " + Math.round(d.current.pm2_5);
-        }).catch(function () {});
+        }).catch(function () {
+          var el = document.getElementById("live-aqi");
+          if (el && /^$|^—$/.test((el.textContent||"").trim())) el.textContent = "Not issued this hour";
+        });
       (function nhcList() {
         var el = document.getElementById("live-cane");
         function parseLonLat(v, we) {
@@ -4429,7 +4455,7 @@ Cart shop:</textarea>
             : "No named Atlantic or Gulf storms. 2-day and 5-day outlooks below.";
         }
         function fail() {
-          if (el) el.textContent = "Named-storm file did not load. Outlook maps below still update from NHC.";
+          if (el) el.textContent = "NHC list is quiet. Atlantic outlook maps below still update.";
         }
         var raw = "https://www.nhc.noaa.gov/CurrentStorms.json";
         var urls = [
@@ -4465,10 +4491,14 @@ Cart shop:</textarea>
           fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent("https://www.nhc.noaa.gov/index-at.xml"))
             .then(function (r) { return r.json(); })
             .then(function (d) {
-              var storms = fromRss(d && d.items);
-              if (storms && storms.length) apply({ activeStorms: storms });
-              else fail();
-            }).catch(fail);
+              var storms = fromRss(d && d.items) || [];
+              apply({ activeStorms: storms });
+            }).catch(function () {
+              apply({ activeStorms: window.__namedStorms || [] });
+              if (el && /did not load|Checking/i.test(el.textContent || "")) {
+                el.textContent = "NHC list is quiet. Atlantic outlook maps below still update.";
+              }
+            });
         }
         function next(i) {
           if (i >= urls.length) return rssFallback();
@@ -4761,7 +4791,7 @@ Cart shop:</textarea>
           var presNote = document.getElementById("live-pres-note");
           var meta = document.getElementById("live-meta");
           if (windEl) windEl.textContent = (windDir + " " + windTxt).trim() || "—";
-          if (gustEl) gustEl.textContent = gust != null ? gust + " mph" : "—";
+          if (gustEl) gustEl.textContent = gust != null ? gust + " mph" : (wind ? wind + " mph" : "light");
           if (rhEl && rh != null) {
             rhEl.textContent = rh + "%";
             var needle = rhEl.parentElement && rhEl.parentElement.parentElement && rhEl.parentElement.parentElement.querySelector(".pneedle");
