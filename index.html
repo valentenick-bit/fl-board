@@ -844,7 +844,30 @@ Cart shop:</textarea>
         <button type="button" data-v="1">On</button>
         <button type="button" data-v="0">Off</button>
       </div>
-      <p class="hint">Weather and breaking tickers still appear only when there is something to say.</p>
+      <label>Briefing includes</label>
+      <div class="set-row" id="set-briefwx">
+        <button type="button" data-v="1">Weather</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <div class="set-row" id="set-briefsports">
+        <button type="button" data-v="1">Sports</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <p class="hint">Weather uses the Today greeting plus lightning and named-storm chips when they are on. Sports is scores within about 150 miles of the ZIP.</p>
+      <label>Breaking news ticker</label>
+      <div class="set-row" id="set-break">
+        <button type="button" data-v="1">On</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <label>Breaking includes</label>
+      <div class="set-row" id="set-breaknat">
+        <button type="button" data-v="1">National</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
+      <div class="set-row" id="set-breakloc">
+        <button type="button" data-v="1">Local</button>
+        <button type="button" data-v="0">Off</button>
+      </div>
       <div class="set-row">
         <button type="button" id="set-dockreset">Restore default page order</button>
       </div>
@@ -862,7 +885,9 @@ Cart shop:</textarea>
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
       station: "", vol: "whisper", noaa: "1", radioauto: "1",
       zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL",
-      camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", brief: "1"
+      camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1",
+      brief: "1", briefWx: "1", briefSports: "1",
+      breakOn: "1", breakNat: "1", breakLoc: "1"
     };
     function getSet() {
       var s = {};
@@ -2538,6 +2563,11 @@ Cart shop:</textarea>
         mark("set-chipcane", s.chipCane);
         mark("set-chiptrash", s.chipTrash);
         mark("set-brief", s.brief);
+        mark("set-briefwx", s.briefWx);
+        mark("set-briefsports", s.briefSports);
+        mark("set-break", s.breakOn);
+        mark("set-breaknat", s.breakNat);
+        mark("set-breakloc", s.breakLoc);
         mark("set-trash", String(typeof trashDay === "function" ? trashDay() : 4));
         var zip = document.getElementById("set-zip");
         if (zip) zip.value = s.zip || "34223";
@@ -2564,6 +2594,8 @@ Cart shop:</textarea>
         document.documentElement.classList.toggle("text-lg", s.text === "large");
         var brief = document.querySelector(".ticker");
         if (brief) brief.style.display = s.brief === "0" ? "none" : "";
+        var brk = document.getElementById("breakbar");
+        if (brk && s.breakOn === "0") brk.classList.remove("on");
         try { localStorage.setItem("bw-kiosk", s.kiosk === "1" ? "1" : "0"); } catch (e) {}
         document.documentElement.classList.toggle("kiosk", s.kiosk === "1");
         var kbtn = document.getElementById("kioskbtn");
@@ -2579,6 +2611,9 @@ Cart shop:</textarea>
         if (typeof window.__reloadFish === "function") window.__reloadFish();
         if (typeof window.__reloadGator === "function") window.__reloadGator();
         if (typeof paintHomeChrome === "function") paintHomeChrome();
+        if (typeof loadSportsScores === "function") loadSportsScores(function () { if (typeof writeBriefing === "function") writeBriefing(); });
+        else if (typeof writeBriefing === "function") writeBriefing();
+        if (typeof pollBreaking === "function") pollBreaking();
         if (typeof stampGreet === "function") stampGreet();
         var nowline = document.getElementById("wx-nowline");
         if (nowline && /Englewood|Updating/.test(nowline.textContent || "")) {
@@ -2636,6 +2671,11 @@ Cart shop:</textarea>
       tap("set-chipcane", "chipCane");
       tap("set-chiptrash", "chipTrash");
       tap("set-brief", "brief");
+      tap("set-briefwx", "briefWx");
+      tap("set-briefsports", "briefSports");
+      tap("set-break", "breakOn");
+      tap("set-breaknat", "breakNat");
+      tap("set-breakloc", "breakLoc");
       var trashRow = document.getElementById("set-trash");
       if (trashRow) trashRow.addEventListener("click", function (e) {
         var b = e.target.closest("button[data-v]");
@@ -4150,6 +4190,12 @@ Cart shop:</textarea>
       var bar = document.getElementById("breakbar");
       var txt = document.getElementById("breaktext");
       if (!bar || !txt) return;
+      var s = getSet();
+      if (s.breakOn === "0") {
+        bar.classList.remove("on");
+        stackTickers();
+        return;
+      }
       function parseRss(xml) {
         var out = [];
         if (!xml) return out;
@@ -4192,10 +4238,11 @@ Cart shop:</textarea>
       var foxRss = "https://moxie.foxnews.com/google-publisher/latest.xml";
       var localRss = "https://corsproxy.io/?" + encodeURIComponent(localNewsRss());
       Promise.all([rssXml(foxRss), rssXml(localRss)]).then(function (both) {
-        var foxHits = (both[0] || []).filter(isBreak).map(function (it) {
+        var set = getSet();
+        var foxHits = set.breakNat === "0" ? [] : (both[0] || []).filter(isBreak).map(function (it) {
           return { src: "Fox", title: (it.title || "").replace(/\s+/g, " ") };
         });
-        var localHits = (both[1] || []).filter(isBreak).map(function (it) {
+        var localHits = set.breakLoc === "0" ? [] : (both[1] || []).filter(isBreak).map(function (it) {
           return { src: "Local", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News).*$/i, "") };
         });
         var seen = {};
@@ -4255,127 +4302,110 @@ Cart shop:</textarea>
       rows.forEach(function (r) { stack.insertBefore(r.el, brief); });
       stack.appendChild(brief);
     }
+    var SPORT_TEAMS = [
+      {name:"Buccaneers",lat:27.9759,lon:-82.5033,abbr:"TB",sport:"nfl"},
+      {name:"Rays",lat:27.7682,lon:-82.6534,abbr:"TB",sport:"mlb"},
+      {name:"Lightning",lat:27.9427,lon:-82.4518,abbr:"TB",sport:"nhl"},
+      {name:"Magic",lat:28.5392,lon:-81.3839,abbr:"ORL",sport:"nba"},
+      {name:"Dolphins",lat:25.9580,lon:-80.2389,abbr:"MIA",sport:"nfl"},
+      {name:"Heat",lat:25.7814,lon:-80.1870,abbr:"MIA",sport:"nba"},
+      {name:"Marlins",lat:25.7781,lon:-80.2196,abbr:"MIA",sport:"mlb"},
+      {name:"Panthers",lat:26.1584,lon:-80.3256,abbr:"FLA",sport:"nhl"},
+      {name:"Jaguars",lat:30.3239,lon:-81.6373,abbr:"JAX",sport:"nfl"},
+      {name:"Patriots",lat:42.0909,lon:-71.2643,abbr:"NE",sport:"nfl"},
+      {name:"Red Sox",lat:42.3467,lon:-71.0972,abbr:"BOS",sport:"mlb"},
+      {name:"Celtics",lat:42.3662,lon:-71.0621,abbr:"BOS",sport:"nba"},
+      {name:"Bruins",lat:42.3662,lon:-71.0621,abbr:"BOS",sport:"nhl"},
+      {name:"Yankees",lat:40.8296,lon:-73.9262,abbr:"NYY",sport:"mlb"},
+      {name:"Mets",lat:40.7571,lon:-73.8458,abbr:"NYM",sport:"mlb"},
+      {name:"Giants",lat:40.8135,lon:-74.0745,abbr:"NYG",sport:"nfl"},
+      {name:"Jets",lat:40.8135,lon:-74.0745,abbr:"NYJ",sport:"nfl"},
+      {name:"Knicks",lat:40.7505,lon:-73.9934,abbr:"NYK",sport:"nba"},
+      {name:"Nets",lat:40.6826,lon:-73.9749,abbr:"BKN",sport:"nba"},
+      {name:"Rangers",lat:40.7505,lon:-73.9934,abbr:"NYR",sport:"nhl"},
+      {name:"Islanders",lat:40.7227,lon:-73.5906,abbr:"NYI",sport:"nhl"},
+      {name:"Devils",lat:40.7336,lon:-74.1711,abbr:"NJD",sport:"nhl"}
+    ];
+    function milesApart(aLat,aLon,bLat,bLon){
+      var R=3958.8, p1=aLat*Math.PI/180, p2=bLat*Math.PI/180, d=(bLat-aLat)*Math.PI/180, l=(bLon-aLon)*Math.PI/180;
+      var h=Math.sin(d/2)*Math.sin(d/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(l/2)*Math.sin(l/2);
+      return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+    }
+    function nearbyTeams(){
+      var lat=homeLat(), lon=homeLon();
+      return SPORT_TEAMS.filter(function(tm){ return milesApart(lat,lon,tm.lat,tm.lon) <= 150; });
+    }
+    function loadSportsScores(done){
+      var near=nearbyTeams();
+      if(!near.length){ window.__sportsLines=["No major teams within 150 miles of "+homePlace()+"."]; if(done) done(); return; }
+      var bySport={};
+      near.forEach(function(t){ (bySport[t.sport]=bySport[t.sport]||[]).push(t); });
+      var urls={
+        nfl:"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
+        mlb:"https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard",
+        nba:"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+        nhl:"https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard"
+      };
+      Promise.all(Object.keys(bySport).map(function(sp){
+        return fetch(urls[sp]).then(function(r){return r.json();}).then(function(d){ return {sp:sp, d:d}; }).catch(function(){ return {sp:sp, d:null}; });
+      })).then(function(packs){
+        var lines=[];
+        packs.forEach(function(pack){
+          var events=((pack.d||{}).events)||[];
+          var want=bySport[pack.sp]||[];
+          events.forEach(function(ev){
+            var comps=((((ev.competitions||[])[0]||{}).competitors)||[]);
+            if(comps.length<2) return;
+            var abbrs=comps.map(function(c){ return String((c.team||{}).abbreviation||"").toUpperCase(); });
+            var hit=want.filter(function(t){ return abbrs.indexOf(t.abbr) >= 0; });
+            if(!hit.length) return;
+            var a=comps[0], b=comps[1];
+            var an=(a.team&&a.team.shortDisplayName)||a.team.abbreviation;
+            var bn=(b.team&&b.team.shortDisplayName)||b.team.abbreviation;
+            var st=((ev.status||{}).type||{});
+            var state=st.state||"";
+            var line;
+            if(state==="pre") line = an+" at "+bn+" "+(st.shortDetail||st.detail||"later")+".";
+            else line = an+" "+(a.score||"0")+", "+bn+" "+(b.score||"0")+(state==="in"?" in progress.":".");
+            lines.push(line);
+          });
+        });
+        window.__sportsLines = lines.length ? lines : ["No games today for teams within 150 miles of "+homePlace()+"."];
+        if(done) done();
+      });
+    }
     function writeBriefing() {
       var tick = document.getElementById("ticktext");
       if (!tick) return;
-      function t(id) {
-        var el = document.getElementById(id);
-        var s = el && el.textContent ? el.textContent.replace(/\s+/g, " ").trim() : "";
-        if (!s) return "";
-        if (/^(loading|checking|updating|—|–|\.\.\.|…)/i.test(s)) return "";
-        return s.replace(/&deg;|°/g, "°");
+      var s = getSet();
+      if (s.brief === "0") return;
+      var GAP = "\u00a0".repeat(160);
+      var bits = [];
+      if (s.briefWx !== "0") {
+        var greet = ((document.getElementById("live-sky")||{}).textContent||"").replace(/\s+/g," ").trim();
+        var wx = [];
+        if (greet && !/^(loading|checking)/i.test(greet)) wx.push(greet);
+        var bolt = document.getElementById("chip-bolt");
+        if (bolt && bolt.classList.contains("on")) {
+          var bs = ((bolt.querySelector("span")||{}).textContent||"").replace(/\s+/g," ").trim();
+          if (bs) wx.push(bs);
+        }
+        var cane = document.getElementById("chip-cane");
+        if (cane && cane.classList.contains("on")) {
+          var cs = ((cane.querySelector("span")||{}).textContent||"").replace(/\s+/g," ").trim();
+          if (cs) wx.push(cs);
+        }
+        if (wx.length) bits.push("<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(wx.map(function(x){ return /[.!?]$/.test(x)?x:x+"."; }).join(" ")));
       }
-      function end(s) {
-        s = String(s || "").replace(/\s+/g, " ").trim();
-        if (!s) return "";
-        if (!/[.!?]$/.test(s)) s += ".";
-        return s;
+      if (s.briefSports !== "0") {
+        var games = window.__sportsLines || [];
+        var body = games.length ? games.join(" ") : "Checking nearby scores.";
+        bits.push("<b>Sports.</b>" + "\u00a0".repeat(24) + spaceSentences(body));
       }
-      function join(parts) {
-        return parts.map(end).filter(Boolean).join(" ");
-      }
-      function sent(s) {
-        return String(s || "")
-          .replace(/\s+/g, " ")
-          .replace(/([.!?])\s+/g, "$1\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 ")
-          .trim();
-      }
-      function para(title, sentences) {
-        var body = sent(join(sentences));
-        if (!body) body = "Details for this page are still filling in.";
-        return "<b>" + title + ".</b>" + "\u00a0".repeat(28) + body;
-      }
-      function events() {
-        var box = document.getElementById("ent-list");
-        if (!box) return ["No events loaded yet."];
-        var bits = Array.prototype.slice.call(box.querySelectorAll(".card"), 0, 8).map(function (c) {
-          var b = c.querySelector("b");
-          if (!b) return "";
-          var line = b.textContent.replace(/\s+/g, " ").trim();
-          var place = c.querySelector(".place-tag");
-          if (place) line += " at " + place.textContent.replace(/\s+/g, " ").trim();
-          if (c.classList.contains("music")) line = "Live music: " + line;
-          return line;
-        }).filter(Boolean);
-        return bits.length ? bits : ["No upcoming events in range."];
-      }
-      var SEP = "\u00a0".repeat(140);
-      var html = [
-        para("Today", [
-          t("live-sky"),
-          t("do-hour"),
-          window.__bestWindow || "",
-          window.__nextTide || "",
-          window.__nextStorm || "",
-          (function () {
-            var n = ((window.__entAll || []).filter(function (e) { return e && e.when && isTodayET(e.when); }) || []).length;
-            return n ? n + " thing" + (n === 1 ? "" : "s") + " on the calendars today." : "No dated events today.";
-          })(),
-          (function () {
-            var marks = window.__deliveredMarks || {};
-            var inc = ((window.__delivData || {}).incoming || []).filter(function (x) {
-              return !marks[[x.who || "", x.title || "", x.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim()];
-            });
-            return inc.length ? inc.length + " package" + (inc.length === 1 ? "" : "s") + " on the way." : "No packages on the way.";
-          })()
-        ]),
-        para("Weather", [
-          t("live-temp") ? "It is " + t("live-temp") + (t("live-feels") ? " and feels like " + t("live-feels") : "") : "",
-          t("live-heat") ? "Heat index " + t("live-heat") : "",
-          t("live-wind") ? "Wind is " + t("live-wind") + (t("live-gusts") ? " with gusts " + t("live-gusts") : "") : "",
-          t("live-rh") ? "Humidity is " + t("live-rh") + (t("live-dew") ? ". " + t("live-dew") : "") : "",
-          t("live-pres") ? "Pressure is " + t("live-pres") + (t("live-pres-note") ? " and " + t("live-pres-note").toLowerCase() : "") : "",
-          t("live-uv") ? "UV is " + t("live-uv") : "",
-          t("live-rain-mo") ? "Rain so far this month is " + t("live-rain-mo") : "",
-          t("live-aqi") ? "Air quality is " + t("live-aqi") : ""
-        ]),
-        para("Hurricane", [
-          window.__hurrTick || "",
-          window.__wxRisk && window.__wxRisk.hurr ? "A hurricane or tropical watch or warning is up for the Key. Open the Hurricane page for radar, satellite, and the cone." : ""
-        ]),
-        para("Emergency", [
-          t("live-nwr-alert") || "No watch or warning for the Englewood point right now",
-          t("live-prep"),
-          t("live-cane") ? "Atlantic and Gulf: " + t("live-cane") : "",
-          t("live-bolt") ? "Lightning is " + t("live-bolt") : "",
-          t("live-fpl")
-        ]),
-        para("Marine", [
-          t("live-tide-today") ? "Next tides are " + t("live-tide-today") : "",
-          t("live-surge") ? "Surge is " + t("live-surge") : "",
-          t("live-sst") ? "Gulf water is " + t("live-sst") : "",
-          t("live-wtemp") ? "Inlet water is " + t("live-wtemp") : "",
-          t("live-seas") ? "Seas are " + t("live-seas") : "",
-          t("live-rip") ? "Rip current is " + t("live-rip") : "",
-          t("live-redtide") ? "Red tide is " + t("live-redtide") : "",
-          t("live-bacteria") ? "Beach bacteria is " + t("live-bacteria") : "",
-          t("live-craft") ? "Small craft is " + t("live-craft") : "",
-          t("live-coastal"),
-          t("live-fish"),
-          t("live-gator")
-        ]),
-        para("Sky", [
-          t("live-sun-label"),
-          t("live-planet1") ? "Tonight look for " + t("live-planet1") + (t("live-planet1d") ? " " + t("live-planet1d") : "") : "",
-          t("live-planet2") ? "Overnight look for " + t("live-planet2") + (t("live-planet2d") ? " " + t("live-planet2d") : "") : "",
-          t("live-planet3") ? "At dawn look for " + t("live-planet3") + (t("live-planet3d") ? " " + t("live-planet3d") : "") : "",
-          t("live-planet4") ? "Stars: " + t("live-planet4") + (t("live-planet4d") ? " " + t("live-planet4d") : "") : "",
-          t("live-iss"),
-          t("live-horo-nick") ? "Nick, Gemini. " + t("live-horo-nick") : "",
-          t("live-horo-dayna") ? "Dayna, Aquarius. " + t("live-horo-dayna") : ""
-        ]),
-        para("Entertainment", events()),
-        para("House", [
-          t("house-occ"),
-          t("house-seen"),
-          t("live-flights") ? "Flights: " + t("live-flights") : "",
-          t("cal-arrive"),
-          t("cal-leave"),
-          t("live-trash") ? "Trash: " + t("live-trash") : ""
-        ])
-      ].join(SEP);
-      setTicker(tick, html, 112);
+      if (!bits.length) return;
+      setTicker(tick, bits.join(GAP), 112);
     }
+
     function spinEl(el, speed) {
       if (!el) return;
       var html = "";
@@ -4526,7 +4556,11 @@ Cart shop:</textarea>
       style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--tick-w, 50%))); } }";
       document.head.appendChild(style);
       writeBriefing();
-      setInterval(writeBriefing, 15 * 60 * 1000);
+      if (typeof loadSportsScores === "function") loadSportsScores(writeBriefing);
+      setInterval(function () {
+        if (typeof loadSportsScores === "function") loadSportsScores(writeBriefing);
+        else writeBriefing();
+      }, 10 * 60 * 1000);
     })();
   </script>
   <script>
