@@ -182,6 +182,19 @@
     .tide svg, .sunpath svg, .moonpath svg { width:100%; height:90px; display:block; }
     h2 { font-family:Fraunces,Georgia,serif; margin:0 0 12px; font-weight:600; }
     h2::before { content:attr(data-k); display:block; font-family:"Source Sans 3",system-ui,sans-serif; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:2px; }
+
+    .leave-card { border-left:6px solid var(--coral); background:#f7ebe6; }
+    html.dark .leave-card { background:#3a241f; }
+    .leave-card[hidden], #allclear[hidden] { display:none !important; }
+    #allclear { background:#2a9d8f; color:#fff; font-size:13px; font-weight:700; letter-spacing:.04em; padding:7px 12px; text-align:center; }
+    html.dark #allclear { background:#1e6e66; }
+    .stamp { display:block; margin-top:6px; font-size:11px; letter-spacing:.04em; color:var(--muted); opacity:.8; }
+    .health-ok { color:#2a9d8f; }
+    .health-bad { color:#c0392b; }
+    .check-list { margin:6px 0 0; padding-left:18px; }
+    .check-list li { margin:4px 0; color:var(--muted); font-size:13px; }
+    #ac-filter-date { margin-top:8px; padding:6px 8px; border-radius:8px; border:1px solid var(--hair); background:#fff; }
+    html.dark #ac-filter-date { background:#1b1830; color:#efe4c8; }
     .card { background:var(--sand-2); border:1px solid var(--hair); border-radius:16px; padding:12px; margin-bottom:8px; }
     .card b { display:block; font-family:Fraunces,Georgia,serif; } .card span { color:var(--muted); font-size:13px; }
     .card.music { background:#f7ebe6; box-shadow:inset 4px 0 0 var(--coral); }
@@ -445,7 +458,7 @@
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
 <p class="today-stamp" id="today-stamp"></p>
-        <p class="sky" id="live-sky">Good evening.</p>
+        <p class="sky" id="live-sky">Good evening.</p><small class="stamp" data-feed="wx"></small>
         <div class="pills">
           <div class="tg-head"><span></span><span>Morning</span><span>Afternoon</span></div>
           <div class="tg-row" id="pill-beach"><span class="tg-name">Beach</span><span class="tg-cell go" data-side="am">—</span><span class="tg-cell go" data-side="pm">—</span></div>
@@ -460,6 +473,11 @@
           <div class="today-chip bolt" id="chip-bolt"><b>Lightning</b><span></span></div>
           <div class="today-chip cane" id="chip-cane"><b>Named storm</b><span></span></div>
           <div class="today-chip trash" id="chip-trash"><b>Trash</b><span></span></div>
+        </div>
+        <div class="card leave-card" id="leave-card" hidden>
+          <b>Should we leave?</b>
+          <span class="leave-body">Checking warnings…</span>
+          <small class="stamp" data-feed="alerts"></small>
         </div>
         <p class="sky" id="do-hour" hidden></p>
         <div class="today-boards">
@@ -518,6 +536,11 @@
       </section>
       <section id="radar" class="page">
         <h2 data-k="Over the Key">Radar</h2>
+        <div class="card leave-card" id="leave-card-radar" hidden>
+          <b>Should we leave?</b>
+          <span class="leave-body">Checking warnings…</span>
+          <small class="stamp" data-feed="alerts"></small>
+        </div>
         <p id="radar-note">Radar follows the home ZIP. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
         <div class="radar-crop"><img class="radar-loop" id="radar-loop" alt="KTBW radar loop" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/></div>
       </section>
@@ -597,6 +620,7 @@
           </div>
         </div>
         <div class="card"><b id="house-occ">Occupied</b><span id="house-seen">Last seen —</span></div>
+        <div class="card"><b>AC filter</b><span id="ac-filter-note">Set the date you last changed it. Reminder is 90 days.</span><input type="date" id="ac-filter-date" /></div>
         <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
         <div class="card"><b>Fly</b><span id="cal-fly">Drop a flight number on the Fly calendar.</span></div>
         <div class="card"><b>Arrive FL</b><span id="cal-arrive">No Arrive FL event in range.</span></div>
@@ -721,7 +745,12 @@ Cart shop:</textarea>
       </section>
       <section id="contacts" class="page">
         <h2 data-k="If it goes bad">Emergency</h2>
-        <div class="card music"><b>Right now</b><span id="live-prep">Checking watches for the Key…</span></div>
+        <div class="card leave-card" id="leave-card-em" hidden>
+          <b>Should we leave?</b>
+          <span class="leave-body">Checking warnings…</span>
+          <small class="stamp" data-feed="alerts"></small>
+        </div>
+        <div class="card music"><b>Right now</b><span id="live-prep">Checking watches for the Key…</span><small class="stamp" data-feed="alerts"></small></div>
         <div class="card" id="evac-card">
           <b id="evac-title">Evac · BeachWalk</b>
           <span id="evac-body">Sarasota County levels A–E. The Key itself is Level A (first out). BeachWalk on Englewood Rd is inland of the bridge. Do not go to a shelter until the county says it is open. Nearest listed Englewood sites: Sports Complex, 1300 S River Rd · Buchan Airport Park, 1390 Old Englewood Rd.</span>
@@ -744,6 +773,44 @@ Cart shop:</textarea>
         <div class="dials">
           <a class="dial" href="https://www.fplmaps.com/" target="_blank" rel="noopener"><b>Open live FPL map</b><em>fplmaps.com</em></a>
           <a class="dial" href="tel:8004688243"><b>Report outage</b><em>800-4-OUTAGE</em></a>
+        </div>
+      </section>
+
+      <section id="prep" class="page">
+        <h2 data-k="If it goes bad">Prep</h2>
+        <div class="card leave-card" id="leave-card-prep" hidden>
+          <b>Should we leave?</b>
+          <span class="leave-body">Checking warnings…</span>
+          <small class="stamp" data-feed="alerts"></small>
+        </div>
+        <div class="card music"><b>This list</b><span id="prep-kind">Matches the active warning. If nothing is up, this is the year-round kit.</span></div>
+        <div class="card" id="prep-box">
+          <b id="prep-title">Checklist</b>
+          <ul class="check-list" id="prep-list"></ul>
+        </div>
+      </section>
+      <section id="health" class="page">
+        <h2 data-k="Board">Status</h2>
+        <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
+        <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
+        <div class="card"><b>Last updates</b><span id="health-all"></span></div>
+        <div class="card">
+          <b>Not built yet</b>
+          <ul class="check-list">
+            <li>Shared occupancy, vendors, and villa checks across every device</li>
+            <li>Delivery scan that other screens see when you mark delivered</li>
+            <li>Automatic BeachWalk / Englewood / Moose calendar wiring</li>
+            <li>Best-window chips for pool, beach, boat, walk as four yes/no answers</li>
+            <li>Live music tonight as its own card</li>
+            <li>Cart vs truck from wind, rain, and dark</li>
+            <li>Local saltwater bite line for Manasota, not a news story</li>
+            <li>Flight card that flips to “leave for RSW / PGD in 2 hours”</li>
+            <li>Portrait kiosk layout vs phone layout as a real setting</li>
+            <li>Quiet hours that dim the screen; NOAA can still break in</li>
+            <li>Generator / fuel / water last-checked on Emergency</li>
+            <li>Bridge and low-road status in flood or surge</li>
+            <li>Clubhouse / commercial mode, Instacart, HOA pay, multi-community</li>
+          </ul>
         </div>
       </section>
     </main>
@@ -770,6 +837,8 @@ Cart shop:</textarea>
       <button type="button" data-p="contacts">Emergency</button>
       <button type="button" data-p="power">Power</button>
       <button type="button" data-p="villa">Villa</button>
+      <button type="button" data-p="prep">Prep</button>
+      <button type="button" data-p="health">Status</button>
       <button type="button" id="refreshbtn">Refresh</button>
       <button type="button" id="setbtn" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54A.49.49 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.7 8.48a.49.49 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.82 14.52a.49.49 0 0 0-.12.64l1.92 3.32c.14.24.4.34.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.05.24.26.42.5.42h3.8c.24 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.21.12.47.02.61-.22l1.92-3.32a.49.49 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg></button>
           </nav>
@@ -951,6 +1020,7 @@ Cart shop:</textarea>
       </div>
     </div>
     <div class="ticker-stack">
+    <div id="allclear" hidden>All clear — the last warning for this zip has ended.</div>
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
     <div class="alert-ticker" id="alertbar"><span id="alerttext"></span></div>
     <div class="ticker"><span id="ticktext">It is 77 degrees and feels like 78, mostly sunny this morning with scattered storms after 2 p.m. and a heat index near 102.         Beach, cart, and boat are a go now; courts are a window later.         Rain is unlikely in the next hour, lightning is possible this afternoon, wind is east at 6 gusting to 8, humidity is 91 percent with a dew point of 74, and UV turns high later.         Venice buoy pressure is 30.03 inches and rising.         Sunrise was 7:07 a.m., sunset is 7:52 p.m., and the moon is waning gibbous after the full on the 28th.         •   •   •       Manasota tide is falling after the 8:55 a.m. low of 0.67 feet.         Next high is 3:09 p.m. at 1.72 feet, then another low around 9 p.m.  Rip current risk is low, red tide is not observed, seas are about a foot, and there is no small-craft advisory.         Venice buoy is east 5 knots gusting to 8.         Venice Inlet and Stump Pass are a morning window; afternoon storms are the risk on the run home.         •   •   •       Look west about 45 minutes after sunset for Venus, low and bright. Saturn rises in the east around 9:34 p.m. Jupiter and Mars show in the east before sunrise. The moon is waning gibbous after Friday night's full moon and partial eclipse. Vega leads the Summer Triangle high in the evening. Storms after 2 p.m. will wipe the early sky. Next meteor watch is the Orionids in mid-October. Check NASA Spot the Station for ISS passes.       •   •   •       Inside the gates: Tuesday at 5:30 p.m. there is a French bakery pop-up at Capri.         Sunday September 6 from 1 to 5 p.m. is the Labor Day party at the pool and High Tide with a DJ, food, and sundaes.         Monday September 7 from 5 to 8 p.m. food trucks are at Capri, Currywurst and Shaz Shack.         Use the courts before 2 p.m. if storms build.         •   •   •       Outside the gates tonight at 7 p.m., 22N plays SandBar Tiki on the Key; it is open-air so watch the storms.         Sunday 1 to 5 p.m. Cabana Dogs are at SandBar Tiki.         Friday September 4 at 6 p.m. there are fireworks at Downtown Wellen.         Labor Day weekend also has the Venice craft festival, Artur's, and Troll Music.         •   •   •       The villa is marked occupied.         There are no Do, Fly, Arrive FL, or Leave FL items on the calendar.         Music defaults to 94.9 Magic at whisper volume.         You can switch to 106.3 Sunny, 104.9 Seaview, or 107.9 WSRZ.         Mute overnight, during Talk or Meet, and when the storm board is on.         •   •   •       It is 77 degrees and feels like 78, mostly sunny this morning with scattered storms after 2 p.m. and a heat index near 102.         Beach, cart, and boat are a go now; courts are a window later.         Rain is unlikely in the next hour, lightning is possible this afternoon, wind is east at 6 gusting to 8, humidity is 91 percent with a dew point of 74, and UV turns high later.         Venice buoy pressure is 30.03 inches and rising.         Sunrise was 7:07 a.m., sunset is 7:52 p.m., and the moon is waning gibbous after the full on the 28th.         •   •   •       Manasota tide is falling after the 8:55 a.m. low of 0.67 feet.         Next high is 3:09 p.m. at 1.72 feet, then another low around 9 p.m.  Rip current risk is low, red tide is not observed, seas are about a foot, and there is no small-craft advisory.         Venice buoy is east 5 knots gusting to 8.         Venice Inlet and Stump Pass are a morning window; afternoon storms are the risk on the run home.         •   •   •       Look west about 45 minutes after sunset for Venus, low and bright. Saturn rises in the east around 9:34 p.m. Jupiter and Mars show in the east before sunrise. The moon is waning gibbous after Friday night's full moon and partial eclipse. Vega leads the Summer Triangle high in the evening. Storms after 2 p.m. will wipe the early sky. Next meteor watch is the Orionids in mid-October. Check NASA Spot the Station for ISS passes.       •   •   •       Inside the gates: Tuesday at 5:30 p.m. there is a French bakery pop-up at Capri.         Sunday September 6 from 1 to 5 p.m. is the Labor Day party at the pool and High Tide with a DJ, food, and sundaes.         Monday September 7 from 5 to 8 p.m. food trucks are at Capri, Currywurst and Shaz Shack.         Use the courts before 2 p.m. if storms build.         •   •   •       Outside the gates tonight at 7 p.m., 22N plays SandBar Tiki on the Key; it is open-air so watch the storms.         Sunday 1 to 5 p.m. Cabana Dogs are at SandBar Tiki.         Friday September 4 at 6 p.m. there are fireworks at Downtown Wellen.         Labor Day weekend also has the Venice craft festival, Artur's, and Troll Music.         •   •   •       The villa is marked occupied.         There are no Do, Fly, Arrive FL, or Leave FL items on the calendar.         Music defaults to 94.9 Magic at whisper volume.         You can switch to 106.3 Sunny, 104.9 Seaview, or 107.9 WSRZ.         Mute overnight, during Talk or Meet, and when the storm board is on.</span></div>
@@ -2186,7 +2256,7 @@ Cart shop:</textarea>
       if (/hurricane|tropical|surge/.test(ev)) list.push("hurr", "cane", "marine");
       if (/thunder|tornado|severe|lightning/.test(ev)) list.push("bolt");
       if (/flood|marine|small craft|gale|waterspout|rip|surf|coastal/.test(ev) && list.indexOf("marine") < 0) list.push("marine");
-      list.push("contacts", "power");
+      list.push("contacts", "prep", "power");
       var seen = {};
       return list.filter(function (id) {
         if (seen[id] || !document.getElementById(id)) return false;
@@ -2363,7 +2433,7 @@ Cart shop:</textarea>
     }
     function rotateList() {
       var risk = window.__wxRisk || {};
-      var skip = { news:1, wink:1, contacts:1, villa:1, power:1, cane:1, hurr:1, bolt:1 };
+      var skip = { news:1, wink:1, contacts:1, villa:1, power:1, cane:1, hurr:1, bolt:1, prep:1, health:1 };
       var list = Array.from(document.querySelectorAll("#dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); }).filter(function (id) {
         if (!id || skip[id]) return false;
         if (id === "cam" && camOffHours()) return false;
@@ -3237,6 +3307,168 @@ Cart shop:</textarea>
       load();
       setInterval(load, 60 * 60 * 1000);
     })();
+
+    window.__feeds = window.__feeds || {};
+    function touchFeed(key, ok, detail) {
+      window.__feeds[key] = { ok: ok !== false, detail: detail || "", at: Date.now() };
+      if (typeof paintHealth === "function") paintHealth();
+      if (typeof paintStamps === "function") paintStamps();
+    }
+    function feedAge(key) {
+      var f = window.__feeds[key];
+      return f && f.at ? Date.now() - f.at : null;
+    }
+    function fmtAge(ms) {
+      if (ms == null) return "no update yet";
+      var m = Math.round(ms / 60000);
+      if (m < 1) return "just now";
+      if (m < 60) return m + " min ago";
+      var h = Math.round(m / 60);
+      return h + " hr ago";
+    }
+    function paintStamps() {
+      document.querySelectorAll(".stamp[data-feed]").forEach(function (el) {
+        var key = el.getAttribute("data-feed");
+        var f = window.__feeds[key];
+        el.textContent = f ? ("Updated " + fmtAge(Date.now() - f.at)) : "No update yet";
+      });
+    }
+    function leaveCopy(ev) {
+      ev = String(ev || "").toLowerCase();
+      var here = (typeof homePlace === "function" ? homePlace() : "this zip");
+      var key = String(getSet().zip || "") === "34223";
+      if (/hurricane/.test(ev)) {
+        return key
+          ? "Yes if they call Zone A or the bridges will close. Fuel the truck, grab meds and papers, and leave before the last inbound rush. Do not ride a hurricane on Manasota Key."
+          : "Yes if your county calls your zone or says routes will close. Fuel up, grab meds and papers, and leave early.";
+      }
+      if (/tropical storm|storm surge/.test(ev)) {
+        return key
+          ? "Maybe. Surge and the bridges are the issue, not just wind. If they call Zone A or water is already over Beach Road, leave. If it stays a storm and you are inland of the bridge, shelter in place unless they say otherwise."
+          : "Maybe. Leave if they call your zone or water is already on the evacuation route. Otherwise stay put with a kit.";
+      }
+      if (/tornado/.test(ev)) {
+        return "Do not drive out. Get to an interior room on the lowest floor, no windows. Leave the area only after the warning expires and roads are clear.";
+      }
+      if (/flash flood|flood/.test(ev)) {
+        return "Do not drive through water. Leave only if water is coming into the house or officials say go. Turn around, don’t drown.";
+      }
+      if (/marine|small craft|gale/.test(ev) && !/hurricane|tropical|tornado|flood/.test(ev)) {
+        return "No. Stay off the water. This is not a house evacuation.";
+      }
+      if (/thunder|severe|lightning/.test(ev)) {
+        return "No. Stay inside until 30 minutes after the last thunder. Do not start a drive to CT or a store run in this.";
+      }
+      return "A warning is up for " + here + ". Read Emergency and Prep. Leave only if the warning is tropical, surge, or they call your zone.";
+    }
+    function paintLeaveAndClear() {
+      var warn = !!(window.__wxRisk && window.__wxRisk.warn);
+      var ev = (window.__wxRisk && window.__wxRisk.warnTypes) || "";
+      var banner = document.getElementById("allclear");
+      document.querySelectorAll(".leave-card").forEach(function (card) { card.hidden = !warn; });
+      if (warn) {
+        var copy = leaveCopy(ev);
+        document.querySelectorAll(".leave-body").forEach(function (el) { el.textContent = copy; });
+      }
+      if (warn) {
+        window.__wasWarn = true;
+        try { localStorage.removeItem("bw-clear-until"); } catch (e) {}
+        if (banner) banner.hidden = true;
+      } else {
+        if (window.__wasWarn) {
+          try { localStorage.setItem("bw-clear-until", String(Date.now() + 3 * 3600 * 1000)); } catch (e) {}
+        }
+        window.__wasWarn = false;
+        var until = 0;
+        try { until = Number(localStorage.getItem("bw-clear-until") || 0); } catch (e2) {}
+        if (banner) banner.hidden = !(until && Date.now() < until);
+      }
+      if (typeof paintPrepList === "function") paintPrepList();
+    }
+    function paintPrepList() {
+      var ev = ((window.__wxRisk && window.__wxRisk.warnTypes) || "").toLowerCase();
+      var kind = document.getElementById("prep-kind");
+      var title = document.getElementById("prep-title");
+      var list = document.getElementById("prep-list");
+      if (!list) return;
+      var items, label;
+      if (/hurricane|tropical|surge/.test(ev)) {
+        label = "Tropical / surge";
+        items = ["Fuel truck and golf cart now", "Ice, 3 gallons water per person, meds, cash, paper maps", "Photos of the villa, insurance papers, IDs in a dry bag", "Bring in chairs, grill, hose, and anything that flies", "Know Zone A vs inland of the bridge — leave when they call your zone", "Do not plan to ride a hurricane on the Key"];
+      } else if (/tornado/.test(ev)) {
+        label = "Tornado";
+        items = ["Interior room, lowest floor, no windows", "Helmets and shoes on", "Do not get in the truck until the warning expires", "Afterward: gas, downed lines, do not drive around debris for fun"];
+      } else if (/flood|flash flood/.test(ev)) {
+        label = "Flood";
+        items = ["Move cars to high ground if you can do it now", "Never drive standing water", "Lift electronics off the floor", "If water enters the villa, power off at the breaker if safe"];
+      } else if (/marine|small craft|gale|rip/.test(ev)) {
+        label = "Marine";
+        items = ["No boat, no paddle, no pier fishing", "Cart only on high ground if the wind allows", "Watch the tide and the bridges"];
+      } else if (/thunder|severe|lightning/.test(ev)) {
+        label = "Thunderstorm";
+        items = ["Inside until 30 minutes after last thunder", "Unplug the cart if it is charging outside", "Skip the beach and the pool"];
+      } else {
+        label = "Year-round kit";
+        items = ["3 days water and food", "Meds, cash, paper maps, power bank", "Full tank when a system is in the Gulf", "Photos of rooms and serial numbers", "Know the Zone A call and the Punta Gorda / I-75 route"];
+      }
+      if (kind) kind.textContent = ev
+        ? ("Active: " + ev + ". This list is for that warning.")
+        : "No warning. This is the year-round kit.";
+      if (title) title.textContent = label;
+      list.innerHTML = items.map(function (s) { return "<li>" + s + "</li>"; }).join("");
+    }
+    function paintHealth() {
+      var fail = document.getElementById("health-fail");
+      var stale = document.getElementById("health-stale");
+      var all = document.getElementById("health-all");
+      var feeds = window.__feeds || {};
+      var names = Object.keys(feeds).sort();
+      var bad = [], old = [], rows = [];
+      names.forEach(function (k) {
+        var f = feeds[k];
+        var age = Date.now() - f.at;
+        var limit = /alert|wx|radar|tide/.test(k) ? 20 * 60 * 1000 : 6 * 60 * 60 * 1000;
+        rows.push(k + " — " + (f.ok ? "ok" : "FAILED") + " — " + fmtAge(age) + (f.detail ? (" — " + f.detail) : ""));
+        if (!f.ok) bad.push(k + (f.detail ? (": " + f.detail) : ""));
+        else if (age > limit) old.push(k + " (" + fmtAge(age) + ")");
+      });
+      if (fail) fail.innerHTML = bad.length ? bad.map(function (s) { return '<span class="health-bad">' + s + "</span>"; }).join("<br>") : '<span class="health-ok">Nothing marked failed.</span>';
+      if (stale) stale.textContent = old.length ? old.join(" · ") : "Nothing stale over its limit.";
+      if (all) all.textContent = rows.length ? rows.join(" · ") : "Feeds have not reported in yet. Open a few pages and wait one refresh.";
+    }
+    function wireAcFilter() {
+      var input = document.getElementById("ac-filter-date");
+      var note = document.getElementById("ac-filter-note");
+      if (!input) return;
+      var saved = "";
+      try { saved = getSet().acFilter || ""; } catch (e) {}
+      if (saved) input.value = saved;
+      function paint() {
+        var v = input.value;
+        if (!v) { if (note) note.textContent = "Set the date you last changed it. Reminder is 90 days."; return; }
+        var then = new Date(v + "T12:00:00");
+        var days = Math.round((Date.now() - then.getTime()) / 86400000);
+        var left = 90 - days;
+        if (note) {
+          note.textContent = days < 0
+            ? "That date is in the future."
+            : (left <= 0 ? ("Due now — last changed " + days + " days ago.") : ("Last changed " + days + " days ago. Next due in " + left + " days."));
+        }
+      }
+      paint();
+      input.addEventListener("change", function () {
+        var s = getSet();
+        s.acFilter = input.value;
+        try { localStorage.setItem("bw-set", JSON.stringify(s)); } catch (e) {}
+        paint();
+      });
+    }
+    paintPrepList();
+    paintLeaveAndClear();
+    paintHealth();
+    wireAcFilter();
+    setInterval(function () { paintStamps(); paintHealth(); paintLeaveAndClear(); }, 60000);
+
     startRotate();
     (function swipePages() {
       var startX = 0, startY = 0, active = false;
@@ -3970,6 +4202,7 @@ Cart shop:</textarea>
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
           window.__namedStorms = storms;
+          touchFeed("storms", true, storms.length ? (storms.length + " named") : "none");
           if (typeof writeTodayChips === "function") writeTodayChips();
           window.__wxRisk.cane = storms.some(function (s) {
             var name = String((s && (s.name || s.id || s.classification)) || "");
@@ -4893,6 +5126,8 @@ Cart shop:</textarea>
           return /warning/i.test(((f.properties || {}).event || ""));
         });
         window.__wxRisk.warn = !!isWarnEarly;
+        touchFeed("alerts", true, keep.length ? (keep.length + " alerts") : "no warnings");
+        paintLeaveAndClear();
         paintSkyHeader();
         ringStormDock();
         (function syncNoaa(hasWarn) {
