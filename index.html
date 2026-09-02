@@ -62,7 +62,14 @@
     .wavebar svg { display:block; width:200%; height:10px; animation:wave 7s linear infinite; }
     header.sky-warn + .wavebar svg path { fill:#e07a5f; }
     header.sky-storm + .wavebar svg path { fill:#2a9d8f; }
-    header.sky-night + .wavebar svg path { fill:#12101c; }
+    header.sky-night + .wavebar { background:#0b0a14; }
+    header.sky-night + .wavebar svg path { fill:#6e63a3; }
+    html.dark .wavebar { background:#100e20; }
+    html.dark .wavebar svg path { fill:#3f8f88; }
+    html.dark header.sky-night + .wavebar { background:#0b0a14; }
+    html.dark header.sky-night + .wavebar svg path { fill:#8b7cc8; }
+    html.dark header.sky-warn + .wavebar svg path { fill:#e07a5f; }
+    html.dark header.sky-storm + .wavebar svg path { fill:#4ec4b6; }
     @keyframes wave { from { transform:translateX(0); } to { transform:translateX(-50%); } }
     .flash { position:absolute; inset:0; pointer-events:none; background:#fff; opacity:0; z-index:8; }
     .flash.on { animation:boltflash .45s ease-out; }
@@ -631,14 +638,14 @@ Cart shop:</textarea>
         </div>
         <div class="card">
           <b>Scanners</b>
-          <span>Quiet until a call. Broadcastify may play a short ad first.</span>
-          <div class="rowbtns">
-            <button type="button" data-scan="30021">SO / Venice PD</button>
-            <button type="button" data-scan="45683">EAFD / South Fire</button>
+          <span id="scan-intro">Quiet until a call. Broadcastify may play a short ad first.</span>
+          <div class="rowbtns" id="scan-btns">
+            <button type="button" id="scan-pd" data-scan="30021">Police</button>
+            <button type="button" id="scan-fd" data-scan="45683">Fire</button>
           </div>
           <iframe id="scan-frame" title="Scanner" style="display:none;width:100%;height:92px;border:0;border-radius:8px;margin-top:8px;background:#111" allow="autoplay"></iframe>
-          <p style="margin:8px 0 0"><b>SO / Venice PD.</b> Sarasota County Sheriff, Venice Police, and North Port Police. Quiet until a call. Broadcastify may play a short ad.</p>
-          <p style="margin:8px 0 0"><b>EAFD / South Fire.</b> Englewood, Nokomis, North Port, and Venice fire.</p>
+          <p style="margin:8px 0 0" id="scan-pd-note"></p>
+          <p style="margin:8px 0 0" id="scan-fd-note"></p>
         </div>
         <div class="card">
           <b>NOAA Weather Radio</b>
@@ -965,8 +972,52 @@ Cart shop:</textarea>
     function gatorRange() {
       return /^(FL|GA|AL|MS|LA|SC|NC|TX|AR|OK)$/.test(homeState());
     }
-    function noaaUrl() { return getSet().nwrUrl || "https://radio.weatherusa.net/NWR/KHB32.mp3"; }
+    function noaaCalls() {
+      var s = getSet();
+      var list = s.nwrCalls || [s.nwrCall || "KHB32"];
+      return list.filter(Boolean);
+    }
+    function noaaUrl() {
+      var i = window.__nwrTry || 0;
+      var calls = noaaCalls();
+      var call = calls[i % calls.length] || "KHB32";
+      return "https://radio.weatherusa.net/NWR/" + call + ".mp3";
+    }
     function noaaName() { return getSet().nwrName || "NOAA Weather Radio"; }
+    function scanPack() {
+      var wfo = getSet().wfo || "TBW";
+      var st = homeState();
+      var zip = String(getSet().zip || "");
+      if (zip.indexOf("342") === 0) return SCAN_BY.TBW;
+      if (st === "CT") return SCAN_BY.BOX;
+      return SCAN_BY[wfo] || null;
+    }
+    function paintScanners() {
+      var pack = scanPack();
+      var place = homePlace();
+      var intro = document.getElementById("scan-intro");
+      var pd = document.getElementById("scan-pd");
+      var fd = document.getElementById("scan-fd");
+      var pdN = document.getElementById("scan-pd-note");
+      var fdN = document.getElementById("scan-fd-note");
+      if (intro) intro.textContent = pack
+        ? "Police and fire near " + place + ". Quiet until a call. Broadcastify may play a short ad first."
+        : "No mapped police/fire feed for " + place + ". Search Broadcastify for the county.";
+      function setBtn(btn, noteEl, row, kind) {
+        if (!btn) return;
+        if (!row) {
+          btn.style.display = "none";
+          if (noteEl) noteEl.textContent = "";
+          return;
+        }
+        btn.style.display = "";
+        btn.setAttribute("data-scan", row.id);
+        btn.textContent = row.name || kind;
+        if (noteEl) noteEl.innerHTML = "<b>" + (row.name || kind) + ".</b> " + (row.note || "") + " Feed follows " + place + ".";
+      }
+      setBtn(pd, pdN, pack && pack.pd, "Police");
+      setBtn(fd, fdN, pack && pack.fd, "Fire");
+    }
     function applyRadar() {
       var st = homeRadar();
       var img = document.getElementById("radar-loop");
@@ -1005,13 +1056,33 @@ Cart shop:</textarea>
       if (typeof fillZipRadio === "function") fillZipRadio();
     }
     var NWR_BY_WFO = {
-      TBW: ["KHB32", "NOAA Tampa"], MFL: ["KHB34", "NOAA Miami"], KEY: ["KHB34", "NOAA Key West"],
-      JAX: ["KHB39", "NOAA Jacksonville"], MLB: ["WXJ70", "NOAA Melbourne"], TAE: ["WWF70", "NOAA Tallahassee"],
-      MOB: ["KHB40", "NOAA Mobile"], LIX: ["KHB43", "NOAA New Orleans"], HGX: ["KHB40", "NOAA Houston"],
-      BOX: ["KHB35", "NOAA Boston"], OKX: ["KWO35", "NOAA New York"], LWX: ["KHB36", "NOAA Washington"],
-      ILN: ["WXM50", "NOAA Cincinnati"], IND: ["WXM94", "NOAA Indianapolis"], LOT: ["KXI49", "NOAA Chicago"],
-      FFC: ["KXI75", "NOAA Atlanta"], GSP: ["WXL70", "NOAA Greenville"], CAE: ["WXJ22", "NOAA Columbia"],
-      CHS: ["WXJ20", "NOAA Charleston"], ILM: ["WXK92", "NOAA Wilmington"]
+      TBW: ["KHB32", "NOAA Tampa", "KHB34"], MFL: ["KHB34", "NOAA Miami", "KHB32"], KEY: ["KHB34", "NOAA Key West", "KHB32"],
+      JAX: ["KHB39", "NOAA Jacksonville", "WXJ70"], MLB: ["WXJ70", "NOAA Melbourne", "KHB39"], TAE: ["WWF70", "NOAA Tallahassee", "KHB40"],
+      MOB: ["KHB40", "NOAA Mobile", "KHB43"], LIX: ["KHB43", "NOAA New Orleans", "KHB40"], HGX: ["KHB40", "NOAA Houston", "KHB43"],
+      BOX: ["WXJ41", "NOAA Hartford", "KHB35"], OKX: ["KWO35", "NOAA New York", "KHB35"], LWX: ["KHB36", "NOAA Washington", "KHB35"],
+      ILN: ["WXM50", "NOAA Cincinnati", "KHB36"], IND: ["WXM94", "NOAA Indianapolis", "WXM50"], LOT: ["KXI49", "NOAA Chicago", "WXM94"],
+      FFC: ["KXI75", "NOAA Atlanta", "KHB39"], GSP: ["WXL70", "NOAA Greenville", "WXJ22"], CAE: ["WXJ22", "NOAA Columbia", "WXL70"],
+      CHS: ["WXJ20", "NOAA Charleston", "WXJ22"], ILM: ["WXK92", "NOAA Wilmington", "WXJ20"],
+      PHI: ["KHB38", "NOAA Philadelphia", "KHB36"], ALY: ["WXL32", "NOAA Albany", "KWO35"],
+      BTV: ["WXM40", "NOAA Burlington", "KHB35"], GYX: ["KHB54", "NOAA Gray", "KHB35"]
+    };
+    var SCAN_BY = {
+      TBW: {
+        pd: { id: "30021", name: "Police", note: "Sarasota County Sheriff, Venice PD, and North Port PD." },
+        fd: { id: "45683", name: "Fire", note: "Englewood, Nokomis, North Port, and Venice fire." }
+      },
+      BOX: {
+        pd: { id: "41875", name: "Police", note: "Hartford Police, Fire and EMS talkgroups." },
+        fd: { id: "35776", name: "Fire", note: "Hartford Fire dispatch and incident channels." }
+      },
+      OKX: {
+        pd: { id: "41875", name: "Police", note: "Regional public-safety feed near this ZIP." },
+        fd: { id: "15635", name: "Fire", note: "County fire dispatch near this ZIP." }
+      },
+      MFL: {
+        pd: { id: "2039", name: "Police", note: "Miami-Dade area public safety." },
+        fd: { id: "2039", name: "Fire", note: "Same regional feed — Fire/EMS when they are on." }
+      }
     };
     function paintHomeChrome() {
       var place = homePlace();
@@ -1023,7 +1094,8 @@ Cart shop:</textarea>
       var gator = document.getElementById("gator-card");
       if (gator) gator.style.display = gatorRange() ? "" : "none";
       var nwrNote = document.getElementById("nwr-note");
-      if (nwrNote) nwrNote.innerHTML = "<b>" + noaaName() + ".</b> Live stream for the " + place + " forecast office.";
+      if (nwrNote) nwrNote.innerHTML = "<b>" + noaaName() + ".</b> Live stream for the " + place + " forecast office. If this zip’s tower is quiet, the board tries a nearby NOAA stream.";
+      paintScanners();
       var same = document.getElementById("same-line");
       if (same) same.textContent = (getSet().county || place) + (getSet().same ? " · SAME " + getSet().same : "");
       var evacT = document.getElementById("evac-title");
@@ -1139,7 +1211,7 @@ Cart shop:</textarea>
           var st = p.radarStation || "KTBW";
           var office = String(p.forecastOffice || "");
           var wfo = (office.match(/offices\/([A-Z]{3})/) || [])[1] || "TBW";
-          var nwr = NWR_BY_WFO[wfo] || ["KHB32", "NOAA Tampa"];
+          var nwr = NWR_BY_WFO[wfo] || ["KHB32", "NOAA Tampa", "KHB34"];
           var countyUrl = p.county || "";
           var cty = (countyUrl.match(/counties\/([A-Z]{2})C(\d+)/) || []);
           var same = "";
@@ -1150,6 +1222,7 @@ Cart shop:</textarea>
             wfo: wfo,
             nwrCall: nwr[0],
             nwrName: nwr[1],
+            nwrCalls: nwr.filter(function (x, i) { return i !== 1 && x; }),
             nwrUrl: "https://radio.weatherusa.net/NWR/" + nwr[0] + ".mp3",
             same: same,
             countyCode: cty[0] || ""
@@ -1284,7 +1357,20 @@ Cart shop:</textarea>
         return;
       }
       var playUrl = url;
-      if (/weatherusa|NWR/i.test(url)) playUrl = url.split("?")[0] + "?r=" + Date.now();
+      if (/weatherusa|NWR/i.test(url)) {
+        if (!opts.nwrRetry) window.__nwrTry = 0;
+        playUrl = noaaUrl().split("?")[0] + "?r=" + Date.now();
+        audio.onerror = function () {
+          var calls = noaaCalls();
+          window.__nwrTry = (window.__nwrTry || 0) + 1;
+          if (window.__nwrTry < calls.length) {
+            if (status) status.textContent = "Trying another NOAA tower…";
+            playStation(noaaUrl(), noaaName(), { keepSaved: true, nwrRetry: true });
+          } else if (status) status.textContent = "NOAA stream did not start for " + homePlace() + ".";
+        };
+      } else {
+        audio.onerror = null;
+      }
       audio.src = playUrl;
       setLoudness(audio, url);
       if (status) status.textContent = "Starting " + (label || "station") + "…";
@@ -4681,19 +4767,23 @@ Cart shop:</textarea>
         if (nwrA) {
           nwrA.textContent = keep.length
             ? keep.map(function (f) { return (f.properties || {}).event || "Alert"; }).join(" · ")
-            : "No watch or warning for the Englewood point right now.";
+            : "No watch or warning for " + homePlace() + " right now.";
         }
         var prep = document.getElementById("live-prep");
         if (prep) {
           var ev = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
-          var tip = "No NWS watch or warning is up for the Englewood point. Still keep 3 days of water and meds, cash, paper maps, and full cart and truck tanks.";
-          if (/hurricane|tropical storm|storm surge/.test(ev)) tip = "Tropical system. Check your zone on scgov.net. Fuel the truck and cart, ice and water, meds, cash. Bring in chairs and the grill. Leave if they call your zone — don’t wait on the last bridge.";
-          else if (/tornado/.test(ev)) tip = "Get to an interior room with no windows. Stay off the cart, pool, and beach until this expires.";
-          else if (/flash flood|flood/.test(ev)) tip = "Do not drive standing water on Beach Road or the Key. Move the truck to higher ground if streets start to pond.";
-          else if (/heat/.test(ev)) tip = "Stay in AC through the afternoon. Drink water. Check on neighbors. Limit the cart to short shaded trips.";
+          var here = homePlace();
+          var key = String(getSet().zip || "") === "34223";
+          var tip = "No NWS watch or warning is up for " + here + ". Keep 3 days of water and meds, cash, paper maps, and a full tank.";
+          if (/hurricane|tropical storm|storm surge/.test(ev)) tip = key
+            ? "Tropical system. Check your zone on scgov.net. Fuel the truck and cart, ice and water, meds, cash. Bring in chairs and the grill. Leave if they call your zone — don’t wait on the last bridge."
+            : "Tropical system near " + here + ". Check your county evacuation zone. Fuel up, ice and water, meds, cash. Leave if they call your zone.";
+          else if (/tornado/.test(ev)) tip = "Get to an interior room with no windows in " + here + ". Stay off open water and the beach until this expires.";
+          else if (/flash flood|flood/.test(ev)) tip = "Do not drive standing water near " + here + ". Move vehicles to higher ground if streets pond.";
+          else if (/heat/.test(ev)) tip = "Stay in AC through the afternoon in " + here + ". Drink water. Check on neighbors.";
           else if (/rip/.test(ev)) tip = "Swim only near a lifeguard. If a current pulls you out, swim parallel to the beach until you are free, then back in.";
-          else if (/thunder|severe|wind/.test(ev)) tip = "Off the pool, courts, and cart while it is close. Interior room if this is a thunderstorm or tornado warning.";
-          else if (keep.length) tip = "Stay inside and off the water until NWS drops this.";
+          else if (/thunder|severe|wind/.test(ev)) tip = "Stay inside in " + here + " while it is close. Interior room if this is a thunderstorm or tornado warning.";
+          else if (keep.length) tip = "Stay inside and off the water in " + here + " until NWS drops this.";
           if (!keep.length) {
             prep.textContent = tip;
           } else {
