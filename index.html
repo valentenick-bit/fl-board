@@ -7,7 +7,12 @@
   <script>
     try {
       if (localStorage.getItem("bw-kiosk") === "1") document.documentElement.classList.add("kiosk");
-      if (localStorage.getItem("bw-dark") === "1") document.documentElement.classList.add("dark");
+      (function () {
+        var s = {};
+        try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e2) { s = {}; }
+        if (s.dark === "day") document.documentElement.classList.remove("dark");
+        else if (s.dark === "night") document.documentElement.classList.add("dark");
+      })();
     } catch (e) {}
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -42,7 +47,7 @@
       0%,100% { transform: rotate(calc(var(--lean, 0deg) * .35 - var(--wag, 7deg) * .5)); }
       50% { transform: rotate(calc(var(--lean, 0deg) * .35 + var(--wag, 7deg) * .5)); }
     }
-    header.sky-sun { background:linear-gradient(180deg,#2f4a3a 0%,#1b2a4a 70%); border-bottom-color:#c4a35a; }
+    header.sky-sun { background:linear-gradient(180deg,#3e7a6a 0%,#2a4a6a 72%); border-bottom-color:#c4a35a; }
     header.sky-storm { background:linear-gradient(180deg,#1a4a48 0%,#1b2a4a 72%); border-bottom-color:#2a9d8f; }
     header.sky-warn { background:linear-gradient(180deg,#6b2f28 0%,#1b2a4a 78%); border-bottom-color:#e07a5f; }
     header.sky-night { background:linear-gradient(180deg,#12101c 0%,#0e0c1c 70%); border-bottom-color:#5c6b7a; }
@@ -1598,8 +1603,9 @@ Cart shop:</textarea>
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
       var storm = /storm|thunder|lightning/i.test(window.__nextStorm || "");
       head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night");
+      var nightLook = document.documentElement.classList.contains("dark");
       if (warn) head.classList.add("sky-warn");
-      else if (hr >= 22 || hr < 6) head.classList.add("sky-night","night");
+      else if (nightLook) head.classList.add("sky-night","night");
       else if (storm) head.classList.add("sky-storm");
       else head.classList.add("sky-sun");
       var tempTxt = (document.getElementById("live-temp") || {}).textContent || "";
@@ -1946,7 +1952,12 @@ Cart shop:</textarea>
       return sunShouldDark();
     }
     try {
-      if (localStorage.getItem("bw-dark") === "1") document.documentElement.classList.add("dark");
+      (function () {
+        var s = {};
+        try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e2) { s = {}; }
+        if (s.dark === "day") document.documentElement.classList.remove("dark");
+        else if (s.dark === "night") document.documentElement.classList.add("dark");
+      })();
     } catch (e) {}
     var refreshBtn = document.getElementById("refreshbtn");
     if (refreshBtn) refreshBtn.addEventListener("click", function (e) {
@@ -1998,14 +2009,15 @@ Cart shop:</textarea>
       return now >= (set + pad) || now < (rise - pad);
     }
     function applySunDark() {
-      var mode = getSet().dark;
-      var lock;
-      try { lock = localStorage.getItem("bw-dark-lock"); } catch (e) { lock = null; }
-      if (mode === "night") lock = "1";
-      if (mode === "day") lock = "0";
-      if (mode === "auto") lock = null;
-      var on = (lock === "1" || lock === "0") ? lock === "1" : sunShouldDark();
+      var mode = getSet().dark || "auto";
+      var on = mode === "night" ? true : mode === "day" ? false : sunShouldDark();
       document.documentElement.classList.toggle("dark", on);
+      try {
+        localStorage.setItem("bw-dark", on ? "1" : "0");
+        if (mode === "auto") localStorage.removeItem("bw-dark-lock");
+        else localStorage.setItem("bw-dark-lock", on ? "1" : "0");
+      } catch (e) {}
+      if (typeof paintSkyHeader === "function") paintSkyHeader();
       var btn = document.getElementById("darkbtn");
       if (btn) {
         btn.classList.toggle("on", on);
