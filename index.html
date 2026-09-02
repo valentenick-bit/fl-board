@@ -1968,61 +1968,74 @@ Cart shop:</textarea>
       }
       return t;
     }
+    function wxHourET(h) {
+      return parseInt(new Date(h.startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
+    }
+    function wxDayET(iso) {
+      return new Date(iso).toLocaleDateString("en-CA", { timeZone:"America/New_York" });
+    }
+    function wxPop(h) {
+      return (h && h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+    }
+    function wxWet(h) {
+      var fx = String((h && h.shortForecast) || "").toLowerCase();
+      var pop = wxPop(h);
+      if (/thunder/.test(fx) && pop >= 40) return "storms";
+      if (/thunder|rain|shower/.test(fx) || pop >= 40) return "showers";
+      if (pop >= 25) return "a shower chance";
+      return "";
+    }
+    function wxPeriodName(hr) {
+      if (hr < 12) return "this morning";
+      if (hr < 17) return "this afternoon";
+      return "this evening";
+    }
+    function todayHoursLeft() {
+      var now = Date.now();
+      var today = new Date().toLocaleDateString("en-CA", { timeZone:"America/New_York" });
+      return (window.__hours || []).filter(function (h) {
+        if (!h || !h.startTime) return false;
+        var t1 = h.endTime ? new Date(h.endTime).getTime() : new Date(h.startTime).getTime() + 3600000;
+        if (t1 <= now) return false;
+        if (wxDayET(h.startTime) !== today) return false;
+        return wxHourET(h) < 20;
+      });
+    }
+    function firstChange(hours, test) {
+      for (var i = 0; i < hours.length; i++) if (test(hours[i])) return hours[i];
+      return null;
+    }
     function writeGreetingCard() {
       var el = document.getElementById("live-sky");
       if (!el) return;
       var wx = window.__nowWx || {};
-      var hours = window.__hours || [];
       var place = typeof homePlace === "function" ? homePlace() : "the Key";
-      var greet = wx.greet || greetWord();
+      var greet = (wx.greet || greetWord()).replace(/\.$/, "");
       var word = wx.word || "fair";
-      var temp = wx.temp;
-      var feel = wx.feel;
-      var wind = wx.wind;
-      var gust = wx.gust;
-      var now = Date.now();
-      var later = [];
-      hours.forEach(function (h) {
-        if (!h || !h.startTime) return;
-        var t0 = new Date(h.startTime).getTime();
-        var t1 = h.endTime ? new Date(h.endTime).getTime() : t0 + 3600000;
-        if (t1 <= now) return;
-        var day = new Date(h.startTime).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-        var today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-        if (day !== today) return;
-        later.push(h);
-      });
-      var next = later[0];
-      var wetAt = null;
-      later.forEach(function (h) {
-        if (wetAt) return;
-        var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
-        var fx = String(h.shortForecast || "").toLowerCase();
-        if (pop >= 40 || /thunder|rain|shower/.test(fx)) wetAt = h;
-      });
-      var bits = [greet.replace(/\.$/, "") + " on " + place];
-      if (temp != null) {
-        var feelBit = feel != null && Math.abs(feel - temp) >= 2 ? (", though it feels like " + feel + "°") : "";
-        bits[0] += ". It is " + temp + "°" + feelBit + " with " + word + " skies";
-        if (wind != null) bits[0] += " and a " + wind + " mph wind" + (gust != null && gust > wind + 3 ? " gusting to " + gust : "");
-        bits[0] += ".";
-      } else {
-        bits[0] += ".";
+      var left = todayHoursLeft();
+      var bits = [];
+      bits.push(greet + " in " + place + ".");
+      if (wx.temp != null) {
+        var feel = (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) ? (" Feels like " + wx.feel + ".") : "";
+        var wind = wx.wind != null ? (" Light wind around " + wx.wind + (wx.gust != null && wx.gust > wx.wind + 4 ? (", gusts " + wx.gust) : "") + ".") : "";
+        if (wx.wind != null && wx.wind >= 15) wind = " Wind " + wx.wind + " mph" + (wx.gust ? (", gusting " + wx.gust) : "") + ".";
+        bits.push("It's " + wx.temp + "° and " + word + "." + feel + wind);
       }
-      if (next) {
-        var fx = String(next.shortForecast || "").toLowerCase();
-        var pop = (next.probabilityOfPrecipitation && next.probabilityOfPrecipitation.value) || 0;
-        var when = new Date(next.startTime).getTime() <= now + 20 * 60 * 1000 ? "this hour" : hourLabel(next.startTime);
-        if (pop >= 40 || /thunder|rain/.test(fx)) bits.push("The next hour looks " + fx + (pop ? (" with about a " + pop + " percent chance of rain") : "") + ".");
-        else bits.push("The next stretch stays " + fx + " " + when + ".");
-      }
-      if (wetAt && next && wetAt.startTime !== next.startTime) {
-        bits.push("Rain risk picks up around " + hourLabel(wetAt.startTime) + ".");
-      } else if (!wetAt && later.length) {
-        bits.push("The rest of the daylight looks usable if you stay flexible.");
+      var storms = firstChange(left, function (h) { return wxWet(h) === "storms"; });
+      var rain = firstChange(left, function (h) { return wxWet(h) === "showers" || wxWet(h) === "storms"; });
+      var chance = firstChange(left, function (h) { return !!wxWet(h); });
+      if (storms) {
+        bits.push("Dry into " + wxPeriodName(wxHourET(storms)) + ", then storms become likely around " + hourLabel(storms.startTime) + ".");
+      } else if (rain) {
+        var when = wxPeriodName(wxHourET(rain));
+        bits.push("Mostly dry through " + (wxHourET(rain) < 12 ? "early morning" : (wxHourET(rain) < 14 ? "late morning" : "the next few hours")) + ", with showers more likely " + when + ".");
+      } else if (chance) {
+        bits.push("A passing shower cannot be ruled out " + wxPeriodName(wxHourET(chance)) + ", but it should stay mostly usable.");
+      } else if (left.length) {
+        bits.push("The rest of the daylight stays on the dry side.");
       }
       if (window.__wxRisk && window.__wxRisk.warn) {
-        bits.push("A warning is up — read Should we leave on Radar or Emergency before you plan the day.");
+        bits.push("A warning is in effect. Check Should we leave before you head out.");
       }
       el.textContent = bits.join(" ").replace(/\s+/g, " ").trim();
     }
@@ -2036,7 +2049,7 @@ Cart shop:</textarea>
       }
       function ok(h, kind) {
         var fx = String(h.shortForecast || "").toLowerCase();
-        var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+        var pop = wxPop(h);
         var isolated = /isolated|slight|patchy/.test(fx);
         var thunder = /thunder|t-storm|lightning/.test(fx) && !isolated && pop >= 50;
         var wet = (!isolated && pop >= 40) || pop >= 55;
@@ -2046,70 +2059,41 @@ Cart shop:</textarea>
         if (kind === "cart") return !thunder && wind < 20 && pop < 55;
         return !wet && wind < 18;
       }
-      function etDay(iso) {
-        return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      var left = todayHoursLeft();
+      function blockOk(kind, fromHr, toHr) {
+        var slice = left.filter(function (h) { var hr = wxHourET(h); return hr >= fromHr && hr < toHr; });
+        if (!slice.length) return false;
+        var good = 0;
+        slice.forEach(function (h) { if (ok(h, kind)) good++; });
+        return good >= Math.ceil(slice.length * 0.6);
       }
-      var todayKey = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-      function span(kind, onlyToday) {
-        var now = Date.now();
-        var start = null, last = null;
-        for (var i = 0; i < hours.length; i++) {
-          if (!hours[i] || !hours[i].startTime) continue;
-          var t0 = new Date(hours[i].startTime).getTime();
-          var t1 = hours[i].endTime ? new Date(hours[i].endTime).getTime() : t0 + 3600000;
-          var hr = parseInt(new Date(hours[i].startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
-          if (isNaN(t0) || t1 <= now) continue;
-          if (hr >= 20) continue;
-          if (onlyToday && etDay(hours[i].startTime) !== todayKey) continue;
-          if (!onlyToday && etDay(hours[i].startTime) === todayKey) continue;
-          if (ok(hours[i], kind)) {
-            if (!start) start = hours[i];
-            last = hours[i];
-          } else if (start) break;
-        }
-        if (!start) return null;
-        var a = hourLabel(start.startTime);
-        var b = last ? hourLabel(last.endTime || last.startTime) : a;
-        b = String(b).replace(/^tomorrow /i, "").replace(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) /i, "");
-        if (a.replace(/^tomorrow /i, "").replace(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) /i, "") === b) return a;
-        return a + "–" + b;
-      }
-      function line(todayS, tomS, name) {
-        if (todayS) return name + " " + todayS;
-        if (tomS) return name + " " + tomS;
-        return null;
-      }
-      var beachT = span("beach", true), cartT = span("cart", true), boatT = span("boat", true);
-      var beachN = span("beach", false), cartN = span("cart", false), boatN = span("boat", false);
-      var parts = [];
-      var todayCount = (beachT?1:0) + (cartT?1:0) + (boatT?1:0);
-      if (todayCount === 3 && beachT === cartT && cartT === boatT) {
-        parts.push("If you want the water, a cart ride, or a launch, the cleanest stretch left today is " + beachT + ".");
-      } else if (beachT && cartT && beachT === cartT) {
-        parts.push("The beach and the cart both look decent " + beachT + ".");
-        parts.push(boatT ? "If you are going to launch, do it " + boatT + "." : "I would leave the boat on the lift today.");
-      } else if (todayCount) {
-        var nice = [];
-        if (beachT) nice.push("the beach " + beachT);
-        if (cartT) nice.push("the cart " + cartT);
-        if (boatT) nice.push("a launch " + boatT);
-        if (nice.length === 1) parts.push("The one window that still looks worthwhile is " + nice[0] + ".");
-        else parts.push("You still have a window for " + nice.join(" and ").replace(/ and (?=.* and )/, ", ") + ".");
-        if (!boatT) parts.push("Skip the boat until the wind and rain ease.");
-        if (!beachT) parts.push("I would stay off the sand until the rain risk drops.");
+      var morn = { beach: blockOk("beach", 6, 12), cart: blockOk("cart", 6, 12), boat: blockOk("boat", 6, 12) };
+      var aft = { beach: blockOk("beach", 12, 17), cart: blockOk("cart", 12, 17), boat: blockOk("boat", 12, 17) };
+      var eve = { beach: blockOk("beach", 17, 20), cart: blockOk("cart", 17, 20), boat: blockOk("boat", 17, 20) };
+      var hr = parseInt(new Date().toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
+      var text = "";
+      function trio(b) { return b.beach && b.cart && b.boat; }
+      function pair(b) { return b.beach && b.cart && !b.boat; }
+      if (hr < 12) {
+        if (trio(morn) && trio(aft)) text = "It's a good outdoor day. Beach, cart, and a launch all work this morning and should still be fine this afternoon.";
+        else if (trio(morn) && !aft.beach) text = "Use the morning. Beach, cart, and a launch all look reasonable before noon. Afternoon weather gets in the way, so don't wait.";
+        else if (pair(morn) && !morn.boat) text = "Morning is fine for the beach and a cart ride. I would not launch. Afternoon looks less trustworthy.";
+        else if (morn.beach || morn.cart) text = "There is still a usable morning if you stay close to home — " + (morn.beach ? "beach is ok" : "skip the beach") + ", " + (morn.cart ? "cart is ok" : "park the cart if it looks wet") + ". " + (morn.boat ? "A short launch could work early." : "Leave the boat on the lift.");
+        else if (aft.beach || aft.cart) text = "This morning is a throwaway. If you go out, wait and see if the afternoon dries.";
+        else text = "I would not plan the beach, the cart, or a launch today. Save it.";
+      } else if (hr < 17) {
+        if (trio(aft)) text = "Afternoon still works for the beach, a cart ride, and a launch if you go soon.";
+        else if (pair(aft)) text = "You can still do the beach or a cart this afternoon. I would not launch.";
+        else if (eve.beach || eve.cart) text = "This afternoon is messy. There may be a short evening window if the storms move off.";
+        else text = "The outdoor day is pretty much over. Stay in and let it pass.";
       } else {
-        parts.push("There is not a good outdoor window left today.");
-        var nexts = [];
-        if (beachN) nexts.push("the beach " + beachN);
-        if (cartN) nexts.push("the cart " + cartN);
-        if (boatN) nexts.push("a launch " + boatN);
-        if (nexts.length) parts.push("The next look is " + nexts.join(" and ").replace(/ and (?=.* and )/, ", ") + ".");
+        if (eve.beach || eve.cart) text = "A short evening window is still on the table if the rain holds off. I would keep it close to home.";
+        else text = "That's it for today. Nothing left worth chasing.";
       }
-      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm) && todayCount) {
-        parts.push(window.__nextStorm.replace(/\.$/, "") + ".");
+      if (window.__nextStorm && !/^Storms —$/.test(window.__nextStorm) && /morning|afternoon|evening|soon|window/.test(text)) {
+        text += " " + window.__nextStorm.replace(/\.$/, "") + ".";
       }
-      var text = parts.join(" ").replace(/\s+/g, " ").trim();
-      el.innerHTML = "<b>Best window</b><span>" + text + "</span>";
+      el.innerHTML = "<b>Best window</b><span>" + text.replace(/\s+/g, " ").trim() + "</span>";
       window.__bestWindow = text;
     }
 
