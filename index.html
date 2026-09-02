@@ -448,7 +448,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v77</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v78</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1047,7 +1047,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 77;
+    window.BOARD_VER = 78;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1056,7 +1056,7 @@ Cart shop:</textarea>
       try { sessionStorage.setItem("bw-crashes", JSON.stringify(window.__crashes)); } catch (e) {}
       var el = document.getElementById("health-crash");
       if (el) el.textContent = window.__crashes.join(" | ");
-      if (typeof noteFeed === "function") noteFeed("crash", false, src);
+      if ((src === "js" || src === "promise") && typeof noteFeed === "function") noteFeed("crash", false, src);
     }
     try {
       var saved = sessionStorage.getItem("bw-crashes");
@@ -1072,11 +1072,13 @@ Cart shop:</textarea>
       var orig = window.fetch;
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
+        var u = String(url || "");
+        var optional = /house\.json|\/house(\b|$)|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
-          if (!r.ok && r.status >= 400) logCrash("http", r.status + " " + String(url || r.url || "").slice(0, 90));
+          if (!r.ok && r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
           return r;
         }, function (err) {
-          logCrash("net", String(url || "").slice(0, 70) + " " + (err && err.message || err));
+          if (!optional) logCrash("net", u.slice(0, 70) + " " + (err && err.message || err));
           throw err;
         });
       };
@@ -2330,12 +2332,7 @@ Cart shop:</textarea>
     (function houseShare() {
       var note = document.getElementById("house-sync");
       var SAVE = "https://fl-board.valente-nick.workers.dev/house";
-      var urls = [
-        SAVE,
-        "house.json",
-        "./house.json",
-        "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1-bK-lSI32CYoEPS9QkuBWnXbgq7L3Hew")
-      ];
+      var urls = [ SAVE ];
       function boxes(kind) {
         return Array.prototype.map.call(document.querySelectorAll('input[data-list="' + kind + '"]'), function (b) { return !!b.checked; });
       }
@@ -2396,8 +2393,14 @@ Cart shop:</textarea>
       };
       function pull() {
         function next(i) {
-          if (i >= urls.length) return;
-          fetch(urls[i] + (urls[i].indexOf("http") === 0 ? "" : "")).then(function (r) { return r.json(); }).then(function (h) {
+          if (i >= urls.length) {
+            stamp("House list is on this device until /house is set up on Workers.");
+            return;
+          }
+          fetch(urls[i]).then(function (r) {
+            if (!r.ok) throw new Error("no house route");
+            return r.json();
+          }).then(function (h) {
             if (!h || (!h.nick && !h.dayna && h.vendors == null)) return next(i + 1);
             var incoming = h.updated ? Date.parse(h.updated) : 0;
             var mine = window.__houseUpdated ? Date.parse(window.__houseUpdated) : 0;
@@ -2412,7 +2415,7 @@ Cart shop:</textarea>
         if (cached) apply(cached, "this device");
       } catch (e) {}
       pull();
-      setInterval(pull, 60 * 1000);
+      setInterval(pull, 10 * 60 * 1000);
     })();
     clock(); setInterval(clock, 15000);
     (function midnightReload() {
@@ -2585,7 +2588,7 @@ Cart shop:</textarea>
       }
       function next(i) {
         if (i >= urls.length) {
-          if (!el.dataset.ok) el.innerHTML = "<b>NHC discussion</b><span>Text product did not load. Open hurricanes.gov for the written discussion.</span>";
+          if (!el.dataset.ok) el.innerHTML = "<b>NHC discussion</b><span>Use the NHC maps on Tropical. Text product is blocked in the browser. Open hurricanes.gov for the written discussion.</span>";
           return;
         }
         fetch(urls[i]).then(function (r) { return r.text(); }).then(function (t) {
