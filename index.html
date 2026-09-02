@@ -3902,9 +3902,10 @@ Cart shop:</textarea>
       );
     }
     function refreshMarineSky(days, hours, obs) {
+      var tideDay = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
       fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" +
-        new Date().toISOString().slice(0,10).replace(/-/g,"") +
-        "&range=36&datum=MLLW&station=" + homeTide() + "&time_zone=lst_ldt&units=english&interval=hilo&format=json")
+        tideDay +
+        "&range=72&datum=MLLW&station=" + homeTide() + "&time_zone=lst_ldt&units=english&interval=hilo&format=json")
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var preds = data.predictions || [];
@@ -3916,9 +3917,9 @@ Cart shop:</textarea>
           function fmtP(p) {
             return (p.type === "H" ? "High" : "Low") + " " + fmtTideClock(p.t.replace(" ", "T")) + " " + Number(p.v).toFixed(2) + " ft";
           }
-          var nextH = upcoming.filter(function (p) { return p.type === "H"; })[0];
-          var nextL = upcoming.filter(function (p) { return p.type === "L"; })[0];
-          var pair = [nextH, nextL].filter(Boolean).sort(function (a, b) {
+          var highs = upcoming.filter(function (p) { return p.type === "H"; }).slice(0, 2);
+          var lows = upcoming.filter(function (p) { return p.type === "L"; }).slice(0, 2);
+          var pair = highs.concat(lows).sort(function (a, b) {
             return new Date(String(a.t).replace(" ", "T")) - new Date(String(b.t).replace(" ", "T"));
           });
           var el1 = document.getElementById("live-tide-today");
@@ -3928,6 +3929,7 @@ Cart shop:</textarea>
           writeHdrMeta();
           writeDoHour();
           window.__bwCharts.preds = preds; drawTideChart(preds);
+          if (!window.__bwCharts.surge || window.__bwCharts.surge.length < 2) surgeFallbackTide();
         }).catch(function () { touchFeed("tide", false, "NOAA tide fetch failed"); });
       var day = new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0,10).replace(/-/g,"");
       function surgeFromStation(id, label) {
@@ -3968,7 +3970,7 @@ Cart shop:</textarea>
         var preds = (window.__bwCharts && window.__bwCharts.preds) || [];
         if (preds.length < 4) {
           var lab = document.getElementById("live-surge");
-          if (lab) lab.textContent = "No live water-level gauge near this ZIP";
+          if (lab) lab.textContent = "Waiting on NOAA water level";
           return;
         }
         var pts = preds.map(function (p) {
@@ -3979,21 +3981,27 @@ Cart shop:</textarea>
         window.__bwCharts.surge = rel;
         drawSurgeChart(rel);
         var lab = document.getElementById("live-surge");
-        if (lab) lab.textContent = "Predicted tide vs mean · no live gauge";
+        if (lab) lab.textContent = "Predicted tide shape · Fort Myers gauge offline";
       }
-      fetch("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/lat/" + homeLat() + "/lng/" + homeLon() + "/radius/50/stations.json?type=waterlevels")
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var st = ((d && d.stations) || [])[0];
-          var id = st && (st.id || st.stationId);
-          var name = st && (st.name || id);
-          if (id) putSet({ wlStation: id });
-          return surgeFromStation(id, name);
+      var surgeFirst = (getSet().wlStation || (homeState() === "FL" ? "8725520" : homeTide()));
+      surgeFromStation(surgeFirst, surgeFirst === "8725520" ? "Fort Myers" : "water level")
+        .then(function (ok) {
+          if (ok) return true;
+          return fetch("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/lat/" + homeLat() + "/lng/" + homeLon() + "/radius/80/stations.json?type=waterlevels")
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              var st = ((d && d.stations) || [])[0];
+              var id = st && (st.id || st.stationId);
+              if (id && id !== surgeFirst) {
+                putSet({ wlStation: id });
+                return surgeFromStation(id, st.name || id);
+              }
+              return false;
+            }).catch(function () { return false; });
         })
         .then(function (ok) {
           if (ok) return true;
-          var fallback = homeState() === "FL" ? "8725520" : homeTide();
-          return surgeFromStation(fallback, "nearby NOAA");
+          return surgeFromStation("8725520", "Fort Myers");
         })
         .then(function (ok) { if (!ok) surgeFallbackTide(); })
         .catch(function () { surgeFallbackTide(); });
