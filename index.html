@@ -452,7 +452,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v83</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v84</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -499,16 +499,10 @@
         </div>
       </section>
       <section id="cam" class="page">
-        <h2 data-k="Gulf and tropics">Views</h2>
+        <h2 data-k="On the Key">Views</h2>
         <div class="keycam keycam-full">
           <iframe id="keycam-yt" title="Siesta Key Beach live" src="https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
-          <img id="keycam-frame" alt="Satellite" hidden src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg" style="width:100%;height:100%;object-fit:cover;background:#111"/>
           <p id="keycam-cap" class="cam-cap">Siesta Key Beach live</p>
-          <div class="cam-pills" id="cam-pills">
-            <button type="button" data-cam="yt" class="on">Siesta</button>
-            <button type="button" data-cam="gulf">Gulf sat</button>
-            <button type="button" data-cam="atl">Atlantic tropics</button>
-          </div>
         </div>
       </section>
       <section id="tenday" class="page">
@@ -556,6 +550,10 @@
         </div>
         <p id="radar-note">Radar follows the home ZIP. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
         <div class="radar-crop"><img class="radar-loop" id="radar-loop" alt="KTBW radar loop" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/></div>
+        <div class="marine-graphs" style="margin-top:10px">
+          <div class="card"><b>Gulf satellite</b><img id="radar-gulf" alt="GOES Gulf" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg" style="width:100%;border-radius:10px;background:#111"/></div>
+          <div class="card"><b>Atlantic tropics</b><img id="radar-atl" alt="GOES Atlantic tropics" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg" style="width:100%;border-radius:10px;background:#111"/></div>
+        </div>
       </section>
       <section id="marine" class="page">
         <h2 data-k="Gulf and inlet">Marine</h2>
@@ -1061,7 +1059,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 83;
+    window.BOARD_VER = 84;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1487,51 +1485,20 @@ Cart shop:</textarea>
 
     function refreshKeyCam(force) {
       var yt = document.getElementById("keycam-yt");
-      var img = document.getElementById("keycam-frame");
       var cap = document.getElementById("keycam-cap");
-      var views = [
-        { id: "yt", label: "Siesta Key Beach live", kind: "yt" },
-        { id: "gulf", label: "Gulf of America · GOES-East GeoColor", kind: "img", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg" },
-        { id: "atl", label: "Atlantic tropics · Caribbean / approaches · GOES-East", kind: "img", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg" }
-      ];
-      if (window.__camI == null) window.__camI = 0;
-      function show(i, bust) {
-        window.__camI = (i + views.length) % views.length;
-        var v = views[window.__camI];
-        document.querySelectorAll("#cam-pills button").forEach(function (b) {
-          b.classList.toggle("on", b.getAttribute("data-cam") === v.id);
-        });
-        if (v.kind === "yt") {
-          if (yt) { yt.classList.remove("off"); if (bust) yt.src = "https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1&t=" + Date.now(); }
-          if (img) img.classList.add("off");
-          if (cap) cap.textContent = v.label;
-          if (typeof noteFeed === "function") noteFeed("cam", true, "siesta youtube");
-        } else {
-          if (yt) yt.classList.add("off");
-          if (img) {
-            img.classList.remove("off");
-            img.onload = function () { if (typeof noteFeed === "function") noteFeed("cam", img.naturalWidth > 40, v.id + " " + img.naturalWidth + "px"); };
-            img.onerror = function () { if (typeof noteFeed === "function") noteFeed("cam", false, v.id + " error"); if (cap) cap.textContent = v.label + " did not load"; };
-            img.src = v.src + (bust ? ("?t=" + Date.now()) : "");
-          }
-          if (cap) cap.textContent = v.label;
-        }
-      }
-      window.__showCam = function (id, bust) {
-        var i = 0;
-        for (var n = 0; n < views.length; n++) if (views[n].id === id) i = n;
-        window.__camHold = Date.now() + 45000;
-        show(i, bust);
-      };
-      if (force) show(window.__camI || 0, true);
-      else show(window.__camI || 0, false);
+      if (yt && force) yt.src = "https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1&t=" + Date.now();
+      if (cap) cap.textContent = "Siesta Key Beach live";
+      if (typeof noteFeed === "function") noteFeed("cam", true, "siesta youtube");
     }
-    function tickCamRotate() {
-      var on = document.querySelector(".page.on");
-      if (!on || on.id !== "cam") return;
-      if (window.__camHold && Date.now() < window.__camHold) return;
-      window.__camI = (window.__camI || 0) + 1;
-      if (typeof refreshKeyCam === "function") refreshKeyCam(true);
+    function refreshSatStills() {
+      var n = Date.now();
+      [["radar-gulf","https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"],
+       ["radar-atl","https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg"],
+       ["cane-gulf","https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"],
+       ["cane-atl","https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg"]].forEach(function (pair) {
+        var el = document.getElementById(pair[0]);
+        if (el) el.src = pair[1] + "?t=" + n;
+      });
     }
 
 function showPage(id) {
@@ -2505,7 +2472,7 @@ function showPage(id) {
     function pageDwell(id) {
       if (id === "hurr") return 36000;
       var base = (Number(getSet().rotate) || 15) * 1000;
-      return (id === "now") ? Math.max(base, 20000) : (id === "cam") ? Math.max(base, 36000) : base;
+      return (id === "now" || id === "cam") ? Math.max(base, 20000) : base;
     }
     function startRotate() {
       clearInterval(rot);
@@ -3914,22 +3881,7 @@ function showPage(id) {
     if (typeof refreshKeyCam === "function") refreshKeyCam(true);
     setInterval(function () { if (typeof refreshKeyCam === "function") refreshKeyCam(true); }, 5 * 60 * 1000);
 
-    (function wireCamPills() {
-      var box = document.getElementById("cam-pills");
-      if (box) box.addEventListener("click", function (e) {
-        var b = e.target.closest("button[data-cam]");
-        if (!b) return;
-        if (typeof window.__showCam === "function") window.__showCam(b.getAttribute("data-cam"), true);
-      });
-      setInterval(function () { if (typeof tickCamRotate === "function") tickCamRotate(); }, 8000);
-      setInterval(function () {
-        var g = document.getElementById("cane-gulf");
-        var a = document.getElementById("cane-atl");
-        var n = Date.now();
-        if (g) g.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg?t=" + n;
-        if (a) a.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg?t=" + n;
-      }, 5 * 60 * 1000);
-    })();
+    setInterval(function () { if (typeof refreshSatStills === "function") refreshSatStills(); }, 5 * 60 * 1000);
 
     (function moveCamAfterRadar() {
       try {
