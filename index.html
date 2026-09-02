@@ -508,7 +508,7 @@
         <div class="card"><b>Gulf water history</b><span>Open-Meteo SST</span>
           <div class="tide" id="wtemp-chart"></div>
         </div>
-        <div class="card"><b>Coastal waters TBW</b><span id="live-coastal">Loading…</span></div>
+        <div class="card"><b id="coast-title">Coastal waters</b><span id="live-coastal">Loading…</span></div>
         <div class="card"><b id="fish-title">What’s biting</b><span id="live-fish">Loading the local bite…</span></div>
         <div class="card" id="gator-card"><b>Alligator watch</b><span id="live-gator">Checking range…</span></div>
         <p><a href="https://fishinfranks.com/fishin_report.htm" target="_blank" rel="noopener">Fishin Franks</a> · <a href="https://www.floridasportsman.com/editorial/southwest-florida-weekend-fishing-forecast/402036" target="_blank" rel="noopener">Florida Sportsman SW</a> · <a href="https://myfwc.com/fishing/saltwater/recreational/" target="_blank" rel="noopener">FWC regs</a></p>
@@ -3170,16 +3170,29 @@ Cart shop:</textarea>
       var gustEl = document.getElementById("live-venf-gust");
       var coast = document.getElementById("live-coastal");
       var nwrM = document.getElementById("live-nwr-marine");
-      fetch("https://api.weather.gov/zones/forecast/GMZ856/forecast", { headers: { "Accept": "application/geo+json" } })
+      var coastTitle = document.getElementById("coast-title");
+      if (coastTitle) coastTitle.textContent = "Coastal waters · " + homePlace();
+      fetch("https://api.weather.gov/products?location=" + (getSet().wfo || "TBW") + "&type=CWF", { headers: { "Accept": "application/ld+json", "User-Agent": "BeachWalkBoard" } })
         .then(function (r) { return r.json(); })
         .then(function (d) {
-          var per = ((((d || {}).properties || {}).periods) || [])[0] || {};
-          var line = ((per.name || "Coastal waters") + ". " + (per.detailedForecast || per.shortForecast || "")).replace(/\s+/g, " ").trim();
+          var id = d && d["@graph"] && d["@graph"][0] && d["@graph"][0].id;
+          if (!id) return null;
+          return fetch(id, { headers: { "Accept": "application/ld+json", "User-Agent": "BeachWalkBoard" } }).then(function (r) { return r.json(); });
+        })
+        .then(function (prod) {
+          var raw = (prod && (prod.productText || prod.product_text)) || "";
+          if (!raw) return;
+          var slice = raw.replace(/\s+/g, " ");
+          var place = homePlace();
+          var idx = slice.search(new RegExp(place.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "|THIS AFTERNOON|TONIGHT|SEAS", "i"));
+          if (idx < 0) idx = 0;
+          var line = slice.slice(idx, idx + 320).trim();
           if (line.length > 280) line = line.slice(0, 277).replace(/\s+\S*$/, "") + ".";
           if (coast && line) coast.textContent = line;
           if (nwrM && line) nwrM.textContent = line;
         }).catch(function () {
-          if (nwrM) nwrM.textContent = "Coastal waters near " + homePlace() + " — see Marine page if this is blank.";
+          if (coast) coast.textContent = "Coastal waters near " + homePlace() + " did not load.";
+          if (nwrM) nwrM.textContent = "See Marine page.";
         });
       if (windEl && document.getElementById("live-wind")) windEl.textContent = document.getElementById("live-wind").textContent;
       if (gustEl && document.getElementById("live-gusts")) gustEl.textContent = document.getElementById("live-gusts").textContent;
@@ -3197,7 +3210,25 @@ Cart shop:</textarea>
           var row = (d.data && d.data[0]) || null;
           if (el && row && row.v) el.textContent = Math.round(parseFloat(row.v)) + "°";
         }).catch(function () {});
-      if (coast && days && days[0]) coast.textContent = days[0].detailedForecast || days[0].shortForecast || "";
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&daily=sunrise,sunset&forecast_days=1&timezone=America%2FNew_York")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var rise = d.daily && d.daily.sunrise && d.daily.sunrise[0];
+          var set = d.daily && d.daily.sunset && d.daily.sunset[0];
+          if (rise && set) {
+            window.__bwCharts = window.__bwCharts || {};
+            window.__bwCharts.rise = rise;
+            window.__bwCharts.set = set;
+            var lab = document.getElementById("live-sun-label");
+            function hh(iso) {
+              return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
+            }
+            if (lab) lab.textContent = "Sun path · " + hh(rise) + " to " + hh(set);
+            applySunDark();
+            drawSunChart(rise, set);
+            drawMoonChart();
+          }
+        }).catch(function () {});
       fetch("https://api.sunrise-sunset.org/json?lat=" + homeLat() + "&lng=" + homeLon() + "&formatted=0")
         .then(function (r) { return r.json(); })
         .then(function (j) {
@@ -3425,7 +3456,20 @@ Cart shop:</textarea>
       if (seas && days && days[0] && days[0].detailedForecast) {
         var m = /(\d+(?:\.\d+)?)\s*(?:to\s*)?(\d+)?\s*foot/i.exec(days[0].detailedForecast);
         seas.textContent = m ? (m[2] ? m[1] + "–" + m[2] + " ft" : m[1] + " ft") : "1–2 ft";
+      } else if (seas && (!seas.textContent || seas.textContent === "…")) {
+        seas.textContent = "See coastal waters";
       }
+      (function loadBacteria() {
+        var el = document.getElementById("live-bacteria");
+        if (!el) return;
+        if (homeState() !== "FL") { el.textContent = "FL beaches"; return; }
+        var q = encodeURIComponent(homePlace() + " beach water quality (advisory OR enterococcus OR bacteria) when:21d");
+        var raw = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
+        fetch("https://corsproxy.io/?" + encodeURIComponent(raw)).then(function (r) { return r.text(); }).then(function (xml) {
+          var hit = /advisory|high bacteria|enterococcus|do not swim|no swim/i.test(xml || "");
+          el.textContent = hit ? "Advisory in news — check FDOH" : "No recent advisory";
+        }).catch(function () { el.textContent = "See FDOH beaches"; });
+      })();
       (function fillSkyPage() {
         function setPlanet(i, name, detail) {
           var n = document.getElementById("live-planet" + i);
@@ -3880,10 +3924,9 @@ Cart shop:</textarea>
             fetch(p.observationStations, { headers: hdr }).then(function (r) { return r.json(); }).then(function (st) {
               var feats = (st && st.features) || [];
               var pick = feats[0];
-              feats.forEach(function (f) {
-                var id = ((f.properties || {}).stationIdentifier || "") + (f.id || "");
-                if (/KVNC|KPGD|KVNC/.test(id)) pick = f;
-              });
+              if (pick && pick.properties && pick.properties.stationIdentifier) {
+                window.__obsStation = pick.properties.stationIdentifier;
+              }
               if (!pick) return {};
               return fetch(pick.id + "/observations/latest", { headers: hdr }).then(function (r) { return r.json(); });
             })
@@ -4108,7 +4151,7 @@ Cart shop:</textarea>
                 .catch(function () { paintTen(rows.filter(function (r) { return r.row; })); });
             }
           }
-          fetch("https://api.weather.gov/stations/KVNC/observations?limit=36", { headers: hdr })
+          fetch("https://api.weather.gov/stations/" + (window.__obsStation || "KVNC") + "/observations?limit=36", { headers: hdr })
             .then(function (r) { return r.json(); })
             .then(function (st) {
               var feats = ((st && st.features) || []).slice().reverse();
