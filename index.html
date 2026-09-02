@@ -3510,6 +3510,8 @@ Cart shop:</textarea>
     }
 
     function probeBoardCards() {
+      window.__boardReadyAt = window.__boardReadyAt || Date.now();
+      var grace = Date.now() - window.__boardReadyAt < 20000;
       function txt(id) {
         var el = document.getElementById(id);
         return el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : "";
@@ -3517,18 +3519,27 @@ Cart shop:</textarea>
       function chartOk(id) {
         var el = document.getElementById(id);
         if (!el) return false;
-        return !!(el.querySelector("svg path") || el.querySelector("svg circle") || (el.children && el.children.length));
+        return !!(el.querySelector("svg path") || el.querySelector("svg circle") || el.querySelector("img[src]") || (el.children && el.children.length));
+      }
+      function imgOk(id) {
+        var el = document.getElementById(id);
+        if (!el) return false;
+        var src = el.getAttribute("src") || el.src || "";
+        if (!src || /about:blank/.test(src)) return false;
+        if (el.tagName === "IMG" && el.naturalWidth === 0 && el.complete) return false;
+        return true;
       }
       function verdict(s) {
-        if (!s) return "empty";
-        if (/^(loading|checking|updating|—|–|…|\.{1,3}|n\/a|good (morning|afternoon|evening)\.?)$/i.test(s)) return "placeholder";
-        if (/did not load|timed out|not wired/i.test(s)) return "failed";
-        if (/unavailable|failed|error|cannot/i.test(s) && !/outlook maps|quiet|no daily note|no gust|not issued/i.test(s)) return "failed";
+        s = String(s || "").replace(/\s+/g, " ").trim();
+        if (!s) return grace ? "placeholder" : "failed";
+        if (/^(loading|checking|updating|—|–|…|\.{1,3}|n\/a|uv|light|see gulf sst)$/i.test(s)) return grace ? "placeholder" : "failed";
+        if (/did not load|timed out|not wired|video unavailable|no data was found/i.test(s)) return "failed";
+        if (/unavailable|failed|error/i.test(s) && !/outlook maps|quiet sky|not issued/i.test(s)) return "failed";
         return "ok";
       }
       var groups = {
         wx: [
-          ["wx-nowline", txt("wx-nowline")],
+          ["now-line", txt("wx-nowline")],
           ["greeting", txt("live-sky")],
           ["wind", txt("live-wind")],
           ["gusts", txt("live-gusts")],
@@ -3538,8 +3549,8 @@ Cart shop:</textarea>
           ["aqi", txt("live-aqi")],
           ["rain-month", txt("live-rain-mo")],
           ["uv", txt("live-uv")],
-          ["hourly", (document.querySelectorAll(".hourly .hour").length ? (document.querySelectorAll(".hourly .hour").length + " hours") : "")],
-          ["10-day", (document.querySelectorAll(".tenday .day, .tenday .tile, .tenday > div").length ? (document.querySelectorAll(".tenday .day, .tenday .tile, .tenday > div").length + " days") : "")],
+          ["hourly", document.querySelectorAll(".hourly .hour").length ? (document.querySelectorAll(".hourly .hour").length + " hours") : ""],
+          ["10-day", document.querySelectorAll(".tenday .day, .tenday > div").length ? (document.querySelectorAll(".tenday .day, .tenday > div").length + " days") : ""],
           ["humid-chart", chartOk("humid-chart") ? "chart" : ""],
           ["pres-chart", chartOk("pres-chart") ? "chart" : ""]
         ],
@@ -3566,40 +3577,61 @@ Cart shop:</textarea>
           ["overnight", txt("live-planet2")],
           ["dawn", txt("live-planet3")],
           ["stars", txt("live-planet4")],
-          ["horoscope", ((document.getElementById("horo-box") || {}).textContent || "").replace(/\s+/g," ").trim().slice(0,80)],
+          ["horoscope", txt("horo-box")],
           ["iss", txt("live-iss")]
+        ],
+        extra: [
+          ["radar", imgOk("radar-loop") ? "loop" : ""],
+          ["named-storms", txt("live-cane")],
+          ["lightning", txt("live-bolt") || txt("bolt-note")],
+          ["events", txt("ent-count")],
+          ["gator", txt("live-gator")],
+          ["power", txt("live-fpl") || txt("fpl-tot")],
+          ["cam", imgOk("keycam-frame") ? "cam" : txt("keycam-cap")]
         ]
       };
       function score(rows) {
         var out = { ok: [], bad: [], hold: [] };
         rows.forEach(function (row) {
           var key = row[0], val = row[1];
-          var v = verdict(val);
-          if (v === "ok" || val === "chart") {
+          var v = (val === "chart" || val === "loop" || val === "cam") ? "ok" : verdict(val);
+          if (v === "ok") {
             out.ok.push(key);
             noteFeed(key, true, val || "ok");
           } else if (v === "failed") {
-            out.bad.push(key + (val ? (": " + val) : ""));
-            noteFeed(key, false, val || "failed");
+            out.bad.push(key + (val ? (" — " + val) : " — blank"));
+            noteFeed(key, false, val || "blank");
           } else {
             out.hold.push(key);
+            noteFeed(key, false, val || "waiting");
           }
         });
+        if (!grace && out.hold.length) {
+          out.hold.forEach(function (k) { out.bad.push(k + " — still blank"); });
+          out.hold = [];
+        }
         return out;
       }
       function paint(id, pack, label) {
         var el = document.getElementById(id);
         if (!el) return pack;
-        if (pack.bad.length) el.innerHTML = '<span class="health-bad">' + pack.bad.join(" · ") + "</span>" + (pack.hold.length ? (" · waiting: " + pack.hold.join(", ")) : "") + (pack.ok.length ? (" · ok: " + pack.ok.join(", ")) : "");
-        else if (pack.hold.length) el.textContent = "Waiting on " + pack.hold.join(", ") + (pack.ok.length ? (". OK: " + pack.ok.join(", ")) : ".");
-        else el.innerHTML = '<span class="health-ok">All ' + label + " cards have data.</span> " + pack.ok.join(", ");
+        var bits = [];
+        if (pack.bad.length) bits.push("Down: " + pack.bad.join(" · "));
+        if (pack.hold.length) bits.push("Waiting: " + pack.hold.join(", "));
+        if (pack.ok.length) bits.push("OK: " + pack.ok.join(", "));
+        el.textContent = bits.join("  |  ") || ("No " + label + " cards found.");
+        el.className = pack.bad.length ? "health-bad" : "";
         return pack;
       }
-      var wx = paint("health-wx", score(groups.wx), "weather");
-      var marine = paint("health-marine", score(groups.marine), "marine");
-      var sky = paint("health-sky", score(groups.sky), "sky");
-      return { wx: wx, marine: marine, sky: sky };
+      return {
+        wx: paint("health-wx", score(groups.wx), "weather"),
+        marine: paint("health-marine", score(groups.marine), "marine"),
+        sky: paint("health-sky", score(groups.sky), "sky"),
+        extra: score(groups.extra),
+        grace: grace
+      };
     }
+
     function paintHealth() {
       if (window.__paintingHealth) return;
       window.__paintingHealth = true;
@@ -3617,8 +3649,7 @@ Cart shop:</textarea>
         var age = Date.now() - f.at;
         var limit = /alert|wx|radar|tide/.test(k) ? 20 * 60 * 1000 : 6 * 60 * 60 * 1000;
         rows.push(k + " — " + (f.ok ? "ok" : "down") + " — " + fmtAge(age) + (f.detail ? (" — " + f.detail) : ""));
-        if (!f.ok && /did not load|timed out|not wired|failed|error/i.test(f.detail || k)) bad.push(k + (f.detail ? (": " + f.detail) : ""));
-        else if (!f.ok) old.push(k + " (waiting)");
+        if (!f.ok) bad.push(k + (f.detail ? (": " + f.detail) : ""));
         else if (age > limit) old.push(k + " (" + fmtAge(age) + ")");
       });
       var refreshEl = document.getElementById("health-refresh");
@@ -3636,7 +3667,7 @@ Cart shop:</textarea>
         if (refreshEl) refreshEl.textContent = "Last used " + fmtAge(Date.now() - Number(lastRef)) + ". That tap should change the ?v= number in the address bar.";
       }
       if (probed) {
-        ["wx","marine","sky"].forEach(function (g) {
+        ["wx","marine","sky","extra"].forEach(function (g) {
           (probed[g] && probed[g].bad || []).forEach(function (s) { bad.push(g + " / " + s); });
         });
       }
@@ -3678,7 +3709,7 @@ Cart shop:</textarea>
     paintLeaveAndClear();
     paintHealth();
     wireAcFilter();
-    setInterval(function () { paintStamps(); paintHealth(); paintLeaveAndClear(); }, 60000);
+    setInterval(function () { paintStamps(); paintHealth(); paintLeaveAndClear(); }, 15000);
 
 
     (function seedWxTiles() {
