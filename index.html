@@ -763,8 +763,16 @@ Cart shop:</textarea>
       </div>
       <label>Quiet hours</label>
       <div class="set-row" id="set-quiet">
-        <button type="button" data-v="1">Follow dark clock</button>
+        <button type="button" data-v="1">Follow dark mode</button>
+        <button type="button" data-v="custom">Set times</button>
         <button type="button" data-v="0">Off</button>
+      </div>
+      <div id="set-quiet-times" hidden>
+        <label>Quiet starts</label>
+        <select id="set-quiet-start"></select>
+        <label>Quiet ends</label>
+        <select id="set-quiet-end"></select>
+        <p class="hint">15-minute steps. Overnight windows are fine (10:00 p.m. to 7:00 a.m.).</p>
       </div>
       <label>Text size</label>
       <div class="set-row" id="set-text">
@@ -851,7 +859,7 @@ Cart shop:</textarea>
   <script>
     window.__wxRisk = window.__wxRisk || { alert: false, cane: false, bolt: false, hurr: false };
     var SET_DEFAULTS = {
-      dark: "auto", kiosk: "0", quiet: "1", text: "default", rotate: 15,
+      dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
       station: "", vol: "whisper", noaa: "1", radioauto: "1",
       zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", brief: "1"
@@ -1089,7 +1097,13 @@ Cart shop:</textarea>
       if (!opts.keepSaved) saveRadio(url);
       if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert) {
         audio.pause();
-        if (status) status.textContent = "Quiet hours 10 p.m.–7 a.m. Tap again to play anyway.";
+        if (status) {
+          var qs = getSet();
+          var msg = qs.quiet === "custom"
+            ? "Quiet hours " + (qs.quietStart || "22:00") + "–" + (qs.quietEnd || "07:00") + ". Tap again to play anyway."
+            : "Quiet hours (follows dark mode). Tap again to play anyway.";
+          status.textContent = msg;
+        }
         window.__forceRadio = true;
         return;
       }
@@ -1613,8 +1627,22 @@ Cart shop:</textarea>
       window.__bestWindow = text;
     }
 
+    function parseHm(s) {
+      var p = String(s || "22:00").split(":");
+      return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
+    }
     function inQuietHours() {
-      if (getSet().quiet === "0") return false;
+      var s = getSet();
+      if (s.quiet === "0") return false;
+      if (s.quiet === "custom") {
+        var parts = new Date().toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", hour12: false }).replace(/,/g, "").trim().split(":");
+        var cur = (parseInt(parts[0], 10) % 24) * 60 + (parseInt(parts[1], 10) || 0);
+        var a = parseHm(s.quietStart || "22:00");
+        var b = parseHm(s.quietEnd || "07:00");
+        if (a === b) return true;
+        if (a < b) return cur >= a && cur < b;
+        return cur >= a || cur < b;
+      }
       return sunShouldDark();
     }
     try {
@@ -2478,6 +2506,28 @@ Cart shop:</textarea>
         mark("set-dark", s.dark);
         mark("set-kiosk", s.kiosk);
         mark("set-quiet", s.quiet);
+        var qt = document.getElementById("set-quiet-times");
+        if (qt) qt.hidden = s.quiet !== "custom";
+        function fillTimes(sel, val) {
+          if (!sel) return;
+          if (!sel.options.length) {
+            for (var h = 0; h < 24; h++) {
+              for (var m = 0; m < 60; m += 15) {
+                var hh = (h < 10 ? "0" : "") + h;
+                var mm = (m < 10 ? "0" : "") + m;
+                var v = hh + ":" + mm;
+                var hr = h % 12; if (!hr) hr = 12;
+                var label = hr + ":" + mm + (h < 12 ? " a.m." : " p.m.");
+                var op = document.createElement("option");
+                op.value = v; op.textContent = label;
+                sel.appendChild(op);
+              }
+            }
+          }
+          sel.value = val || "22:00";
+        }
+        fillTimes(document.getElementById("set-quiet-start"), s.quietStart || "22:00");
+        fillTimes(document.getElementById("set-quiet-end"), s.quietEnd || "07:00");
         mark("set-text", s.text);
         mark("set-rot", String(s.rotate));
         mark("set-vol", s.vol);
@@ -2563,7 +2613,19 @@ Cart shop:</textarea>
       }
       tap("set-dark", "dark");
       tap("set-kiosk", "kiosk");
-      tap("set-quiet", "quiet");
+      tap("set-quiet", "quiet", function () {
+        if (typeof paintSkyHeader === "function") paintSkyHeader();
+      });
+      ["set-quiet-start", "set-quiet-end"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("change", function () {
+          var part = {};
+          part[id === "set-quiet-start" ? "quietStart" : "quietEnd"] = el.value;
+          putSet(part);
+          if (typeof paintSkyHeader === "function") paintSkyHeader();
+        });
+      });
       tap("set-text", "text");
       tap("set-rot", "rotate");
       tap("set-vol", "vol");
