@@ -260,7 +260,7 @@
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
     .dock-more { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding-top:0; padding-bottom:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
-    .dock-wrap.open .dock-more { max-height:168px; opacity:1; padding:6px 6px 8px; pointer-events:auto; }
+    .dock-wrap.open .dock-more { max-height:220px; opacity:1; padding:6px 6px 8px; pointer-events:auto; }
     .dock-wrap { position:relative; z-index:8; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
     #setbtn { grid-column:6; display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; }
@@ -793,6 +793,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
+        <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
         <div class="card"><b>Last updates</b><span id="health-all"></span></div>
         <div class="card">
           <b>Not built yet</b>
@@ -2105,11 +2106,26 @@ Cart shop:</textarea>
         else if (s.dark === "night") document.documentElement.classList.add("dark");
       })();
     } catch (e) {}
-    var refreshBtn = document.getElementById("refreshbtn");
-    if (refreshBtn) refreshBtn.addEventListener("click", function (e) {
+    function hardRefresh() {
+      try { sessionStorage.setItem("bw-refreshed", String(Date.now())); } catch (e) {}
+      if (typeof touchFeed === "function") touchFeed("refresh", true, "reload requested");
+      var btn = document.getElementById("refreshbtn");
+      if (btn) btn.textContent = "Refreshing…";
+      var u = new URL(location.href);
+      u.searchParams.set("v", String(Date.now()));
+      location.replace(u.toString());
+    }
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest && e.target.closest("#refreshbtn");
+      if (!btn) return;
       e.preventDefault();
-      location.reload();
-    });
+      e.stopPropagation();
+      hardRefresh();
+    }, true);
+    try {
+      var did = sessionStorage.getItem("bw-refreshed");
+      if (did && typeof touchFeed === "function") touchFeed("refresh", true, "last reload " + new Date(Number(did)).toLocaleTimeString());
+    } catch (e3) {}
     
     (function layoutMode() {
       function apply() {
@@ -3496,6 +3512,20 @@ Cart shop:</textarea>
         if (!f.ok) bad.push(k + (f.detail ? (": " + f.detail) : ""));
         else if (age > limit) old.push(k + " (" + fmtAge(age) + ")");
       });
+      var refreshEl = document.getElementById("health-refresh");
+      var refreshBtn = document.getElementById("refreshbtn");
+      var lastRef = "";
+      try { lastRef = sessionStorage.getItem("bw-refreshed") || ""; } catch (e) {}
+      if (!refreshBtn) {
+        bad.push("Refresh button missing from the More dock");
+        if (refreshEl) refreshEl.innerHTML = '<span class="health-bad">The Refresh control is not on the page, so the board cannot reload from More.</span>';
+      } else if (!lastRef) {
+        rows.push("refresh — present — not used since this tab opened");
+        if (refreshEl) refreshEl.textContent = "Button is on the More dock. This tab has not used it yet. Tap Refresh to force a new load.";
+      } else {
+        rows.push("refresh — ok — last used " + fmtAge(Date.now() - Number(lastRef)));
+        if (refreshEl) refreshEl.textContent = "Last used " + fmtAge(Date.now() - Number(lastRef)) + ". That tap should change the ?v= number in the address bar.";
+      }
       if (fail) fail.innerHTML = bad.length ? bad.map(function (s) { return '<span class="health-bad">' + s + "</span>"; }).join("<br>") : '<span class="health-ok">Nothing marked failed.</span>';
       if (stale) stale.textContent = old.length ? old.join(" · ") : "Nothing stale over its limit.";
       if (all) all.textContent = rows.length ? rows.join(" · ") : "Feeds have not reported in yet. Open a few pages and wait one refresh.";
