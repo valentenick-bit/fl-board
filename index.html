@@ -247,7 +247,7 @@
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
     .dock-more { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding-top:0; padding-bottom:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
-    .dock-wrap.open .dock-more { max-height:88px; opacity:1; padding:3px 6px 4px; pointer-events:auto; }
+    .dock-wrap.open .dock-more { max-height:168px; opacity:1; padding:6px 6px 8px; pointer-events:auto; }
     .dock-wrap { position:relative; z-index:8; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
     #setbtn { grid-column:6; display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; }
@@ -2217,7 +2217,20 @@ Cart shop:</textarea>
       i = 0;
     })();
     document.querySelectorAll(".dock").forEach(function (d) {
-      d.addEventListener("click", function () {
+      d.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-p]");
+        if (btn) {
+          var id = btn.getAttribute("data-p");
+          if (id && document.getElementById(id)) {
+            showPage(id);
+            var wrap = document.querySelector(".dock-wrap");
+            if (wrap && d.id === "dock-more") {
+              wrap.classList.add("open");
+              var more = document.getElementById("morebtn");
+              if (more) more.classList.add("on");
+            }
+          }
+        }
         clearInterval(rot); clearTimeout(idle); idle = setTimeout(startRotate, 45000);
       });
     });
@@ -3959,10 +3972,9 @@ Cart shop:</textarea>
           window.__namedStorms = storms;
           if (typeof writeTodayChips === "function") writeTodayChips();
           window.__wxRisk.cane = storms.some(function (s) {
-            var lat = parseLonLat(s.latitude != null ? s.latitude : s.lat);
-            var lon = parseLonLat(s.longitude != null ? s.longitude : s.lon);
-            if (!isNaN(lat) && !isNaN(lon)) return lat >= 18 && lat <= 32 && lon <= -75 && lon >= -98;
-            return /gulf|florida|tampa|keys|cuba|yucatan/i.test(JSON.stringify(s));
+            var name = String((s && (s.name || s.id || s.classification)) || "");
+            var cls = String((s && s.classification) || "");
+            return !!(name || cls);
           }) || /hurricane|tropical|surge/.test(window.__wxRisk.warnTypes || "");
           pagesFromDock();
           paintHurr(storms);
