@@ -4336,74 +4336,80 @@ Cart shop:</textarea>
       return SPORT_TEAMS.filter(function(tm){ return milesApart(lat,lon,tm.lat,tm.lon) <= 150; });
     }
     function loadSportsScores(done){
-      var near=nearbyTeams();
-      if(!near.length){ window.__sportsLines=["No major teams within 150 miles of "+homePlace()+"."]; if(done) done(); return; }
-      var bySport={};
-      near.forEach(function(t){ (bySport[t.sport]=bySport[t.sport]||[]).push(t); });
-      var urls={
-        nfl:"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
-        mlb:"https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard",
-        nba:"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
-        nhl:"https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard"
-      };
-      Promise.all(Object.keys(bySport).map(function(sp){
-        return fetch(urls[sp]).then(function(r){return r.json();}).then(function(d){ return {sp:sp, d:d}; }).catch(function(){ return {sp:sp, d:null}; });
-      })).then(function(packs){
-        var lines=[];
-        packs.forEach(function(pack){
-          var events=((pack.d||{}).events)||[];
-          var want=bySport[pack.sp]||[];
-          events.forEach(function(ev){
-            var comps=((((ev.competitions||[])[0]||{}).competitors)||[]);
-            if(comps.length<2) return;
-            var abbrs=comps.map(function(c){ return String((c.team||{}).abbreviation||"").toUpperCase(); });
-            var hit=want.filter(function(t){ return abbrs.indexOf(t.abbr) >= 0; });
-            if(!hit.length) return;
-            var a=comps[0], b=comps[1];
-            var an=(a.team&&a.team.shortDisplayName)||a.team.abbreviation;
-            var bn=(b.team&&b.team.shortDisplayName)||b.team.abbreviation;
-            var st=((ev.status||{}).type||{});
-            var state=st.state||"";
-            var line;
-            if(state==="pre") line = an+" at "+bn+" "+(st.shortDetail||st.detail||"later")+".";
-            else line = an+" "+(a.score||"0")+", "+bn+" "+(b.score||"0")+(state==="in"?" in progress.":".");
-            lines.push(line);
+      function finish(lines) {
+        window.__sportsLines = lines && lines.length ? lines : ["No games posted for teams within 150 miles of " + homePlace() + "."];
+        try { if (done) done(); } catch (e) {}
+      }
+      try {
+        var near = nearbyTeams();
+        if (!near.length) { finish(["No major teams within 150 miles of " + homePlace() + "."]); return; }
+        var bySport = {};
+        near.forEach(function (t) { (bySport[t.sport] = bySport[t.sport] || []).push(t); });
+        var urls = {
+          nfl: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
+          mlb: "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard",
+          nba: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+          nhl: "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard"
+        };
+        Promise.all(Object.keys(bySport).map(function (sp) {
+          return fetch(urls[sp]).then(function (r) { return r.json(); }).then(function (d) { return { sp: sp, d: d }; }).catch(function () { return { sp: sp, d: null }; });
+        })).then(function (packs) {
+          var lines = [];
+          (packs || []).forEach(function (pack) {
+            var events = ((pack.d || {}).events) || [];
+            var want = bySport[pack.sp] || [];
+            events.forEach(function (ev) {
+              var comps = ((((ev.competitions || [])[0] || {}).competitors) || []);
+              if (comps.length < 2) return;
+              var abbrs = comps.map(function (c) { return String(((c.team || {}).abbreviation) || "").toUpperCase(); });
+              if (!want.some(function (t) { return abbrs.indexOf(t.abbr) >= 0; })) return;
+              var a = comps[0] || {}, b = comps[1] || {};
+              var an = (a.team && (a.team.shortDisplayName || a.team.abbreviation)) || "Team";
+              var bn = (b.team && (b.team.shortDisplayName || b.team.abbreviation)) || "Team";
+              var st = ((ev.status || {}).type) || {};
+              var state = st.state || "";
+              var line = state === "pre"
+                ? an + " at " + bn + " " + (st.shortDetail || st.detail || "later") + "."
+                : an + " " + (a.score || "0") + ", " + bn + " " + (b.score || "0") + (state === "in" ? " in progress." : ".");
+              lines.push(line);
+            });
           });
-        });
-        window.__sportsLines = lines.length ? lines : ["No games today for teams within 150 miles of "+homePlace()+"."];
-        if(done) done();
-      });
+          finish(lines);
+        }).catch(function () { finish([]); });
+      } catch (e) { finish([]); }
     }
     function writeBriefing() {
-      var tick = document.getElementById("ticktext");
-      if (!tick) return;
-      var s = getSet();
-      if (s.brief === "0") return;
-      var GAP = "\u00a0".repeat(160);
-      var bits = [];
-      if (s.briefWx !== "0") {
-        var greet = ((document.getElementById("live-sky")||{}).textContent||"").replace(/\s+/g," ").trim();
-        var wx = [];
-        if (greet && !/^(loading|checking)/i.test(greet)) wx.push(greet);
-        var bolt = document.getElementById("chip-bolt");
-        if (bolt && bolt.classList.contains("on")) {
-          var bs = ((bolt.querySelector("span")||{}).textContent||"").replace(/\s+/g," ").trim();
-          if (bs) wx.push(bs);
+      try {
+        var tick = document.getElementById("ticktext");
+        if (!tick) return;
+        var s = getSet();
+        if (s.brief === "0") return;
+        var GAP = "\u00a0".repeat(160);
+        var bits = [];
+        if (s.briefWx !== "0") {
+          var greet = ((document.getElementById("live-sky") || {}).textContent || "").replace(/\s+/g, " ").trim();
+          var wx = [];
+          if (greet) wx.push(greet);
+          var bolt = document.getElementById("chip-bolt");
+          if (bolt && bolt.classList.contains("on")) {
+            var bs = ((bolt.querySelector("span") || {}).textContent || "").replace(/\s+/g, " ").trim();
+            if (bs) wx.push(bs);
+          }
+          var cane = document.getElementById("chip-cane");
+          if (cane && cane.classList.contains("on")) {
+            var cs = ((cane.querySelector("span") || {}).textContent || "").replace(/\s+/g, " ").trim();
+            if (cs) wx.push(cs);
+          }
+          if (!wx.length) wx.push("Weather for " + homePlace() + " is updating.");
+          bits.push("<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(wx.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" ")));
         }
-        var cane = document.getElementById("chip-cane");
-        if (cane && cane.classList.contains("on")) {
-          var cs = ((cane.querySelector("span")||{}).textContent||"").replace(/\s+/g," ").trim();
-          if (cs) wx.push(cs);
+        if (s.briefSports !== "0") {
+          var games = window.__sportsLines || ["Checking nearby scores."];
+          bits.push("<b>Sports.</b>" + "\u00a0".repeat(24) + spaceSentences(games.join(" ")));
         }
-        if (wx.length) bits.push("<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(wx.map(function(x){ return /[.!?]$/.test(x)?x:x+"."; }).join(" ")));
-      }
-      if (s.briefSports !== "0") {
-        var games = window.__sportsLines || [];
-        var body = games.length ? games.join(" ") : "Checking nearby scores.";
-        bits.push("<b>Sports.</b>" + "\u00a0".repeat(24) + spaceSentences(body));
-      }
-      if (!bits.length) return;
-      setTicker(tick, bits.join(GAP), 112);
+        if (!bits.length) bits.push(spaceSentences("Briefing is on. Pick Weather or Sports in Settings."));
+        if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), 112);
+      } catch (e) {}
     }
 
     function spinEl(el, speed) {
@@ -4555,6 +4561,10 @@ Cart shop:</textarea>
       var style = document.createElement("style");
       style.textContent = "@keyframes tick { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--tick-w, 50%))); } }";
       document.head.appendChild(style);
+      if (!document.querySelector(".page.on")) {
+        var n = document.getElementById("now");
+        if (n) n.classList.add("on");
+      }
       writeBriefing();
       if (typeof loadSportsScores === "function") loadSportsScores(writeBriefing);
       setInterval(function () {
