@@ -794,6 +794,9 @@ Cart shop:</textarea>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
+        <div class="card"><b>Weather cards</b><span id="health-wx">Checking…</span></div>
+        <div class="card"><b>Marine cards</b><span id="health-marine">Checking…</span></div>
+        <div class="card"><b>Sky cards</b><span id="health-sky">Checking…</span></div>
         <div class="card"><b>Last updates</b><span id="health-all"></span></div>
         <div class="card">
           <b>Not built yet</b>
@@ -3341,13 +3344,16 @@ Cart shop:</textarea>
           var rows = parseRss(xml).filter(function (it) { return /fish|bite|snook|redfish|trout|bass|inshore|nearshore/i.test(it.title); });
           if (!rows.length) {
             el.textContent = "No fresh fishing report for " + place + " this week. Check local tackle shops.";
+            touchFeed("fishing", true, "no fresh items");
             return;
           }
           el.innerHTML = rows.slice(0, 3).map(function (r) {
             return "<b>" + r.title.replace(/\s*[-–|]\s*[^-–|]+$/, "") + "</b>" + (r.link ? ' <a href="' + r.link + '" target="_blank" rel="noopener">Open</a>' : "");
           }).join("<br>");
+            touchFeed("fishing", true, rows.length + " items");
         }).catch(function () {
           el.textContent = "Fishing report for " + homePlace() + " did not load.";
+          touchFeed("fishing", false, "fetch failed");
         });
       }
       window.__reloadFish = load;
@@ -3497,7 +3503,94 @@ Cart shop:</textarea>
       if (title) title.textContent = label;
       list.innerHTML = items.map(function (s) { return "<li>" + s + "</li>"; }).join("");
     }
+
+    function probeBoardCards() {
+      function txt(id) {
+        var el = document.getElementById(id);
+        return el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : "";
+      }
+      function chartOk(id) {
+        var el = document.getElementById(id);
+        if (!el) return false;
+        return !!(el.querySelector("svg path") || el.querySelector("svg circle") || (el.children && el.children.length));
+      }
+      function verdict(s) {
+        if (!s) return "empty";
+        if (/^(loading|checking|updating|—|–|…|\.{1,3}|n\/a|good (morning|afternoon|evening)\.?)$/i.test(s)) return "placeholder";
+        if (/unavailable|failed|error|timed out|cannot|not wired/i.test(s)) return "failed";
+        return "ok";
+      }
+      var groups = {
+        wx: [
+          ["wx-nowline", txt("wx-nowline")],
+          ["greeting", txt("live-sky")],
+          ["wind", txt("live-wind")],
+          ["gusts", txt("live-gusts")],
+          ["humidity", txt("live-rh")],
+          ["dew", txt("live-dew")],
+          ["pressure", txt("live-pres")],
+          ["aqi", txt("live-aqi")],
+          ["rain-month", txt("live-rain-mo")],
+          ["uv", txt("live-uv")],
+          ["hourly", (document.querySelectorAll(".hourly .hour").length ? (document.querySelectorAll(".hourly .hour").length + " hours") : "")],
+          ["10-day", (document.querySelectorAll(".tenday .day, .tenday .tile, .tenday > div").length ? (document.querySelectorAll(".tenday .day, .tenday .tile, .tenday > div").length + " days") : "")],
+          ["humid-chart", chartOk("humid-chart") ? "chart" : ""],
+          ["pres-chart", chartOk("pres-chart") ? "chart" : ""]
+        ],
+        marine: [
+          ["tide", txt("live-tide-today")],
+          ["tide-chart", chartOk("tide-chart") ? "chart" : ""],
+          ["surge", txt("live-surge")],
+          ["rip", txt("live-rip")],
+          ["red-tide", txt("live-redtide")],
+          ["bacteria", txt("live-bacteria")],
+          ["seas", txt("live-seas")],
+          ["small-craft", txt("live-craft")],
+          ["gulf-sst", txt("live-sst")],
+          ["inlet-temp", txt("live-wtemp")],
+          ["sst-chart", chartOk("wtemp-chart") ? "chart" : ""],
+          ["coastal", txt("live-coastal")],
+          ["fishing", txt("live-fish")]
+        ],
+        sky: [
+          ["sun-path", txt("live-sun-label")],
+          ["sun-chart", chartOk("sun-chart") ? "chart" : ""],
+          ["moon-chart", chartOk("moon-chart") ? "chart" : ""],
+          ["tonight", txt("live-planet1")],
+          ["overnight", txt("live-planet2")],
+          ["dawn", txt("live-planet3")],
+          ["stars", txt("live-planet4")],
+          ["horoscope", ((document.getElementById("horo-box") || {}).textContent || "").replace(/\s+/g," ").trim().slice(0,80)],
+          ["iss", txt("live-iss")]
+        ]
+      };
+      function score(rows) {
+        var out = { ok: [], bad: [], hold: [] };
+        rows.forEach(function (row) {
+          var key = row[0], val = row[1];
+          var v = verdict(val);
+          if (v === "ok" || val === "chart") out.ok.push(key);
+          else if (v === "failed") out.bad.push(key + (val ? (": " + val) : ""));
+          else out.hold.push(key);
+          touchFeed(key, v === "ok" || val === "chart", val || v);
+        });
+        return out;
+      }
+      function paint(id, pack, label) {
+        var el = document.getElementById(id);
+        if (!el) return pack;
+        if (pack.bad.length) el.innerHTML = '<span class="health-bad">' + pack.bad.join(" · ") + "</span>" + (pack.hold.length ? (" · waiting: " + pack.hold.join(", ")) : "") + (pack.ok.length ? (" · ok: " + pack.ok.join(", ")) : "");
+        else if (pack.hold.length) el.textContent = "Waiting on " + pack.hold.join(", ") + (pack.ok.length ? (". OK: " + pack.ok.join(", ")) : ".");
+        else el.innerHTML = '<span class="health-ok">All ' + label + " cards have data.</span> " + pack.ok.join(", ");
+        return pack;
+      }
+      var wx = paint("health-wx", score(groups.wx), "weather");
+      var marine = paint("health-marine", score(groups.marine), "marine");
+      var sky = paint("health-sky", score(groups.sky), "sky");
+      return { wx: wx, marine: marine, sky: sky };
+    }
     function paintHealth() {
+      var probed = typeof probeBoardCards === "function" ? probeBoardCards() : null;
       var fail = document.getElementById("health-fail");
       var stale = document.getElementById("health-stale");
       var all = document.getElementById("health-all");
@@ -3525,6 +3618,11 @@ Cart shop:</textarea>
       } else {
         rows.push("refresh — ok — last used " + fmtAge(Date.now() - Number(lastRef)));
         if (refreshEl) refreshEl.textContent = "Last used " + fmtAge(Date.now() - Number(lastRef)) + ". That tap should change the ?v= number in the address bar.";
+      }
+      if (probed) {
+        ["wx","marine","sky"].forEach(function (g) {
+          (probed[g] && probed[g].bad || []).forEach(function (s) { bad.push(g + " / " + s); });
+        });
       }
       if (fail) fail.innerHTML = bad.length ? bad.map(function (s) { return '<span class="health-bad">' + s + "</span>"; }).join("<br>") : '<span class="health-ok">Nothing marked failed.</span>';
       if (stale) stale.textContent = old.length ? old.join(" · ") : "Nothing stale over its limit.";
@@ -3742,11 +3840,12 @@ Cart shop:</textarea>
           });
           var el1 = document.getElementById("live-tide-today");
           if (el1) el1.textContent = pair.length ? pair.map(fmtP).join(" · ") : "NOAA tides unavailable";
+          touchFeed("tide", !!pair.length, pair.length ? pair.length + " events" : "none");
           window.__nextTide = pair[0] ? "Next " + fmtP(pair[0]) : "";
           writeHdrMeta();
           writeDoHour();
           window.__bwCharts.preds = preds; drawTideChart(preds);
-        }).catch(function () {});
+        }).catch(function () { touchFeed("tide", false, "NOAA tide fetch failed"); });
       var day = new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0,10).replace(/-/g,"");
       function surgeFromStation(id, label) {
         if (!id) return Promise.resolve(false);
@@ -4170,8 +4269,8 @@ Cart shop:</textarea>
           var t = ctrl ? setTimeout(function () { ctrl.abort(); }, 5000) : null;
           fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
             .then(function (r) { return r.json(); })
-            .then(function (d) { applyBodies(bodiesFrom(d), slot, label); })
-            .catch(function () {})
+            .then(function (d) { applyBodies(bodiesFrom(d), slot, label); touchFeed("planets", true, label || "sky"); })
+            .catch(function () { touchFeed("planets", false, "visibleplanets failed"); })
             .then(function () { if (t) clearTimeout(t); });
         }
         var rise = window.__bwCharts && window.__bwCharts.rise;
@@ -4232,7 +4331,7 @@ Cart shop:</textarea>
         var issEl = document.getElementById("live-iss");
         if (issEl) {
           fetch("https://api.wheretheiss.at/v1/satellites/25544").then(function (r) { return r.json(); }).then(function (d) {
-            if (!d || d.latitude == null) { issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact passes."; return; }
+            if (!d || d.latitude == null) { issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact passes."; touchFeed("iss", false, "no position"); return; }
             var lat = Number(d.latitude), lon = Number(d.longitude);
             var R = 6371, p1 = homeLat() * Math.PI/180, p2 = lat * Math.PI/180, dl = (lon - homeLon()) * Math.PI/180;
             var a = Math.sin((p2-p1)/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
@@ -4240,8 +4339,10 @@ Cart shop:</textarea>
             var vis = d.visibility === "daylight" ? "in daylight" : (d.visibility === "eclipsed" ? "in Earth's shadow" : "sunlit");
             var near = km < 800 ? "Near " + homePlace() + " now — step outside." : km < 2500 ? "Over this side of the hemisphere." : "Far from " + homePlace() + " right now.";
             issEl.textContent = "ISS " + lat.toFixed(1) + "°, " + lon.toFixed(1) + "° · " + Math.round(km) + " km from " + homePlace() + " · " + vis + ". " + near + " Visible passes are dusk or dawn — NASA Spot the Station.";
+            touchFeed("iss", true, Math.round(km) + " km");
           }).catch(function () {
             issEl.textContent = "Look at dusk or dawn. NASA Spot the Station for exact pass times.";
+            touchFeed("iss", false, "ISS fetch failed");
           });
         }
       })();
@@ -4870,6 +4971,7 @@ Cart shop:</textarea>
           writeBestWindow();
           writeHdrMeta();
           touchFeed("wx", true, (window.__nowWx && window.__nowWx.word) || "ok");
+          if (typeof paintHealth === "function") paintHealth();
           saveWxSnap();
         }).catch(function () {});
     }
