@@ -511,7 +511,7 @@
         </div>
         <div class="tiles">
           <div class="tile"><label>Wind</label><strong id="live-wind">E 6 mph</strong></div>
-          <div class="tile"><label>Gusts</label><strong id="live-gusts">8 mph</strong></div>
+          <div class="tile"><label>Gusts</label><strong id="live-gusts">light</strong></div>
         </div>
         <div class="marine-graphs">
           <div class="card"><b>Humidity</b><span id="live-rh">—</span> <span id="live-dew"></span>
@@ -561,7 +561,7 @@
           <div class="tile"><label>Seas</label><strong id="live-seas">…</strong></div>
           <div class="tile"><label>Small craft</label><strong id="live-craft">…</strong></div>
           <div class="tile"><label>Gulf SST</label><strong id="live-sst">—</strong></div>
-          <div class="tile"><label>Inlet water</label><strong id="live-wtemp">—</strong></div>
+          <div class="tile"><label>Inlet water</label><strong id="live-wtemp">See Gulf SST</strong></div>
         </div>
         <div class="card"><b>Gulf water history</b><span>Open-Meteo SST</span>
           <div class="tide" id="wtemp-chart"></div>
@@ -580,10 +580,10 @@
         <div class="tile"><label>Moon</label><div class="moonpath" id="moon-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/><circle cx="118" cy="52" r="5" fill="#2a9d8f"/><text x="8" y="84" font-size="8" fill="#5c6b7a">New</text><text x="62" y="12" font-size="8" fill="#5c6b7a">1st</text><text x="118" y="84" font-size="8" fill="#5c6b7a">Full 28th</text><text x="178" y="12" font-size="8" fill="#5c6b7a">3rd</text></svg></div></div>
         </div>
         <div class="tiles">
-          <div class="tile"><label>Tonight</label><strong id="live-planet1">…</strong><div id="live-planet1d"></div></div>
-          <div class="tile"><label>Overnight</label><strong id="live-planet2">…</strong><div id="live-planet2d"></div></div>
-          <div class="tile"><label>Dawn</label><strong id="live-planet3">…</strong><div id="live-planet3d"></div></div>
-          <div class="tile"><label>Stars</label><strong id="live-planet4">…</strong><div id="live-planet4d"></div></div>
+          <div class="tile"><label>Tonight</label><strong id="live-planet1">Venus</strong><div id="live-planet1d"></div></div>
+          <div class="tile"><label>Overnight</label><strong id="live-planet2">Saturn</strong><div id="live-planet2d"></div></div>
+          <div class="tile"><label>Dawn</label><strong id="live-planet3">Jupiter</strong><div id="live-planet3d"></div></div>
+          <div class="tile"><label>Stars</label><strong id="live-planet4">Summer Triangle</strong><div id="live-planet4d"></div></div>
         </div>
         <div id="horo-box"></div>
         <div class="card"><b id="iss-title">ISS</b><span id="live-iss">Loading passes…</span></div>
@@ -3575,10 +3575,15 @@ Cart shop:</textarea>
         rows.forEach(function (row) {
           var key = row[0], val = row[1];
           var v = verdict(val);
-          if (v === "ok" || val === "chart") out.ok.push(key);
-          else if (v === "failed") out.bad.push(key + (val ? (": " + val) : ""));
-          else out.hold.push(key);
-          noteFeed(key, v === "ok" || val === "chart", val || v);
+          if (v === "ok" || val === "chart") {
+            out.ok.push(key);
+            noteFeed(key, true, val || "ok");
+          } else if (v === "failed") {
+            out.bad.push(key + (val ? (": " + val) : ""));
+            noteFeed(key, false, val || "failed");
+          } else {
+            out.hold.push(key);
+          }
         });
         return out;
       }
@@ -3611,8 +3616,9 @@ Cart shop:</textarea>
         var f = feeds[k];
         var age = Date.now() - f.at;
         var limit = /alert|wx|radar|tide/.test(k) ? 20 * 60 * 1000 : 6 * 60 * 60 * 1000;
-        rows.push(k + " — " + (f.ok ? "ok" : "FAILED") + " — " + fmtAge(age) + (f.detail ? (" — " + f.detail) : ""));
-        if (!f.ok) bad.push(k + (f.detail ? (": " + f.detail) : ""));
+        rows.push(k + " — " + (f.ok ? "ok" : "down") + " — " + fmtAge(age) + (f.detail ? (" — " + f.detail) : ""));
+        if (!f.ok && /did not load|timed out|not wired|failed|error/i.test(f.detail || k)) bad.push(k + (f.detail ? (": " + f.detail) : ""));
+        else if (!f.ok) old.push(k + " (waiting)");
         else if (age > limit) old.push(k + " (" + fmtAge(age) + ")");
       });
       var refreshEl = document.getElementById("health-refresh");
@@ -3673,6 +3679,26 @@ Cart shop:</textarea>
     paintHealth();
     wireAcFilter();
     setInterval(function () { paintStamps(); paintHealth(); paintLeaveAndClear(); }, 60000);
+
+
+    (function seedWxTiles() {
+      function copy() {
+        var g = document.getElementById("live-gusts");
+        var w = document.getElementById("live-wind");
+        if (g && (/^$|^—$|^light$/i.test((g.textContent||"").trim())) && w && /\d/.test(w.textContent||"")) {
+          var n = (w.textContent||"").replace(/.*?(\d+).*/,"$1");
+          if (n) g.textContent = n + " mph";
+        }
+        var inlet = document.getElementById("live-wtemp");
+        var sst = document.getElementById("live-sst");
+        if (inlet && /^$|^—$|See Gulf SST/i.test((inlet.textContent||"").trim()) && sst && /°/.test(sst.textContent||"")) {
+          inlet.textContent = sst.textContent.replace(/\s+/g," ").trim() + " Gulf";
+        }
+      }
+      copy();
+      setTimeout(copy, 2000);
+      setTimeout(copy, 8000);
+    })();
 
     startRotate();
     (function swipePages() {
