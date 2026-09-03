@@ -515,7 +515,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v153</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v154</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -896,7 +896,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v153</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v154</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1124,7 +1124,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 153;
+    window.BOARD_VER = 154;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1253,7 +1253,8 @@ Cart shop:</textarea>
     }
 
     function geocodeHome(done) {
-      var addr = homeAddress();
+      var box = document.getElementById("set-address");
+      var addr = (box && box.value.trim()) ? box.value.trim() : homeAddress();
       var key = String(getSet().gmapsKey || "").trim();
       function finish(ok, msg) {
         var hint = document.getElementById("set-zip-hint");
@@ -1290,7 +1291,7 @@ Cart shop:</textarea>
           state = a.state;
         }
         if (isNaN(lat) || isNaN(lon)) throw new Error("no pin");
-        putSet({ address: addr, lat: lat, lon: lon, zip: String(zip || getSet().zip || "").slice(0, 5), place: String(place || addr).trim(), state: state || getSet().state || "" });
+        putSet({ address: addr, lat: lat, lon: lon, zip: String(zip || getSet().zip || "").replace(/\D/g, "").slice(0, 5), place: String(place || "").trim(), state: state || getSet().state || "" });
         finish(true, addr + " · " + lat.toFixed(4) + ", " + lon.toFixed(4));
         if (typeof resolveHomeGeo === "function") resolveHomeGeo();
         if (typeof applyLocalMaps === "function") applyLocalMaps();
@@ -1315,9 +1316,13 @@ Cart shop:</textarea>
         li.textContent = row.label;
         li.addEventListener("mousedown", function (e) {
           e.preventDefault();
-          input.value = row.label;
+          var typed = String(input.value || "");
+          var num = (typed.match(/^(\d+[A-Za-z]?)\b/) || [])[1] || "";
+          var label = row.label;
+          if (num && label.indexOf(num) !== 0) label = num + " " + label;
+          input.value = label;
           hideAddrSuggest();
-          putSet({ address: row.label });
+          putSet({ address: label });
           geocodeHome(function () { paint(); applySkin(); });
         });
         box.appendChild(li);
@@ -1508,13 +1513,14 @@ Cart shop:</textarea>
       var boltNote = document.getElementById("bolt-note");
       if (boltNote) boltNote.textContent = "Strikes near " + place + ".";
       var traf = document.getElementById("traffic-map");
-      var pin = encodeURIComponent(homeAddress() || place || "");
-      if (traf) traf.src = "https://maps.google.com/maps?ll=" + lat.toFixed(4) + "," + lon.toFixed(4) + "&q=" + pin + "&z=13&hl=en&t=m&layer=t&output=embed";
-      if (typeof noteFeed === "function") noteFeed("traffic", !!(lat && lon), "gmaps pin " + lat.toFixed(3) + "," + lon.toFixed(3));
+      var pinTxt = homeAddress() || place || "";
+      var pin = encodeURIComponent(pinTxt);
+      if (traf) traf.src = "https://maps.google.com/maps?q=" + pin + "&z=16&hl=en&t=m&output=embed";
+      if (typeof noteFeed === "function") noteFeed("traffic", !!pinTxt, "gmaps " + pinTxt.slice(0, 48));
       var drives = document.getElementById("traffic-drives");
-      if (drives) drives.textContent = "Google Map pinned on " + (homeAddress() || place) + ". Tap Google Maps below for the live traffic layer."
+      if (drives) drives.textContent = "Google Map at " + pinTxt + ". Tap Google Maps for live traffic.";
       var gl = document.getElementById("gmaps-link");
-      if (gl) gl.href = "https://www.google.com/maps/@" + lat.toFixed(4) + "," + lon.toFixed(4) + ",13z/data=!5m1!1e1";
+      if (gl) gl.href = "https://www.google.com/maps/search/?api=1&query=" + pin;
       var links = document.getElementById("traffic-links");
       if (links) {
         var maps = "https://www.google.com/maps/@?api=1&map_action=map&center=" + lat + "," + lon + "&zoom=12";
@@ -3116,7 +3122,8 @@ function showPage(id) {
       "v150 — Same board as v149. Version stamp only, so a stale GitHub copy is obvious.",
       "v151 — Product name is Commons. BeachWalk is the community on this wall.",
       "v152 — Roads uses FL511 live speed colors.",
-      "v153 — Roads is a Google Map pinned on the saved address."
+      "v153 — Roads is a Google Map pinned on the saved address.",
+      "v154 — Keeps the typed house number. Roads pins Google on that full line."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3847,7 +3854,7 @@ function showPage(id) {
           });
         })();
         var addr = document.getElementById("set-address");
-        if (addr) addr.value = s.address || "";
+        if (addr) addr.value = s.address || addr.value || "";
         var hint = document.getElementById("set-zip-hint");
         if (hint) hint.textContent = (s.place || "Englewood FL") + " · " + Number(s.lat).toFixed(3) + ", " + Number(s.lon).toFixed(3) + ". Tides and BeachWalk calendars stay on the Key.";
       }
