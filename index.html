@@ -467,7 +467,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v107</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v108</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -851,7 +851,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v107</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v108</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1081,7 +1081,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 107;
+    window.BOARD_VER = 108;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -2069,13 +2069,12 @@ function showPage(id) {
       if (cane) {
         var storms = window.__namedStorms || [];
         var gulfAtl = storms.filter(function (s) {
-          var id = String(s.id || "").toLowerCase();
-          var lat = parseFloat(s.latitudeNumeric != null ? s.latitudeNumeric : String(s.latitude || "").replace(/[nNsS]/g, ""));
-          var lon = s.longitudeNumeric != null ? Number(s.longitudeNumeric) : parseFloat(String(s.longitude || "").replace(/[wW]/, ""));
-          if (/[wW]/.test(String(s.longitude || ""))) lon = -Math.abs(lon);
-          var basin = /^al/.test(id) || (!isNaN(lat) && !isNaN(lon) && lat >= 5 && lat <= 40 && lon <= -20 && lon >= -100);
-          var named = !/invest|one|two|three|four|five/i.test(s.name || "") && (s.classification || "") !== "DB";
-          return basin && named && (s.name || "");
+          var name = s.name || s.Name || s.stormName || "";
+          var id = String(s.id || s.binNumber || "").toLowerCase();
+          if (!name) return false;
+          if (/invest|^one$|^two$|^three$|^four$|^five$/i.test(name)) return false;
+          if ((s.classification || "") === "DB") return false;
+          return true;
         });
         cane.classList.toggle("on", getSet().chipCane !== "0" && gulfAtl.length > 0);
         if (gulfAtl.length) {
@@ -3488,10 +3487,14 @@ function showPage(id) {
         hideT = setTimeout(close, 8000);
       }
       function close() {
-        if (wrap.classList.contains("dev-open")) return;
-        wrap.classList.remove("open");
+        var page = document.querySelector(".page.on");
+        if (page && /^(health|guide|ideas)$/.test(page.id) && wrap.classList.contains("dev-open")) return;
+        wrap.classList.remove("open", "dev-open");
         moreBtn.classList.remove("on");
+        var db = document.getElementById("devbtn");
+        if (db) db.classList.remove("on");
         clearTimeout(hideT);
+        if (typeof noteFeed === "function") noteFeed("dev-dock", true, "closed");
       }
       moreBtn.addEventListener("click", function () {
         setTimeout(function () {
@@ -4095,6 +4098,7 @@ function showPage(id) {
           return grace ? "placeholder" : "failed";
         if (!s || /^(—|–|…|\.{1,3}|n\/a|Gulf|See )/i.test(s)) return grace ? "placeholder" : "failed";
         if (/\b1 days\b/.test(s)) return "failed";
+        if (/off but/.test(s)) return "failed";
         if (/\b(idle|dry|clear|radar only|now off|pinned|in rotation|prep ·|now ·|off|after bolt|open|closed|cards|ideas)\b/i.test(s)) return "ok";
         return "ok";
       }
@@ -4150,7 +4154,12 @@ function showPage(id) {
           ["rain", document.documentElement.classList.contains("raining") ? "raining" : "dry"],
           ["pills", (function(){ var c=document.querySelector("#pill-beach .tg-cell"); var v=c&&c.textContent.trim(); return v && v!=="—" ? v : ""; })()],
           ["chip-bolt", document.getElementById("chip-bolt") && document.getElementById("chip-bolt").classList.contains("on") ? "on" : "off"],
-          ["chip-cane", document.getElementById("chip-cane") && document.getElementById("chip-cane").classList.contains("on") ? "on" : "off"],
+          ["chip-cane", (function(){
+            var on = document.getElementById("chip-cane") && document.getElementById("chip-cane").classList.contains("on");
+            var n = (window.__namedStorms || []).length;
+            if (n && !on) return "off but " + n + " named";
+            return on ? "on" : "off";
+          })()],
           ["dev-dock", document.querySelector(".dock-wrap.dev-open") ? "open" : "closed"],
           ["guide", document.getElementById("guide") ? ((document.querySelectorAll("#guide .card").length) + " cards") : ""],
           ["ideas", document.querySelectorAll("#idea-backlog li").length ? (document.querySelectorAll("#idea-backlog li").length + " ideas") : ""],
@@ -5191,6 +5200,7 @@ function showPage(id) {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
           window.__namedStorms = storms;
+          if (typeof writeTodayChips === "function") writeTodayChips();
           window.__satBasins = { gulf: false, atl: false };
           (storms || []).forEach(function (s) {
             var lon = s.longitude != null ? s.longitude : s.lon;
