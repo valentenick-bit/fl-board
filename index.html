@@ -159,7 +159,12 @@
     .sport-league h3 { margin:0 0 8px; font-size:16px; display:flex; align-items:center; gap:8px; }
     .sport-league label { display:inline-flex; align-items:center; gap:5px; margin:0 10px 8px 0; font-size:14px; min-width:46%; }
     .sport-div { margin:0 0 10px; }
+    .sport-div h4, .sport-league > h3 { cursor:pointer; user-select:none; }
     .sport-div h4 { margin:8px 0 4px; font-size:12px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; }
+    .sport-div h4:after { content:" ▾"; }
+    .sport-div.shut h4:after { content:" ▸"; }
+    .sport-div.shut label { display:none; }
+    .sport-league.shut .sport-div { display:none; }
     .set-sports-box { max-height:260px; overflow:auto; border:1px solid var(--hair); border-radius:12px; padding:8px 10px; margin:0 0 14px; background:rgba(255,255,255,.45); }
     html.dark .set-sports-box { background:#1b2430; }
 
@@ -519,7 +524,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v161</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v163</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -898,7 +903,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v161</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v163</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1126,7 +1131,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 161;
+    window.BOARD_VER = 163;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -3132,7 +3137,9 @@ function showPage(id) {
       "v158 — Sports lists every NFL, MLB, NBA, and NHL club in Settings and on the Sports page.",
       "v159 — Full team list lives on the Sports page only.",
       "v160 — Sports page is grouped by division, then A–Z.",
-      "v161 — Delivery page reads the current Gmail report file."
+      "v161 — Delivery page reads the current Gmail report file.",
+      "v162 — Sports divisions fold. Status tracks the delivery feed.",
+      "v163 — Briefing names the league, then that league\u2019s scores, with space between."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3609,6 +3616,7 @@ function showPage(id) {
       var note = document.getElementById("deliv-note");
       var box = document.getElementById("deliv-list");
       if (!box) return;
+      if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
       var urls = [
         "deliveries.json",
         "./deliveries.json",
@@ -3660,12 +3668,19 @@ function showPage(id) {
           });
         });
         if (note) note.textContent = "Report " + (src.updated || "") + " · automation 8 a.m. and 6 p.m. Check the box if no email arrived.";
+        var nIn = (view.incoming || []).length, nDel = (view.delivered || []).length;
+        if (typeof noteFeed === "function") {
+          var live = !!(src.updated && src.updated !== "");
+          noteFeed("deliveries", live || nIn + nDel > 0, live ? (nIn + " incoming · " + nDel + " delivered · " + src.updated) : "no live report");
+        }
         if (typeof paintToday === "function") paintToday();
+        if (typeof paintHealth === "function") paintHealth();
       }
       window.__paintDeliveries = function () { paint(); };
       function next(i) {
         if (i >= urls.length) {
-          if (note) note.textContent = "No live delivery report. Make deliveries.json in Drive shareable: Anyone with the link.";
+          if (note) note.textContent = "No live delivery report. Share deliveries.json in Drive: Anyone with the link can view.";
+          if (typeof noteFeed === "function") noteFeed("deliveries", false, "Drive file blocked or missing");
           paint({ updated: "", incoming: [], delivered: [] });
           return;
         }
@@ -6658,7 +6673,22 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         return "<div class='sport-league' data-lg='" + L[0] + "'><h3><label class='master'><input type='checkbox' data-master='" + L[0] + "'" + (any ? " checked" : "") + "> " + L[1] + "</label></h3>" + teams + "</div>";
       }).join("");
       var box = document.getElementById("sports-box");
-      if (box) box.innerHTML = html;
+      if (box) {
+        box.innerHTML = html;
+        box.querySelectorAll(".sport-div").forEach(function (div) {
+          if (!div.querySelector("input[data-team]:checked")) div.classList.add("shut");
+          var h = div.querySelector("h4");
+          if (h) h.addEventListener("click", function () { div.classList.toggle("shut"); });
+        });
+        box.querySelectorAll(".sport-league").forEach(function (lg) {
+          var h = lg.querySelector("h3");
+          if (!h) return;
+          h.addEventListener("click", function (e) {
+            if (e.target && e.target.closest && e.target.closest("input")) return;
+            lg.classList.toggle("shut");
+          });
+        });
+      }
     }
     function bindSportsPage(){
       function attach(box){
@@ -6712,15 +6742,18 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         Promise.all(Object.keys(bySport).map(function (sp) {
           return fetch(urls[sp]).then(function (r) { return r.json(); }).then(function (d) { return { sp: sp, d: d }; }).catch(function () { return { sp: sp, d: null }; });
         })).then(function (packs) {
+          var names = { nfl: "NFL", mlb: "MLB", nba: "NBA", nhl: "NHL" };
+          var blocks = [];
           var lines = [];
           (packs || []).forEach(function (pack) {
             var events = ((pack.d || {}).events) || [];
             var want = bySport[pack.sp] || [];
+            var chunk = [];
             events.forEach(function (ev) {
               var comps = ((((ev.competitions || [])[0] || {}).competitors) || []);
               if (comps.length < 2) return;
               var abbrs = comps.map(function (c) { return String(((c.team || {}).abbreviation) || "").toUpperCase(); });
-              if (!want.some(function (t) { return abbrs.indexOf(t.abbr) >= 0; })) return;
+              if (!want.some(function (t) { return abbrs.indexOf(String(t.abbr || "").toUpperCase()) >= 0; })) return;
               var a = comps[0] || {}, b = comps[1] || {};
               var an = (a.team && (a.team.shortDisplayName || a.team.abbreviation)) || "Team";
               var bn = (b.team && (b.team.shortDisplayName || b.team.abbreviation)) || "Team";
@@ -6729,9 +6762,14 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
               var line = state === "pre"
                 ? an + " at " + bn + " " + (st.shortDetail || st.detail || "later") + "."
                 : an + " " + (a.score || "0") + ", " + bn + " " + (b.score || "0") + (state === "in" ? " in progress." : ".");
-              lines.push(line);
+              chunk.push(line);
             });
+            if (chunk.length) {
+              blocks.push({ title: names[pack.sp] || pack.sp.toUpperCase(), lines: chunk });
+              lines = lines.concat(chunk);
+            }
           });
+          window.__sportsBlocks = blocks;
           finish(lines);
         }).catch(function () { finish([]); });
       } catch (e) { finish([]); }
@@ -6762,8 +6800,15 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           bits.push("<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(wx.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" ")));
         }
         if (s.briefSports !== "0") {
-          var games = window.__sportsLines || ["Checking nearby scores."];
-          bits.push("<b>Sports.</b>" + "\u00a0".repeat(24) + spaceSentences(games.join(" ")));
+          var blocks = window.__sportsBlocks || [];
+          if (blocks.length) {
+            blocks.forEach(function (b) {
+              bits.push("<b>" + b.title + ".</b>" + "\u00a0".repeat(40) + spaceSentences((b.lines || []).join(" ")));
+            });
+          } else {
+            var games = window.__sportsLines || ["Checking nearby scores."];
+            bits.push("<b>Sports.</b>" + "\u00a0".repeat(40) + spaceSentences(games.join(" ")));
+          }
         }
         if (!bits.length) bits.push(spaceSentences("Briefing is on. Pick Weather or Sports in Settings."));
         if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), 112);
