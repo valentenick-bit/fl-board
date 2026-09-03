@@ -515,7 +515,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v151</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v153</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -789,7 +789,7 @@ Cart shop:</textarea>
         <h2 data-k="The drive">Traffic</h2>
         <div class="card"><b>Drives</b><span id="traffic-drives">Live speeds near the home address. Tap the map.</span></div>
         <div id="traffic-gmap" class="lite gmap-box" hidden></div>
-        <iframe class="lite" id="traffic-map" title="Traffic" src="https://embed.waze.com/iframe?zoom=11&lat=26.9595&lon=-82.3543&pin=1" allowfullscreen></iframe>
+        <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?ll=26.9595,-82.3543&q=Englewood+FL&z=13&hl=en&t=m&layer=t&output=embed" allowfullscreen></iframe>
         <p id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></p>
       </section>
       <section id="villa" class="page">
@@ -896,7 +896,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v151</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v153</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1124,7 +1124,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 151;
+    window.BOARD_VER = 153;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1508,10 +1508,11 @@ Cart shop:</textarea>
       var boltNote = document.getElementById("bolt-note");
       if (boltNote) boltNote.textContent = "Strikes near " + place + ".";
       var traf = document.getElementById("traffic-map");
-      if (traf) traf.src = "https://embed.waze.com/iframe?zoom=11&lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) + "&pin=1";
-      if (typeof noteFeed === "function") noteFeed("traffic", !!(lat && lon), "waze z11 " + lat.toFixed(3) + "," + lon.toFixed(3));
+      var pin = encodeURIComponent(homeAddress() || place || "");
+      if (traf) traf.src = "https://maps.google.com/maps?ll=" + lat.toFixed(4) + "," + lon.toFixed(4) + "&q=" + pin + "&z=13&hl=en&t=m&layer=t&output=embed";
+      if (typeof noteFeed === "function") noteFeed("traffic", !!(lat && lon), "gmaps pin " + lat.toFixed(3) + "," + lon.toFixed(3));
       var drives = document.getElementById("traffic-drives");
-      if (drives) drives.textContent = "Live Waze traffic near " + (homeAddress() || place) + ". Zoomed out one step. Open Google Maps for that view."
+      if (drives) drives.textContent = "Google Map pinned on " + (homeAddress() || place) + ". Tap Google Maps below for the live traffic layer."
       var gl = document.getElementById("gmaps-link");
       if (gl) gl.href = "https://www.google.com/maps/@" + lat.toFixed(4) + "," + lon.toFixed(4) + ",13z/data=!5m1!1e1";
       var links = document.getElementById("traffic-links");
@@ -3113,7 +3114,9 @@ function showPage(id) {
       "v148 — Settings address is house number + street. ZIP field removed again.",
       "v149 — One full address box in Settings.",
       "v150 — Same board as v149. Version stamp only, so a stale GitHub copy is obvious.",
-      "v151 — Product name is Commons. BeachWalk is the community on this wall."
+      "v151 — Product name is Commons. BeachWalk is the community on this wall.",
+      "v152 — Roads uses FL511 live speed colors.",
+      "v153 — Roads is a Google Map pinned on the saved address."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
