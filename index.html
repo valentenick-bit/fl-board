@@ -467,7 +467,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v108</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v110</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -851,7 +851,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v108</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v110</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1081,7 +1081,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 108;
+    window.BOARD_VER = 110;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1204,6 +1204,36 @@ Cart shop:</textarea>
     }
     function homeLat() { return Number(getSet().lat) || 26.9595; }
     function homeLon() { return Number(getSet().lon) || -82.3543; }
+
+    function stormCoords(s) {
+      if (!s) return { lat: NaN, lon: NaN };
+      var lat = s.latitudeNumeric != null ? Number(s.latitudeNumeric) : parseFloat(String(s.latitude || s.lat || "").replace(/[nsew]/ig, ""));
+      var lon = s.longitudeNumeric != null ? Number(s.longitudeNumeric) : (s.longitude != null ? s.longitude : s.lon);
+      if (typeof lon === "string") {
+        var west = /w/i.test(lon);
+        lon = parseFloat(lon);
+        if (west && lon > 0) lon = -lon;
+      }
+      return { lat: parseFloat(lat), lon: parseFloat(lon) };
+    }
+    function stormThreatensHome(s) {
+      var id = String((s && (s.id || s.binNumber)) || "").toLowerCase();
+      if (/^ep|^cp/.test(id)) return false;
+      var name = String((s && (s.name || s.Name)) || "");
+      if (/invest|^one$|^two$|^three$|^four$|^five$/i.test(name)) return false;
+      var c = stormCoords(s);
+      var west = homeLon() - 22;   /* ~ -104 from Englewood */
+      var east = homeLon() + 20;   /* ~ -62 */
+      var south = homeLat() - 16;  /* ~ 11 */
+      var north = homeLat() + 10;  /* ~ 37 */
+      if (!isNaN(c.lon) && !isNaN(c.lat)) {
+        return c.lon >= west && c.lon <= east && c.lat >= south && c.lat <= north;
+      }
+      return /^al|^at/.test(id);
+    }
+    function relevantStorms(list) {
+      return (list || []).filter(stormThreatensHome);
+    }
     function homePoint() { return homeLat() + "," + homeLon(); }
     function homePlace() {
       return String(getSet().place || "Englewood FL").replace(/\s+FL$/i, "").trim() || "Englewood";
@@ -4098,7 +4128,7 @@ function showPage(id) {
           return grace ? "placeholder" : "failed";
         if (!s || /^(—|–|…|\.{1,3}|n\/a|Gulf|See )/i.test(s)) return grace ? "placeholder" : "failed";
         if (/\b1 days\b/.test(s)) return "failed";
-        if (/off but/.test(s)) return "failed";
+        if (/off but|radar only with/.test(s)) return "failed";
         if (/\b(idle|dry|clear|radar only|now off|pinned|in rotation|prep ·|now ·|off|after bolt|open|closed|cards|ideas)\b/i.test(s)) return "ok";
         return "ok";
       }
@@ -4149,7 +4179,12 @@ function showPage(id) {
         extra: [
           ["radar", imgOk("radar-view") || imgOk("radar-loop") ? (window.__satViews || ["loop"]).join("+") : txt("radar-cap")],
           ["bolt-rot", (typeof boltWanted === "function" && boltWanted()) ? "in rotation" : "idle"],
-          ["sat", (window.__satBasins && (window.__satBasins.gulf || window.__satBasins.atl)) ? ((window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "")) : "radar only"],
+          ["sat", (function(){
+            var b = window.__satBasins || {};
+            var n = (window.__namedStorms || []).length;
+            if (n && !b.gulf && !b.atl) return "radar only with " + n + " named";
+            return (b.gulf || b.atl) ? ((b.gulf ? "gulf " : "") + (b.atl ? "atl" : "")) : "radar only";
+          })()],
           ["traffic", ((document.getElementById("traffic-map") || {}).src || "").indexOf("lat=") >= 0 ? "pinned" : ""],
           ["rain", document.documentElement.classList.contains("raining") ? "raining" : "dry"],
           ["pills", (function(){ var c=document.querySelector("#pill-beach .tg-cell"); var v=c&&c.textContent.trim(); return v && v!=="—" ? v : ""; })()],
@@ -5199,24 +5234,28 @@ function showPage(id) {
         function apply(d) {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
-          window.__namedStorms = storms;
+          window.__namedStorms = relevantStorms(storms); storms = window.__namedStorms;
           if (typeof writeTodayChips === "function") writeTodayChips();
           window.__satBasins = { gulf: false, atl: false };
           (storms || []).forEach(function (s) {
-            var lon = s.longitude != null ? s.longitude : s.lon;
-            var lat = s.latitude != null ? s.latitude : s.lat;
+            var id = String(s.id || s.binNumber || "").toLowerCase();
+            if (/^ep|^cp/.test(id)) return;
+            var lat = s.latitudeNumeric != null ? Number(s.latitudeNumeric) : parseFloat(String(s.latitude || s.lat || "").replace(/[nsew]/ig, ""));
+            var lon = s.longitudeNumeric != null ? Number(s.longitudeNumeric) : (s.longitude != null ? s.longitude : s.lon);
             if (typeof lon === "string") {
               var west = /w/i.test(lon);
               lon = parseFloat(lon);
               if (west && lon > 0) lon = -lon;
             }
             lon = parseFloat(lon);
-            lat = parseFloat(String(lat).replace(/[nsew]/ig, ""));
-            var gulf = !isNaN(lon) && !isNaN(lat) && lon <= -81 && lon >= -98 && lat >= 17 && lat <= 33;
-            var atl = !isNaN(lon) && !isNaN(lat) && lon > -81 && lon < 0 && lat >= 8 && lat <= 45;
-            if (gulf) window.__satBasins.gulf = true;
-            else if (atl) window.__satBasins.atl = true;
+            var gulf = !isNaN(lon) && lon <= -81 && lon >= -100 && (isNaN(lat) || (lat >= 15 && lat <= 34));
+            var atl = !isNaN(lon) && lon > -81 && lon < 20;
+            if (gulf || (/^al|^at/.test(id) && !isNaN(lon) && lon <= -81)) window.__satBasins.gulf = true;
+            if (atl) window.__satBasins.atl = true;
           });
+          if (typeof applyRadar === "function") applyRadar();
+          if (typeof showRadarView === "function") showRadarView(0);
+          if (typeof noteFeed === "function") noteFeed("sat", !!(window.__satBasins.gulf || window.__satBasins.atl), (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "radar only");
           if (typeof noteFeed === "function") noteFeed("sat", !!(window.__satBasins.gulf || window.__satBasins.atl), (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "none");
           touchFeed("storms", true, storms.length ? (storms.length + " named") : "none");
           if (typeof writeTodayChips === "function") writeTodayChips();
