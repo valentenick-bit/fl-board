@@ -158,6 +158,8 @@
     .sport-league { margin:0 0 16px; padding-bottom:8px; border-bottom:1px solid var(--hair); }
     .sport-league h3 { margin:0 0 8px; font-size:16px; display:flex; align-items:center; gap:8px; }
     .sport-league label { display:inline-flex; align-items:center; gap:5px; margin:0 10px 8px 0; font-size:14px; min-width:46%; }
+    .sport-div { margin:0 0 10px; }
+    .sport-div h4 { margin:8px 0 4px; font-size:12px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; }
     .set-sports-box { max-height:260px; overflow:auto; border:1px solid var(--hair); border-radius:12px; padding:8px 10px; margin:0 0 14px; background:rgba(255,255,255,.45); }
     html.dark .set-sports-box { background:#1b2430; }
 
@@ -517,7 +519,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v159</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v161</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -896,7 +898,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v159</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v161</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1124,7 +1126,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 159;
+    window.BOARD_VER = 161;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -3128,7 +3130,9 @@ function showPage(id) {
       "v156 — Today shows a Live music tonight card when the calendars have one.",
       "v157 — Removed the Tonight live-music block. Out and about stays.",
       "v158 — Sports lists every NFL, MLB, NBA, and NHL club in Settings and on the Sports page.",
-      "v159 — Full team list lives on the Sports page only."
+      "v159 — Full team list lives on the Sports page only.",
+      "v160 — Sports page is grouped by division, then A–Z.",
+      "v161 — Delivery page reads the current Gmail report file."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3608,7 +3612,8 @@ function showPage(id) {
       var urls = [
         "deliveries.json",
         "./deliveries.json",
-        "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=137FOO1hZ9XB29x-LekMYlh-aLaBc1JT_")
+        "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1-a_Q16pbjKjVT5HLfzaI4cvBAm-1unH4"),
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1-a_Q16pbjKjVT5HLfzaI4cvBAm-1unH4")
       ];
       function esc(s) {
         return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
@@ -3660,17 +3665,8 @@ function showPage(id) {
       window.__paintDeliveries = function () { paint(); };
       function next(i) {
         if (i >= urls.length) {
-          paint({
-            updated: "built-in snapshot",
-            incoming: [
-              {who:"Amazon", title:"1 automotive item", detail:"Shipped Sat Aug 29."},
-              {who:"BikerVision", title:"Order BV8691", detail:"Shipped Sat Aug 29."},
-              {who:"Bulletpoint", title:"Order 742702", detail:"USPS 9434 6501 0579 5033 7588 88."}
-            ],
-            delivered: [
-              {who:"Amazon", title:"3 device + automotive", detail:"Sat Aug 29."}
-            ]
-          });
+          if (note) note.textContent = "No live delivery report. Make deliveries.json in Drive shareable: Anyone with the link.";
+          paint({ updated: "", incoming: [], delivered: [] });
           return;
         }
         fetch(urls[i]).then(function (r) { return r.json(); }).then(function (data) {
@@ -6581,6 +6577,39 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       {name:"Capitals",lat:38.8981,lon:-77.0209,abbr:"WSH",sport:"nhl"},
       {name:"Jets",lat:49.8928,lon:-97.1437,abbr:"WPG",sport:"nhl"}
     ];
+
+    var SPORT_DIV = {
+      "nfl-BUF":"AFC East","nfl-MIA":"AFC East","nfl-NE":"AFC East","nfl-NYJ":"AFC East",
+      "nfl-BAL":"AFC North","nfl-CIN":"AFC North","nfl-CLE":"AFC North","nfl-PIT":"AFC North",
+      "nfl-HOU":"AFC South","nfl-IND":"AFC South","nfl-JAX":"AFC South","nfl-TEN":"AFC South",
+      "nfl-DEN":"AFC West","nfl-KC":"AFC West","nfl-LV":"AFC West","nfl-LAC":"AFC West",
+      "nfl-DAL":"NFC East","nfl-NYG":"NFC East","nfl-PHI":"NFC East","nfl-WAS":"NFC East",
+      "nfl-CHI":"NFC North","nfl-DET":"NFC North","nfl-GB":"NFC North","nfl-MIN":"NFC North",
+      "nfl-ATL":"NFC South","nfl-CAR":"NFC South","nfl-NO":"NFC South","nfl-TB":"NFC South",
+      "nfl-ARI":"NFC West","nfl-LAR":"NFC West","nfl-SF":"NFC West","nfl-SEA":"NFC West",
+      "mlb-BAL":"AL East","mlb-BOS":"AL East","mlb-NYY":"AL East","mlb-TB":"AL East","mlb-TOR":"AL East",
+      "mlb-CWS":"AL Central","mlb-CLE":"AL Central","mlb-DET":"AL Central","mlb-KC":"AL Central","mlb-MIN":"AL Central",
+      "mlb-HOU":"AL West","mlb-LAA":"AL West","mlb-ATH":"AL West","mlb-SEA":"AL West","mlb-TEX":"AL West",
+      "mlb-ATL":"NL East","mlb-MIA":"NL East","mlb-NYM":"NL East","mlb-PHI":"NL East","mlb-WSH":"NL East",
+      "mlb-CHC":"NL Central","mlb-CIN":"NL Central","mlb-MIL":"NL Central","mlb-PIT":"NL Central","mlb-STL":"NL Central",
+      "mlb-ARI":"NL West","mlb-COL":"NL West","mlb-LAD":"NL West","mlb-SD":"NL West","mlb-SF":"NL West",
+      "nba-BOS":"Atlantic","nba-BKN":"Atlantic","nba-NYK":"Atlantic","nba-PHI":"Atlantic","nba-TOR":"Atlantic",
+      "nba-CHI":"Central","nba-CLE":"Central","nba-DET":"Central","nba-IND":"Central","nba-MIL":"Central",
+      "nba-ATL":"Southeast","nba-CHA":"Southeast","nba-MIA":"Southeast","nba-ORL":"Southeast","nba-WAS":"Southeast",
+      "nba-DEN":"Northwest","nba-MIN":"Northwest","nba-OKC":"Northwest","nba-POR":"Northwest","nba-UTA":"Northwest",
+      "nba-GS":"Pacific","nba-LAC":"Pacific","nba-LAL":"Pacific","nba-PHX":"Pacific","nba-SAC":"Pacific",
+      "nba-DAL":"Southwest","nba-HOU":"Southwest","nba-MEM":"Southwest","nba-NO":"Southwest","nba-SA":"Southwest",
+      "nhl-BOS":"Atlantic","nhl-BUF":"Atlantic","nhl-DET":"Atlantic","nhl-FLA":"Atlantic","nhl-MTL":"Atlantic","nhl-OTT":"Atlantic","nhl-TB":"Atlantic","nhl-TOR":"Atlantic",
+      "nhl-CAR":"Metropolitan","nhl-CBJ":"Metropolitan","nhl-NJD":"Metropolitan","nhl-NYI":"Metropolitan","nhl-NYR":"Metropolitan","nhl-PHI":"Metropolitan","nhl-PIT":"Metropolitan","nhl-WSH":"Metropolitan",
+      "nhl-CHI":"Central","nhl-COL":"Central","nhl-DAL":"Central","nhl-MIN":"Central","nhl-NSH":"Central","nhl-STL":"Central","nhl-UTA":"Central","nhl-WPG":"Central",
+      "nhl-ANA":"Pacific","nhl-CGY":"Pacific","nhl-EDM":"Pacific","nhl-LA":"Pacific","nhl-SJ":"Pacific","nhl-SEA":"Pacific","nhl-VAN":"Pacific","nhl-VGK":"Pacific"
+    };
+    var SPORT_DIV_ORDER = {
+      nfl: ["AFC East","AFC North","AFC South","AFC West","NFC East","NFC North","NFC South","NFC West"],
+      mlb: ["AL East","AL Central","AL West","NL East","NL Central","NL West"],
+      nba: ["Atlantic","Central","Southeast","Northwest","Pacific","Southwest"],
+      nhl: ["Atlantic","Metropolitan","Central","Pacific"]
+    };
     function milesApart(aLat,aLon,bLat,bLon){
       var R=3958.8, p1=aLat*Math.PI/180, p2=bLat*Math.PI/180, d=(bLat-aLat)*Math.PI/180, l=(bLon-aLon)*Math.PI/180;
       var h=Math.sin(d/2)*Math.sin(d/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(l/2)*Math.sin(l/2);
@@ -6612,8 +6641,19 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var html = leagues.map(function(L){
         var list = SPORT_TEAMS.filter(function(tm){ return tm.sport === L[0]; });
         var any = list.some(function(tm){ return on[teamId(tm)]; });
-        var teams = list.map(function(tm){
-          return "<label><input type='checkbox' data-team='" + teamId(tm) + "' data-lg='" + L[0] + "'" + (on[teamId(tm)] ? " checked" : "") + "> " + tm.name + "</label>";
+        var order = (SPORT_DIV_ORDER[L[0]] || []).slice();
+        var groups = {};
+        list.forEach(function(tm){
+          var d = SPORT_DIV[tm.sport + "-" + tm.abbr] || "Other";
+          if (order.indexOf(d) < 0) order.push(d);
+          (groups[d] = groups[d] || []).push(tm);
+        });
+        var teams = order.map(function(d){
+          var rows = (groups[d] || []).slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+          if (!rows.length) return "";
+          return "<div class='sport-div'><h4>" + d + "</h4>" + rows.map(function(tm){
+            return "<label><input type='checkbox' data-team='" + teamId(tm) + "' data-lg='" + L[0] + "'" + (on[teamId(tm)] ? " checked" : "") + "> " + tm.name + "</label>";
+          }).join("") + "</div>";
         }).join("");
         return "<div class='sport-league' data-lg='" + L[0] + "'><h3><label class='master'><input type='checkbox' data-master='" + L[0] + "'" + (any ? " checked" : "") + "> " + L[1] + "</label></h3>" + teams + "</div>";
       }).join("");
