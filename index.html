@@ -477,7 +477,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v115</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v116</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -606,7 +606,7 @@
           <div class="tile"><label>Inlet water</label><strong id="live-wtemp">—</strong></div>
         </div>
         <div class="card"><b>Gulf water history</b><span>Open-Meteo SST</span>
-          <div class="tide" id="wtemp-chart"></div>
+          <div class="tide hist" id="wtemp-chart"></div>
         </div>
         <div class="card"><b id="coast-title">Coastal waters</b><span id="live-coastal">Loading…</span></div>
         <div class="card"><b id="fish-title">What’s biting</b><span id="live-fish">Loading the local bite…</span></div>
@@ -861,7 +861,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v115</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v116</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1091,7 +1091,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 115;
+    window.BOARD_VER = 116;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -4559,30 +4559,54 @@ function drawSurgeChart(points) {
 function drawHistChart(id, points, color, ymin, ymax, unit) {
       var box = document.getElementById(id);
       if (!box || !points || points.length < 2) return;
-      var t0 = points[0].t, t1 = points[points.length-1].t;
-      if (t1 === t0) t1 = t0 + 1;
-      function X(ms) { return 10 + ((ms - t0) / (t1 - t0)) * 200; }
-      function Y(v) { return 70 - ((v - ymin) / (ymax - ymin)) * 52; }
-      var d = points.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
+      var pts = points.filter(function (p) { return p && !isNaN(p.t) && !isNaN(p.v); }).sort(function (a, b) { return a.t - b.t; });
+      if (pts.length < 2) return;
       var now = Date.now();
+      pts = pts.filter(function (p) { return p.t <= now + 20 * 60 * 1000; });
+      if (pts.length < 2) return;
+      var vals = pts.map(function (p) { return p.v; });
+      var dmin = Math.min.apply(null, vals);
+      var dmax = Math.max.apply(null, vals);
+      if (ymin == null || ymax == null || !isFinite(ymin) || !isFinite(ymax) || ymin === ymax) {
+        var pad = Math.max(0.05, (dmax - dmin) * 0.15);
+        ymin = dmin - pad;
+        ymax = dmax + pad;
+      }
+      if (ymax <= ymin) ymax = ymin + 1;
+      var t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+      if (t1 === t0) t1 = t0 + 1;
+      function X(ms) { return 28 + ((ms - t0) / (t1 - t0)) * 180; }
+      function Y(v) { return 62 - ((v - ymin) / (ymax - ymin)) * 46; }
+      var d = pts.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
       var nx = X(Math.max(t0, Math.min(t1, now)));
-      box.setAttribute("data-n", String(points.length));
-      box.setAttribute("data-stub", points.length < 8 ? "1" : "0");
+      function fmt(v) {
+        if (unit === "%") return Math.round(v) + "%";
+        if (unit === "°") return Math.round(v) + "°";
+        if (unit === " inHg") return Number(v).toFixed(2);
+        if (unit === " in" || unit === '"') return Number(v).toFixed(2) + '"';
+        if (unit === " ft") return Number(v).toFixed(2);
+        return (Math.abs(v) >= 10 ? Math.round(v) : Number(v).toFixed(1)) + (unit || "");
+      }
+      function hh(ms) {
+        return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+      }
       var zero = "";
       if (ymin < 0 && ymax > 0) {
-        var zy = Y(0);
-        zero = '<line x1="10" y1="' + zy.toFixed(1) + '" x2="210" y2="' + zy.toFixed(1) + '" stroke="#1b2a4a" stroke-width="1.2"/>' +
-          '<text x="12" y="' + (zy - 3).toFixed(1) + '" font-size="7" fill="#5c6b7a">0</text>';
+        zero = '<line x1="28" y1="' + Y(0).toFixed(1) + '" x2="208" y2="' + Y(0).toFixed(1) + '" stroke="#1b2a4a" stroke-width="1.1"/>';
       }
+      box.setAttribute("data-n", String(pts.length));
+      box.setAttribute("data-stub", pts.length < 8 ? "1" : "0");
       box.innerHTML = svgWrap(
-        '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
         zero +
-        '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2.4"/>' +
-        '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#e07a5f" stroke-width="1.5"/>' +
-        '<text x="8" y="84" font-size="8" fill="#5c6b7a">' + (typeof ymin === "number" ? ymin.toFixed(ymin % 1 ? 1 : 0) : ymin) + unit + '</text>' +
-        '<text x="160" y="84" font-size="8" fill="#5c6b7a">' + (typeof ymax === "number" ? ymax.toFixed(ymax % 1 ? 1 : 0) : ymax) + unit + '</text>'
+        '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<line x1="' + nx.toFixed(1) + '" y1="14" x2="' + nx.toFixed(1) + '" y2="64" stroke="#e07a5f" stroke-width="1.2"/>' +
+        '<text x="2" y="18" font-size="8" fill="#5c6b7a">' + fmt(ymax) + "</text>" +
+        '<text x="2" y="62" font-size="8" fill="#5c6b7a">' + fmt(ymin) + "</text>" +
+        '<text x="28" y="84" font-size="8" fill="#5c6b7a">' + hh(t0) + "</text>" +
+        '<text x="168" y="84" font-size="8" fill="#5c6b7a">' + hh(t1) + "</text>"
       );
     }
+
     function loadHistWx() {
       var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
         "&hourly=relative_humidity_2m,surface_pressure,precipitation&past_days=2&forecast_days=1&timezone=America%2FNew_York";
@@ -4605,24 +4629,30 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var rh = h.relative_humidity_2m || [];
         var pr = h.surface_pressure || [];
         var pc = h.precipitation || [];
+        var now = Date.now();
         var hum = [], pres = [], rain = [];
         for (var i = 0; i < times.length; i++) {
           var ts = new Date(times[i]).getTime();
+          if (ts < now - 36 * 3600000 || ts > now + 10 * 60000) continue;
           if (rh[i] != null) hum.push({ t: ts, v: Number(rh[i]) });
-          if (pr[i] != null) pres.push({ t: ts, v: Number(pr[i]) * 0.02953 });
-          if (pc[i] != null) rain.push({ t: ts, v: Number(pc[i]) });
+          if (pr[i] != null) pres.push({ t: ts, v: Number(pr[i]) * 0.029529983 });
+          if (pc[i] != null) rain.push({ t: ts, v: Number(pc[i]) / 25.4 });
         }
-        if (hum.length >= 8) drawHistChart("humid-chart", hum, "#2a9d8f", 40, 100, "%");
+        if (hum.length >= 8) {
+          var hmin = Math.min.apply(null, hum.map(function (p) { return p.v; }));
+          var hmax = Math.max.apply(null, hum.map(function (p) { return p.v; }));
+          drawHistChart("humid-chart", hum, "#2a9d8f", Math.max(0, hmin - 8), Math.min(100, hmax + 8), "%");
+        }
         if (pres.length >= 8) {
-          var lo = 29.5, hi = 30.4;
-          pres.forEach(function (p) { if (p.v < lo) lo = Math.floor(p.v * 20) / 20; if (p.v > hi) hi = Math.ceil(p.v * 20) / 20; });
+          var lo = Math.min.apply(null, pres.map(function (p) { return p.v; })) - 0.08;
+          var hi = Math.max.apply(null, pres.map(function (p) { return p.v; })) + 0.08;
           if (hi - lo < 0.2) { lo -= 0.1; hi += 0.1; }
-          drawHistChart("pres-chart", pres, "#1b2a4a", lo, hi, '"');
+          drawHistChart("pres-chart", pres, "#1b2a4a", lo, hi, " inHg");
         }
         if (rain.length >= 8) {
-          var rmax = 0.2;
+          var rmax = 0.15;
           rain.forEach(function (p) { if (p.v > rmax) rmax = p.v; });
-          drawHistChart("rainmo-chart", rain, "#4a90a4", 0, Math.max(0.2, rmax), '"');
+          drawHistChart("rainmo-chart", rain, "#4a90a4", 0, rmax, " in");
           if (typeof noteFeed === "function") noteFeed("rain-chart", true, rain.length + " hours");
         } else if (typeof noteFeed === "function") noteFeed("rain-chart", false, "no 48h rain series");
         if (typeof noteFeed === "function") {
@@ -5226,7 +5256,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var el = document.getElementById("live-rain-mo");
           var name = new Date().toLocaleString("en-US", { month: "short", timeZone: "America/New_York" });
           if (el) el.textContent = total.toFixed(2) + '" in ' + name;
-          if (pts.length) drawHistChart("rainmo-chart", pts, "#4a90a4", 0, Math.max(1, total), '"');
+          /* month total stays on the label; chart is hourly inches from loadHistWx */
         }).catch(function () {});
       fetch("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=us_aqi,pm2_5")
         .then(function (r) { return r.json(); })
@@ -5444,7 +5474,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var vs = (d.hourly && d.hourly.sea_surface_temperature) || [];
           var pts = [];
           for (var i = 0; i < hs.length; i++) if (vs[i] != null) pts.push({ t: new Date(hs[i]).getTime(), v: vs[i] });
-          if (pts.length) drawHistChart("wtemp-chart", pts, "#2a9d8f", 80, 92, "°");
+          if (pts.length) drawHistChart("wtemp-chart", pts, "#2a9d8f", null, null, "°");
         }).catch(function () {});
     }
 
@@ -5888,11 +5918,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
                 if (p.relativeHumidity && p.relativeHumidity.value != null) hum.push({ t: ts, v: p.relativeHumidity.value });
                 if (p.barometricPressure && p.barometricPressure.value != null) prs.push({ t: ts, v: p.barometricPressure.value / 3386.39 });
               });
-              if (hum.length) drawHistChart("humid-chart", hum, "#2a9d8f", 40, 100, "%");
+              /* humidity chart comes from loadHistWx */
               if (prs.length) {
                 var lo = 29.6, hi = 30.4;
                 prs.forEach(function (p) { if (p.v < lo) lo = Math.floor(p.v * 10) / 10; if (p.v > hi) hi = Math.ceil(p.v * 10) / 10; });
-                drawHistChart("pres-chart", prs, "#1b2a4a", lo, hi, '"');
+                /* pressure chart comes from loadHistWx */
               }
             }).catch(function () {});
           saveWxSnap();
