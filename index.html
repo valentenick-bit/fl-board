@@ -464,7 +464,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v99</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v100</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -848,7 +848,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v99 · How it works is a live summary that rebuilds with each version</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v100 · Status fails thin placeholders; Gulf box includes 32N; 10-day must be 8+ days</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1078,7 +1078,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 99;
+    window.BOARD_VER = 100;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -2807,7 +2807,7 @@ function showPage(id) {
         : "No incoming lightning for this ZIP. Map stays pinned here.";
       if (typeof noteFeed === "function") {
         noteFeed("lightning", true, now.on ? ("now · " + now.why) : "now off");
-        noteFeed("bolt-rot", prep.on, prep.on ? ("prep · " + prep.why) : "idle");
+        noteFeed("bolt-rot", true, prep.on ? ("prep · " + prep.why) : "idle");
       }
       if (typeof writeTodayChips === "function") writeTodayChips();
       if (!now.on) {
@@ -2854,6 +2854,7 @@ function showPage(id) {
 
 
     window.BOARD_NOTES = [
+      "v100 — Status treats quiet/see-also/1-day/updating as Failed. Gulf storms north of 31N count as Gulf.",
       "v99 — How it works rebuilds from live rules + this notes list whenever the board version changes.",
       "v98 — Waiting cards get a real sentence; Status wait is not Failed.",
       "v97 — Dev dock left of the gear: Status, How it works, Ideas. Docks pin on Dev pages.",
@@ -2926,14 +2927,9 @@ function showPage(id) {
           }
         });
       }
-      var aqi = document.getElementById("live-aqi");
-      if (aqi && /^$|^—$/.test(aqi.textContent.trim())) aqi.textContent = "AQI feed quiet";
-      var rain = document.getElementById("live-rain-mo");
-      if (rain && /^$|^—$/.test(rain.textContent.trim())) rain.textContent = "Monthly rain not in yet";
       var tide = document.getElementById("live-tide-today");
-      if (tide && /loading/i.test(tide.textContent)) {
-        var preds = window.__bwCharts && window.__bwCharts.preds;
-        tide.textContent = preds ? "See tide chart" : "Tide station quiet";
+      if (tide && /loading/i.test(tide.textContent) && window.__bwCharts && window.__bwCharts.preds) {
+        tide.textContent = "See tide chart";
       }
       var cane = document.getElementById("live-cane");
       if (cane && /checking/i.test(cane.textContent)) {
@@ -2945,11 +2941,7 @@ function showPage(id) {
       var horo = document.getElementById("horo-box");
       if (horo && !horo.textContent.trim()) horo.innerHTML = "<div class=\"card\"><b>Horoscope</b><span>Pick signs in Settings.</span></div>";
       var coast = document.getElementById("live-coastal");
-      if (coast && /loading/i.test(coast.textContent)) coast.textContent = "Coastal waters near the ZIP — see Marine cards";
-      var td = document.querySelector(".tenday");
-      if (td && !td.querySelector(".day, div")) {
-        td.innerHTML = "<div class='day'><b>10-day</b><span>Forecast grid still catching up. Weather hourly above is live.</span></div>";
-      }
+      if (coast && /loading/i.test(coast.textContent)) { /* leave loading so Status can see it */ }
       function seedChart(id, val, color, lo, hi) {
         if (typeof chartOk === "function" && chartOk(id)) return;
         if (typeof drawHistChart !== "function" || val == null || isNaN(val)) return;
@@ -4011,9 +4003,11 @@ function showPage(id) {
         s = String(s || "").replace(/\s+/g, " ").trim();
         if (/did not load|timed out|not wired|video unavailable|no data was found/i.test(s)) return "failed";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
-        if (/^(loading|checking|updating)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc/i.test(s))
+        if (/quiet|not in yet|see marine|see gulf sst|see tide|gaps filled|catching up|pick signs/i.test(s)) return "failed";
+        if (/^(loading|checking|updating)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc|· updating/i.test(s))
           return grace ? "placeholder" : "failed";
-        if (!s || /^(—|–|…|\.{1,3}|n\/a)$/i.test(s)) return grace ? "placeholder" : "failed";
+        if (!s || /^(—|–|…|\.{1,3}|n\/a|Gulf|See )/i.test(s)) return grace ? "placeholder" : "failed";
+        if (/\b1 days\b/.test(s)) return "failed";
         if (/\b(idle|dry|clear|radar only|now off|pinned|in rotation|prep ·|now ·|off|after bolt|open|closed|cards|ideas)\b/i.test(s)) return "ok";
         return "ok";
       }
@@ -4030,7 +4024,7 @@ function showPage(id) {
           ["rain-month", txt("live-rain-mo")],
           ["uv", txt("live-uv")],
           ["hourly", document.querySelectorAll(".hourly .hour").length ? (document.querySelectorAll(".hourly .hour").length + " hours") : ""],
-          ["10-day", document.querySelectorAll(".tenday .day, .tenday > div").length ? (document.querySelectorAll(".tenday .day, .tenday > div").length + " days") : ""],
+          ["10-day", (function(){ var n=document.querySelectorAll(".tenday .day").length; var deg=0; document.querySelectorAll(".tenday .day").forEach(function(el){ if (/°|\d/.test(el.textContent||"")) deg++; }); return n>=8 && deg>=8 ? (n+" days") : (n? n+" days thin":""); })()],
           ["humid-chart", chartOk("humid-chart") ? "chart" : ""],
           ["pres-chart", chartOk("pres-chart") ? "chart" : ""]
         ],
@@ -5056,11 +5050,11 @@ function showPage(id) {
             }
             lon = parseFloat(lon);
             lat = parseFloat(String(lat).replace(/[nsew]/ig, ""));
-            var gulf = !isNaN(lon) && !isNaN(lat) && lon <= -81 && lon >= -98 && lat >= 18 && lat <= 31;
+            var gulf = !isNaN(lon) && !isNaN(lat) && lon <= -81 && lon >= -98 && lat >= 17 && lat <= 33;
+            var atl = !isNaN(lon) && !isNaN(lat) && lon > -81 && lon < 0 && lat >= 8 && lat <= 45;
             if (gulf) window.__satBasins.gulf = true;
-            else window.__satBasins.atl = true;
+            else if (atl) window.__satBasins.atl = true;
           });
-          if (storms && storms.length && !window.__satBasins.gulf && !window.__satBasins.atl) window.__satBasins.atl = true;
           if (typeof noteFeed === "function") noteFeed("sat", !!(window.__satBasins.gulf || window.__satBasins.atl), (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "none");
           touchFeed("storms", true, storms.length ? (storms.length + " named") : "none");
           if (typeof writeTodayChips === "function") writeTodayChips();
