@@ -510,7 +510,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v137</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v138</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -783,8 +783,8 @@ Cart shop:</textarea>
       <section id="traffic" class="page">
         <h2 data-k="The drive">Traffic</h2>
         <div class="card"><b>Drives</b><span id="traffic-drives">Live speeds near the home ZIP. Tap the map.</span></div>
-        <iframe class="lite" id="traffic-map" title="Traffic" src="https://embed.waze.com/iframe?zoom=12&lat=26.9595&lon=-82.3543&pin=1" allowfullscreen></iframe>
-        <p id="traffic-links"><a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></p>
+        <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?ll=26.9595,-82.3543&q=Englewood+FL+34223&z=13&hl=en&layer=t&output=embed" allowfullscreen></iframe>
+        <p id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></p>
       </section>
       <section id="villa" class="page">
         <h2 data-k="Season">Open / close</h2>
@@ -879,8 +879,7 @@ Cart shop:</textarea>
             <li>Tonight-only live music card</li>
             <li>Commercial / clubhouse mode vs residential</li>
             <li>Greetings that rewrite 10–15 minutes before the next hour, not on a long timer</li>
-            <li>Change the traffic / Roads map from Waze to Google Maps</li>
-            <li>Kiosk Uber: request a ride from this wall, or send a car to pick someone up. The kiosk does not move, so every trip starts or ends at the villa / clubhouse pin.</li>
+                        <li>Kiosk Uber: request a ride from this wall, or send a car to pick someone up. The kiosk does not move, so every trip starts or ends at the villa / clubhouse pin.</li>
             <li>Kiosk Instacart: grocery order from the wall only, delivered to the same fixed kiosk address. Not a roaming phone cart.</li>
             <li>Rethink the whole dock system (main row, More, Dev, drag-reorder, auto-hide, and what belongs where).</li>
             <li>Kiosk is a page, not an on/off button. That page holds setup and kiosk-only settings (pin address, rotation, dock, Uber/Instacart, what the wall is allowed to do).</li>
@@ -891,7 +890,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v137</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v138</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1117,7 +1116,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 137;
+    window.BOARD_VER = 138;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1357,10 +1356,13 @@ Cart shop:</textarea>
       var boltNote = document.getElementById("bolt-note");
       if (boltNote) boltNote.textContent = "Strikes near " + place + ".";
       var traf = document.getElementById("traffic-map");
-      if (traf) traf.src = "https://embed.waze.com/iframe?zoom=12&lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) + "&pin=1";
-      if (typeof noteFeed === "function") noteFeed("traffic", !!(lat && lon), lat.toFixed(3) + "," + lon.toFixed(3));
+      var gq = encodeURIComponent(place + " " + (getSet().zip || ""));
+      if (traf) traf.src = "https://maps.google.com/maps?ll=" + lat.toFixed(4) + "," + lon.toFixed(4) + "&q=" + gq + "&z=13&hl=en&layer=t&output=embed";
+      if (typeof noteFeed === "function") noteFeed("traffic", !!(lat && lon), "google " + lat.toFixed(3) + "," + lon.toFixed(3));
       var drives = document.getElementById("traffic-drives");
-      if (drives) drives.textContent = "Live speeds near " + place + ". Tap the map. FL511.";
+      if (drives) drives.textContent = "Google traffic near " + place + ". Open the map for live colors. FL511 for state roads.";
+      var gl = document.getElementById("gmaps-link");
+      if (gl) gl.href = "https://www.google.com/maps/@" + lat.toFixed(4) + "," + lon.toFixed(4) + ",13z/data=!5m1!1e1";
       var links = document.getElementById("traffic-links");
       if (links) {
         var maps = "https://www.google.com/maps/@?api=1&map_action=map&center=" + lat + "," + lon + "&zoom=12";
@@ -2954,7 +2956,8 @@ function showPage(id) {
       "v134 — Scanners play through the board audio player. Broadcastify blocks the old iframe.",
       "v135 — Ideas: kiosk Uber and Instacart only to/from this wall pin.",
       "v136 — Ideas: rethink the whole dock system.",
-      "v137 — Ideas: kiosk is a setup page, not a toggle."
+      "v137 — Ideas: kiosk is a setup page, not a toggle.",
+      "v138 — Roads uses Google Maps pinned to the home ZIP. Waze embed is gone."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
