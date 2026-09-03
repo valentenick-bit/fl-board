@@ -515,7 +515,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v145</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v149</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -789,7 +789,7 @@ Cart shop:</textarea>
         <h2 data-k="The drive">Traffic</h2>
         <div class="card"><b>Drives</b><span id="traffic-drives">Live speeds near the home address. Tap the map.</span></div>
         <div id="traffic-gmap" class="lite gmap-box" hidden></div>
-        <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?ll=26.9595,-82.3543&q=Englewood+FL&z=14&hl=en&t=m&layer=t&output=embed" allowfullscreen></iframe>
+        <iframe class="lite" id="traffic-map" title="Traffic" src="https://embed.waze.com/iframe?zoom=11&lat=26.9595&lon=-82.3543&pin=1" allowfullscreen></iframe>
         <p id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></p>
       </section>
       <section id="villa" class="page">
@@ -896,7 +896,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v145</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v149</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1011,13 +1011,10 @@ Cart shop:</textarea>
       <div class="set-card">
         <h3>Location</h3>
         <label>Home address</label>
-        <input id="set-address" type="text" placeholder="Start typing a street address" autocomplete="off" />
+        <input id="set-address" type="text" placeholder="Full street address" autocomplete="off" />
         <ul id="addr-suggest" class="addr-suggest" hidden></ul>
         <button type="button" id="set-address-go" class="done" style="margin:8px 0 10px">Use this address</button>
-        <p class="hint" id="set-zip-hint">Weather, radar, tides, scanners, and maps pin on this address.</p>
-        <label>Google Maps API key</label>
-        <input id="set-gmaps" type="password" autocomplete="off" placeholder="Optional" />
-        <p class="hint">Optional. Only if you later want Google’s live traffic colors on the wall. Roads works without it.</p>
+        <p class="hint" id="set-zip-hint">Full line: number, street, city, state. Weather, radar, tides, scanners, and maps pin here.</p>
         <label>Trash day</label>
         <div class="set-row" id="set-trash">
           <button type="button" data-v="0">Sun</button>
@@ -1127,7 +1124,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 145;
+    window.BOARD_VER = 149;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1217,7 +1214,7 @@ Cart shop:</textarea>
     var SET_DEFAULTS = {
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
       station: "", vol: "whisper", noaa: "1", radioauto: "1",
-      zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL", address: "", gmapsKey: "",
+      zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL", address: "", streetNum: "", gmapsKey: "",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1",
       brief: "1", briefWx: "1", briefSports: "1", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
@@ -1250,7 +1247,10 @@ Cart shop:</textarea>
     }
     function homeLat() { return Number(getSet().lat) || 26.9595; }
     function homeLon() { return Number(getSet().lon) || -82.3543; }
-    function homeAddress() { return String(getSet().address || getSet().place || "Englewood FL").trim(); }
+    function homeAddress() {
+      var s = getSet();
+      return String(s.address || s.place || "Englewood FL").trim();
+    }
 
     function geocodeHome(done) {
       var addr = homeAddress();
@@ -1508,12 +1508,10 @@ Cart shop:</textarea>
       var boltNote = document.getElementById("bolt-note");
       if (boltNote) boltNote.textContent = "Strikes near " + place + ".";
       var traf = document.getElementById("traffic-map");
-      var pin = encodeURIComponent(homeAddress() || place);
-      if (traf) traf.src = "https://maps.google.com/maps?ll=" + lat.toFixed(4) + "," + lon.toFixed(4) + "&q=" + pin + "&z=14&hl=en&t=m&layer=t&output=embed";
-      if (typeof noteFeed === "function") noteFeed("traffic", !!(lat && lon), "gmaps embed " + lat.toFixed(3) + "," + lon.toFixed(3));
-      if (typeof paintGoogleTraffic === "function") paintGoogleTraffic();
+      if (traf) traf.src = "https://embed.waze.com/iframe?zoom=11&lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) + "&pin=1";
+      if (typeof noteFeed === "function") noteFeed("traffic", !!(lat && lon), "waze z11 " + lat.toFixed(3) + "," + lon.toFixed(3));
       var drives = document.getElementById("traffic-drives");
-      if (drives) drives.textContent = "Google Map pinned on " + (homeAddress() || place) + ". Open Google Maps for the full traffic layer."
+      if (drives) drives.textContent = "Live Waze traffic near " + (homeAddress() || place) + ". Zoomed out one step. Open Google Maps for that view."
       var gl = document.getElementById("gmaps-link");
       if (gl) gl.href = "https://www.google.com/maps/@" + lat.toFixed(4) + "," + lon.toFixed(4) + ",13z/data=!5m1!1e1";
       var links = document.getElementById("traffic-links");
@@ -3109,7 +3107,11 @@ function showPage(id) {
       "v142 — Clears any previously saved address on this device once. Settings start blank.",
       "v143 — Address field suggests real US streets as you type.",
       "v144 — Roads is the Google Map embed again. No API key required.",
-      "v145 — Saved address stays on this device. Midnight auto-reload is gone."
+      "v145 — Saved address stays on this device. Midnight auto-reload is gone.",
+      "v146 — Settings drop the Maps key. Roads is FL511 live speeds, zoomed out one step.",
+      "v147 — Roads is Waze again (the working traffic embed). ZIP field is back in Settings.",
+      "v148 — Settings address is house number + street. ZIP field removed again.",
+      "v149 — One full address box in Settings."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3841,8 +3843,6 @@ function showPage(id) {
         })();
         var addr = document.getElementById("set-address");
         if (addr) addr.value = s.address || "";
-        var gk = document.getElementById("set-gmaps");
-        if (gk) gk.value = s.gmapsKey || "";
         var hint = document.getElementById("set-zip-hint");
         if (hint) hint.textContent = (s.place || "Englewood FL") + " · " + Number(s.lat).toFixed(3) + ", " + Number(s.lon).toFixed(3) + ". Tides and BeachWalk calendars stay on the Key.";
       }
@@ -3988,9 +3988,8 @@ function showPage(id) {
       var addrGo = document.getElementById("set-address-go");
       if (addrGo) addrGo.addEventListener("click", function () {
         var line = document.getElementById("set-address");
-        var keyEl = document.getElementById("set-gmaps");
         hideAddrSuggest();
-        putSet({ address: line ? line.value.trim() : "", gmapsKey: keyEl ? keyEl.value.trim() : getSet().gmapsKey });
+        putSet({ address: line ? line.value.trim() : "" });
         geocodeHome(function () {
           paint();
           applySkin();
@@ -4009,11 +4008,6 @@ function showPage(id) {
         });
         if (String(getSet().gmapsKey || "").trim()) loadGmaps(function () {});
       }
-      var gk = document.getElementById("set-gmaps");
-      if (gk) gk.addEventListener("change", function () {
-        putSet({ gmapsKey: gk.value.trim() });
-        if (typeof applyLocalMaps === "function") applyLocalMaps();
-      });
       var reset = document.getElementById("set-dockreset");
       if (reset) reset.addEventListener("click", function () {
         try {
