@@ -2882,26 +2882,30 @@ function showPage(id) {
       var dark = (typeof getSet === "function" && getSet().dark) || "auto";
       var quiet = (typeof getSet === "function" && getSet().quiet) || "1";
       var ideaN = document.querySelectorAll("#idea-backlog li").length;
-      var cards = [
-        ["What this is", "Private board for " + place + " " + zip + ". Weather, water, storms, BeachWalk/Englewood events, deliveries, radio/scanners, villa checks. Same URL on a phone, a laptop, or the wall kiosk. Change the home point in Settings → ZIP."],
-        ["This device right now", "Version v" + (window.BOARD_VER || "?") + ". Dark mode: " + dark + ". Quiet hours: " + (quiet === "1" ? "on" : "off") + ". Lightning now: " + (nowL.on ? nowL.why : "off") + ". Incoming lightning: " + (prep.on ? prep.why : "off") + ". " + satLine],
-        ["Normal rotation", "Live order: " + rotLine + ". Views drops out from an hour after sunset to an hour before sunrise. Open a Dev page and rotation pauses until you leave Dev."],
-        ["Storm rotation", "A warning flips the board to Radar → Bolt (if lightning) → Tropical → Hurricane → Marine → Emergency → Prep → Power. Hurricane stays longer. NOAA radio can take the speaker while a warning is up."],
-        ["Lightning — two jobs", "Chip + Bolt page prepare you: NWS thunder watch/warning for this ZIP, thunder in the next few hours, or a storm report within about 25 miles. Screen flash is only current conditions: thunderstorm warning, thunder this hour, or a lightning report within 10 miles. They can disagree — Bolt in the loop with no flash means cells are nearby, not overhead."],
-        ["Radar / satellite", "The window is always the NWS loop for the radar that covers this ZIP (Tampa KTBW for 34223). Gulf GeoColor satellite joins only if NHC has a named storm in the Gulf. Atlantic/Caribbean satellite joins only if NHC has a named storm in the Atlantic. No named storm = radar only."],
-        ["Today pills", "Beach, rip, pool, golf cart, boat, courts. Morning and afternoon. Swim / short window / no, scored from that half-day's hourly forecast. After 7pm it still uses evening hours. If hours have not loaded it falls back to live rain, lightning, and wind."],
-        ["Weather & marine", "Now line, greeting, wind, gusts, humidity, dew, pressure, UV, hourly, 10-day, AQI, month rain. Marine: tides, surge, rip, red tide, bacteria, seas, Gulf SST, fishing. Sky: sun/moon, planets, ISS, horoscopes from Settings."],
-        ["Tickers", "Briefing bar is always on (weather greeting + optional sports). Warning ticker only when NWS has a watch/warning. Breaking-news ticker only for national or local breaking items. They scroll continuously and rebuild on a timer."],
-        ["House & deliveries", "Nick/Dayna occupancy, AC filter date, vendors, villa open/close checks, Gmail delivery scan. Shared across devices only when house.json is reachable. Otherwise this browser keeps its own copy."],
-        ["Dev dock", "More → Dev (left of the gear). Status, How it works, Ideas. Opening Dev pins More + Dev. They stay pinned on those three pages. Any other page closes Dev and starts rotation again."],
-        ["Status", "Watches weather, marine, sky, radar/sat, lightning now + prep, strikes, pills, chips, traffic, rain, events, cam, alerts, power, named storms, dev-dock, guide, ideas. Failed = a card that should have data and still does not. Idle / off / dry / radar-only / closed are normal. Crashes = JS or unexpected HTTP. Copy report if something looks wrong."],
-        ["What shipped recently", (window.BOARD_NOTES || []).join(" ")]
+      var notes = (window.BOARD_NOTES || []).slice(0, 6);
+      var latest = notes[0] || ("v" + (window.BOARD_VER || "") + " is on the wall.");
+      var talk = [
+        "Let me walk you through this thing like we were standing in the villa looking at it.",
+        "You are pointed at " + place + ", ZIP " + zip + ". That ZIP is the pin for radar, tides, traffic, pills, scanners, and the greeting. Change it in Settings and the board follows you.",
+        "Right now this copy is v" + (window.BOARD_VER || "?") + ". Dark mode is " + dark + ". Quiet hours are " + (quiet === "1" ? "on" : "off") + ". Lightning overhead is " + (nowL.on ? nowL.why : "off") + ". Incoming lightning is " + (prep.on ? prep.why : "quiet") + ". " + satLine,
+        "On a normal day it pages through: " + rotLine + ". Views steps out after dark so you are not staring at a black beach cam at 2 a.m. Open anything in the Dev dock and the slideshow pauses until you leave Dev.",
+        "If the National Weather Service puts a warning on this ZIP, the board gets serious. It sticks to Radar, then Bolt if lightning is incoming, then Tropical, Hurricane, Marine, Emergency, Prep, and Power. Hurricane lingers so you can see the path. NOAA radio can take the speaker even in the middle of the night.",
+        "Lightning is two different jobs on purpose. The chip and the Bolt page are the heads-up: a watch, thunder in the next few hours, or a storm report within about 25 miles. The screen flash is only for now — a warning, thunder this hour, or a strike inside 10 miles. Bolt in the loop with no flash means the cell is nearby, not over the roof.",
+        "Radar is always the local NWS loop. Gulf satellite only joins if a named storm is in the Gulf. Atlantic satellite only joins if one is in the Atlantic. No named storm, you just get radar. Edouard sitting off Texas counts as Gulf, not Atlantic.",
+        "Those Today pills — beach, rip, pool, cart, boat, courts — are morning and afternoon calls. Swim, short window, or no. After dinner it still scores the evening instead of going blank. If the hourly grid is late, it uses the wind and rain you can already see on the header.",
+        "Weather and Marine are the working guts: temp, wind, humidity, UV, hourly, ten-day, tides, surge, rip, red tide, Gulf water, fishing. Sky is sun, moon, planets, ISS, and whatever horoscope signs you left on in Settings.",
+        "The briefing ticker never shuts up. The orange warning ticker and the breaking-news ticker only roll when they have something real. They do not jump back to the start; they loop.",
+        "House stuff — who is in the villa, the AC filter date, vendors, open/close checks, packages — lives in this browser unless house.json is reachable. Then every screen sees the same checks.",
+        "Dev is in More, left of the gear. Status is the honest report. How it works is this page. Ideas is the not-built-yet list. Status is supposed to yell when a card is still Loading or only says See something else. If Status is green and a card is wrong, that is a bug in Status, not in you.",
+        "What we just changed: " + latest + " The rest of the recent notes: " + notes.slice(1).join(" ")
       ];
-      box.innerHTML = cards.map(function (c) {
-        return "<div class=\"card\"><b>" + c[0] + "</b><span>" + c[1] + "</span></div>";
+      box.innerHTML = talk.map(function (p, i) {
+        var title = i === 0 ? "How this board works" : (i === talk.length - 1 ? "What just changed" : "");
+        return "<div class=\"card\">" + (title ? "<b>" + title + "</b>" : "") + "<span>" + p + "</span></div>";
       }).join("");
-      if (stamp) stamp.textContent = "v" + (window.BOARD_VER || "") + " · " + place + " " + zip + " · " + ideaN + " ideas on the list · rebuilds when the version changes";
-      if (typeof noteFeed === "function") noteFeed("guide", true, cards.length + " live cards");
+      if (stamp) stamp.textContent = "v" + (window.BOARD_VER || "") + " · " + place + " " + zip + " · rewritten for this version";
+      if (typeof noteFeed === "function") noteFeed("guide", true, talk.length + " spoken cards");
+
     }
     function settleBoardGaps() {
       try {
