@@ -157,7 +157,9 @@
     .pills.go4 .tg-cell.now { font-weight:800; }
     .sport-league { margin:0 0 16px; padding-bottom:8px; border-bottom:1px solid var(--hair); }
     .sport-league h3 { margin:0 0 8px; font-size:16px; display:flex; align-items:center; gap:8px; }
-    .sport-league label { display:inline-flex; align-items:center; gap:5px; margin:0 10px 8px 0; font-size:14px; }
+    .sport-league label { display:inline-flex; align-items:center; gap:5px; margin:0 10px 8px 0; font-size:14px; min-width:46%; }
+    .set-sports-box { max-height:260px; overflow:auto; border:1px solid var(--hair); border-radius:12px; padding:8px 10px; margin:0 0 14px; background:rgba(255,255,255,.45); }
+    html.dark .set-sports-box { background:#1b2430; }
 
     .tg-head, .tg-row { display:grid; grid-template-columns:1.1fr 1fr 1fr; align-items:center; }
     .tg-head { background:var(--navy); color:#f7f1e6; font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
@@ -515,7 +517,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v156</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v158</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -550,10 +552,6 @@
           <small class="stamp" data-feed="alerts"></small>
         </div>
         <p class="sky" id="do-hour" hidden></p>
-        <div id="today-music-wrap" hidden>
-          <h3 class="ent-h">Live music tonight</h3>
-          <div id="today-music"></div>
-        </div>
         <div class="today-boards">
           <div>
             <h3 class="ent-h">Out and about</h3>
@@ -881,8 +879,7 @@ Cart shop:</textarea>
           <b>Not built yet</b>
           <span class="stamp">Ship something and it leaves this list. New ideas we agree on get added here.</span>
           <ul class="check-list" id="idea-backlog">
-            <li>Expand Sports to every NFL/NBA/NHL/MLB club, not just the 22 on the board now</li>
-            <li>Go / no-go visual options still open: weather-tint cells, dusk icons, a slim 24-hour ribbon under the 4 blocks</li>
+                        <li>Go / no-go visual options still open: weather-tint cells, dusk icons, a slim 24-hour ribbon under the 4 blocks</li>
             <li>Shared occupancy, vendors, and villa checks across every device</li>
             <li>Delivery “delivered” checkbox that other screens see</li>
             <li>Automatic BeachWalk / Englewood / Moose calendar wiring via Worker /ics</li>
@@ -899,7 +896,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v156</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v158</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1018,6 +1015,9 @@ Cart shop:</textarea>
         <ul id="addr-suggest" class="addr-suggest" hidden></ul>
         <button type="button" id="set-address-go" class="done" style="margin:8px 0 10px">Use this address</button>
         <p class="hint" id="set-zip-hint">Full line: number, street, city, state. Weather, radar, tides, scanners, and maps pin here.</p>
+        <h3>Sports</h3>
+        <p class="hint">Teams on the briefing ticker. Clubs within 150 miles start checked. Same list as the Sports page.</p>
+        <div id="set-sports-box" class="set-sports-box"></div>
         <label>Trash day</label>
         <div class="set-row" id="set-trash">
           <button type="button" data-v="0">Sun</button>
@@ -1127,7 +1127,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 156;
+    window.BOARD_VER = 158;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -3128,7 +3128,9 @@ function showPage(id) {
       "v153 — Roads is a Google Map pinned on the saved address.",
       "v154 — Keeps the typed house number. Roads pins Google on that full line.",
       "v155 — Roads Google map is zoomed to about a 10-mile radius.",
-      "v156 — Today shows a Live music tonight card when the calendars have one."
+      "v156 — Today shows a Live music tonight card when the calendars have one.",
+      "v157 — Removed the Tonight live-music block. Out and about stays.",
+      "v158 — Sports lists every NFL, MLB, NBA, and NHL club in Settings and on the Sports page."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3428,22 +3430,6 @@ function showPage(id) {
     function paintToday() {
       var doBox = document.getElementById("today-do");
       var delBox = document.getElementById("today-deliv");
-      var musicBox = document.getElementById("today-music");
-      var musicWrap = document.getElementById("today-music-wrap");
-      if (musicBox) {
-        var live = (window.__entAll || []).filter(function (e) {
-          if (!e || !e.when || !isTodayET(e.when)) return false;
-          if (e.end && new Date(e.end).getTime() < Date.now()) return false;
-          var liveFlag = e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc));
-          if (!liveFlag) return false;
-          var hr = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }).format(e.when));
-          return e.allDay || hr >= 16;
-        }).slice(0, 6);
-        if (musicWrap) musicWrap.hidden = !live.length;
-        if (!live.length) musicBox.innerHTML = "";
-        else if (window.entCardHtml) musicBox.innerHTML = live.map(window.entCardHtml).join("");
-        else musicBox.innerHTML = live.map(function (e) { return "<div class=\"card music\"><b>" + (e.sum || "") + "</b></div>"; }).join("");
-      }
       if (doBox) {
         var evs = (window.__entAll || []).filter(function (e) {
           return e && e.when && isTodayET(e.when) && (!e.end || new Date(e.end).getTime() >= Date.now());
@@ -3878,6 +3864,8 @@ function showPage(id) {
         if (addr) addr.value = s.address || addr.value || "";
         var hint = document.getElementById("set-zip-hint");
         if (hint) hint.textContent = (s.place || "Englewood FL") + " · " + Number(s.lat).toFixed(3) + ", " + Number(s.lon).toFixed(3) + ". Tides and BeachWalk calendars stay on the Key.";
+        if (typeof paintSportsPage === "function") paintSportsPage();
+        if (typeof bindSportsPage === "function") bindSportsPage();
       }
       function applySkin() {
         var s = getSet();
@@ -6472,28 +6460,130 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       stack.appendChild(brief);
     }
     var SPORT_TEAMS = [
-      {name:"Buccaneers",lat:27.9759,lon:-82.5033,abbr:"TB",sport:"nfl"},
-      {name:"Rays",lat:27.7682,lon:-82.6534,abbr:"TB",sport:"mlb"},
-      {name:"Lightning",lat:27.9427,lon:-82.4518,abbr:"TB",sport:"nhl"},
-      {name:"Magic",lat:28.5392,lon:-81.3839,abbr:"ORL",sport:"nba"},
-      {name:"Dolphins",lat:25.9580,lon:-80.2389,abbr:"MIA",sport:"nfl"},
-      {name:"Heat",lat:25.7814,lon:-80.1870,abbr:"MIA",sport:"nba"},
-      {name:"Marlins",lat:25.7781,lon:-80.2196,abbr:"MIA",sport:"mlb"},
-      {name:"Panthers",lat:26.1584,lon:-80.3256,abbr:"FLA",sport:"nhl"},
+      {name:"Cardinals",lat:33.5276,lon:-112.2626,abbr:"ARI",sport:"nfl"},
+      {name:"Falcons",lat:33.7553,lon:-84.4006,abbr:"ATL",sport:"nfl"},
+      {name:"Ravens",lat:39.2780,lon:-76.6227,abbr:"BAL",sport:"nfl"},
+      {name:"Bills",lat:42.7738,lon:-78.7870,abbr:"BUF",sport:"nfl"},
+      {name:"Panthers",lat:35.2251,lon:-80.8526,abbr:"CAR",sport:"nfl"},
+      {name:"Bears",lat:41.8623,lon:-87.6167,abbr:"CHI",sport:"nfl"},
+      {name:"Bengals",lat:39.0950,lon:-84.5160,abbr:"CIN",sport:"nfl"},
+      {name:"Browns",lat:41.5061,lon:-81.6995,abbr:"CLE",sport:"nfl"},
+      {name:"Cowboys",lat:32.7473,lon:-97.0945,abbr:"DAL",sport:"nfl"},
+      {name:"Broncos",lat:39.7439,lon:-105.0201,abbr:"DEN",sport:"nfl"},
+      {name:"Lions",lat:42.3400,lon:-83.0456,abbr:"DET",sport:"nfl"},
+      {name:"Packers",lat:44.5013,lon:-88.0622,abbr:"GB",sport:"nfl"},
+      {name:"Texans",lat:29.6847,lon:-95.4107,abbr:"HOU",sport:"nfl"},
+      {name:"Colts",lat:39.7601,lon:-86.1639,abbr:"IND",sport:"nfl"},
       {name:"Jaguars",lat:30.3239,lon:-81.6373,abbr:"JAX",sport:"nfl"},
+      {name:"Chiefs",lat:39.0489,lon:-94.4839,abbr:"KC",sport:"nfl"},
+      {name:"Raiders",lat:36.0909,lon:-115.1833,abbr:"LV",sport:"nfl"},
+      {name:"Chargers",lat:33.9535,lon:-118.3390,abbr:"LAC",sport:"nfl"},
+      {name:"Rams",lat:33.9535,lon:-118.3390,abbr:"LAR",sport:"nfl"},
+      {name:"Dolphins",lat:25.9580,lon:-80.2389,abbr:"MIA",sport:"nfl"},
+      {name:"Vikings",lat:44.9736,lon:-93.2575,abbr:"MIN",sport:"nfl"},
       {name:"Patriots",lat:42.0909,lon:-71.2643,abbr:"NE",sport:"nfl"},
-      {name:"Red Sox",lat:42.3467,lon:-71.0972,abbr:"BOS",sport:"mlb"},
-      {name:"Celtics",lat:42.3662,lon:-71.0621,abbr:"BOS",sport:"nba"},
-      {name:"Bruins",lat:42.3662,lon:-71.0621,abbr:"BOS",sport:"nhl"},
-      {name:"Yankees",lat:40.8296,lon:-73.9262,abbr:"NYY",sport:"mlb"},
-      {name:"Mets",lat:40.7571,lon:-73.8458,abbr:"NYM",sport:"mlb"},
+      {name:"Saints",lat:29.9511,lon:-90.0812,abbr:"NO",sport:"nfl"},
       {name:"Giants",lat:40.8135,lon:-74.0745,abbr:"NYG",sport:"nfl"},
       {name:"Jets",lat:40.8135,lon:-74.0745,abbr:"NYJ",sport:"nfl"},
-      {name:"Knicks",lat:40.7505,lon:-73.9934,abbr:"NYK",sport:"nba"},
+      {name:"Eagles",lat:39.9008,lon:-75.1675,abbr:"PHI",sport:"nfl"},
+      {name:"Steelers",lat:40.4468,lon:-80.0158,abbr:"PIT",sport:"nfl"},
+      {name:"49ers",lat:37.4030,lon:-121.9700,abbr:"SF",sport:"nfl"},
+      {name:"Seahawks",lat:47.5952,lon:-122.3316,abbr:"SEA",sport:"nfl"},
+      {name:"Buccaneers",lat:27.9759,lon:-82.5033,abbr:"TB",sport:"nfl"},
+      {name:"Titans",lat:36.1665,lon:-86.7713,abbr:"TEN",sport:"nfl"},
+      {name:"Commanders",lat:38.9076,lon:-76.8645,abbr:"WAS",sport:"nfl"},
+      {name:"Diamondbacks",lat:33.4453,lon:-112.0667,abbr:"ARI",sport:"mlb"},
+      {name:"Braves",lat:33.8908,lon:-84.4678,abbr:"ATL",sport:"mlb"},
+      {name:"Orioles",lat:39.2839,lon:-76.6216,abbr:"BAL",sport:"mlb"},
+      {name:"Red Sox",lat:42.3467,lon:-71.0972,abbr:"BOS",sport:"mlb"},
+      {name:"Cubs",lat:41.9484,lon:-87.6553,abbr:"CHC",sport:"mlb"},
+      {name:"White Sox",lat:41.8300,lon:-87.6338,abbr:"CWS",sport:"mlb"},
+      {name:"Reds",lat:39.0979,lon:-84.5082,abbr:"CIN",sport:"mlb"},
+      {name:"Guardians",lat:41.4962,lon:-81.6852,abbr:"CLE",sport:"mlb"},
+      {name:"Rockies",lat:39.7559,lon:-104.9942,abbr:"COL",sport:"mlb"},
+      {name:"Tigers",lat:42.3390,lon:-83.0485,abbr:"DET",sport:"mlb"},
+      {name:"Astros",lat:29.7573,lon:-95.3555,abbr:"HOU",sport:"mlb"},
+      {name:"Royals",lat:39.0517,lon:-94.4803,abbr:"KC",sport:"mlb"},
+      {name:"Angels",lat:33.8003,lon:-117.8827,abbr:"LAA",sport:"mlb"},
+      {name:"Dodgers",lat:34.0739,lon:-118.2400,abbr:"LAD",sport:"mlb"},
+      {name:"Marlins",lat:25.7781,lon:-80.2196,abbr:"MIA",sport:"mlb"},
+      {name:"Brewers",lat:43.0280,lon:-87.9712,abbr:"MIL",sport:"mlb"},
+      {name:"Twins",lat:44.9817,lon:-93.2776,abbr:"MIN",sport:"mlb"},
+      {name:"Mets",lat:40.7571,lon:-73.8458,abbr:"NYM",sport:"mlb"},
+      {name:"Yankees",lat:40.8296,lon:-73.9262,abbr:"NYY",sport:"mlb"},
+      {name:"Athletics",lat:38.5802,lon:-121.5027,abbr:"ATH",sport:"mlb"},
+      {name:"Phillies",lat:39.9061,lon:-75.1665,abbr:"PHI",sport:"mlb"},
+      {name:"Pirates",lat:40.4469,lon:-80.0057,abbr:"PIT",sport:"mlb"},
+      {name:"Padres",lat:32.7073,lon:-117.1566,abbr:"SD",sport:"mlb"},
+      {name:"Giants",lat:37.7786,lon:-122.3893,abbr:"SF",sport:"mlb"},
+      {name:"Mariners",lat:47.5914,lon:-122.3325,abbr:"SEA",sport:"mlb"},
+      {name:"Cardinals",lat:38.6226,lon:-90.1928,abbr:"STL",sport:"mlb"},
+      {name:"Rays",lat:27.7682,lon:-82.6534,abbr:"TB",sport:"mlb"},
+      {name:"Rangers",lat:32.7513,lon:-97.0828,abbr:"TEX",sport:"mlb"},
+      {name:"Blue Jays",lat:43.6414,lon:-79.3894,abbr:"TOR",sport:"mlb"},
+      {name:"Nationals",lat:38.8730,lon:-77.0074,abbr:"WSH",sport:"mlb"},
+      {name:"Hawks",lat:33.7573,lon:-84.3963,abbr:"ATL",sport:"nba"},
+      {name:"Celtics",lat:42.3662,lon:-71.0621,abbr:"BOS",sport:"nba"},
       {name:"Nets",lat:40.6826,lon:-73.9749,abbr:"BKN",sport:"nba"},
-      {name:"Rangers",lat:40.7505,lon:-73.9934,abbr:"NYR",sport:"nhl"},
+      {name:"Hornets",lat:35.2251,lon:-80.8392,abbr:"CHA",sport:"nba"},
+      {name:"Bulls",lat:41.8807,lon:-87.6742,abbr:"CHI",sport:"nba"},
+      {name:"Cavaliers",lat:41.4965,lon:-81.6882,abbr:"CLE",sport:"nba"},
+      {name:"Mavericks",lat:32.7905,lon:-96.8103,abbr:"DAL",sport:"nba"},
+      {name:"Nuggets",lat:39.7487,lon:-105.0077,abbr:"DEN",sport:"nba"},
+      {name:"Pistons",lat:42.3411,lon:-83.0550,abbr:"DET",sport:"nba"},
+      {name:"Warriors",lat:37.7680,lon:-122.3877,abbr:"GS",sport:"nba"},
+      {name:"Rockets",lat:29.7508,lon:-95.3621,abbr:"HOU",sport:"nba"},
+      {name:"Pacers",lat:39.7640,lon:-86.1555,abbr:"IND",sport:"nba"},
+      {name:"Clippers",lat:33.9535,lon:-118.3390,abbr:"LAC",sport:"nba"},
+      {name:"Lakers",lat:34.0430,lon:-118.2673,abbr:"LAL",sport:"nba"},
+      {name:"Grizzlies",lat:35.1382,lon:-90.0506,abbr:"MEM",sport:"nba"},
+      {name:"Heat",lat:25.7814,lon:-80.1870,abbr:"MIA",sport:"nba"},
+      {name:"Bucks",lat:43.0451,lon:-87.9173,abbr:"MIL",sport:"nba"},
+      {name:"Timberwolves",lat:44.9795,lon:-93.2762,abbr:"MIN",sport:"nba"},
+      {name:"Pelicans",lat:29.9490,lon:-90.0821,abbr:"NO",sport:"nba"},
+      {name:"Knicks",lat:40.7505,lon:-73.9934,abbr:"NYK",sport:"nba"},
+      {name:"Thunder",lat:35.4634,lon:-97.5151,abbr:"OKC",sport:"nba"},
+      {name:"Magic",lat:28.5392,lon:-81.3839,abbr:"ORL",sport:"nba"},
+      {name:"76ers",lat:39.9012,lon:-75.1720,abbr:"PHI",sport:"nba"},
+      {name:"Suns",lat:33.4458,lon:-112.0712,abbr:"PHX",sport:"nba"},
+      {name:"Trail Blazers",lat:45.5316,lon:-122.6668,abbr:"POR",sport:"nba"},
+      {name:"Kings",lat:38.5802,lon:-121.4997,abbr:"SAC",sport:"nba"},
+      {name:"Spurs",lat:29.4270,lon:-98.4375,abbr:"SA",sport:"nba"},
+      {name:"Raptors",lat:43.6435,lon:-79.3791,abbr:"TOR",sport:"nba"},
+      {name:"Jazz",lat:40.7683,lon:-111.9011,abbr:"UTA",sport:"nba"},
+      {name:"Wizards",lat:38.8982,lon:-77.0209,abbr:"WAS",sport:"nba"},
+      {name:"Ducks",lat:33.8078,lon:-117.8765,abbr:"ANA",sport:"nhl"},
+      {name:"Bruins",lat:42.3662,lon:-71.0621,abbr:"BOS",sport:"nhl"},
+      {name:"Sabres",lat:42.8750,lon:-78.8764,abbr:"BUF",sport:"nhl"},
+      {name:"Flames",lat:51.0374,lon:-114.0519,abbr:"CGY",sport:"nhl"},
+      {name:"Hurricanes",lat:35.8033,lon:-78.7218,abbr:"CAR",sport:"nhl"},
+      {name:"Blackhawks",lat:41.8807,lon:-87.6742,abbr:"CHI",sport:"nhl"},
+      {name:"Avalanche",lat:39.7487,lon:-105.0077,abbr:"COL",sport:"nhl"},
+      {name:"Blue Jackets",lat:39.9690,lon:-83.0061,abbr:"CBJ",sport:"nhl"},
+      {name:"Stars",lat:32.7905,lon:-96.8103,abbr:"DAL",sport:"nhl"},
+      {name:"Red Wings",lat:42.3411,lon:-83.0550,abbr:"DET",sport:"nhl"},
+      {name:"Oilers",lat:53.5468,lon:-113.4979,abbr:"EDM",sport:"nhl"},
+      {name:"Panthers",lat:26.1584,lon:-80.3256,abbr:"FLA",sport:"nhl"},
+      {name:"Kings",lat:34.0430,lon:-118.2673,abbr:"LA",sport:"nhl"},
+      {name:"Wild",lat:44.9447,lon:-93.1011,abbr:"MIN",sport:"nhl"},
+      {name:"Canadiens",lat:45.4961,lon:-73.5693,abbr:"MTL",sport:"nhl"},
+      {name:"Predators",lat:36.1592,lon:-86.7785,abbr:"NSH",sport:"nhl"},
+      {name:"Devils",lat:40.7336,lon:-74.1711,abbr:"NJD",sport:"nhl"},
       {name:"Islanders",lat:40.7227,lon:-73.5906,abbr:"NYI",sport:"nhl"},
-      {name:"Devils",lat:40.7336,lon:-74.1711,abbr:"NJD",sport:"nhl"}
+      {name:"Rangers",lat:40.7505,lon:-73.9934,abbr:"NYR",sport:"nhl"},
+      {name:"Senators",lat:45.2969,lon:-75.9271,abbr:"OTT",sport:"nhl"},
+      {name:"Flyers",lat:39.9012,lon:-75.1720,abbr:"PHI",sport:"nhl"},
+      {name:"Penguins",lat:40.4396,lon:-79.9893,abbr:"PIT",sport:"nhl"},
+      {name:"Sharks",lat:37.3327,lon:-121.9013,abbr:"SJ",sport:"nhl"},
+      {name:"Kraken",lat:47.6221,lon:-122.3540,abbr:"SEA",sport:"nhl"},
+      {name:"Blues",lat:38.6268,lon:-90.2026,abbr:"STL",sport:"nhl"},
+      {name:"Lightning",lat:27.9427,lon:-82.4518,abbr:"TB",sport:"nhl"},
+      {name:"Maple Leafs",lat:43.6435,lon:-79.3791,abbr:"TOR",sport:"nhl"},
+      {name:"Mammoth",lat:40.7683,lon:-111.9011,abbr:"UTA",sport:"nhl"},
+      {name:"Canucks",lat:49.2778,lon:-123.1088,abbr:"VAN",sport:"nhl"},
+      {name:"Golden Knights",lat:36.1029,lon:-115.1784,abbr:"VGK",sport:"nhl"},
+      {name:"Capitals",lat:38.8981,lon:-77.0209,abbr:"WSH",sport:"nhl"},
+      {name:"Jets",lat:49.8928,lon:-97.1437,abbr:"WPG",sport:"nhl"}
     ];
     function milesApart(aLat,aLon,bLat,bLon){
       var R=3958.8, p1=aLat*Math.PI/180, p2=bLat*Math.PI/180, d=(bLat-aLat)*Math.PI/180, l=(bLon-aLon)*Math.PI/180;
@@ -6520,12 +6610,10 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       return picked.length ? picked : nearbyTeams();
     }
     function paintSportsPage(){
-      var box = document.getElementById("sports-box");
-      if (!box) return;
       var on = {};
       selectedTeams().forEach(function(tm){ on[teamId(tm)] = 1; });
       var leagues = [["nfl","NFL"],["mlb","MLB"],["nba","NBA"],["nhl","NHL"]];
-      box.innerHTML = leagues.map(function(L){
+      var html = leagues.map(function(L){
         var list = SPORT_TEAMS.filter(function(tm){ return tm.sport === L[0]; });
         var any = list.some(function(tm){ return on[teamId(tm)]; });
         var teams = list.map(function(tm){
@@ -6533,9 +6621,13 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         }).join("");
         return "<div class='sport-league' data-lg='" + L[0] + "'><h3><label class='master'><input type='checkbox' data-master='" + L[0] + "'" + (any ? " checked" : "") + "> " + L[1] + "</label></h3>" + teams + "</div>";
       }).join("");
+      ["sports-box","set-sports-box"].forEach(function(id){
+        var box = document.getElementById(id);
+        if (box) box.innerHTML = html;
+      });
     }
     function bindSportsPage(){
-      var box = document.getElementById("sports-box");
+      function attach(box){
       if (!box || box._bound) return;
       box._bound = true;
       box.addEventListener("change", function(e){
@@ -6564,6 +6656,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         paintSportsPage();
         if (typeof loadSportsScores === "function") loadSportsScores(typeof writeBriefing === "function" ? writeBriefing : null);
       });
+      }
+      attach(document.getElementById("sports-box"));
+      attach(document.getElementById("set-sports-box"));
     }
     function loadSportsScores(done){
       function finish(lines) {
