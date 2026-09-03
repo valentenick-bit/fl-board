@@ -477,7 +477,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v123</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v124</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -861,7 +861,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v123</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v124</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1091,7 +1091,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 123;
+    window.BOARD_VER = 124;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -2711,52 +2711,40 @@ function showPage(id) {
     function fetchHurrDisc(s) {
       var el = document.getElementById("hurr-disc");
       if (!el) return;
-      if (!s || !(s.id || s.binNumber || s.name)) {
-        el.innerHTML = "<b>NHC discussion</b><span>No named-storm discussion for this ZIP. Atlantic outlook maps still apply.</span>";
-        if (typeof noteFeed === "function") noteFeed("nhc-disc", true, "no named storm");
-      }
-      var bin = String((s && s.binNumber) || "").replace(/\D/g, "") || "5";
-      var id = String((s && s.id) || "al052026").toLowerCase();
-      var yr = (id.match(/20\d{2}/) || ["2026"])[0];
-      var raw = [
-        "https://www.nhc.noaa.gov/text/MIATCDAT" + bin + ".shtml",
-        "https://www.nhc.noaa.gov/archive/" + yr + "/" + id.replace(/20\d{2}/, "") + "/" + id + ".discus.latest.shtml",
-        "https://www.nhc.noaa.gov/text/MIATWDAT.shtml"
-      ];
-      var urls = [];
-      raw.forEach(function (u) {
-        urls.push(u);
-        urls.push("https://corsproxy.io/?" + encodeURIComponent(u));
-        urls.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(u));
-      });
-      function extract(html) {
-        var text = String(html || "");
-        var pre = text.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
-        if (pre) text = pre[1];
-        text = text.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
-        var km = text.match(/Key Messages?:(.{80,700}?)(?:FORECAST POSITIONS|\$\$|NNNN)/i);
-        if (km) return km[1].replace(/^\s*\d+\.\s*/g, "").trim();
-        var spec = text.match(/SPECIAL FEATURES(.{80,700}?)(?:GULF OF|ATLANTIC|CARIBBEAN)/i);
-        if (spec) return spec[1].trim();
-        var disc = text.match(/Discussion Number.{0,80}?(.{120,500}?)(?:Key Messages|FORECAST POSITIONS)/i);
-        if (disc) return disc[1].trim();
-        return text.length > 80 ? text.slice(0, 420) : "";
-      }
-      function next(i) {
-        if (i >= urls.length) {
-          if (!el.dataset.ok) el.innerHTML = "<b>NHC discussion</b><span>Use the NHC maps on Tropical. Text product is blocked in the browser. Open hurricanes.gov for the written discussion.</span>";
-          return;
-        }
-        fetch(urls[i]).then(function (r) { return r.text(); }).then(function (t) {
-          var body = extract(t);
-          if (body.length < 60) return next(i + 1);
-          if (body.length > 480) body = body.slice(0, 477).replace(/\s+\S*$/, "") + "…";
-          el.dataset.ok = "1";
-          el.innerHTML = "<b>NHC discussion</b><span>" + body + "</span>";
-        }).catch(function () { next(i + 1); });
-      }
-      next(0);
+      var hdr = { "Accept": "application/ld+json", "User-Agent": "BeachWalkBoard/1.0 (valente.nick@gmail.com)" };
+      fetch("https://api.weather.gov/products?location=AT&type=TWO", { headers: hdr })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          var items = (list && list["@graph"]) || [];
+          var pick = null;
+          items.forEach(function (it) {
+            if (pick) return;
+            if (it.wmoCollectiveId === "ABNT20" || /KNHC/i.test(it.issuingOffice || "")) pick = it;
+          });
+          pick = pick || items[0];
+          if (!pick || !pick["@id"]) throw new Error("no TWO");
+          return fetch(pick["@id"], { headers: hdr }).then(function (r) { return r.json(); });
+        })
+        .then(function (prod) {
+          var text = String((prod && prod.productText) || "").replace(/\r/g, "");
+          var lines = text.split("\n").map(function (ln) { return ln.replace(/\s+$/, ""); });
+          var body = lines.filter(function (ln) {
+            return ln && !/^\d{3}$/.test(ln) && !/^ABNT|^TWOAT|^\$\$/.test(ln);
+          }).join(" ").replace(/\s+/g, " ").trim();
+          if (body.length > 520) body = body.slice(0, 500).replace(/\s+\S*$/, "") + "…";
+          if (!body) body = "Tropical Weather Outlook is quiet for the Atlantic and Gulf.";
+          var name = s && (s.name || s.Name);
+          el.innerHTML = "<b>NHC discussion</b><span>" + (name ? (name + " · ") : "") + body + "</span>";
+          if (typeof noteFeed === "function") noteFeed("nhc-disc", true, body.slice(0, 48));
+        })
+        .catch(function () {
+          if (!el.textContent || /Waiting|No named-storm/i.test(el.textContent)) {
+            el.innerHTML = "<b>NHC discussion</b><span>Could not load the Atlantic Tropical Weather Outlook.</span>";
+          }
+          if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "TWO failed");
+        });
     }
+
     function showHurrSlide(reset) {
       var slides = window.__hurrSlides || [];
       if (!slides.length) return;
