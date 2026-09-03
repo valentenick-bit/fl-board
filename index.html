@@ -515,7 +515,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v155</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v156</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -550,6 +550,10 @@
           <small class="stamp" data-feed="alerts"></small>
         </div>
         <p class="sky" id="do-hour" hidden></p>
+        <div id="today-music-wrap" hidden>
+          <h3 class="ent-h">Live music tonight</h3>
+          <div id="today-music"></div>
+        </div>
         <div class="today-boards">
           <div>
             <h3 class="ent-h">Out and about</h3>
@@ -882,8 +886,7 @@ Cart shop:</textarea>
             <li>Shared occupancy, vendors, and villa checks across every device</li>
             <li>Delivery “delivered” checkbox that other screens see</li>
             <li>Automatic BeachWalk / Englewood / Moose calendar wiring via Worker /ics</li>
-            <li>Tonight-only live music card</li>
-            <li>Commercial / clubhouse mode vs residential</li>
+                        <li>Commercial / clubhouse mode vs residential</li>
             <li>Greetings that rewrite 10–15 minutes before the next hour, not on a long timer</li>
                         <li>Kiosk Uber: request a ride from this wall, or send a car to pick someone up. The kiosk does not move, so every trip starts or ends at the villa / clubhouse pin.</li>
             <li>Kiosk Instacart: grocery order from the wall only, delivered to the same fixed kiosk address. Not a roaming phone cart.</li>
@@ -896,7 +899,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v155</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v156</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1124,7 +1127,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 155;
+    window.BOARD_VER = 156;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -3124,7 +3127,8 @@ function showPage(id) {
       "v152 — Roads uses FL511 live speed colors.",
       "v153 — Roads is a Google Map pinned on the saved address.",
       "v154 — Keeps the typed house number. Roads pins Google on that full line.",
-      "v155 — Roads Google map is zoomed to about a 10-mile radius."
+      "v155 — Roads Google map is zoomed to about a 10-mile radius.",
+      "v156 — Today shows a Live music tonight card when the calendars have one."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3424,6 +3428,22 @@ function showPage(id) {
     function paintToday() {
       var doBox = document.getElementById("today-do");
       var delBox = document.getElementById("today-deliv");
+      var musicBox = document.getElementById("today-music");
+      var musicWrap = document.getElementById("today-music-wrap");
+      if (musicBox) {
+        var live = (window.__entAll || []).filter(function (e) {
+          if (!e || !e.when || !isTodayET(e.when)) return false;
+          if (e.end && new Date(e.end).getTime() < Date.now()) return false;
+          var liveFlag = e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc));
+          if (!liveFlag) return false;
+          var hr = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }).format(e.when));
+          return e.allDay || hr >= 16;
+        }).slice(0, 6);
+        if (musicWrap) musicWrap.hidden = !live.length;
+        if (!live.length) musicBox.innerHTML = "";
+        else if (window.entCardHtml) musicBox.innerHTML = live.map(window.entCardHtml).join("");
+        else musicBox.innerHTML = live.map(function (e) { return "<div class=\"card music\"><b>" + (e.sum || "") + "</b></div>"; }).join("");
+      }
       if (doBox) {
         var evs = (window.__entAll || []).filter(function (e) {
           return e && e.when && isTodayET(e.when) && (!e.end || new Date(e.end).getTime() >= Date.now());
