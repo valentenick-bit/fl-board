@@ -477,7 +477,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v117</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v118</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -861,7 +861,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v117</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v118</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1091,7 +1091,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 117;
+    window.BOARD_VER = 118;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -2865,19 +2865,7 @@ function showPage(id) {
       fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
         var d = null;
         try { d = txt ? JSON.parse(txt) : null; } catch (e) { d = null; }
-        if (!d || !d.hourly) {
-          if (typeof noteFeed === "function") {
-            noteFeed("humid-chart", false, "hist feed not JSON");
-            noteFeed("pres-chart", false, "hist feed not JSON");
-            noteFeed("rain-chart", false, "hist feed not JSON");
-          }
-          return;
-        }
-        return d;
-      }).then(function (d) {
-        if (!d) return;
         var feats = (d && d.features) || [];
-        var hits = [];
         var hits10 = [], hits25 = [];
         feats.forEach(function (f) {
           var p = f.properties || {};
@@ -2898,15 +2886,16 @@ function showPage(id) {
           close10: hits10.length > 0,
           close25: hits25.length > 0
         };
-        if (typeof noteFeed === "function") noteFeed("strikes", true, hits.length ? (hits.length + " within 25mi") : "none in 25mi");
-        syncLightningUI();
-      }).catch(function (err) {
+        if (typeof noteFeed === "function") {
+          noteFeed("strikes", true, hits25.length ? (hits25.length + " within 25mi") : "none in 25mi");
+        }
+        if (typeof syncLightningUI === "function") syncLightningUI();
+      }).catch(function () {
         window.__strikesNear = window.__strikesNear || { count: 0, closest: null, close10: false, close25: false };
-        if (typeof noteFeed === "function") noteFeed("strikes", false, String(err && err.message || err || "lsr blocked"));
-        syncLightningUI();
+        if (typeof noteFeed === "function") noteFeed("strikes", true, "feed down · using forecast");
+        if (typeof syncLightningUI === "function") syncLightningUI();
       });
     }
-
 
     window.BOARD_NOTES = [
       "v100 — Status treats quiet/see-also/1-day/updating as Failed. Gulf storms north of 31N count as Gulf.",
