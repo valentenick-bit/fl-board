@@ -467,7 +467,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v106</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v107</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -590,10 +590,10 @@
           <div class="tile"><label>Rip tide</label><strong id="live-rip">Typical</strong></div>
           <div class="tile"><label>Red tide</label><strong id="live-redtide">Checking FWC</strong></div>
           <div class="tile"><label>Beach bacteria</label><strong id="live-bacteria">No advisory found</strong></div>
-          <div class="tile"><label>Seas</label><strong id="live-seas">See coastal waters</strong></div>
+          <div class="tile"><label>Seas</label><strong id="live-seas">—</strong></div>
           <div class="tile"><label>Small craft</label><strong id="live-craft">None posted</strong></div>
-          <div class="tile"><label>Gulf SST</label><strong id="live-sst">Gulf</strong></div>
-          <div class="tile"><label>Inlet water</label><strong id="live-wtemp">See Gulf SST</strong></div>
+          <div class="tile"><label>Gulf SST</label><strong id="live-sst">—</strong></div>
+          <div class="tile"><label>Inlet water</label><strong id="live-wtemp">—</strong></div>
         </div>
         <div class="card"><b>Gulf water history</b><span>Open-Meteo SST</span>
           <div class="tide" id="wtemp-chart"></div>
@@ -851,7 +851,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v106</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v107</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1081,7 +1081,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 106;
+    window.BOARD_VER = 107;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -2923,6 +2923,77 @@ function showPage(id) {
       if (typeof noteFeed === "function") noteFeed("guide", true, talk.length + " spoken cards");
 
     }
+
+    function fillEmptyCards() {
+      var line = document.getElementById("wx-nowline");
+      if (line && /updating/i.test(line.textContent || "")) {
+        var fx = (window.__hours && window.__hours[0] && window.__hours[0].shortForecast) || "";
+        var tmp = (document.getElementById("hdr-temp") || {}).textContent || "";
+        line.textContent = (typeof homePlace === "function" ? homePlace() : "Englewood") + " · " + (fx || tmp || "see Today");
+      }
+      var td = document.querySelector(".tenday");
+      if (td && td.querySelectorAll(".day").length < 8) {
+        var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
+          "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=America%2FNew_York";
+        fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
+          var d = null; try { d = JSON.parse(txt); } catch (e) { return; }
+          var times = (d.daily && d.daily.time) || [];
+          if (!times.length || !td) return;
+          td.innerHTML = times.slice(0, 10).map(function (day, i) {
+            var hi = Math.round(d.daily.temperature_2m_max[i]);
+            var lo = Math.round(d.daily.temperature_2m_min[i]);
+            var name = i === 0 ? "Today" : new Date(day + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
+            return '<div class="day' + (i === 0 ? " today" : "") + '"><span>' + name + "</span><span class=\"lo\">" + lo + "°</span><span class=\"hi\">" + hi + "°</span></div>";
+          }).join("");
+          if (typeof noteFeed === "function") noteFeed("10-day", true, times.length + " days");
+        }).catch(function () { if (typeof noteFeed === "function") noteFeed("10-day", false, "daily fetch failed"); });
+      }
+      var tideUrl = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" +
+        new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "") +
+        "&range=48&datum=MLLW&station=" + (typeof homeTide === "function" ? homeTide() : "8725809") +
+        "&time_zone=lst_ldt&units=english&interval=hilo&format=json";
+      fetch(tideUrl).then(function (r) { return r.text(); }).then(function (txt) {
+        var d = null; try { d = JSON.parse(txt); } catch (e) { return; }
+        var preds = (d && d.predictions) || [];
+        var now = Date.now();
+        var next = preds.filter(function (p) { return new Date(String(p.t).replace(" ", "T")).getTime() >= now; }).slice(0, 4);
+        var el = document.getElementById("live-tide-today");
+        if (el && next.length) {
+          el.textContent = next.map(function (p) {
+            var when = new Date(String(p.t).replace(" ", "T")).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+            return (p.type === "H" ? "High" : "Low") + " " + when + " " + Number(p.v).toFixed(2) + " ft";
+          }).join(" · ");
+          if (typeof noteFeed === "function") noteFeed("tide", true, el.textContent);
+        }
+      }).catch(function () {});
+      var marine = "https://marine-api.open-meteo.com/v1/marine?latitude=" + homeLat() + "&longitude=" + homeLon() +
+        "&current=sea_surface_temperature,wave_height&temperature_unit=fahrenheit&length_unit=imperial";
+      fetch(marine).then(function (r) { return r.text(); }).then(function (txt) {
+        var d = null; try { d = JSON.parse(txt); } catch (e) { return; }
+        var cur = (d && d.current) || {};
+        var sst = document.getElementById("live-sst");
+        var inlet = document.getElementById("live-wtemp");
+        var seas = document.getElementById("live-seas");
+        var coast = document.getElementById("live-coastal");
+        if (sst && cur.sea_surface_temperature != null) sst.textContent = Math.round(cur.sea_surface_temperature) + "°";
+        if (inlet && sst && /°/.test(sst.textContent || "")) inlet.textContent = sst.textContent.replace(/\s+/g, " ").trim();
+        if (seas && cur.wave_height != null) {
+          var ft = Number(cur.wave_height);
+          seas.textContent = (ft < 1.5 ? "1 ft" : ft.toFixed(1) + " ft");
+        }
+        if (coast && (/loading/i.test(coast.textContent || "") || !coast.textContent.trim())) {
+          var wave = seas && seas.textContent !== "—" ? seas.textContent : "light";
+          var water = sst && /°/.test(sst.textContent || "") ? sst.textContent : "";
+          coast.textContent = "Coastal waters near " + (typeof homePlace === "function" ? homePlace() : "Englewood") + (water ? " · water " + water : "") + " · seas " + wave + ".";
+        }
+        if (typeof noteFeed === "function") {
+          noteFeed("gulf-sst", !!(sst && /°/.test(sst.textContent || "")), sst ? sst.textContent : "");
+          noteFeed("inlet-temp", !!(inlet && /°/.test(inlet.textContent || "")), inlet ? inlet.textContent : "");
+          noteFeed("seas", !!(seas && /ft/.test(seas.textContent || "")), seas ? seas.textContent : "");
+          noteFeed("coastal", !!(coast && !/loading/i.test(coast.textContent || "")), coast ? coast.textContent : "");
+        }
+      }).catch(function () {});
+    }
     function settleBoardGaps() {
       try {
         if (typeof refreshExtras === "function") refreshExtras(window.__hours || [], window.__nwsDays || []);
@@ -3554,8 +3625,10 @@ function showPage(id) {
         if (typeof pollBreaking === "function") pollBreaking();
         if (typeof stampGreet === "function") stampGreet();
         var nowline = document.getElementById("wx-nowline");
-        if (nowline && /Englewood|Updating/.test(nowline.textContent || "")) {
-          nowline.textContent = homePlace() + " · updating";
+        if (nowline && (/Updating/i.test(nowline.textContent || "") || /· updating/i.test(nowline.textContent || ""))) {
+          var fx = (window.__hours && window.__hours[0] && window.__hours[0].shortForecast) || "";
+          var tmp = (document.getElementById("hdr-temp") || {}).textContent || "";
+          nowline.textContent = homePlace() + " · " + (fx || tmp || "see Today");
         }
         var audio = document.getElementById("radioPlayer");
         if (audio && audio.src) setLoudness(audio, audio.src);
@@ -4285,6 +4358,8 @@ function showPage(id) {
     if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 2 * 60 * 1000); }
     if (typeof loadHistWx === "function") { loadHistWx(); setInterval(loadHistWx, 30 * 60 * 1000); }
     if (typeof paintGuide === "function") paintGuide();
+    setTimeout(function () { if (typeof fillEmptyCards === "function") fillEmptyCards(); }, 2000);
+    setTimeout(function () { if (typeof fillEmptyCards === "function") fillEmptyCards(); }, 10000);
     setTimeout(function(){ if (typeof settleBoardGaps==="function") settleBoardGaps(); }, 2500);
     setTimeout(function(){ if (typeof settleBoardGaps==="function") settleBoardGaps(); }, 12000);
     startRotate();
