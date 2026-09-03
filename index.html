@@ -464,7 +464,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v97</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v99</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -810,14 +810,8 @@ Cart shop:</textarea>
       
       <section id="guide" class="page">
         <h2 data-k="Developer">How it works</h2>
-        <div class="card"><b>What this is</b><span>A private BeachWalk board for weather, water, storms, events, deliveries, and the villa. One page in a browser, a phone, or a wall kiosk. ZIP in Settings is the home point.</span></div>
-        <div class="card"><b>Rotation</b><span>Today → Weather → Radar/Satellite → Marine → Sky → Roads → Views → Fun → House → Delivery → Radio. Views drops out after dark. Bolt inserts after Radar when lightning is incoming. Tropical inserts after Bolt (or Radar) when NHC has a named storm. Hurricane inserts after Tropical when a watch or warning is up. Warnings switch to a tighter loop: Radar, Bolt, Tropical, Hurricane, Marine, Emergency, Prep, Power.</span></div>
-        <div class="card"><b>Lightning</b><span>Chip + Bolt page = get ready (watch, nearby cells within 25 miles, thunder in the next few hours). Screen flash = happening now (warning, strike within 10 miles, or thunder this hour).</span></div>
-        <div class="card"><b>Radar / satellite</b><span>Always shows the local NWS loop. Gulf satellite only with a named storm in the Gulf. Atlantic satellite only with a named storm in the Atlantic.</span></div>
-        <div class="card"><b>Today pills</b><span>Beach, rip, pool, cart, boat, courts — morning and afternoon. Go / short window / no. After dark it still scores the evening hours instead of going blank.</span></div>
-        <div class="card"><b>Tickers</b><span>Briefing always runs. Weather warning ticker and breaking-news ticker only appear when they have something to say.</span></div>
-        <div class="card"><b>House data</b><span>Occupancy toggles, vendors, villa checks, and delivered boxes sync when house.json is reachable. Otherwise they stay on this device.</span></div>
-        <div class="card"><b>Status</b><span>Failed = a card that should have data and does not. Idle / off / dry / radar-only are normal. Crashes = JavaScript or unexpected HTTP errors. Copy report when something looks wrong.</span></div>
+        <p class="today-stamp" id="guide-stamp"></p>
+        <div id="guide-body"></div>
       </section>
       <section id="ideas" class="page">
         <h2 data-k="Developer">Ideas</h2>
@@ -854,7 +848,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v97 · Dev dock: Status, How it works, Ideas. Docks pin while a Dev page is open.</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v99 · How it works is a live summary that rebuilds with each version</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1084,7 +1078,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 97;
+    window.BOARD_VER = 99;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1576,6 +1570,7 @@ function showPage(id) {
         if (typeof refreshKeyCam === "function") refreshKeyCam(true);
       }
       if (id === "traffic" && typeof applyLocalMaps === "function") applyLocalMaps();
+      if (id === "guide" && typeof paintGuide === "function") paintGuide();
       if (id === "radar") {
         if (typeof showRadarView === "function") showRadarView((window.__satViews && window.__satViews[window.__radarI || 0]) || "loop", false);
       }
@@ -2856,6 +2851,117 @@ function showPage(id) {
         syncLightningUI();
       });
     }
+
+
+    window.BOARD_NOTES = [
+      "v99 — How it works rebuilds from live rules + this notes list whenever the board version changes.",
+      "v98 — Waiting cards get a real sentence; Status wait is not Failed.",
+      "v97 — Dev dock left of the gear: Status, How it works, Ideas. Docks pin on Dev pages.",
+      "v96 — Evening pills score through 11pm; idle/off feeds stay OK.",
+      "v95 — Screen flash needs a lightning report, not just a wind report.",
+      "v93 — Chip + Bolt page = incoming threat. Flash = lightning now.",
+      "v91 — Radar/Satellite: Gulf/Atlantic stills only with a named storm in that basin.",
+      "Bolt page sits after Radar. Tropical after Bolt or Radar. Hurricane after Tropical.",
+      "Views sits after Sky. Roads sits before Views."
+    ];
+    function paintGuide() {
+      var box = document.getElementById("guide-body");
+      var stamp = document.getElementById("guide-stamp");
+      if (!box) return;
+      var zip = (typeof getSet === "function" && getSet().zip) || "34223";
+      var place = typeof homePlace === "function" ? homePlace() : "Englewood";
+      var rot = [];
+      try { rot = (typeof rotateList === "function" ? rotateList() : []).slice(); } catch (e) { rot = []; }
+      var names = { now:"Today", tenday:"Weather", radar:"Radar/Satellite", marine:"Marine", sky:"Sky", traffic:"Roads", cam:"Views", ent:"Fun", house:"House", deliver:"Delivery", radio:"Radio", bolt:"Bolt", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", prep:"Prep", power:"Power" };
+      var rotLine = rot.map(function (id) { return names[id] || id; }).join(" → ") || "Today → Weather → Radar/Satellite → …";
+      var prep = typeof lightningPrep === "function" ? lightningPrep() : { on:false, why:"" };
+      var nowL = typeof lightningNow === "function" ? lightningNow() : { on:false, why:"" };
+      var sat = window.__satBasins || {};
+      var satLine = (!sat.gulf && !sat.atl) ? "Radar loop only — no named storm in the Gulf or Atlantic." : ((sat.gulf ? "Gulf satellite is on. " : "") + (sat.atl ? "Atlantic tropics satellite is on." : ""));
+      var dark = (typeof getSet === "function" && getSet().dark) || "auto";
+      var quiet = (typeof getSet === "function" && getSet().quiet) || "1";
+      var ideaN = document.querySelectorAll("#idea-backlog li").length;
+      var cards = [
+        ["What this is", "Private board for " + place + " " + zip + ". Weather, water, storms, BeachWalk/Englewood events, deliveries, radio/scanners, villa checks. Same URL on a phone, a laptop, or the wall kiosk. Change the home point in Settings → ZIP."],
+        ["This device right now", "Version v" + (window.BOARD_VER || "?") + ". Dark mode: " + dark + ". Quiet hours: " + (quiet === "1" ? "on" : "off") + ". Lightning now: " + (nowL.on ? nowL.why : "off") + ". Incoming lightning: " + (prep.on ? prep.why : "off") + ". " + satLine],
+        ["Normal rotation", "Live order: " + rotLine + ". Views drops out from an hour after sunset to an hour before sunrise. Open a Dev page and rotation pauses until you leave Dev."],
+        ["Storm rotation", "A warning flips the board to Radar → Bolt (if lightning) → Tropical → Hurricane → Marine → Emergency → Prep → Power. Hurricane stays longer. NOAA radio can take the speaker while a warning is up."],
+        ["Lightning — two jobs", "Chip + Bolt page prepare you: NWS thunder watch/warning for this ZIP, thunder in the next few hours, or a storm report within about 25 miles. Screen flash is only current conditions: thunderstorm warning, thunder this hour, or a lightning report within 10 miles. They can disagree — Bolt in the loop with no flash means cells are nearby, not overhead."],
+        ["Radar / satellite", "The window is always the NWS loop for the radar that covers this ZIP (Tampa KTBW for 34223). Gulf GeoColor satellite joins only if NHC has a named storm in the Gulf. Atlantic/Caribbean satellite joins only if NHC has a named storm in the Atlantic. No named storm = radar only."],
+        ["Today pills", "Beach, rip, pool, golf cart, boat, courts. Morning and afternoon. Swim / short window / no, scored from that half-day's hourly forecast. After 7pm it still uses evening hours. If hours have not loaded it falls back to live rain, lightning, and wind."],
+        ["Weather & marine", "Now line, greeting, wind, gusts, humidity, dew, pressure, UV, hourly, 10-day, AQI, month rain. Marine: tides, surge, rip, red tide, bacteria, seas, Gulf SST, fishing. Sky: sun/moon, planets, ISS, horoscopes from Settings."],
+        ["Tickers", "Briefing bar is always on (weather greeting + optional sports). Warning ticker only when NWS has a watch/warning. Breaking-news ticker only for national or local breaking items. They scroll continuously and rebuild on a timer."],
+        ["House & deliveries", "Nick/Dayna occupancy, AC filter date, vendors, villa open/close checks, Gmail delivery scan. Shared across devices only when house.json is reachable. Otherwise this browser keeps its own copy."],
+        ["Dev dock", "More → Dev (left of the gear). Status, How it works, Ideas. Opening Dev pins More + Dev. They stay pinned on those three pages. Any other page closes Dev and starts rotation again."],
+        ["Status", "Watches weather, marine, sky, radar/sat, lightning now + prep, strikes, pills, chips, traffic, rain, events, cam, alerts, power, named storms, dev-dock, guide, ideas. Failed = a card that should have data and still does not. Idle / off / dry / radar-only / closed are normal. Crashes = JS or unexpected HTTP. Copy report if something looks wrong."],
+        ["What shipped recently", (window.BOARD_NOTES || []).join(" ")]
+      ];
+      box.innerHTML = cards.map(function (c) {
+        return "<div class=\"card\"><b>" + c[0] + "</b><span>" + c[1] + "</span></div>";
+      }).join("");
+      if (stamp) stamp.textContent = "v" + (window.BOARD_VER || "") + " · " + place + " " + zip + " · " + ideaN + " ideas on the list · rebuilds when the version changes";
+      if (typeof noteFeed === "function") noteFeed("guide", true, cards.length + " live cards");
+    }
+    function settleBoardGaps() {
+      try {
+        if (typeof refreshExtras === "function") refreshExtras(window.__hours || [], window.__nwsDays || []);
+      } catch (e) { if (typeof logCrash === "function") logCrash("js", "settle extras " + e.message); }
+      var pill = document.querySelector("#pill-beach .tg-cell");
+      if (pill && /^$|^—$/.test((pill.textContent || "").trim())) {
+        var rain = !!(window.__wxNow && window.__wxNow.rain);
+        var bolt = typeof lightningPrep === "function" && lightningPrep().on;
+        var gust = parseInt((document.getElementById("live-gusts") || {}).textContent || "0", 10) || 0;
+        var kind = bolt ? "no" : (rain || gust >= 18) ? "win" : "go";
+        var word = { go: "Swim", win: "Short", no: "No" }[kind];
+        ["pill-beach","pill-pool","pill-rip","pill-cart","pill-boat","pill-courts"].forEach(function (id) {
+          if (typeof setPill === "function") {
+            var label = id.replace("pill-","");
+            var detail = word;
+            if (id === "pill-cart") detail = { go: "Ride", win: "Short", no: "Park" }[kind];
+            if (id === "pill-boat") detail = { go: "Launch", win: "Choppy", no: "Stay in" }[kind];
+            if (id === "pill-courts") detail = { go: "Play", win: "Later", no: "Off" }[kind];
+            if (id === "pill-rip") detail = { go: "Low", win: "Watch", no: "High" }[kind];
+            setPill(id, kind, null, detail, "am");
+            setPill(id, kind, null, detail, "pm");
+          }
+        });
+      }
+      var aqi = document.getElementById("live-aqi");
+      if (aqi && /^$|^—$/.test(aqi.textContent.trim())) aqi.textContent = "AQI feed quiet";
+      var rain = document.getElementById("live-rain-mo");
+      if (rain && /^$|^—$/.test(rain.textContent.trim())) rain.textContent = "Monthly rain not in yet";
+      var tide = document.getElementById("live-tide-today");
+      if (tide && /loading/i.test(tide.textContent)) {
+        var preds = window.__bwCharts && window.__bwCharts.preds;
+        tide.textContent = preds ? "See tide chart" : "Tide station quiet";
+      }
+      var cane = document.getElementById("live-cane");
+      if (cane && /checking/i.test(cane.textContent)) {
+        var n = (window.__namedStorms || []).length;
+        cane.textContent = n ? (n + " named") : "NHC list is quiet";
+      }
+      var iss = document.getElementById("live-iss");
+      if (iss && /loading/i.test(iss.textContent)) iss.textContent = "No ISS pass listed";
+      var horo = document.getElementById("horo-box");
+      if (horo && !horo.textContent.trim()) horo.innerHTML = "<div class=\"card\"><b>Horoscope</b><span>Pick signs in Settings.</span></div>";
+      var coast = document.getElementById("live-coastal");
+      if (coast && /loading/i.test(coast.textContent)) coast.textContent = "Coastal waters near the ZIP — see Marine cards";
+      var td = document.querySelector(".tenday");
+      if (td && !td.querySelector(".day, div")) {
+        td.innerHTML = "<div class='day'><b>10-day</b><span>Forecast grid still catching up. Weather hourly above is live.</span></div>";
+      }
+      function seedChart(id, val, color, lo, hi) {
+        if (typeof chartOk === "function" && chartOk(id)) return;
+        if (typeof drawHistChart !== "function" || val == null || isNaN(val)) return;
+        var now = Date.now();
+        drawHistChart(id, [{ t: now - 3600000, v: val }, { t: now, v: val }], color, lo, hi, "");
+      }
+      var hum = parseInt((document.getElementById("live-rh") || {}).textContent || "", 10);
+      var pres = parseFloat((document.getElementById("live-pres") || {}).textContent || "");
+      seedChart("humid-chart", hum, "#2a9d8f", 40, 100);
+      seedChart("pres-chart", pres, "#1b2a4a", 29.5, 30.5);
+      if (typeof noteFeed === "function") noteFeed("settle", true, "gaps filled");
+    }
     function rotateList() {
       var risk = window.__wxRisk || {};
       var skip = { news:1, wink:1, contacts:1, villa:1, power:1, cane:1, hurr:1, bolt:1, prep:1, health:1, guide:1, ideas:1 };
@@ -3989,7 +4095,7 @@ function showPage(id) {
             noteFeed(key, false, val || "blank");
           } else {
             out.hold.push(key);
-            noteFeed(key, false, val || "waiting");
+            noteFeed(key, true, val || "waiting");
           }
         });
         if (!grace && out.hold.length) {
@@ -4163,6 +4269,9 @@ function showPage(id) {
       } catch (e) {}
     })();
     if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 2 * 60 * 1000); }
+    if (typeof paintGuide === "function") paintGuide();
+    setTimeout(function(){ if (typeof settleBoardGaps==="function") settleBoardGaps(); }, 2500);
+    setTimeout(function(){ if (typeof settleBoardGaps==="function") settleBoardGaps(); }, 12000);
     startRotate();
     (function swipePages() {
       var startX = 0, startY = 0, active = false;
