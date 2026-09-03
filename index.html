@@ -374,6 +374,16 @@
     html.kiosk .page.on > .hurr-stage { flex:1 1 auto; min-height:0; }
     html.kiosk .keycam { height:auto; min-height:0; margin:6px 0; }
     html.kiosk .tide { height:64px; } .tide.hist { height:92px; }
+
+    .surge-gauge { position:relative; height:36px; margin:8px 0 4px; }
+    .surge-track { position:absolute; left:8px; right:8px; top:14px; height:6px; border-radius:99px; background:linear-gradient(90deg,#2a9d8f 0%,#e8dfcf 50%,#e07a5f 100%); opacity:.85; }
+    .surge-zero { position:absolute; left:50%; top:8px; width:2px; height:18px; background:#1b2a4a; transform:translateX(-1px); }
+    .surge-thumb { position:absolute; top:9px; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:#1b2a4a; border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.25); left:50%; }
+    .surge-lo,.surge-mid,.surge-hi { position:absolute; top:22px; font-size:10px; color:var(--muted); }
+    .surge-lo { left:8px; }
+    .surge-mid { left:50%; transform:translateX(-50%); }
+    .surge-hi { right:8px; }
+
     html.kiosk .day { padding:4px 10px; }
     html.kiosk .card { padding:8px 10px; margin-bottom:6px; }
     html.kiosk h2 { margin:0 0 6px; }
@@ -467,7 +477,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v111</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v115</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -582,8 +592,8 @@
         <div class="card"><b id="tide-title">Tide</b><span id="live-tide-today">Loading tides…</span>
           <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/></svg></div>
         </div>
-        <div class="card"><b>Ocean surge</b><span id="live-surge">vs predicted tide</span>
-          <div class="tide" id="surge-chart"></div>
+        <div class="card"><b>Ocean surge</b><span id="live-surge">24 hours vs predicted tide</span>
+          <div class="tide hist" id="surge-chart"></div>
         </div>
         </div>
         <div class="tiles">
@@ -851,7 +861,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v111</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v115</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1081,7 +1091,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 111;
+    window.BOARD_VER = 115;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -4538,28 +4548,13 @@ function showPage(id) {
       );
     }
 function drawSurgeChart(points) {
-      var box = document.getElementById("surge-chart");
       var lab = document.getElementById("live-surge");
-      if (!box || !points || points.length < 2) return;
-      var clean = points.filter(function (p) { return p && !isNaN(p.t) && !isNaN(p.v) && Math.abs(p.v) < 8; });
+      var clean = (points || []).filter(function (p) { return p && !isNaN(p.t) && !isNaN(p.v) && Math.abs(p.v) < 6; });
       if (clean.length < 2) return;
-      var t0 = clean[0].t, t1 = clean[clean.length - 1].t;
-      var vmax = Math.max(0.6, Math.max.apply(null, clean.map(function (p) { return Math.abs(p.v); })));
-      function X(ms) { return 10 + ((ms - t0) / (t1 - t0)) * 200; }
-      function Y(v) { return 40 - (v / vmax) * 26; }
-      var d = clean.map(function (p, i) { return (i ? "L" : "M") + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
-      var now = Date.now();
-      var nx = X(Math.max(t0, Math.min(t1, now)));
       var last = clean[clean.length - 1].v;
-      if (lab) lab.textContent = (last >= 0 ? "+" : "") + last.toFixed(2) + " ft vs tide";
-      box.setAttribute("data-n", String(clean.length));
-      box.innerHTML = svgWrap(
-        '<line x1="10" y1="40" x2="210" y2="40" stroke="#d7cdbb"/>' +
-        '<path d="' + d + '" fill="none" stroke="#e07a5f" stroke-width="2.2" stroke-linejoin="round"/>' +
-        '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="68" stroke="#1b2a4a" stroke-width="1.3"/>' +
-        '<text x="8" y="84" font-size="8" fill="#5c6b7a">-' + vmax.toFixed(1) + " ft</text>" +
-        '<text x="160" y="84" font-size="8" fill="#5c6b7a">+' + vmax.toFixed(1) + " ft</text>"
-      );
+      var vmax = Math.max(0.5, Math.max.apply(null, clean.map(function (p) { return Math.abs(p.v); })));
+      if (lab) lab.textContent = (last >= 0 ? "+" : "") + last.toFixed(2) + " ft vs predicted tide";
+      drawHistChart("surge-chart", clean, "#e07a5f", -vmax, vmax, " ft");
     }
 function drawHistChart(id, points, color, ymin, ymax, unit) {
       var box = document.getElementById(id);
@@ -4573,8 +4568,15 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var nx = X(Math.max(t0, Math.min(t1, now)));
       box.setAttribute("data-n", String(points.length));
       box.setAttribute("data-stub", points.length < 8 ? "1" : "0");
+      var zero = "";
+      if (ymin < 0 && ymax > 0) {
+        var zy = Y(0);
+        zero = '<line x1="10" y1="' + zy.toFixed(1) + '" x2="210" y2="' + zy.toFixed(1) + '" stroke="#1b2a4a" stroke-width="1.2"/>' +
+          '<text x="12" y="' + (zy - 3).toFixed(1) + '" font-size="7" fill="#5c6b7a">0</text>';
+      }
       box.innerHTML = svgWrap(
         '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
+        zero +
         '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2.4"/>' +
         '<line x1="' + nx.toFixed(1) + '" y1="12" x2="' + nx.toFixed(1) + '" y2="70" stroke="#e07a5f" stroke-width="1.5"/>' +
         '<text x="8" y="84" font-size="8" fill="#5c6b7a">' + (typeof ymin === "number" ? ymin.toFixed(ymin % 1 ? 1 : 0) : ymin) + unit + '</text>' +
@@ -4675,14 +4677,21 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var obs = ((pair[0] || {}).data) || [];
           var pr = ((pair[1] || {}).predictions) || [];
           if (!obs.length) return false;
-          var pmap = {};
-          pr.forEach(function (p) { pmap[p.t] = parseFloat(p.v); });
+          function predNear(tstr) {
+            var ts = new Date(String(tstr).replace(" ", "T")).getTime();
+            var best = null, bestD = 1e15;
+            pr.forEach(function (p) {
+              var d = Math.abs(new Date(String(p.t).replace(" ", "T")).getTime() - ts);
+              if (d < bestD) { bestD = d; best = parseFloat(p.v); }
+            });
+            return bestD <= 45 * 60 * 1000 && best != null && !isNaN(best) ? best : null;
+          }
           var pts = [];
           obs.forEach(function (o) {
-            var pred = pmap[o.t];
-            var v = pred != null ? parseFloat(o.v) - pred : parseFloat(o.v);
-            if (isNaN(v)) return;
-            pts.push({ t: new Date(String(o.t).replace(" ", "T")).getTime(), v: pred != null ? v : NaN, raw: parseFloat(o.v) });
+            var pred = predNear(o.t);
+            var obsV = parseFloat(o.v);
+            if (pred == null || isNaN(obsV)) return;
+            pts.push({ t: new Date(String(o.t).replace(" ", "T")).getTime(), v: obsV - pred });
           });
           var vs = pts.filter(function (p) { return !isNaN(p.v); });
           if (vs.length < 3) {
