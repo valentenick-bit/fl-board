@@ -477,7 +477,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v121</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v122</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -861,7 +861,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v121</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v122</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1091,7 +1091,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 121;
+    window.BOARD_VER = 122;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -5666,12 +5666,23 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var rhEl = document.getElementById("live-rh");
       var dewEl = document.getElementById("live-dew");
       var presEl = document.getElementById("live-pres");
-      if (rhEl && c.relative_humidity_2m != null) rhEl.textContent = Math.round(c.relative_humidity_2m) + "%";
-      if (dewEl && c.dew_point_2m != null) dewEl.textContent = "Dew " + Math.round(c.dew_point_2m) + "°";
-      if (presEl && c.surface_pressure != null) presEl.textContent = (Number(c.surface_pressure) * 0.02953).toFixed(2) + '"';
       var h = om.hourly || {};
       var times = h.time || [];
       var now = Date.now();
+      var lastH = -1;
+      for (var hi = 0; hi < times.length; hi++) {
+        var hts = new Date(times[hi]).getTime();
+        if (hts <= now + 20 * 60000) lastH = hi;
+      }
+      var rhNow = c.relative_humidity_2m;
+      if (rhNow == null && lastH >= 0 && h.relative_humidity_2m) rhNow = h.relative_humidity_2m[lastH];
+      var dewNow = c.dew_point_2m;
+      if (dewNow == null && lastH >= 0 && h.dew_point_2m) dewNow = h.dew_point_2m[lastH];
+      var presNow = c.surface_pressure;
+      if (presNow == null && lastH >= 0 && h.surface_pressure) presNow = h.surface_pressure[lastH];
+      if (rhEl && rhNow != null && !/%/.test(rhEl.textContent || "")) rhEl.textContent = Math.round(rhNow) + "%";
+      if (dewEl && dewNow != null && !/Dew/.test(dewEl.textContent || "")) dewEl.textContent = "Dew " + Math.round(dewNow) + "°";
+      if (presEl && presNow != null && !/\d/.test(presEl.textContent || "")) presEl.textContent = (Number(presNow) * 0.02953).toFixed(2) + '"';
       var hum = [], pres = [], rain = [];
       for (var i = 0; i < times.length; i++) {
         var ts = new Date(times[i]).getTime();
@@ -5722,7 +5733,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
 
     function refreshWeather() {
       var hdr = { "Accept": "application/geo+json", "User-Agent": "BeachWalkBoard/1.0 (valente.nick@gmail.com)" };
-      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,uv_index&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,uv_index,relative_humidity_2m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York")
+      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,uv_index&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,uv_index,relative_humidity_2m,dew_point_2m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .catch(function () { return null; });
       fetch("https://api.weather.gov/points/" + homePoint(), { headers: hdr })
