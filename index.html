@@ -517,7 +517,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v158</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v159</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -896,7 +896,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v158</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v159</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1015,9 +1015,6 @@ Cart shop:</textarea>
         <ul id="addr-suggest" class="addr-suggest" hidden></ul>
         <button type="button" id="set-address-go" class="done" style="margin:8px 0 10px">Use this address</button>
         <p class="hint" id="set-zip-hint">Full line: number, street, city, state. Weather, radar, tides, scanners, and maps pin here.</p>
-        <h3>Sports</h3>
-        <p class="hint">Teams on the briefing ticker. Clubs within 150 miles start checked. Same list as the Sports page.</p>
-        <div id="set-sports-box" class="set-sports-box"></div>
         <label>Trash day</label>
         <div class="set-row" id="set-trash">
           <button type="button" data-v="0">Sun</button>
@@ -1127,7 +1124,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 158;
+    window.BOARD_VER = 159;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -3130,7 +3127,8 @@ function showPage(id) {
       "v155 — Roads Google map is zoomed to about a 10-mile radius.",
       "v156 — Today shows a Live music tonight card when the calendars have one.",
       "v157 — Removed the Tonight live-music block. Out and about stays.",
-      "v158 — Sports lists every NFL, MLB, NBA, and NHL club in Settings and on the Sports page."
+      "v158 — Sports lists every NFL, MLB, NBA, and NHL club in Settings and on the Sports page.",
+      "v159 — Full team list lives on the Sports page only."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3864,8 +3862,6 @@ function showPage(id) {
         if (addr) addr.value = s.address || addr.value || "";
         var hint = document.getElementById("set-zip-hint");
         if (hint) hint.textContent = (s.place || "Englewood FL") + " · " + Number(s.lat).toFixed(3) + ", " + Number(s.lon).toFixed(3) + ". Tides and BeachWalk calendars stay on the Key.";
-        if (typeof paintSportsPage === "function") paintSportsPage();
-        if (typeof bindSportsPage === "function") bindSportsPage();
       }
       function applySkin() {
         var s = getSet();
@@ -6621,10 +6617,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         }).join("");
         return "<div class='sport-league' data-lg='" + L[0] + "'><h3><label class='master'><input type='checkbox' data-master='" + L[0] + "'" + (any ? " checked" : "") + "> " + L[1] + "</label></h3>" + teams + "</div>";
       }).join("");
-      ["sports-box","set-sports-box"].forEach(function(id){
-        var box = document.getElementById(id);
-        if (box) box.innerHTML = html;
-      });
+      var box = document.getElementById("sports-box");
+      if (box) box.innerHTML = html;
     }
     function bindSportsPage(){
       function attach(box){
@@ -6658,7 +6652,6 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       });
       }
       attach(document.getElementById("sports-box"));
-      attach(document.getElementById("set-sports-box"));
     }
     function loadSportsScores(done){
       function finish(lines) {
