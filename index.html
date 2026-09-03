@@ -477,7 +477,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v120</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v121</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -861,7 +861,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v120</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v121</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1091,7 +1091,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 120;
+    window.BOARD_VER = 121;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -5707,8 +5707,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       }
     }
     function fillFromOm(om) {
-      if (!applyOmNow(om)) return false;
+      var nowOk = applyOmNow(om);
       try { paintWxFromOm(om); } catch (e0) {}
+      if (!nowOk) return false;
       var hours = hoursFromOm(om);
       var days = daysFromOm(om);
       window.__hours = hours;
@@ -5773,6 +5774,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var dewF = nowH.dewpoint && nowH.dewpoint.value != null ? Math.round(nowH.dewpoint.value) : c2f(obs.dewpoint && obs.dewpoint.value);
           if (nowH.dewpoint && nowH.dewpoint.unitCode && /degC/.test(nowH.dewpoint.unitCode)) dewF = c2f(nowH.dewpoint.value);
           var rh = (nowH.relativeHumidity && nowH.relativeHumidity.value != null) ? Math.round(nowH.relativeHumidity.value) : (obs.relativeHumidity && obs.relativeHumidity.value != null ? Math.round(obs.relativeHumidity.value) : null);
+          if (rh == null && om.current && om.current.relative_humidity_2m != null) rh = Math.round(om.current.relative_humidity_2m);
+          if ((dewF == null || isNaN(dewF)) && om.current && om.current.dew_point_2m != null) dewF = Math.round(om.current.dew_point_2m);
           var windTxt = nowH.windSpeed || "";
           var windDir = nowH.windDirection || degToCard(obs.windDirection && obs.windDirection.value);
           if (!windTxt && obs.windSpeed && obs.windSpeed.value != null) windTxt = kph2mph(obs.windSpeed.value) + " mph";
@@ -5822,6 +5825,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             meta.innerHTML = "<div>" + (obs.textDescription || nowH.shortForecast || "") + "</div><div>Rain next hr " + (rain != null ? rain + "%" : "—") + "</div><div>" + (windDir + " " + windTxt).trim() + "</div><div>" + (pres ? pres + '"' : "") + "</div>";
           }
           window.__hours = hours;
+          try { if (typeof paintWxFromOm === "function") paintWxFromOm(om); } catch (eWx) {}
           if (skyEl) {
             var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
             var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
