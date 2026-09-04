@@ -659,11 +659,17 @@
     .page.settings.on { display:block !important; }
     .settings-head {
       position:sticky; top:0; z-index:2;
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding:12px 16px 10px;
+      display:flex; align-items:center; justify-content:flex-start; gap:8px;
+      padding:8px 12px 10px;
       background:rgba(247,241,230,.97);
       border-bottom:1px solid var(--hair);
     }
+    .page-back {
+      width:40px; height:40px; flex:0 0 40px; border:0; background:transparent;
+      font-size:34px; line-height:1; color:var(--navy); cursor:pointer; margin-left:-6px;
+    }
+    html.dark .page-back { color:#f7f1e6; }
+    .page.settings > h2 { display:none; }
     .settings-head strong { font-size:18px; letter-spacing:-.02em; }
     .settings-head span { display:block; font-size:12px; color:var(--muted); font-weight:600; margin-top:1px; }
     .set-card {
@@ -875,7 +881,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v261</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v265</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="flash" id="stormflash"></div>
     <div class="rainlayer" id="rainlayer"></div>
@@ -1401,21 +1407,24 @@ Cart shop:</textarea>
       </section>
     <section id="health" class="page">
         <h2 data-k="Board">Status</h2>
+        <p class="pill-key">Copy the report when something is wrong. Failed and crashes are the first things to read.</p>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
-        <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v179</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
+        <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v263</span></div>
+        <div class="card"><b>Now</b><span id="health-now">Checking…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
+        <div class="card"><b>Weather</b><span id="health-wx">Checking…</span></div>
+        <div class="card"><b>Marine</b><span id="health-marine">Checking…</span></div>
+        <div class="card"><b>Sky</b><span id="health-sky">Checking…</span></div>
+        <div class="card"><b>House and other</b><span id="health-extra">Checking…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
-        <div class="card"><b>Weather cards</b><span id="health-wx">Checking…</span></div>
-        <div class="card"><b>Marine cards</b><span id="health-marine">Checking…</span></div>
-        <div class="card"><b>Sky cards</b><span id="health-sky">Checking…</span></div>
         <div class="card"><b>Last updates</b><span id="health-all"></span></div>
-        <div class="card"><b>Developer</b><span>How it works and the ideas list live in the Dev dock, left of the gear.</span></div>
       </section>
     <section class="page settings" id="settings">
       <h2 data-k="Board">Settings</h2>
       <div class="settings-head">
+        <button type="button" class="page-back" data-leave="settings" title="Back" aria-label="Back">‹</button>
         <div><strong>Settings</strong><span>Board look, sound, radio, teams, and what rotates</span></div>
       </div>
       <div class="set-card">
@@ -1631,6 +1640,7 @@ Cart shop:</textarea>
     <section class="page settings" id="account">
       <h2 data-k="Board">Account</h2>
       <div class="settings-head">
+        <button type="button" class="page-back" data-leave="account" title="Back" aria-label="Back">‹</button>
         <div><strong>Account</strong><span>Home pin for weather, maps, scanners, and this wall</span></div>
       </div>
       <div class="set-card">
@@ -1748,7 +1758,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 261;
+    window.BOARD_VER = 265;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -1840,21 +1850,36 @@ Cart shop:</textarea>
       var wx = (document.getElementById("health-wx") || {}).textContent || "";
       var marine = (document.getElementById("health-marine") || {}).textContent || "";
       var sky = (document.getElementById("health-sky") || {}).textContent || "";
+      var extra = (document.getElementById("health-extra") || {}).textContent || "";
+      var now = (document.getElementById("health-now") || {}).textContent || "";
       var on = document.querySelector(".page.on");
+      var set = typeof getSet === "function" ? getSet() : {};
+      var rot = [];
+      try { rot = (typeof rotateList === "function" ? rotateList() : []).slice(); } catch (e) { rot = []; }
+      var downFeeds = Object.keys(window.__feeds || {}).filter(function (k) { return window.__feeds[k] && window.__feeds[k].ok === false; }).map(function (k) {
+        var f = window.__feeds[k];
+        return k + ": " + String(f.detail || "down").slice(0, 80);
+      });
       var lines = [
         "Commons report",
         "version: v" + (window.BOARD_VER || "?"),
         "url: " + location.href,
         "when: " + new Date().toISOString(),
-        "zip/place: " + (typeof homePlace === "function" ? homePlace() : "") + " " + ((typeof getSet === "function" && getSet().zip) || ""),
+        "now: " + now,
+        "zip/place: " + (typeof homePlace === "function" ? homePlace() : "") + " " + (set.zip || ""),
         "page: " + (on ? on.id : "?"),
+        "dark: " + (set.dark || "auto") + " · quiet: " + (set.quiet || ""),
+        "rotation: " + (rot.join(" > ") || "none"),
         "temp: " + ((document.getElementById("live-temp") || {}).textContent || ""),
-        "crashes: " + ((window.__crashes || []).join(" || ") || "none"),
+        "named: " + ((window.__namedStorms || []).length ? (window.__namedStorms || []).map(function (s) { return s.name || s; }).join(", ") : "none"),
+        "crashes: " + ((window.__crashes || []).slice(0, 8).join(" || ") || "none"),
         "failed: " + fail,
+        "down-feeds: " + (downFeeds.join(" | ") || "none"),
         "stale: " + stale,
         "weather: " + wx,
         "marine: " + marine,
         "sky: " + sky,
+        "other: " + extra,
         "feeds: " + Object.keys(window.__feeds || {}).map(function (k) {
           var f = window.__feeds[k];
           return k + "=" + (f.ok ? "ok" : "down") + (f.detail ? "(" + String(f.detail).slice(0, 40) + ")" : "");
@@ -2592,6 +2617,8 @@ Cart shop:</textarea>
 
 function showPage(id) {
       window.showPage = showPage;
+      var cur = document.querySelector(".page.on");
+      if (cur && cur.id && cur.id !== "settings" && cur.id !== "account") window.__fromPage = cur.id;
       if (id === "sports" || id === "radio") {
         var jump = id === "sports" ? "set-sports" : "set-radio";
         id = "settings";
@@ -4290,6 +4317,16 @@ function showPage(id) {
     }
 
     window.BOARD_NOTES = [
+      "v265 — Settings and Account have an app-style back arrow that returns to the last board page.",
+      "v264 — Status leads with Failed and Crashes. Copied report includes rotation, down feeds, and House and other.",
+      "v263 — Status also watches deliveries, house, emergency, prep, hurricane, news, sports, radio, tickers, header temp, sources, and villa checks. Waiting/checking sentences count as placeholders.",
+      "v262 — Build card shows the note for this version, not an old line with a new number.",
+      "v261 — Dark mode uses shared tokens. Empty cards speak in sentences instead of dashes.",
+      "v260 — Developer Sources page lists the feed and the collection site for each number.",
+      "v259 — Each palm has its own curved trunk, height, and thickness.",
+      "v258 — Welcome letter is a Commons pitch on companion, community, compass, command.",
+      "v257 — Cards, tiles, and map frames share one cream surface and 16px corners.",
+      "v256 — Tickers sit under the dock again.",
       "v237 — Sports teams and Radio stations live in Settings. They are no longer separate pages or rotation stops.",
       "v100 — Status treats quiet/see-also/1-day/updating as Failed. Gulf storms north of 31N count as Gulf.",
       "v99 — How it works rebuilds from live rules + this notes list whenever the board version changes.",
@@ -5967,7 +6004,7 @@ function showPage(id) {
         if (/did not load|timed out|not wired|video unavailable|no data was found/i.test(s)) return "failed";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
         if (s.length < 90 && /quiet|not in yet|see marine|see gulf sst|see tide|gaps filled|catching up|pick signs/i.test(s)) return "failed";
-        if (/^(loading|checking|updating)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc|· updating/i.test(s))
+        if (/^(loading|checking|updating|waiting|pulling|looking up)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc|waiting on the home|checking gulf|checking noaa|checking air|pulling the nws|looking up the next|· updating/i.test(s))
           return grace ? "placeholder" : "failed";
         if (!s || /^(—|–|…|\.{1,3}|n\/a|See )/i.test(s)) return grace ? "placeholder" : "failed";
         if (/\b1 days\b/.test(s)) return "failed";
@@ -6076,7 +6113,21 @@ function showPage(id) {
           ["events", txt("ent-count")],
           ["gator", txt("live-gator")],
           ["power", txt("live-fpl") || txt("fpl-tot")],
-          ["cam", document.getElementById("keycam-yt") ? (txt("keycam-cap") || "siesta") : txt("keycam-cap")]
+          ["cam", document.getElementById("keycam-yt") ? (txt("keycam-cap") || "siesta") : txt("keycam-cap")],
+          ["deliveries", (window.__feeds && window.__feeds.deliveries && window.__feeds.deliveries.detail) || txt("deliv-note") || ""],
+          ["flights-page", txt("live-flights")],
+          ["house", txt("house-occ") + " " + txt("house-seen")],
+          ["emergency", (document.querySelectorAll("#contacts a.dial").length || document.querySelectorAll("#contacts .card").length) ? "contacts" : ""],
+          ["prep", document.querySelectorAll("#prep li, #prep .card").length ? (document.querySelectorAll("#prep li, #prep .card").length + " items") : ""],
+          ["hurr", txt("hurr-stats") || ((document.querySelector("#hurr-stats b") || {}).textContent || "")],
+          ["news", txt("news-list") || ((document.querySelector("#wink .card span") || {}).textContent || "")],
+          ["sports", document.querySelectorAll("#set-sports input[type=checkbox]").length ? (document.querySelectorAll("#set-sports input[type=checkbox]:checked").length + " teams on") : ""],
+          ["radio", txt("radio-status")],
+          ["tick-brief", (document.getElementById("ticktext") && (document.getElementById("ticktext").textContent || "").trim()) ? "rolling" : ""],
+          ["leave", txt("leave-copy") || ((document.querySelector(".leave-body") || {}).textContent || "")],
+          ["header-temp", txt("live-temp") + " " + txt("live-feels")],
+          ["sources", document.querySelectorAll("#source-list .card").length ? (document.querySelectorAll("#source-list .card").length + " sources") : ""],
+          ["villa", document.querySelectorAll("#villa input[type=checkbox]").length ? (document.querySelectorAll("#villa input[type=checkbox]").length + " checks") : ""]
         ]
       };
       function score(rows) {
@@ -6116,7 +6167,7 @@ function showPage(id) {
         wx: paint("health-wx", score(groups.wx), "weather"),
         marine: paint("health-marine", score(groups.marine), "marine"),
         sky: paint("health-sky", score(groups.sky), "sky"),
-        extra: score(groups.extra),
+        extra: paint("health-extra", score(groups.extra), "other"),
         grace: grace
       };
     }
@@ -6129,11 +6180,23 @@ function showPage(id) {
         probed = typeof probeBoardCards === "function" ? probeBoardCards() : null;
         var buildEl = document.getElementById("health-build");
         if (buildEl) {
-          var note = (window.BOARD_NOTES && window.BOARD_NOTES[0]) || "";
-          buildEl.textContent = "v" + (window.BOARD_VER || "?") + (note ? " · " + note.replace(/^v\d+\s*[—-]\s*/, "") : "");
+          var ver = String(window.BOARD_VER || "");
+          var notes = window.BOARD_NOTES || [];
+          var note = "";
+          notes.forEach(function (n) {
+            if (!note && String(n).indexOf("v" + ver) === 0) note = n;
+          });
+          if (!note) note = "v" + ver + " — current wall copy.";
+          buildEl.textContent = note.replace(/^v/, "v");
         }
         var crashEl = document.getElementById("health-crash");
         if (crashEl) crashEl.textContent = (window.__crashes && window.__crashes.length) ? window.__crashes.join(" | ") : "None yet.";
+        var nowEl = document.getElementById("health-now");
+        if (nowEl) {
+          var onPg = document.querySelector(".page.on");
+          var set = typeof getSet === "function" ? getSet() : {};
+          nowEl.textContent = (typeof homePlace === "function" ? homePlace() : "") + " · " + (set.zip || "") + " · page " + (onPg ? onPg.id : "?") + " · dark " + (set.dark || "auto") + " · " + ((document.getElementById("live-temp") || {}).textContent || "");
+        }
       var fail = document.getElementById("health-fail");
       var stale = document.getElementById("health-stale");
       var all = document.getElementById("health-all");
@@ -6233,6 +6296,21 @@ function showPage(id) {
       if (btn) btn.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); copyBoardReport(); });
       var crash = document.getElementById("health-crash");
       if (crash && window.__crashes && window.__crashes.length) crash.textContent = window.__crashes.join(" | ");
+    })();
+    (function wirePageBack() {
+      function leave() {
+        var back = window.__fromPage && window.__fromPage !== "settings" && window.__fromPage !== "account" ? window.__fromPage : "now";
+        if (typeof showPage === "function") showPage(back);
+        if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        else if (typeof startRotate === "function") startRotate();
+      }
+      document.querySelectorAll(".page-back").forEach(function (b) {
+        b.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          leave();
+        });
+      });
     })();
     if (typeof refreshKeyCam === "function") refreshKeyCam(true);
     setInterval(function () { if (typeof refreshKeyCam === "function") refreshKeyCam(true); }, 5 * 60 * 1000);
