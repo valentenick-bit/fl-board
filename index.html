@@ -201,6 +201,12 @@
     .trig-row b { flex:1; }
     .trig-row button { border:0; background:#fff; color:var(--navy); border-radius:8px; padding:6px 10px; font-weight:700; }
     html.dark .trig-row button { background:#2a2444; color:#f7f1e6; }
+    .rot-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--hair); }
+    .rot-row label { display:flex; align-items:center; gap:8px; flex:1; margin:0; font-size:15px; font-weight:700; }
+    .rot-row input { width:18px; height:18px; }
+    .rot-row .rot-note { display:block; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:0; text-transform:none; }
+    .rot-row button { border:0; background:var(--sand); color:var(--navy); border-radius:8px; padding:6px 10px; font-weight:700; }
+    html.dark .rot-row button { background:#2a2444; color:#f7f1e6; }
 
     header { background:var(--navy); color:#f7f1e6; padding:14px 12px 10px; min-height:92px; display:grid; grid-template-columns:auto 1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:10; pointer-events:auto; transition:background .6s ease; }
     header .hamb, header #hamb, #hamb { pointer-events:auto; position:relative; z-index:11; }
@@ -803,7 +809,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v232</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v236</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -1487,7 +1493,6 @@ Cart shop:</textarea>
       <h2 data-k="Board">Settings</h2>
       <div class="settings-head">
         <div><strong>Settings</strong><span>Board look, sound, and what rotates</span></div>
-        <button type="button" class="done" id="set-done">Today</button>
       </div>
       <div class="set-card">
         <h3>Display</h3>
@@ -1653,6 +1658,17 @@ Cart shop:</textarea>
         </div>
       </div>
       <div class="set-card">
+        <h3>Daily rotation</h3>
+        <p class="hint">Check the pages you want on the loop. Use Up and Down to set the order. Status, Settings, and the other board pages never rotate.</p>
+        <div id="set-rot-daily"></div>
+      </div>
+      <div class="set-card">
+        <h3>When weather takes over</h3>
+        <p class="hint">A watch or warning switches the board to this list. Pages marked “only when live” still sit out until that condition is true.</p>
+        <p class="hint">Lightning joins only when a lightning report is within 10 miles of the home address. Tropical joins when a named storm can affect this address. Hurricane joins on a hurricane or tropical-storm watch or warning. Gulf sat and Tropics sat join when a named storm is in that basin. Views drops out after dark unless Cam at night is on.</p>
+        <div id="set-rot-storm"></div>
+      </div>
+      <div class="set-card">
         <button type="button" id="set-dockreset">Restore default page order</button>
       </div>
     </section>
@@ -1665,7 +1681,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 232;
+    window.BOARD_VER = 236;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -1700,11 +1716,11 @@ Cart shop:</textarea>
     var pages = ROT_DEFAULTS.normal.slice();
     var i = 0, rot, idle;
     (function clearBlockers() {
-      ["drawer-back", "drawer", "dev-drawer", "dev-lock", "settings"].forEach(function (id) {
+      ["drawer-back", "drawer", "dev-drawer", "dev-lock"].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) return;
         el.classList.remove("on", "open");
-        if (id === "settings" || id === "dev-lock") el.hidden = true;
+        if (id === "dev-lock") el.hidden = true;
       });
       document.body.style.overflow = "";
     })();
@@ -3632,7 +3648,7 @@ function showPage(id) {
       if (id === "cam" && typeof camOffHours === "function" && camOffHours()) return false;
       var ev = (window.__wxRisk && window.__wxRisk.warnTypes) || "";
       var basins = window.__satBasins || {};
-      if (id === "bolt") return !!(typeof boltWanted === "function" && boltWanted()) || /thunder|tornado|severe|lightning/.test(ev);
+      if (id === "bolt") return !!(typeof boltWanted === "function" && boltWanted());
       if (id === "cane") return !!(window.__namedStorms && window.__namedStorms.length) || /hurricane|tropical|surge/.test(ev);
       if (id === "hurr") return !!(window.__wxRisk && window.__wxRisk.hurr) || /hurricane|tropical storm|storm surge/.test(ev);
       if (id === "gulfsat") return !!basins.gulf;
@@ -3923,22 +3939,27 @@ function showPage(id) {
       }
       var hours = window.__hours || [];
       var nowMs = Date.now();
+      var nowFx = String((window.__wxNow && window.__wxNow.shortForecast) || (hours[0] && hours[0].shortForecast) || "").toLowerCase();
+      if (/thunder|t-storm|lightning/.test(nowFx)) {
+        return { on: true, why: "Thunder in the current forecast" };
+      }
       for (var i = 0; i < hours.length && i < 4; i++) {
         var h = hours[i];
         if (!h) continue;
         var t = h.startTime ? new Date(h.startTime).getTime() : nowMs;
         if (t > nowMs + 3 * 3600000) continue;
-        var fx = String(h.shortForecast || "").toLowerCase();
-        var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
-        if (hourHasThunder(h)) {
+        if (hourMentionsThunder(h) || hourHasThunder(h)) {
           var when = t <= nowMs + 3600000 ? "this hour" : new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
-          return { on: true, why: "Thunder likely " + when };
+          return { on: true, why: "Thunder in the forecast " + when };
         }
       }
       return { on: false, why: "No lightning threat in the next few hours" };
     }
     function lightningActive() { return lightningPrep(); }
-    function boltWanted() { return !!(lightningPrep() && lightningPrep().on); }
+    function boltWanted() {
+      var near = window.__strikesNear || {};
+      return !!(near.close10);
+    }
     function syncLightningUI() {
       var prep = lightningPrep();
       var now = lightningNow();
@@ -3956,6 +3977,7 @@ function showPage(id) {
         noteFeed("bolt-rot", true, prep.on ? ("prep · " + prep.why) : "idle");
       }
       if (typeof writeTodayChips === "function") writeTodayChips();
+      if (typeof rebuildDock === "function") rebuildDock();
       if (!now.on) {
         clearTimeout(window.__flashTimer);
         var fl = document.getElementById("stormflash");
@@ -3965,7 +3987,7 @@ function showPage(id) {
     function pollNearbyStrikes() {
       var lat = typeof homeLat === "function" ? homeLat() : 26.97;
       var lon = typeof homeLon === "function" ? homeLon() : -82.36;
-      var url = "https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=1";
+      var url = "https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=2";
       fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
         var d = null;
         try { d = txt ? JSON.parse(txt) : null; } catch (e) { d = null; }
@@ -3985,13 +4007,13 @@ function showPage(id) {
         hits10.sort(function (a, b) { return a - b; });
         hits25.sort(function (a, b) { return a - b; });
         window.__strikesNear = {
-          count: hits25.length,
-          closest: hits25.length ? Math.max(0.1, hits25[0]).toFixed(1) : null,
+          count: hits10.length,
+          closest: hits10.length ? Math.max(0.1, hits10[0]).toFixed(1) : (hits25.length ? Math.max(0.1, hits25[0]).toFixed(1) : null),
           close10: hits10.length > 0,
           close25: hits25.length > 0
         };
         if (typeof noteFeed === "function") {
-          noteFeed("strikes", true, hits25.length ? (hits25.length + " within 25mi") : "none in 25mi");
+          noteFeed("strikes", true, hits10.length ? (hits10.length + " lightning reports within 10mi") : "no lightning reports within 10mi");
         }
         if (typeof syncLightningUI === "function") syncLightningUI();
       }).catch(function () {
@@ -4247,13 +4269,24 @@ function showPage(id) {
       }
     }
     function rotateList() {
-      var skip = { news:1, wink:1, villa:1, health:1, guide:1, ideas:1, menu:1, triggers:1, kioskpage:1 };
+      var skip = { news:1, wink:1, villa:1, health:1, guide:1, ideas:1, menu:1, triggers:1, kioskpage:1, settings:1 };
       var seen = {};
       var list = loadRots().normal.filter(function (id) {
         if (!id || skip[id] || seen[id] || !rotVisible(id)) return false;
         seen[id] = true;
         return true;
       });
+      function insertAfter(afterId, id) {
+        if (!id || seen[id] || !rotVisible(id)) return;
+        var at = list.indexOf(afterId);
+        list.splice(at >= 0 ? at + 1 : list.length, 0, id);
+        seen[id] = true;
+      }
+      if (typeof boltWanted === "function" && boltWanted()) insertAfter("radar", "bolt");
+      if (rotVisible("cane")) insertAfter(list.indexOf("bolt") >= 0 ? "bolt" : "radar", "cane");
+      if (rotVisible("hurr")) insertAfter(list.indexOf("cane") >= 0 ? "cane" : (list.indexOf("bolt") >= 0 ? "bolt" : "radar"), "hurr");
+      if (rotVisible("gulfsat")) insertAfter("radar", "gulfsat");
+      if (rotVisible("tropics")) insertAfter(list.indexOf("gulfsat") >= 0 ? "gulfsat" : "radar", "tropics");
       if (typeof noteFeed === "function") {
         noteFeed("bolt-rot", true, list.indexOf("bolt") >= 0 ? "in rotation" : "idle");
         noteFeed("cane-rot", true, list.indexOf("cane") >= 0 ? "in rotation" : "idle");
@@ -4858,6 +4891,35 @@ function showPage(id) {
       if (n) n.innerHTML = rowHtml("normal", r.normal);
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
+    var ROT_DAILY_POOL = ["now","tenday","radar","marine","sky","ent","deliver","cam","traffic","sports","wink","radio","house"];
+    var ROT_STORM_POOL = ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"];
+    var ROT_AUTO_NOTE = {
+      bolt: "only when lightning is reported within 10 miles of home",
+      cane: "only when a named storm can affect this address",
+      hurr: "only on a hurricane or tropical-storm watch or warning",
+      gulfsat: "only when a named storm is in the Gulf",
+      tropics: "only when a named storm is in the Atlantic",
+      cam: "drops out after dark unless Cam at night is on"
+    };
+    function paintRotSet() {
+      function rows(kind, pool, selected) {
+        var on = {};
+        (selected || []).forEach(function (id, i) { on[id] = i; });
+        var ordered = selected.filter(function (id) { return pool.indexOf(id) >= 0; }).concat(pool.filter(function (id) { return selected.indexOf(id) < 0; }));
+        return ordered.map(function (id) {
+          var checked = selected.indexOf(id) >= 0;
+          var note = ROT_AUTO_NOTE[id] ? '<span class="rot-note">' + ROT_AUTO_NOTE[id] + "</span>" : "";
+          var moves = checked ? '<button type="button" data-rot-mv="-1">Up</button><button type="button" data-rot-mv="1">Down</button>' : "";
+          return '<div class="rot-row" data-rot-kind="' + kind + '" data-rot-id="' + id + '"><label><input type="checkbox" data-rot-on ' + (checked ? "checked" : "") + "> " + (typeof pageLabel === "function" ? pageLabel(id) : id) + note + "</label>" + moves + "</div>";
+        }).join("");
+      }
+      var r = typeof loadRots === "function" ? loadRots() : { normal: [], storm: [] };
+      var d = document.getElementById("set-rot-daily");
+      var s = document.getElementById("set-rot-storm");
+      if (d) d.innerHTML = rows("normal", ROT_DAILY_POOL, r.normal);
+      if (s) s.innerHTML = rows("storm", ROT_STORM_POOL, r.storm);
+    }
+    window.paintRotSet = paintRotSet;
     function startNamedRotation(kind) {
       window.__storm = kind === "storm";
       window.__holdPage = false;
@@ -4962,6 +5024,48 @@ function showPage(id) {
         var t = arr[idx]; arr[idx] = arr[j]; arr[j] = t;
         saveRots(r);
         paintTriggers();
+        if (typeof rebuildDock === "function") rebuildDock();
+      });
+      document.addEventListener("click", function (e) {
+        var row = e.target.closest && e.target.closest(".rot-row");
+        if (!row) return;
+        var kind = row.getAttribute("data-rot-kind");
+        var id = row.getAttribute("data-rot-id");
+        if (!kind || !id || typeof loadRots !== "function") return;
+        var r = loadRots();
+        var arr = r[kind] || [];
+        var mv = e.target.getAttribute && e.target.getAttribute("data-rot-mv");
+        if (mv) {
+          var idx = arr.indexOf(id);
+          var j = idx + parseInt(mv, 10);
+          if (idx < 0 || j < 0 || j >= arr.length) return;
+          var t = arr[idx]; arr[idx] = arr[j]; arr[j] = t;
+          saveRots(r);
+          paintRotSet();
+          if (typeof paintTriggers === "function") paintTriggers();
+          if (typeof rebuildDock === "function") rebuildDock();
+          return;
+        }
+      });
+      document.addEventListener("change", function (e) {
+        if (!e.target || !e.target.hasAttribute("data-rot-on")) return;
+        var row = e.target.closest(".rot-row");
+        if (!row) return;
+        var kind = row.getAttribute("data-rot-kind");
+        var id = row.getAttribute("data-rot-id");
+        var r = loadRots();
+        var arr = r[kind] || [];
+        if (e.target.checked) {
+          if (arr.indexOf(id) < 0) arr.push(id);
+        } else {
+          arr = arr.filter(function (x) { return x !== id; });
+          if (kind === "normal" && arr.indexOf("now") < 0) arr.unshift("now");
+          if (!arr.length) arr = kind === "storm" ? ["radar"] : ["now"];
+        }
+        r[kind] = arr;
+        saveRots(r);
+        paintRotSet();
+        if (typeof paintTriggers === "function") paintTriggers();
         if (typeof rebuildDock === "function") rebuildDock();
       });
     })();
@@ -5207,15 +5311,20 @@ function showPage(id) {
           localStorage.removeItem("bw-dock-v6");
           localStorage.removeItem("bw-dock-v3");
           localStorage.removeItem("bw-dock");
+          if (typeof saveRots === "function" && window.ROT_DEFAULTS) saveRots({ normal: window.ROT_DEFAULTS.normal.slice(), storm: window.ROT_DEFAULTS.storm.slice() });
         } catch (e) {}
         location.reload();
       });
-      window.paintSettings = paint;
+      window.paintSettings = function () {
+        paint();
+        if (typeof paintRotSet === "function") paintRotSet();
+      };
       function openSet() {
         if (typeof closeAllMenus === "function") closeAllMenus();
         if (typeof showPage === "function") showPage("settings");
         if (typeof pinOrHold === "function") pinOrHold("settings");
-        paint();
+        if (typeof window.paintSettings === "function") window.paintSettings();
+        else paint();
       }
       function closeSet() {
         if (typeof showPage === "function") showPage("now");
@@ -5884,7 +5993,7 @@ function showPage(id) {
         localStorage.setItem("bw-cam-slot", "radar");
       } catch (e) {}
     })();
-    if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 2 * 60 * 1000); }
+    if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 60 * 1000); }
     if (typeof loadHistWx === "function") { loadHistWx(); setInterval(loadHistWx, 30 * 60 * 1000); }
     if (typeof paintGuide === "function") paintGuide();
     setTimeout(function () { if (typeof fillEmptyCards === "function") fillEmptyCards(); }, 2000);
