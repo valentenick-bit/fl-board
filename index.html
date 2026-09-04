@@ -796,7 +796,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v225</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v227</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -1550,7 +1550,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 225;
+    window.BOARD_VER = 227;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -3161,47 +3161,59 @@ function showPage(id) {
       for (var i = 0; i < hours.length; i++) if (test(hours[i])) return hours[i];
       return null;
     }
-    function outdoorAdvice() {
-      var prep = typeof lightningPrep === "function" ? lightningPrep() : { on: false };
-      var nowL = typeof lightningNow === "function" ? lightningNow() : { on: false };
-      if (nowL.on) return "Lightning is in play now. Stay off the beach, the pool, the boat, and the courts until it clears. " + nowL.why + ".";
-      var left = todayHoursLeft();
-      var hr = parseInt(new Date().toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
-      function labelHour(h) {
-        return new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
-      }
-      var stormAt = firstChange(left, hourHasThunder);
-      var go = { beach: [], pool: [], cart: [], boat: [], courts: [] };
-      left.forEach(function (h) {
-        var clock = wxHourET(h);
-        ["beach","pool","cart","boat","courts"].forEach(function (kind) {
-          if (!openHoursKind(kind, clock)) return;
-          if (hourOutlook(h, kind) === "go") go[kind].push(h);
-        });
+    function clockLabel(hr) {
+      var am = hr >= 12 ? "p.m." : "a.m.";
+      var h12 = hr % 12; if (!h12) h12 = 12;
+      return h12 + " " + am;
+    }
+    function hourForClock(hr) {
+      var hours = window.__hours || [];
+      var hit = null, best = 99;
+      hours.forEach(function (h) {
+        if (!h || !h.startTime) return;
+        var dhr = parseInt(new Date(h.startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
+        if (dhr === 24) dhr = 0;
+        var dist = Math.min(Math.abs(dhr - hr), 24 - Math.abs(dhr - hr));
+        if (dist < best) { best = dist; hit = h; }
       });
-      function run(kind) {
-        var arr = go[kind];
-        if (!arr.length) return "";
-        var a = labelHour(arr[0]);
-        var last = arr[0];
-        for (var i = 1; i < arr.length; i++) {
-          if (wxHourET(arr[i]) === wxHourET(last) + 1 || wxHourET(arr[i]) === wxHourET(last)) last = arr[i];
-          else break;
-        }
-        var b = labelHour(last);
-        return a === b ? a : a + " to " + b;
+      return best <= 1 ? hit : null;
+    }
+    function barKindAt(kind, hr) {
+      if (!openHoursKind(kind, hr)) return "no";
+      var h = hourForClock(hr);
+      if (!h) return "no";
+      return hourOutlook(h, kind);
+    }
+    function firstRun(kind, want, hrNow, span) {
+      var i0 = -1, i1 = -1;
+      for (var i = 0; i < span; i++) {
+        var k = barKindAt(kind, (hrNow + i) % 24);
+        if (k === want) {
+          if (i0 < 0) i0 = i;
+          i1 = i;
+        } else if (i0 >= 0) break;
       }
+      if (i0 < 0) return "";
+      var a = i0 === 0 ? "now" : clockLabel((hrNow + i0) % 24);
+      var b = clockLabel((hrNow + i1 + 1) % 24);
+      return a === "now" && i1 === 0 ? "this hour" : a + " through " + b;
+    }
+    function outdoorAdvice() {
+      var nowL = typeof lightningNow === "function" ? lightningNow() : { on: false };
+      if (nowL.on) return "Lightning is in play now. Stay off the beach, the pool, the boat, and the courts until it clears.";
+      var hrNow = parseInt(new Date().toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
+      if (hrNow === 24) hrNow = 0;
+      var span = 12;
       var bits = [];
       ["beach","pool","cart","boat","courts"].forEach(function (kind) {
-        var w = run(kind);
-        if (w) bits.push(kind + " " + w);
+        var good = firstRun(kind, "go", hrNow, span);
+        var maybe = !good ? firstRun(kind, "win", hrNow, span) : "";
+        if (good) bits.push("the " + kind + " looks good " + good);
+        else if (maybe) bits.push("the " + kind + " is a maybe " + maybe + ", so keep an eye on the sky");
       });
-      if (prep.on && stormAt) {
-        return "Thunder is possible " + labelHour(stormAt) + ". Best window before then: " + (bits.length ? bits.join(", ") : "stay close to home") + ".";
-      }
-      if (bits.length) return "Best window: " + bits.join(", ") + ".";
-      if (hr >= 19) return "That's it for today.";
-      return "I would not plan the beach, the pool, the boat, or the courts right now.";
+      if (bits.length) return bits.join(". ").replace(/^the/, "The") + ".";
+      if (hrNow < 6 || hrNow >= 21) return "Overnight is for sleeping — not the beach, the pool, the boat, or the courts.";
+      return "I would skip the beach, the pool, the boat, and the courts right now.";
     }
     function writeGreetingCard() {
       var el = document.getElementById("live-sky");
@@ -3214,9 +3226,6 @@ function showPage(id) {
       var parts = [];
       var hrG = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}),10);
       parts.push(greet + " in " + place + ".");
-      if (hrG < 6 || hrG >= 21) {
-        parts.push("Overnight is for sleeping and a quiet ride home — not the beach, the pool, the boat, or the courts.");
-      }
       if (wx.temp != null) {
         var line = "It's " + wx.temp + "°";
         if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) line += " and feels like " + wx.feel + "°";
@@ -3227,11 +3236,6 @@ function showPage(id) {
         }
         parts.push(line + ".");
       }
-      var storms = firstChange(left, function (h) { return wxWet(h) === "storms"; });
-      var rain = firstChange(left, function (h) { return wxWet(h) === "showers" || wxWet(h) === "storms"; });
-      if (storms) parts.push("Expect storms to become a problem " + wxPeriodName(wxHourET(storms)) + ".");
-      else if (rain) parts.push("It should stay mostly dry into " + (wxHourET(rain) < 12 ? "late morning" : wxHourET(rain) < 14 ? "midday" : "early afternoon") + ", then the shower chance rises.");
-      else if (left.length) parts.push("The rest of the daylight looks dry.");
       parts.push(outdoorAdvice());
       if (window.__wxRisk && window.__wxRisk.warn) parts.push("A warning is in effect — read Should we leave before you go.");
       var text = parts.join(" ").replace(/\s+/g, " ").trim();
@@ -6263,11 +6267,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       }
       function phrase(item, k) {
         var map = {
-          beach: { go: "GO", win: "watch", no: "storms" },
-          cart: { go: "GO", win: "short", no: "wind" },
-          boat: { go: "GO", win: "choppy", no: "wind" },
-          courts: { go: "GO", win: "later", no: "storms" },
-          pool: { go: "GO", win: "maybe", no: "storms" }
+          beach: { go: "fine", win: "watch", no: "skip" },
+          cart: { go: "fine", win: "short", no: "skip" },
+          boat: { go: "fine", win: "choppy", no: "skip" },
+          courts: { go: "fine", win: "later", no: "skip" },
+          pool: { go: "fine", win: "maybe", no: "skip" }
         };
         return (map[item] || map.beach)[k] || "—";
       }
@@ -6333,16 +6337,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         }
         var SPAN = 12;
         function hourKind(kind, hr) {
-          if (!openHours(kind, hr)) return "no";
-          var scoreKind = (kind === "boat" || kind === "cart") ? kind : "beach";
-          var hit = null;
-          (hours || []).forEach(function (h) {
-            if (!h || !h.startTime) return;
-            var dhr = parseInt(new Date(h.startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
-            if (dhr === 24) dhr = 0;
-            if (dhr === hr) hit = h;
-          });
-          return scoreHour(hit || nowH, scoreKind);
+          return barKindAt(kind, hr);
         }
         var axis = document.getElementById("go-axis");
         if (axis) {
