@@ -855,7 +855,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v254</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v256</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="flash" id="stormflash"></div>
     <div class="rainlayer" id="rainlayer"></div>
@@ -1051,7 +1051,7 @@
         </p>
       </section>
       <section id="house" class="page">
-        <h2 data-k="Villa">House</h2>
+        <h2 data-k="This house">House</h2>
         <div class="who-row">
           <div class="card"><b>Nick</b>
             <label class="switch">
@@ -1077,7 +1077,7 @@
         <div class="card"><b>Arrive FL</b><span id="cal-arrive">No Arrive FL event in range.</span></div>
         <div class="card"><b>Leave FL</b><span id="cal-leave">No Leave FL event in range.</span></div>
         <div class="card"><b>Flights</b><span id="live-flights">Loading Gmail flight scan…</span></div>
-        <div class="card"><b>Next flight</b><span id="cal-flight">None stored. Type a flight on Villa if you want it pinned.</span></div>
+        <div class="card"><b>Next flight</b><span id="cal-flight">None stored. Type a flight on House if you want it pinned.</span></div>
         <div class="card"><b>Vendors</b>
           <span>Castle after-hours 800-337-5850. Shared with every board when house.json is on GitHub/Drive.</span>
           <p id="house-sync" class="pill-key">House list is loading…</p>
@@ -1370,7 +1370,7 @@ Cart shop:</textarea>
           <h3>House</h3>
           <div class="menu-grid">
             <button type="button" data-p="house">House</button>
-            <button type="button" data-p="villa">Villa</button>
+            <button type="button" data-p="villa">Open / close</button>
           </div>
         </div>
       </section>
@@ -1630,12 +1630,6 @@ Cart shop:</textarea>
       </div>
     </section>
         </main>
-    <div class="ticker-stack">
-    <div id="allclear" hidden>All clear — the last warning for this zip has ended.</div>
-    <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
-    <div class="alert-ticker" id="alertbar"><span id="alerttext"></span></div>
-    <div class="ticker"><span id="ticktext"></span></div>
-    </div>
     <div class="dock-wrap">
     <nav class="dock" id="dock">
       <button type="button" data-p="now" class="on">Today</button>
@@ -1646,6 +1640,12 @@ Cart shop:</textarea>
       <button type="button" data-p="ent">Fun</button>
       <button type="button" data-p="deliver">Delivery</button>
     </nav>
+    </div>
+    <div class="ticker-stack">
+    <div id="allclear" hidden>All clear — the last warning for this zip has ended.</div>
+    <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
+    <div class="alert-ticker" id="alertbar"><span id="alerttext"></span></div>
+    <div class="ticker"><span id="ticktext"></span></div>
     </div>
 
     <div class="drawer-back" id="drawer-back"></div>
@@ -1677,7 +1677,7 @@ Cart shop:</textarea>
         <button type="button" data-p="contacts">Emergency</button>
         <button type="button" data-p="prep">Prep</button>
         <button type="button" data-p="power">Power</button>
-        <p class="drawer-lab">Villa</p>
+        <p class="drawer-lab">House</p>
         <button type="button" data-p="house">House</button>
         <button type="button" data-p="villa">Open / close</button>
         <p class="drawer-lab">Board</p>
@@ -1722,7 +1722,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 254;
+    window.BOARD_VER = 256;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2836,7 +2836,7 @@ function showPage(id) {
         var el = head.querySelector(sel) || document.querySelector(sel);
         if (!el) return;
         var r = el.getBoundingClientRect();
-        blocked.push([r.left - hr.left - 16, r.right - hr.left + 16]);
+        blocked.push([r.left - hr.left - 28, r.right - hr.left + 28]);
       });
       blocked.sort(function (a, b) { return a[0] - b[0]; });
       var merged = [];
@@ -2846,32 +2846,39 @@ function showPage(id) {
       });
       return { w: hr.width || 360, merged: merged };
     }
-    function skySafePct(pct) {
-      var info = headerSkyBlocks();
-      var w = info.w;
-      var x = Math.max(12, Math.min(w - 12, (Number(pct) / 100) * w));
-      info.merged.forEach(function (b) {
-        if (x >= b[0] && x <= b[1]) {
-          var left = Math.abs(x - b[0]);
-          var right = Math.abs(b[1] - x);
-          x = left <= right ? Math.max(12, b[0] - 8) : Math.min(w - 12, b[1] + 8);
-        }
-      });
-      return (x / w) * 100;
-    }
-    function skyRandomPct() {
+    function skyGaps() {
       var info = headerSkyBlocks();
       var w = info.w;
       var gaps = [];
-      var x = 10;
+      var x = 8;
       info.merged.forEach(function (b) {
-        if (b[0] - x >= 28) gaps.push([x, b[0]]);
+        if (b[0] - x >= 36) gaps.push([x, b[0]]);
         x = Math.max(x, b[1]);
       });
-      if (w - 10 - x >= 28) gaps.push([x, w - 10]);
-      if (!gaps.length) return 8;
-      var g = gaps[Math.floor(Math.random() * gaps.length)];
-      return ((g[0] + g[1]) / 2 / w) * 100;
+      if (w - 8 - x >= 36) gaps.push([x, w - 8]);
+      return { w: w, gaps: gaps };
+    }
+    function skySafePct(pct) {
+      var pack = skyGaps();
+      var w = pack.w;
+      var x = Math.max(12, Math.min(w - 12, (Number(pct) / 100) * w));
+      var hit = pack.gaps.filter(function (g) { return x >= g[0] && x <= g[1]; });
+      if (hit.length) return (x / w) * 100;
+      if (!pack.gaps.length) return 6;
+      var best = pack.gaps[0];
+      var bestD = 1e9;
+      pack.gaps.forEach(function (g) {
+        var c = (g[0] + g[1]) / 2;
+        var d = Math.abs(c - x);
+        if (d < bestD) { bestD = d; best = g; }
+      });
+      return (((best[0] + best[1]) / 2) / w) * 100;
+    }
+    function skyRandomPct() {
+      var pack = skyGaps();
+      if (!pack.gaps.length) return 6;
+      var g = pack.gaps[Math.floor(Math.random() * pack.gaps.length)];
+      return (((g[0] + g[1]) / 2) / pack.w) * 100;
     }
     function placeSkyBodies(slot) {
       var sun = document.getElementById("hdr-sun");
@@ -2882,8 +2889,8 @@ function showPage(id) {
       var set = Date.parse(c.set || "") || 0;
       if (sun) {
         var p = (rise && set && set > rise) ? Math.max(0, Math.min(1, (now - rise) / (set - rise))) : 0.5;
-        sun.style.left = skySafePct(6 + p * 84) + "%";
-        sun.style.bottom = (8 + Math.sin(p * Math.PI) * 42) + "%";
+        sun.style.left = "calc(" + skySafePct(6 + p * 84) + "% - 13px)";
+        sun.style.bottom = (18 + Math.sin(p * Math.PI) * 28) + "%";
       }
       if (moon) {
         var nightStart = set || now;
@@ -2933,9 +2940,12 @@ function showPage(id) {
       function armMoon(now) {
         var dir = Math.random() < 0.6 ? 1 : -1;
         var dist = 10 + Math.random() * 18;
-        moonJob.x0 = skyRandomPct();
-        moonJob.y0 = 4 + Math.random() * 22;
-        moonJob.x1 = skySafePct(Math.max(4, Math.min(90, moonJob.x0 + dir * dist)));
+        var pack = skyGaps();
+        var g = pack.gaps.length ? pack.gaps[Math.floor(Math.random() * pack.gaps.length)] : [8, 40];
+        var pad = 10;
+        moonJob.x0 = ((g[0] + pad) / pack.w) * 100;
+        moonJob.y0 = 6 + Math.random() * 16;
+        moonJob.x1 = ((g[1] - pad) / pack.w) * 100;
         moonJob.y1 = Math.max(4, Math.min(36, moonJob.y0 + (Math.random() * 8 - 4)));
         moonJob.dur = 80000 + Math.random() * 60000;
         moonJob.fade = 5000 + Math.random() * 2500;
@@ -2948,7 +2958,7 @@ function showPage(id) {
         el.style.top = "0";
         el.style.right = "auto";
         el.style.bottom = "auto";
-        el.style.transform = "translate3d(" + (xPct / 100 * w) + "px," + yPx + "px,0)";
+        el.style.transform = "translate3d(" + ((xPct / 100 * w) - (el.offsetWidth || 22) / 2) + "px," + yPx + "px,0)";
       }
       function tick(now) {
         now = now || performance.now();
@@ -4381,7 +4391,7 @@ function showPage(id) {
     }
 
     function pageLabel(id) {
-      var names = { now:"Today", tenday:"Weather", radar:"Radar", marine:"Marine", sky:"Sky", traffic:"Roads", ent:"Fun", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf sat", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", health:"Status", guide:"How it works", ideas:"Ideas", triggers:"Triggers", kioskpage:"Kiosk", account:"Account" };
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", radar:"Radar", marine:"Marine", sky:"Sky", traffic:"Roads", ent:"Fun", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf sat", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", triggers:"Triggers", kioskpage:"Kiosk", account:"Account" };
       return names[id] || id;
     }
     function rebuildDock() {
