@@ -523,11 +523,16 @@
     .hour svg { width:26px; height:26px; display:block; margin:2px auto; }
     .wx-nowline { margin:0 0 10px; font-size:15px; color:var(--muted); }
     .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+    .tiles.facts { grid-template-columns:repeat(4,1fr); }
     .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:10px 0; }
-    .tile { background:#f7f2e8; border:1px solid var(--hair); border-radius:16px; padding:10px; min-height:64px; }
+    .tile { background:#f7f2e8; border:1px solid var(--hair); border-radius:16px; padding:10px 12px; min-height:76px; display:flex; flex-direction:column; justify-content:space-between; }
     .tile label { display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
-    .tile strong { font-family:Fraunces,Georgia,serif; font-size:22px; }
+    .tile strong { font-family:Fraunces,Georgia,serif; font-size:22px; line-height:1.15; }
+    .tile small { display:block; font-size:11px; color:var(--muted); margin-top:4px; }
     .tile.wide { grid-column:1 / -1; }
+    .card.chart { margin-bottom:8px; }
+    .card.chart .tide { margin-top:8px; }
+    @media (max-width:720px) { .tiles.facts { grid-template-columns:1fr 1fr; } }
     .sky-graphs, .marine-graphs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
     .tide svg, .sunpath svg, .moonpath svg { width:100%; height:90px; display:block; }
     .tide.hist { background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(247,241,230,.2)); border-radius:12px; }
@@ -913,7 +918,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v273</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v274</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1005,28 +1010,31 @@
           <div class="hour">5p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>88&deg;</b></div>
           <div class="hour">8p<svg viewBox="0 0 32 32"><path d="M6 12h16" stroke="#5c6b7a" fill="none" stroke-width="2"/></svg><b>80&deg;</b></div>
         </div>
-        <div class="tiles">
+        <div class="tiles facts">
           <div class="tile"><label>Wind</label><strong id="live-wind">E 6 mph</strong></div>
           <div class="tile"><label>Gusts</label><strong id="live-gusts">light</strong></div>
+          <div class="tile"><label>Humidity</label><strong id="live-rh">—</strong></div>
+          <div class="tile"><label>Dew point</label><strong id="live-dew">—</strong></div>
+          <div class="tile"><label>Pressure</label><strong id="live-pres">—</strong><small id="live-pres-note"></small></div>
+          <div class="tile"><label>Air quality</label><strong id="live-aqi">—</strong><small id="live-aqi-note"></small></div>
+          <div class="tile"><label>Rain this month</label><strong id="live-rain-mo">—</strong></div>
+          <div class="tile"><label>UV</label><strong id="live-uv">—</strong></div>
+        </div>
+        <div class="tile wide" style="margin-bottom:8px">
+          <label>UV index</label>
+          <div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" id="uv-needle" style="left:88%"></i></div>
+          <div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div>
         </div>
         <div class="marine-graphs">
-          <div class="card"><b>Humidity</b><span id="live-rh">Waiting on the home grid</span> <span id="live-dew"></span>
+          <div class="card chart"><b>Humidity</b><span>Last day at the house</span>
             <div class="tide hist" id="humid-chart"></div>
           </div>
-          <div class="card"><b>Pressure</b><span id="live-pres">Waiting on the home grid</span> <span id="live-pres-note"></span>
+          <div class="card chart"><b>Pressure</b><span>Last day at the house</span>
             <div class="tide hist" id="pres-chart"></div>
           </div>
         </div>
-        <div class="marine-graphs">
-          <div class="card"><b>Air quality</b><span id="live-aqi">Checking air at the home point</span>
-            <div id="live-aqi-note" class="card" style="background:transparent;padding:0;margin:0">Home</div>
-          </div>
-          <div class="card"><b>Rain this month</b><span id="live-rain-mo">—</span>
-            <div class="tide hist" id="rainmo-chart"></div>
-          </div>
-        </div>
-        <div class="tiles">
-          <div class="tile wide"><label>UV index</label><div class="pbar-read"><strong id="live-uv">UV</strong> <span>NWS hourly</span></div><div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" style="left:88%"></i></div><div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div></div>
+        <div class="card chart"><b>Rain</b><span>Hourly inches this month</span>
+          <div class="tide hist" id="rainmo-chart"></div>
         </div>
         <div class="tenday"></div>
       </section>
@@ -1793,7 +1801,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 273;
+    window.BOARD_VER = 274;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -4388,6 +4396,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v274 — Weather facts are number tiles. Humidity, pressure, and rain history are chart cards. Welcome letter unchanged.",
       "v273 — Back header only on pages that are not in the live rotation or dock.",
       "v272 — Off-rotation pages use the same sticky back header as Settings.",
       "v271 — Watch and warning sit under the header with a WATCH or WARNING label. Briefing stays at the bottom.",
@@ -7106,7 +7115,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           if (uvEl && uv != null) {
             var word = uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : "Very high";
             uvEl.textContent = word + " " + Math.round(uv);
-            var needle = uvEl.parentElement && uvEl.parentElement.parentElement && uvEl.parentElement.parentElement.querySelector(".pneedle");
+            var needle = document.getElementById("uv-needle") || document.querySelector("#tenday .pneedle");
             if (needle) needle.style.left = Math.min(100, (uv / 11) * 100) + "%";
           }
         }).catch(function () {});
