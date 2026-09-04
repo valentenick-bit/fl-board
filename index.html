@@ -530,6 +530,7 @@
     .tile.wide { grid-column:1 / -1; }
     .sky-graphs, .marine-graphs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
     .tide svg, .sunpath svg, .moonpath svg { width:100%; height:90px; display:block; }
+    .tide.hist { background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(247,241,230,.2)); border-radius:12px; }
     h2 { font-family:Fraunces,Georgia,serif; margin:0 0 12px; font-weight:600; }
     h2::before { content:attr(data-k); display:block; font-family:"Source Sans 3",system-ui,sans-serif; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:2px; }
 
@@ -886,7 +887,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v266</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v267</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="flash" id="stormflash"></div>
     <div class="rainlayer" id="rainlayer"></div>
@@ -1763,7 +1764,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 266;
+    window.BOARD_VER = 267;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -4322,6 +4323,7 @@ function showPage(id) {
     }
 
     window.BOARD_NOTES = [
+      "v267 — History charts fill under the line, mark now, and show the latest value.",
       "v266 — Sports teams in Settings use columns so more teams fit on one screen.",
       "v265 — Settings and Account have an app-style back arrow that returns to the last board page.",
       "v264 — Status leads with Failed and Crashes. Copied report includes rotation, down feeds, and House and other.",
@@ -6537,20 +6539,26 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       function hh(ms) {
         return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
       }
-      var zero = "";
+      var last = pts[pts.length - 1];
+      var area = d + " L" + X(last.t).toFixed(1) + "," + Y(ymin).toFixed(1) + " L" + X(pts[0].t).toFixed(1) + "," + Y(ymin).toFixed(1) + " Z";
+      var mid = (ymin + ymax) / 2;
+      var zero = '<line x1="28" y1="' + Y(mid).toFixed(1) + '" x2="208" y2="' + Y(mid).toFixed(1) + '" stroke="#d7cdbb" stroke-width="1" stroke-dasharray="3 4"/>';
       if (ymin < 0 && ymax > 0) {
-        zero = '<line x1="28" y1="' + Y(0).toFixed(1) + '" x2="208" y2="' + Y(0).toFixed(1) + '" stroke="#1b2a4a" stroke-width="1.1"/>';
+        zero += '<line x1="28" y1="' + Y(0).toFixed(1) + '" x2="208" y2="' + Y(0).toFixed(1) + '" stroke="#1b2a4a" stroke-width="1.1"/>';
       }
       box.setAttribute("data-n", String(pts.length));
       box.setAttribute("data-stub", "0");
       box.innerHTML = svgWrap(
         zero +
-        '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<path d="' + area + '" fill="' + color + '" fill-opacity="0.16" stroke="none"/>' +
+        '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>' +
         '<line x1="' + nx.toFixed(1) + '" y1="14" x2="' + nx.toFixed(1) + '" y2="64" stroke="#e07a5f" stroke-width="1.2"/>' +
+        '<circle cx="' + X(last.t).toFixed(1) + '" cy="' + Y(last.v).toFixed(1) + '" r="3.2" fill="' + color + '" stroke="#f7f2e8" stroke-width="1"/>' +
         '<text x="2" y="18" font-size="8" fill="#5c6b7a">' + fmt(ymax) + "</text>" +
         '<text x="2" y="62" font-size="8" fill="#5c6b7a">' + fmt(ymin) + "</text>" +
         '<text x="28" y="84" font-size="8" fill="#5c6b7a">' + hh(t0) + "</text>" +
-        '<text x="168" y="84" font-size="8" fill="#5c6b7a">' + hh(t1) + "</text>"
+        '<text x="168" y="84" font-size="8" fill="#5c6b7a">' + hh(t1) + "</text>" +
+        '<text x="150" y="14" font-size="8" fill="#1b2a4a">' + fmt(last.v) + "</text>"
       );
     }
 
