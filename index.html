@@ -637,7 +637,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v169</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v170</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -727,7 +727,7 @@
         <div class="tenday"></div>
       </section>
       <section id="radar" class="page">
-        <h2 data-k="Over the Key">Radar/Satellite</h2>
+        <h2 data-k="Over the Key">Radar</h2>
         <div class="card leave-card" id="leave-card-radar" hidden>
           <b>Should we leave?</b>
           <span class="leave-body">Checking warnings…</span>
@@ -737,13 +737,20 @@
         <div class="radar-crop radar-stage" id="radar-stage">
           <img id="radar-view" alt="Radar or satellite" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
         </div>
-        <div class="radar-tools">
-          <div class="cam-pills" id="radar-pills">
-            <button type="button" data-radar="loop" class="on">Radar</button>
-            <button type="button" data-radar="gulf">Gulf sat</button>
-            <button type="button" data-radar="atl">Atlantic tropics</button>
-          </div>
-          <p id="radar-cap" class="radar-legend">Tampa radar loop</p>
+        <p id="radar-cap" class="radar-legend">Local radar loop</p>
+      </section>
+      <section id="gulfsat" class="page">
+        <h2 data-k="Gulf">Gulf satellite</h2>
+        <p class="pill-key">GOES Gulf of America / East Gulf. Enters the rotation when a named storm is in the Gulf.</p>
+        <div class="radar-crop radar-stage">
+          <img id="gulfsat-view" alt="Gulf satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"/>
+        </div>
+      </section>
+      <section id="tropics" class="page">
+        <h2 data-k="Atlantic">Tropics satellite</h2>
+        <p class="pill-key">GOES Caribbean / Atlantic tropics. Enters the rotation when a named storm is in the Atlantic.</p>
+        <div class="radar-crop radar-stage">
+          <img id="tropics-view" alt="Atlantic tropics satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg"/>
         </div>
       </section>
       <section id="marine" class="page">
@@ -1015,7 +1022,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v169</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v170</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1064,7 +1071,12 @@ Cart shop:</textarea>
           <button type="button" data-p="cane">Tropical</button>
           <button type="button" data-p="hurr">Hurricane</button>
           <button type="button" data-p="contacts">Emergency</button>
+          <button type="button" data-p="gulfsat">Gulf sat</button>
+        </div>
+        <div class="tray-group">
           <span></span>
+          <button type="button" data-p="tropics">Tropics</button>
+          <span></span><span></span><span></span><span></span>
         </div>
       </div>
       <div id="tray-setup" class="tray-pane" hidden>
@@ -1265,7 +1277,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 169;
+    window.BOARD_VER = 170;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1966,6 +1978,14 @@ function showPage(id) {
         if (typeof showRadarView === "function") showRadarView((window.__satViews && window.__satViews[window.__radarI || 0]) || "loop", false);
       }
       if (id === "hurr" && typeof showHurrSlide === "function") showHurrSlide(true);
+      if (id === "gulfsat") {
+        var g = document.getElementById("gulfsat-view");
+        if (g) g.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg?t=" + Date.now();
+      }
+      if (id === "tropics") {
+        var a = document.getElementById("tropics-view");
+        if (a) a.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg?t=" + Date.now();
+      }
     }
     function saveRadio(url) {
       var v = url == null ? "" : String(url);
@@ -2968,6 +2988,9 @@ function showPage(id) {
         list.push("cane");
         if (/hurricane|tropical storm|storm surge/.test(ev) || (window.__wxRisk && window.__wxRisk.hurr)) list.push("hurr");
       }
+      var basins = window.__satBasins || {};
+      if (basins.gulf) list.push("gulfsat");
+      if (basins.atl) list.push("tropics");
       if (/flood|marine|small craft|gale|waterspout|rip|surf|coastal|tropical|hurricane/.test(ev) && list.indexOf("marine") < 0) list.push("marine");
       list.push("contacts", "prep", "power");
       var seen = {};
@@ -2980,7 +3003,7 @@ function showPage(id) {
     function pageDwell(id) {
       if (id === "hurr") return 36000;
       var base = (Number(getSet().rotate) || 15) * 1000;
-      return (id === "now" || id === "cam") ? Math.max(base, 20000) : (id === "radar" && window.__satViews && window.__satViews.length > 1) ? Math.max(base, 36000) : base;
+      return (id === "now" || id === "cam") ? Math.max(base, 20000) : (id === "gulfsat" || id === "tropics") ? Math.max(base, 20000) : base;
     }
     function startRotate() {
       clearInterval(rot);
@@ -3009,7 +3032,7 @@ function showPage(id) {
           if (id && document.getElementById(id)) {
             showPage(id);
             var wrap = document.querySelector(".dock-wrap");
-            var homePages = { traffic:1, cam:1, sky:1, radio:1, house:1, villa:1, wink:1, sports:1, power:1, prep:1, bolt:1, cane:1, hurr:1, contacts:1 };
+            var homePages = { traffic:1, cam:1, sky:1, radio:1, house:1, villa:1, wink:1, sports:1, power:1, prep:1, bolt:1, cane:1, hurr:1, contacts:1, gulfsat:1, tropics:1 };
             var setupPages = { health:1, guide:1, ideas:1 };
             clearTimeout(rot); clearInterval(rot); clearTimeout(idle);
             if (setupPages[id] || homePages[id]) {
@@ -3333,7 +3356,8 @@ function showPage(id) {
       "v166 — Sports leagues in the briefing use Weather-style spacing.",
       "v167 — Night header stars are scattered and twinkle instead of a sliding grid.",
       "v168 — Header sun, moon, and clouds follow the real sky and forecast.",
-      "v169 — Dock is a 7-button row plus a grouped More tray."
+      "v169 — Dock is a 7-button row plus a grouped More tray.",
+      "v170 — Gulf sat and Tropics sat are their own pages. Radar is radar only."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3343,8 +3367,8 @@ function showPage(id) {
       var place = typeof homePlace === "function" ? homePlace() : "Englewood";
       var rot = [];
       try { rot = (typeof rotateList === "function" ? rotateList() : []).slice(); } catch (e) { rot = []; }
-      var names = { now:"Today", tenday:"Weather", radar:"Radar/Satellite", marine:"Marine", sky:"Sky", traffic:"Roads", cam:"Views", ent:"Fun", house:"House", deliver:"Delivery", radio:"Radio", sports:"Sports", bolt:"Bolt", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", prep:"Prep", power:"Power" };
-      var rotLine = rot.map(function (id) { return names[id] || id; }).join(" → ") || "Today → Weather → Radar/Satellite → …";
+      var names = { now:"Today", tenday:"Weather", radar:"Radar", gulfsat:"Gulf sat", tropics:"Tropics", marine:"Marine", sky:"Sky", traffic:"Roads", cam:"Views", ent:"Fun", house:"House", deliver:"Delivery", radio:"Radio", sports:"Sports", bolt:"Bolt", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", prep:"Prep", power:"Power" };
+      var rotLine = rot.map(function (id) { return names[id] || id; }).join(" → ") || "Today → Weather → Radar → …";
       var prep = typeof lightningPrep === "function" ? lightningPrep() : { on:false, why:"" };
       var nowL = typeof lightningNow === "function" ? lightningNow() : { on:false, why:"" };
       var sat = window.__satBasins || {};
@@ -3504,6 +3528,9 @@ function showPage(id) {
         insertAfter(list, after, "cane");
       }
       if (risk.hurr) insertAfter(list, list.indexOf("cane") >= 0 ? "cane" : (list.indexOf("bolt") >= 0 ? "bolt" : "radar"), "hurr");
+      var basins = window.__satBasins || {};
+      if (basins.gulf) insertAfter(list, "radar", "gulfsat");
+      if (basins.atl) insertAfter(list, list.indexOf("gulfsat") >= 0 ? "gulfsat" : "radar", "tropics");
       if (typeof noteFeed === "function") {
         noteFeed("bolt-rot", true, boltWanted() ? "after radar" : "idle");
         noteFeed("cane-rot", true, (risk.cane || (window.__namedStorms && window.__namedStorms.length)) ? "after bolt/radar" : "idle");
@@ -3976,7 +4003,7 @@ function showPage(id) {
       var tray = document.getElementById("dock-tray");
       if (!wrap || !moreBtn || !tray) return;
       var hideT;
-      var overflow = { traffic:1, cam:1, sky:1, radio:1, house:1, villa:1, wink:1, sports:1, power:1, prep:1, bolt:1, cane:1, hurr:1, contacts:1, health:1, guide:1, ideas:1 };
+      var overflow = { traffic:1, cam:1, sky:1, radio:1, house:1, villa:1, wink:1, sports:1, power:1, prep:1, bolt:1, cane:1, hurr:1, contacts:1, gulfsat:1, tropics:1, health:1, guide:1, ideas:1 };
       function close() {
         var page = document.querySelector(".page.on");
         if (page && overflow[page.id]) return;
