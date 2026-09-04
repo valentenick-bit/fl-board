@@ -647,6 +647,7 @@
     .emerg-sheet p.eline { display:flex; justify-content:space-between; gap:16px; align-items:baseline; margin:0; padding:7px 0; border-bottom:1px solid var(--hair); font-size:16px; }
     .emerg-sheet p.eline span { color:var(--navy); font-weight:600; }
     .emerg-sheet p.eline a { font-family:Fraunces,Georgia,serif; font-size:20px; font-weight:600; color:var(--teal); text-decoration:none; white-space:nowrap; }
+    .emerg-sheet p.eline-note { margin:0 0 8px; font-size:15px; line-height:1.4; color:var(--muted); }
     html.dark .emerg-sheet .emerg-lead, html.dark .emerg-sheet p.eline span { color:#f7f1e6; }
     html.dark .emerg-sheet p.eline { border-bottom-color:#3a3458; }
     html.dark .emerg-sheet p.eline a { color:#7fd3c6; }
@@ -994,7 +995,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v286</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v287</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1904,7 +1905,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 286;
+    window.BOARD_VER = 287;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2612,7 +2613,7 @@ Cart shop:</textarea>
         em: ["County emergency management", "911"],
         extra: null,
         power: ["Power outage", ""],
-        gas: ["Gas leak", "911"],
+        gas: ["Natural gas", ""],
         water: ["Water utility", ""],
         net: ["Internet", ""],
         state: ["State emergency info", ""],
@@ -2674,24 +2675,25 @@ Cart shop:</textarea>
         }
       } else {
         pack.state = ["Ready.gov", "202-646-2500"];
-        pack.power = ["Utility outage", "911"];
+        pack.power = ["Electric company", ""];
       }
       var lead = document.getElementById("emerg-lead");
-      if (lead) lead.innerHTML = 'If someone is hurt or a line is down, call <a href="tel:911">911</a>.';
+      if (lead) lead.innerHTML = "911 is for a person in danger — fire, medical, crime, or a live wire on someone. Lights out, no water, or dead internet is the company, not 911.";
       var call = document.getElementById("emerg-call");
-      if (call) call.innerHTML = "<h3>Call first</h3>" +
-        dial("Life emergency", "911") +
+      if (call) call.innerHTML = "<h3>Someone is hurt</h3>" +
+        dial("Fire, medical, crime", "911") +
         dial(pack.sheriff[0], pack.sheriff[1]) +
         (pack.info ? dial(pack.info[0], pack.info[1]) : "") +
-        dial(pack.em[0], pack.em[1]) +
-        dial("Poison", "800-222-1222") +
-        (pack.extra ? dial(pack.extra[0], pack.extra[1]) : "");
+        (pack.extra ? dial(pack.extra[0], pack.extra[1]) : "") +
+        dial("Poison control", "800-222-1222");
       var util = document.getElementById("emerg-util");
-      if (util) util.innerHTML = "<h3>House utilities</h3>" +
-        (pack.power[1] ? dial(pack.power[0], pack.power[1]) : "") +
-        dial(pack.gas[0], pack.gas[1]) +
-        (pack.water[1] ? dial(pack.water[0], pack.water[1]) : "") +
-        (pack.net[1] ? dial(pack.net[0], pack.net[1]) : "");
+      if (util) util.innerHTML = "<h3>The house is out</h3>" +
+        "<p class=\"eline-note\">Electric, water, gas, and internet are four different companies.</p>" +
+        (pack.power[1] ? dial("Electric outage (FPL)", pack.power[1]) : "") +
+        (pack.water[1] ? dial("Water (" + pack.water[0].replace(/^Water — /, "") + ")", pack.water[1]) : "") +
+        (pack.net[1] ? dial("Internet (Frontier)", pack.net[1]) : "") +
+        (pack.gas[1] ? dial("Gas leak (Peoples Gas)", pack.gas[1]) : "") +
+        (st === "FL" && (zip.indexOf("342") === 0 || /sarasota/.test(county)) ? "<h3>County</h3>" + dial(pack.em[0], pack.em[1]) + dial("County 311", "941-861-5000") : (pack.em[1] ? "<h3>County</h3>" + dial(pack.em[0], pack.em[1]) : ""));
       var after = document.getElementById("emerg-after");
       if (after) after.innerHTML = "<h3>After a storm</h3>" +
         dial("FEMA", "800-621-3362") +
@@ -2700,7 +2702,7 @@ Cart shop:</textarea>
         dial(pack.redcross[0], pack.redcross[1]) +
         dial(pack.two11[0], pack.two11[1]) +
         (pack.animal[1] ? dial(pack.animal[0], pack.animal[1]) : "") +
-        dial("Roads", "511");
+        dial("Florida roads", "511");
     }
     function resolveHomeGeo() {
       paintHomeChrome();
@@ -4607,6 +4609,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v287 — 911 is only for a person in danger. House out is electric, water, internet, gas — each named.",
       "v286 — Emergency is a call sheet. Englewood numbers checked against county and utility pages.",
       "v285 — Emergency numbers are a directory list, not chips: name left, number right.",
       "v284 — Emergency: Right now card, then contact chips. No navy dial stacks.",
