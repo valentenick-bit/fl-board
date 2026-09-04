@@ -321,7 +321,8 @@
     .brand b { display:block; font-family:Fraunces,Georgia,serif; letter-spacing:.1em; font-size:20px; }
     .brand small { letter-spacing:.16em; text-transform:uppercase; font-size:11px; opacity:.75; }
     #when { font-weight:700; }
-    .flag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
+    .flag { display:none; font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
+    .flag.on { display:block; }
     .hdr-meta { display:none; }
     .who-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
     .who-row .card b { display:block; margin-bottom:6px; }
@@ -744,7 +745,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v209</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v210</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -1469,7 +1470,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 209;
+    window.BOARD_VER = 210;
     window.ROT_DEFAULTS = {
       normal: ["now","tenday","radar","marine","sky","ent","deliver"],
       storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
@@ -2535,11 +2536,7 @@ function showPage(id) {
         var mp = (now - nightStart) / span;
         if (mp < 0) mp += 1;
         mp = Math.max(0, Math.min(1, mp));
-        moon.style.left = "auto";
-        moon.style.right = "26%";
-        moon.style.top = "6%";
-        moon.style.bottom = "auto";
-        moon.style.opacity = (slot === "night" || slot === "dusk") ? "1" : "0";
+        /* moon path is handled by driftClouds */
         var ph = typeof moonPhase === "function" ? moonPhase() : 0.3;
         var shade = Math.cos(ph * Math.PI * 2);
         var shift = (shade * 5).toFixed(1);
@@ -2559,42 +2556,74 @@ function showPage(id) {
       var clouds = [].slice.call(document.querySelectorAll(".hdr-cloud-svg"));
       var jobs = clouds.map(function (el, i) {
         el.style.transition = "none";
-        return { el: el, start: 0, wait: 800 + i * 7000, born: Date.now() };
+        el.style.willChange = "transform,opacity";
+        return { el: el, start: 0, wait: 600 + i * 5000, born: performance.now() };
       });
+      var moonEl = document.getElementById("hdr-moon");
+      var moonJob = { el: moonEl, start: 0 };
       function arm(job, now) {
-        var dir = Math.random() < 0.55 ? 1 : -1;
-        var dist = 12 + Math.random() * 22;
-        job.x0 = 8 + Math.random() * 72;
-        job.y0 = 4 + Math.random() * 30;
-        job.x1 = Math.max(2, Math.min(92, job.x0 + dir * dist));
-        job.y1 = Math.max(2, Math.min(38, job.y0 + (Math.random() * 10 - 5)));
-        job.dur = 28000 + Math.random() * 36000;
-        job.fade = 3500 + Math.random() * 2500;
+        var dir = Math.random() < 0.6 ? 1 : -1;
+        var dist = 10 + Math.random() * 18;
+        job.x0 = 10 + Math.random() * 70;
+        job.y0 = 6 + Math.random() * 26;
+        job.x1 = Math.max(4, Math.min(90, job.x0 + dir * dist));
+        job.y1 = Math.max(4, Math.min(36, job.y0 + (Math.random() * 8 - 4)));
+        job.dur = 40000 + Math.random() * 30000;
+        job.fade = 4000 + Math.random() * 2000;
         job.start = now;
       }
-      function tick() {
-        var now = Date.now();
+      function armMoon(now) {
+        var dir = Math.random() < 0.55 ? 1 : -1;
+        moonJob.x0 = 52 + Math.random() * 20;
+        moonJob.y0 = 6 + Math.random() * 8;
+        moonJob.x1 = Math.max(50, Math.min(82, moonJob.x0 + dir * (8 + Math.random() * 10)));
+        moonJob.y1 = Math.max(4, Math.min(16, moonJob.y0 + (Math.random() * 4 - 2)));
+        moonJob.dur = 80000 + Math.random() * 50000;
+        moonJob.start = now;
+      }
+      function place(el, xPct, yPx) {
+        var head = document.querySelector("header");
+        var w = head ? head.offsetWidth : 360;
+        el.style.left = "0";
+        el.style.top = "0";
+        el.style.right = "auto";
+        el.style.bottom = "auto";
+        el.style.transform = "translate3d(" + (xPct / 100 * w) + "px," + yPx + "px,0)";
+      }
+      function tick(now) {
+        now = now || performance.now();
         var max = cap();
+        var head = document.querySelector("header");
+        var hh = head ? head.offsetHeight : 80;
         jobs.forEach(function (job) {
           if (!job.start) {
             if (now - job.born < job.wait) { job.el.style.opacity = "0"; return; }
             arm(job, now);
           }
           var t = now - job.start;
-          if (t >= job.dur) {
-            arm(job, now);
-            t = 0;
-          }
+          if (t >= job.dur) { arm(job, now); t = 0; }
           var p = t / job.dur;
           var fadeIn = Math.min(1, t / job.fade);
           var fadeOut = Math.min(1, (job.dur - t) / job.fade);
-          job.el.style.left = (job.x0 + (job.x1 - job.x0) * p) + "%";
-          job.el.style.top = (job.y0 + (job.y1 - job.y0) * p) + "%";
+          var x = job.x0 + (job.x1 - job.x0) * p;
+          var y = (job.y0 + (job.y1 - job.y0) * p) / 100 * hh;
+          place(job.el, x, y);
           job.el.style.opacity = String(max * fadeIn * fadeOut);
         });
+        if (moonEl) {
+          var night = head && (head.classList.contains("sky-night") || head.classList.contains("sky-dusk"));
+          if (!moonJob.start) armMoon(now);
+          var mt = now - moonJob.start;
+          if (mt >= moonJob.dur) { armMoon(now); mt = 0; }
+          var mp = mt / moonJob.dur;
+          var mx = moonJob.x0 + (moonJob.x1 - moonJob.x0) * mp;
+          var my = (moonJob.y0 + (moonJob.y1 - moonJob.y0) * mp) / 100 * hh;
+          place(moonEl, mx, my);
+          moonEl.style.opacity = night ? "1" : "0";
+        }
+        requestAnimationFrame(tick);
       }
-      setInterval(tick, 80);
-      tick();
+      requestAnimationFrame(tick);
     })();
     function layoutPalms() {
       var head = document.querySelector("header");
@@ -2657,6 +2686,8 @@ function showPage(id) {
       else if (slot === "dusk") head.classList.add("sky-dusk");
       else if (slot === "night" || nightLook) head.classList.add("sky-night","night");
       else head.classList.add("sky-sun");
+      var flag = document.querySelector("header .flag");
+      if (flag) flag.classList.toggle("on", !!(warn || storm || (window.__wxRisk && window.__wxRisk.alert)));
       if (wet) head.classList.add("sky-cloud");
       else head.classList.add("sky-partly");
       if (typeof placeSkyBodies === "function") placeSkyBodies(slot);
