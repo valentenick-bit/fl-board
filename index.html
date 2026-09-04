@@ -47,6 +47,13 @@
       document.addEventListener("click", function (e) {
         var t = e.target && e.target.closest ? e.target.closest("button, [data-p], #hamb, #morebtn") : null;
         if (!t) return;
+        var key = t.getAttribute && t.getAttribute("data-k");
+        if (key != null) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof window.pinKey === "function") window.pinKey(key);
+          return;
+        }
         if (t.id === "dev-pin-go" || (e.target && e.target.id === "dev-pin")) return;
         if (t.id === "devbtn") {
           e.preventDefault();
@@ -153,6 +160,14 @@
     .dev-lock-card p { margin:0 0 10px; color:var(--muted); }
     .dev-lock-card input { width:100%; font-size:22px; letter-spacing:.3em; text-align:center; padding:10px; border-radius:10px; border:1px solid var(--hair); background:#fff; color:var(--navy); }
     .dev-lock-card .go { margin-top:10px; width:100%; border:0; background:var(--navy); color:#f7f1e6; padding:10px; border-radius:10px; font-weight:700; }
+    .pin-dots { display:flex; justify-content:center; gap:10px; margin:8px 0 12px; }
+    .pin-dots i { width:12px; height:12px; border-radius:50%; border:2px solid var(--navy); display:inline-block; }
+    .pin-dots i.on { background:var(--navy); }
+    .pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .pin-pad button { border:0; background:#fff; color:var(--navy); border-radius:12px; min-height:48px; font-size:20px; font-weight:800; box-shadow:0 0 0 1px var(--hair); }
+    html.dark .pin-dots i { border-color:#f7f1e6; }
+    html.dark .pin-dots i.on { background:#f7f1e6; }
+    html.dark .pin-pad button { background:#2a2444; color:#f7f1e6; }
     html.dark .dev-lock-card { background:#1b1730; color:#f7f1e6; }
     html.dark .dev-lock-card input { background:#2a2444; color:#f7f1e6; border-color:#3a3458; }
     .trig-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--hair); }
@@ -731,7 +746,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v183</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v184</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1255,8 +1270,14 @@ Cart shop:</textarea>
       <div class="dev-lock-card">
         <b>Developer</b>
         <p>Enter the board PIN to open Status, Triggers, and the shop pages.</p>
-        <input id="dev-pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" />
-        <button type="button" class="go" id="dev-pin-go" onclick="if(window.tryDevPin)window.tryDevPin();">Open</button>
+        <div class="pin-dots" id="pin-dots"><i></i><i></i><i></i><i></i></div>
+        <div class="pin-pad" id="pin-pad">
+          <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+          <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+          <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+          <button type="button" data-k="c">Clear</button><button type="button" data-k="0">0</button><button type="button" data-k="ok">Open</button>
+        </div>
+        <input id="dev-pin" type="text" inputmode="numeric" maxlength="8" autocomplete="off" hidden />
         <p id="dev-pin-err" hidden>Wrong PIN</p>
       </div>
     </div>
@@ -1441,7 +1462,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 183;
+    window.BOARD_VER = 184;
     (function clearBlockers() {
       ["drawer-back", "drawer", "dev-drawer", "dev-lock", "settings"].forEach(function (id) {
         var el = document.getElementById(id);
@@ -4253,20 +4274,49 @@ function showPage(id) {
     window.openMenu = openMenu;
     function closeMenu() { openMenu(false); }
     var DEV_PIN = "0000";
+    window.__pinBuf = "";
+    function paintPinDots() {
+      var dots = document.querySelectorAll("#pin-dots i");
+      var n = (window.__pinBuf || "").length;
+      for (var i = 0; i < dots.length; i++) dots[i].classList.toggle("on", i < n);
+    }
+    window.unlockDeveloper = function () {
+      try { sessionStorage.setItem("bw-dev", "1"); } catch (e) {}
+      var lock = document.getElementById("dev-lock");
+      if (lock) { lock.classList.remove("on"); lock.hidden = true; }
+      var d = document.getElementById("dev-drawer");
+      var main = document.getElementById("drawer");
+      var b = document.getElementById("drawer-back");
+      if (main) main.classList.remove("on");
+      if (d) d.classList.add("on");
+      if (b) b.classList.add("on");
+      if (typeof openDevDrawer === "function") openDevDrawer(true);
+    };
     window.tryDevPin = function () {
-      var pin = document.getElementById("dev-pin");
       var err = document.getElementById("dev-pin-err");
-      var val = pin ? String(pin.value || "").replace(/\s+/g, "") : "";
-      if (val === DEV_PIN || val === "0" || val === "0000") {
-        try { sessionStorage.setItem("bw-dev", "1"); } catch (e) {}
-        var lock = document.getElementById("dev-lock");
-        if (lock) { lock.classList.remove("on"); lock.hidden = true; }
-        if (typeof openDevDrawer === "function") openDevDrawer(true);
+      var val = String(window.__pinBuf || "");
+      var typed = document.getElementById("dev-pin");
+      if (typed && typed.value) val = String(typed.value).replace(/\s+/g, "");
+      if (val === DEV_PIN) {
         if (err) err.hidden = true;
+        window.unlockDeveloper();
+        window.__pinBuf = "";
+        paintPinDots();
         return true;
       }
-      if (err) { err.hidden = false; err.textContent = "Wrong PIN"; }
+      if (err) { err.hidden = false; err.textContent = "Wrong PIN — tap 0 four times"; }
+      window.__pinBuf = "";
+      paintPinDots();
       return false;
+    };
+    window.pinKey = function (k) {
+      k = String(k || "");
+      if (k === "c") { window.__pinBuf = ""; paintPinDots(); return; }
+      if (k === "ok") { window.tryDevPin(); return; }
+      if (!/^[0-9]$/.test(k)) return;
+      window.__pinBuf = String(window.__pinBuf || "").slice(0, 3) + k;
+      paintPinDots();
+      if (window.__pinBuf === DEV_PIN) window.tryDevPin();
     };
     function devUnlocked() {
       try { return sessionStorage.getItem("bw-dev") === "1"; } catch (e) { return false; }
@@ -4287,14 +4337,13 @@ function showPage(id) {
     function askDevPin() {
       var lock = document.getElementById("dev-lock");
       var err = document.getElementById("dev-pin-err");
-      var pin = document.getElementById("dev-pin");
+      window.__pinBuf = "";
+      if (typeof paintPinDots === "function") paintPinDots();
       if (err) err.hidden = true;
-      if (pin) pin.value = "";
       if (lock) {
         lock.hidden = false;
         lock.classList.add("on");
       }
-      if (pin) setTimeout(function () { pin.focus(); }, 50);
     }
     function openDeveloper() {
       window.openDeveloper = openDeveloper;
