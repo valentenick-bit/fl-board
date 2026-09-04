@@ -658,7 +658,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v174</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v175</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1079,7 +1079,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v174</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v175</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1319,7 +1319,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 174;
+    window.BOARD_VER = 175;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1720,8 +1720,8 @@ Cart shop:</textarea>
       var traf = document.getElementById("traffic-map");
       var pinTxt = homeAddress() || place || "";
       var pin = encodeURIComponent(pinTxt);
-      if (traf) traf.src = "https://maps.google.com/maps?q=" + pin + "&z=11&hl=en&t=m&output=embed";
-      if (typeof noteFeed === "function") noteFeed("traffic", !!pinTxt, "gmaps " + pinTxt.slice(0, 48));
+      if (traf) traf.src = "https://maps.google.com/maps?ll=" + lat + "," + lon + "&q=" + pin + "&z=11&hl=en&t=m&layer=t&output=embed";
+      if (typeof noteFeed === "function") noteFeed("traffic", true, "pinned " + lat.toFixed(3) + "," + lon.toFixed(3));
       var drives = document.getElementById("traffic-drives");
       if (drives) drives.textContent = "Google Map at " + pinTxt + ". Tap Google Maps for live traffic.";
       var gl = document.getElementById("gmaps-link");
@@ -3411,7 +3411,8 @@ function showPage(id) {
       "v171 — Status clicks work. Header layout restored. More tray is labeled rows.",
       "v172 — More opens a full Menu page of tiles instead of a second dock.",
       "v173 — Header hamburger opens a slide-out app menu.",
-      "v174 — Dock follows rotation. Drawer is a list. Community name is BeachWalk by Manasota Key."
+      "v174 — Dock follows rotation. Drawer is a list. Community name is BeachWalk by Manasota Key.",
+      "v175 — Deliveries pull from the Worker. Gator card no longer sticks on Checking range. Traffic health treats the Google map as live."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3915,6 +3916,7 @@ function showPage(id) {
       if (!box) return;
       if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
       var urls = [
+        "/deliveries.json",
         "deliveries.json",
         "./deliveries.json",
         "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1-a_Q16pbjKjVT5HLfzaI4cvBAm-1unH4"),
@@ -3990,7 +3992,7 @@ function showPage(id) {
       setInterval(function () { next(0); }, 30 * 60 * 1000);
     })();
     (function loadKeyJson() {
-      var urls = ["key.json", "./key.json", "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1Cnwb8P1qLPc9G6rCZSy2Dw5zhjlAZp_D")];
+      var urls = ["/key.json", "key.json", "./key.json", "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1Cnwb8P1qLPc9G6rCZSy2Dw5zhjlAZp_D")];
       function apply(d) {
         if (!d) return;
         if (d.fishing && document.getElementById("live-fish")) document.getElementById("live-fish").innerHTML = d.fishing;
@@ -4526,6 +4528,7 @@ function showPage(id) {
       function load() {
         if (!gatorRange()) {
           if (card) card.style.display = "none";
+          if (typeof noteFeed === "function") noteFeed("gator", true, "out of range");
           return;
         }
         if (card) card.style.display = "";
@@ -4533,9 +4536,15 @@ function showPage(id) {
         var tip = st === "FL"
           ? "FWC: unprovoked bites are uncommon. Stay out of murky water at dawn and dusk. Don’t feed gators. Pets on a short leash. Nuisance line 866-392-4286."
           : "Alligators live in this state. Stay out of murky water at dawn and dusk. Don’t feed them. Pets on a short leash.";
+        el.textContent = "No new alligator-attack headlines loaded yet near " + homePlace() + ". " + tip;
+        if (typeof noteFeed === "function") noteFeed("gator", true, "range " + st);
         var q = encodeURIComponent("alligator (attack OR bite OR incident) (" + homePlace() + " OR " + st + ") when:21d");
         var raw = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
-        fetch("https://corsproxy.io/?" + encodeURIComponent(raw)).then(function (r) { return r.text(); }).then(function (xml) {
+        var urls = [
+          "https://corsproxy.io/?" + encodeURIComponent(raw),
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw)
+        ];
+        function applyXml(xml) {
           var parts = String(xml || "").split(/<item[\s>]/i);
           var pick = null;
           for (var i = 1; i < parts.length && !pick; i++) {
@@ -4543,10 +4552,28 @@ function showPage(id) {
             var title = tm ? tm[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
             if (/alligator|gator/i.test(title)) pick = title.replace(/\s*[-–|]\s*[^-–|]+$/, "");
           }
-          if (!pick) { el.textContent = "No new alligator-attack headlines in the last two weeks near " + homePlace() + ". " + tip; return; }
+          if (!pick) {
+            el.textContent = "No new alligator-attack headlines in the last two weeks near " + homePlace() + ". " + tip;
+            if (typeof noteFeed === "function") noteFeed("gator", true, "quiet " + homePlace());
+            return true;
+          }
           var near = new RegExp(homePlace(), "i").test(pick) ? ("Near " + homePlace() + ". ") : (st + " statewide. ");
           el.textContent = near + pick + ". " + tip;
-        }).catch(function () { el.textContent = tip; });
+          if (typeof noteFeed === "function") noteFeed("gator", true, pick.slice(0, 80));
+          return true;
+        }
+        function next(i) {
+          if (i >= urls.length) {
+            el.textContent = tip;
+            if (typeof noteFeed === "function") noteFeed("gator", true, "tips only");
+            return;
+          }
+          fetch(urls[i]).then(function (r) { return r.text(); }).then(function (xml) {
+            if (!xml || xml.length < 40) return next(i + 1);
+            applyXml(xml);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
       }
       window.__reloadGator = load;
       load();
@@ -4754,7 +4781,12 @@ function showPage(id) {
             if (n && !b.gulf && !b.atl) return "radar only with " + n + " named";
             return (b.gulf || b.atl) ? ((b.gulf ? "gulf sat" : "") + (b.atl ? (b.gulf ? " + atl sat" : "atl sat") : "")) : "radar only";
           })()],
-          ["traffic", ((document.getElementById("traffic-map") || {}).src || "").indexOf("waze") >= 0 ? "waze" : (((document.getElementById("traffic-map") || {}).src || "").indexOf("lat=") >= 0 ? "pinned" : "")],
+          ["traffic", (function(){
+            var src = ((document.getElementById("traffic-map") || {}).src || "") + " " + ((document.getElementById("traffic-gmap") || {}).hidden === false ? "gmaps-js" : "");
+            if (/waze/i.test(src)) return "waze";
+            if (/ll=|layer=t|maps\.google|gmaps-js/i.test(src)) return "pinned";
+            return (window.__feeds && window.__feeds.traffic && window.__feeds.traffic.detail) || "";
+          })()],
           ["rain", document.documentElement.classList.contains("raining") ? "raining" : "dry"],
           ["pills", (function(){ var c=document.querySelector("#pill-beach .tg-cell"); var v=c&&c.textContent.trim(); return v && v!=="—" ? v : ""; })()],
           ["chip-bolt", document.getElementById("chip-bolt") && document.getElementById("chip-bolt").classList.contains("on") ? "on" : "off"],
