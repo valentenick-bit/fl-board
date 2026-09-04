@@ -802,7 +802,8 @@
     html.kiosk h2 { font-size:24px; }
     html.kiosk .sky { font-size:16px; }
     html.kiosk .tile strong { font-size:20px; }
-    .offrot-head { margin:0 0 8px; border-radius:14px; }
+    .page > .settings-head { margin:-8px -10px 8px; }
+    .page.has-off-head > h2 { display:none; }
     .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
     .pbar-read span { color:var(--muted); font-size:12px; }
     .pbar { position:relative; display:flex; height:18px; border-radius:999px; overflow:hidden; background:#e2d9c8; }
@@ -912,7 +913,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v271</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v273</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -923,10 +924,6 @@
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <div class="ptr" id="ptr">Pull to refresh</div>
     <main>
-      <div class="settings-head offrot-head" id="offrot-head" hidden>
-        <button type="button" class="page-back" id="offrot-back" title="Back" aria-label="Back">‹</button>
-        <div><strong id="offrot-title">Page</strong><span>Not in the current rotation</span></div>
-      </div>
       <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
@@ -1796,7 +1793,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 271;
+    window.BOARD_VER = 273;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2653,23 +2650,40 @@ Cart shop:</textarea>
       });
     }
 
-function pageOnRotation(id) {
+function currentRotation() {
       try {
-        var list = typeof rotateList === "function" ? rotateList() : (pages || []);
-        return list.indexOf(id) >= 0;
-      } catch (e) { return false; }
+        if (window.__storm && typeof warnList === "function") return warnList() || [];
+        if (typeof rotateList === "function") return rotateList() || [];
+      } catch (e) {}
+      return (typeof pages !== "undefined" && Array.isArray(pages)) ? pages : [];
+    }
+    function pageOnRotation(id) {
+      if (!id) return false;
+      var daily = { now:1, tenday:1, radar:1, marine:1, sky:1, cam:1, traffic:1, ent:1, deliver:1 };
+      try {
+        var list = currentRotation();
+        if (list && list.indexOf(id) >= 0) return true;
+        var dock = document.getElementById("dock");
+        if (dock && dock.querySelector('button[data-p="' + id + '"]')) return true;
+        if ((!list || !list.length) && daily[id]) return true;
+        return false;
+      } catch (e) {
+        return !!daily[id];
+      }
     }
     function paintOffrot(id) {
-      var bar = document.getElementById("offrot-head");
-      if (!bar) return;
-      if (!id || id === "settings" || id === "account" || pageOnRotation(id)) {
-        bar.hidden = true;
-        return;
-      }
+      document.querySelectorAll(".page-off-head").forEach(function (el) { el.remove(); });
+      document.querySelectorAll(".page.has-off-head").forEach(function (p) { p.classList.remove("has-off-head"); });
+      if (!id || id === "settings" || id === "account" || pageOnRotation(id)) return;
+      var page = document.getElementById(id);
+      if (!page) return;
       var names = { now:"Today", welcome:"Welcome", tenday:"Weather", radar:"Radar", marine:"Marine", sky:"Sky", traffic:"Roads", ent:"Fun", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf sat", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
-      bar.hidden = false;
-      var t = document.getElementById("offrot-title");
-      if (t) t.textContent = names[id] || id;
+      var subs = { health:"What is live, stale, or down", guide:"How Commons works", ideas:"Queued work", sources:"Where the numbers come from", triggers:"Test rotations and alerts", kioskpage:"Wall setup", villa:"Open and close the house", contacts:"Numbers and what to do", prep:"Kit and steps for this warning", power:"Outages near the house", business:"Clubhouse and HOA", wink:"Local headlines", menu:"All pages", welcome:"Start here" };
+      var head = document.createElement("div");
+      head.className = "settings-head page-off-head";
+      head.innerHTML = "<button type='button' class='page-back' title='Back' aria-label='Back'>‹</button><div><strong>" + (names[id] || id) + "</strong><span>" + (subs[id] || "Back to the board") + "</span></div>";
+      page.insertBefore(head, page.firstChild);
+      page.classList.add("has-off-head");
     }
     function showPage(id) {
       window.showPage = showPage;
@@ -4374,6 +4388,8 @@ function pageOnRotation(id) {
     }
 
     window.BOARD_NOTES = [
+      "v273 — Back header only on pages that are not in the live rotation or dock.",
+      "v272 — Off-rotation pages use the same sticky back header as Settings.",
       "v271 — Watch and warning sit under the header with a WATCH or WARNING label. Briefing stays at the bottom.",
       "v270 — Off-rotation pages get the same back arrow as Settings. Phone and kiosk use a slightly smaller type ladder.",
       "v269 — Type scale is one ladder. Greeting card uses the full page width.",
@@ -6362,18 +6378,18 @@ function pageOnRotation(id) {
     })();
     (function wirePageBack() {
       function leave() {
-        var back = window.__fromPage && window.__fromPage !== "settings" && window.__fromPage !== "account" ? window.__fromPage : "now";
+        var back = window.__fromPage && window.__fromPage !== "settings" && window.__fromPage !== "account" && (typeof pageOnRotation !== "function" || pageOnRotation(window.__fromPage)) ? window.__fromPage : "now";
         if (typeof showPage === "function") showPage(back);
         if (typeof holdThenRotate === "function") holdThenRotate(30000);
         else if (typeof startRotate === "function") startRotate();
       }
-      document.querySelectorAll(".page-back").forEach(function (b) {
-        b.addEventListener("click", function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          leave();
-        });
-      });
+      document.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest && e.target.closest(".page-back");
+        if (!b) return;
+        e.preventDefault();
+        e.stopPropagation();
+        leave();
+      }, true);
     })();
     if (typeof refreshKeyCam === "function") refreshKeyCam(true);
     setInterval(function () { if (typeof refreshKeyCam === "function") refreshKeyCam(true); }, 5 * 60 * 1000);
