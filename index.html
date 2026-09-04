@@ -497,9 +497,14 @@
       margin-bottom:5px; color:var(--teal); font-weight:800;
     }
     .best-chip span, .today-chip span { display:block; font-weight:650; font-size:16px; line-height:1.4; color:var(--navy); }
-    .today-chips { display:flex; flex-direction:column; gap:0; margin:0 0 12px; }
+    .today-chips { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
     .today-chip { display:none; }
-    .today-chip.on { display:block; }
+    .today-chip.on {
+      display:flex; align-items:baseline; gap:8px; flex:1 1 240px;
+      padding:8px 12px; border-radius:999px; margin:0;
+    }
+    .today-chip.on b { display:inline; margin:0; white-space:nowrap; }
+    .today-chip.on span { display:inline; font-size:13px; font-weight:650; line-height:1.35; }
     .today-chip.bolt { border-left-color:var(--coral); }
     .today-chip.bolt b { color:var(--coral); }
     .today-chip.cane { border-left-color:var(--navy); }
@@ -822,10 +827,22 @@
     .page.has-off-head > h2 { display:none; }
     .pbar-read { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
     .pbar-read span { color:var(--muted); font-size:12px; }
-    .pbar { position:relative; display:flex; height:18px; border-radius:999px; overflow:hidden; background:#e2d9c8; }
+    .pbar { position:relative; display:flex; height:28px; border-radius:999px; overflow:hidden; background:#e2d9c8; }
+    .pbar.uv { overflow:visible; margin-top:22px; }
     .pseg { flex:1; font-size:9px; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; justify-content:center; color:#fff; }
     .pseg.low { background:#c4a35a; } .pseg.mid { background:#2a9d8f; } .pseg.high { background:#1b2a4a; }
-    .pneedle { position:absolute; top:-4px; bottom:-4px; left:54%; width:3px; background:#e07a5f; border-radius:2px; box-shadow:0 0 0 2px #fff; }
+    .pneedle {
+      position:absolute; top:-8px; bottom:-8px; left:54%; width:5px;
+      background:#fff; border:2px solid var(--navy); border-radius:6px;
+      box-shadow:0 0 0 2px #fff, 0 2px 8px rgba(0,0,0,.35);
+      transform:translateX(-50%); z-index:2;
+    }
+    .pneedle em {
+      position:absolute; left:50%; top:-20px; transform:translateX(-50%);
+      background:var(--navy); color:#f7f1e6; font-style:normal; font-size:11px;
+      font-weight:800; letter-spacing:.04em; padding:2px 7px; border-radius:999px;
+      white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.25);
+    }
     .pbar-scale { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:4px; }
     .pbar.uv .uv0 { background:#2a9d8f; flex:2; } .pbar.uv .uv1 { background:#c4a35a; flex:3; }
     .pbar.uv .uv2 { background:#e07a5f; flex:3; } .pbar.uv .uv3 { background:#1b2a4a; flex:3; }
@@ -929,7 +946,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v278</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v279</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1033,7 +1050,7 @@
         </div>
         <div class="tile wide" style="margin-bottom:8px">
           <label>UV index</label>
-          <div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" id="uv-needle" style="left:88%"></i></div>
+          <div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" id="uv-needle" style="left:20%"><em id="uv-mark">—</em></i></div>
           <div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div>
         </div>
         <div class="marine-graphs">
@@ -1827,7 +1844,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 278;
+    window.BOARD_VER = 279;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -4515,6 +4532,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v279 — Today chips are a slim row. UV scale has a taller bar and a numbered marker.",
       "v278 — Footer sources use the pill-key rung: 12px muted, teal links. Radar and Fun calendars match Marine and Sky.",
       "v277 — Page-bottom sources follow the home tide station, radar office, and region. SWFL shop links only on 342xx.",
       "v276 — Settings: recycle every week or every other week, with this-week / next-week anchor.",
@@ -7257,7 +7275,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             var word = uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : "Very high";
             uvEl.textContent = word + " " + Math.round(uv);
             var needle = document.getElementById("uv-needle") || document.querySelector("#tenday .pneedle");
-            if (needle) needle.style.left = Math.min(100, (uv / 11) * 100) + "%";
+            if (needle) needle.style.left = Math.min(96, Math.max(4, (uv / 11) * 100)) + "%";
+            var mark = document.getElementById("uv-mark");
+            if (mark) mark.textContent = Math.round(uv);
           }
         }).catch(function () {});
       fetch("https://api.weather.gov/alerts/active?point=" + homePoint(), { headers: { "Accept": "application/geo+json" } })
@@ -7894,6 +7914,10 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var uv = om.current.uv_index;
         var uvw = uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : "Very high";
         uvEl.textContent = uvw + " " + Math.round(uv);
+        var needle = document.getElementById("uv-needle");
+        if (needle) needle.style.left = Math.min(96, Math.max(4, (uv / 11) * 100)) + "%";
+        var mark = document.getElementById("uv-mark");
+        if (mark) mark.textContent = Math.round(uv);
       }
       var line = document.getElementById("wx-nowline");
       if (line && tempF != null) line.textContent = homePlace() + " · " + omWord(om.current.weather_code) + " · " + tempF + "°";
