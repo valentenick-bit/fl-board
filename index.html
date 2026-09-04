@@ -796,7 +796,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v227</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v228</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -860,7 +860,7 @@
           </header>
           <p class="letter-salute">Dear neighbor,</p>
           <p>A community lives on shared information. Comfort is knowing it is current. Safety is knowing it is the same on every screen.</p>
-          <p>Commons is your home companion. It greets you with a daily outlook — the sky, the water, the hours that are a go for the beach, the pool, the cart, the boat, and the courts, plus what is on today and what is coming to the door. Up to date by the hour, written like a neighbor, not a bulletin. One glance on the welcome wall and you have the day.</p>
+          <p>Commons is your home companion. Today opens with a short outlook — temperature, sky, and one sentence on whether it is a good stretch to be outside. Under that, color bars show the next twelve hours for the beach, pool, cart, boat, and courts. What is on today and what is coming to the door sit on the same page. Radar, tides, lightning when it matters, radio, and the house list are a tap away. Written like a neighbor, not a bulletin.</p>
           <p>The same companion serves the whole neighborhood. In the clubhouse, a community unit runs on a dedicated television: newsletters, meeting minutes, association notices, events, and meetings. That unit is the source of record. In each home, a residential unit is waiting on a pre-installed welcome wall monitor. It speaks the same language as the clubhouse and receives what the desk publishes, so a cookout, a board meeting, or last night’s minutes arrive in the villa when they are posted. Carry it on a phone or tablet. Open it on a computer. Managers communicate once. Every screen stays current.</p>
           <p>Commons is committed to safety when the outlook changes. If a weather watch or weather warning is issued for this address, the board leaves the pretty page and communicates the emergency where you already look: the watch or warning in plain language, radar and lightning and the storm track held on screen, whether you should leave and which zone and shelter apply, power, gas, water, internet, and FEMA with the numbers you need, prep that matches this warning, NOAA weather radio until the warning ends — even at two in the morning — and an all-clear when it is actually over. The community unit can push that same alert to every residential wall, every phone, and every laptop so the neighborhood is not reading five versions of the sky.</p>
           <p>Clubhouse television. Welcome wall at home. Pocket and desk when you leave. One source. Current. Safe.</p>
@@ -1220,12 +1220,11 @@ Cart shop:</textarea>
           <b>Not built yet</b>
           <span class="stamp">Ship something and it leaves this list. New ideas we agree on get added here.</span>
           <ul class="check-list" id="idea-backlog">
-                        <li>Go / no-go visual options still open: weather-tint cells, dusk icons, a slim 24-hour ribbon under the 4 blocks</li>
+            <li>Keep the Welcome letter current whenever a feature ships</li>
             <li>Shared occupancy, vendors, and villa checks across every device</li>
             <li>Delivery “delivered” checkbox that other screens see</li>
             <li>Automatic BeachWalk / Englewood / Moose calendar wiring via Worker /ics</li>
-                        <li>Commercial / clubhouse mode vs residential</li>
-            <li>Greetings that rewrite 10–15 minutes before the next hour, not on a long timer</li>
+            <li>Commercial / clubhouse mode vs residential</li>
                         <li>Kiosk Uber: request a ride from this wall, or send a car to pick someone up. The kiosk does not move, so every trip starts or ends at the villa / clubhouse pin.</li>
             <li>Kiosk Instacart: grocery order from the wall only, delivered to the same fixed kiosk address. Not a roaming phone cart.</li>
                         <li>Kiosk is a page, not an on/off button. That page holds setup and kiosk-only settings (pin address, rotation, dock, Uber/Instacart, what the wall is allowed to do).</li>
@@ -1550,7 +1549,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 227;
+    window.BOARD_VER = 228;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -3200,20 +3199,20 @@ function showPage(id) {
     }
     function outdoorAdvice() {
       var nowL = typeof lightningNow === "function" ? lightningNow() : { on: false };
-      if (nowL.on) return "Lightning is in play now. Stay off the beach, the pool, the boat, and the courts until it clears.";
+      if (nowL.on) return "Lightning is in play. Stay inside until it clears.";
       var hrNow = parseInt(new Date().toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
       if (hrNow === 24) hrNow = 0;
-      var span = 12;
-      var bits = [];
-      ["beach","pool","cart","boat","courts"].forEach(function (kind) {
-        var good = firstRun(kind, "go", hrNow, span);
-        var maybe = !good ? firstRun(kind, "win", hrNow, span) : "";
-        if (good) bits.push("the " + kind + " looks good " + good);
-        else if (maybe) bits.push("the " + kind + " is a maybe " + maybe + ", so keep an eye on the sky");
-      });
-      if (bits.length) return bits.join(". ").replace(/^the/, "The") + ".";
-      if (hrNow < 6 || hrNow >= 21) return "Overnight is for sleeping — not the beach, the pool, the boat, or the courts.";
-      return "I would skip the beach, the pool, the boat, and the courts right now.";
+      if (hrNow < 6 || hrNow >= 21) return "Quiet hours. The outdoor day starts after sunrise.";
+      var water = barKindAt("beach", hrNow);
+      var laterTurns = false;
+      for (var i = 1; i < 8; i++) {
+        var hr = (hrNow + i) % 24;
+        if (openHoursKind("beach", hr) && barKindAt("beach", hr) === "no") { laterTurns = true; break; }
+      }
+      if (water === "no") return "Not a water morning. Wait this one out.";
+      if (water === "go" && laterTurns) return "Good time to get outside now. I would wrap it up before the weather builds.";
+      if (water === "go") return "Looks like a fine stretch outside.";
+      return "You can still get out, but keep one eye on the sky.";
     }
     function writeGreetingCard() {
       var el = document.getElementById("live-sky");
@@ -5505,7 +5504,15 @@ function showPage(id) {
             return (window.__feeds && window.__feeds.traffic && window.__feeds.traffic.detail) || "";
           })()],
           ["rain", document.documentElement.classList.contains("raining") ? "raining" : "dry"],
-          ["pills", (function(){ var c=document.querySelector("#pill-beach .tg-cell"); var v=c&&c.textContent.trim(); return v && v!=="—" ? v : ""; })()],
+          ["pills", (function(){ var n=document.querySelectorAll("#go-strip .go-srow").length; return n===5 ? "5 bars" : (n? n+" bars":""); })()],
+          ["welcome", document.querySelector("#welcome .letter-mark") ? "letter" : ""],
+          ["greeting-brief", (function(){
+            var t = txt("live-sky");
+            if (!t) return "";
+            if (t.length > 420) return "too long";
+            if ((t.match(/beach|pool|cart|boat|courts/gi) || []).length >= 4) return "lists activities";
+            return "brief";
+          })()],
           ["chip-bolt", document.getElementById("chip-bolt") && document.getElementById("chip-bolt").classList.contains("on") ? "on" : "off"],
           ["chip-cane", (function(){
             var on = document.getElementById("chip-cane") && document.getElementById("chip-cane").classList.contains("on");
