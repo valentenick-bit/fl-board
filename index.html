@@ -524,7 +524,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v163</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v164</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -903,7 +903,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v163</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v164</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1131,7 +1131,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 163;
+    window.BOARD_VER = 164;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -1294,7 +1294,9 @@ Cart shop:</textarea>
           lon = parseFloat(d[0].lon);
           var a = d[0].address || {};
           zip = a.postcode || getSet().zip;
-          place = (a.city || a.town || a.village || a.hamlet || "") + " " + (a.state || "");
+          var city = a.city || a.town || a.village || a.hamlet || a.municipality || "";
+          if (!city || /^(florida|fl)$/i.test(city)) city = /englewood/i.test(addr) ? "Englewood" : (String(zip).indexOf("34223") === 0 ? "Englewood" : city);
+          place = (city + " " + (a.state || "")).trim();
           state = a.state;
         }
         if (isNaN(lat) || isNaN(lon)) throw new Error("no pin");
@@ -1435,7 +1437,15 @@ Cart shop:</textarea>
     }
     function homePoint() { return homeLat() + "," + homeLon(); }
     function homePlace() {
-      return String(getSet().place || "Englewood FL").replace(/\s+FL$/i, "").trim() || "Englewood";
+      var s = getSet();
+      var p = String(s.place || "").replace(/\s+FL$/i, "").trim();
+      if (!p || /^(florida|fl|united states)$/i.test(p)) {
+        var z = String(s.zip || "").replace(/\D/g, "").slice(0, 5);
+        if (z === "34223" || z === "34224") return "Englewood";
+        if (s.address && /englewood/i.test(s.address)) return "Englewood";
+        return "Englewood";
+      }
+      return p;
     }
     function homeTide() { return getSet().tide || "8725809"; }
     function homeRadar() { return getSet().radar || "KTBW"; }
@@ -3139,7 +3149,8 @@ function showPage(id) {
       "v160 — Sports page is grouped by division, then A–Z.",
       "v161 — Delivery page reads the current Gmail report file.",
       "v162 — Sports divisions fold. Status tracks the delivery feed.",
-      "v163 — Briefing names the league, then that league\u2019s scores, with space between."
+      "v163 — Briefing names the league, then that league\u2019s scores, with space between.",
+      "v164 — Place name no longer falls back to just Florida. Delivery still needs a public Drive file."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
