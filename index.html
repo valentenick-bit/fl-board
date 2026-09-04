@@ -796,7 +796,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v224</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v225</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -1550,7 +1550,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 224;
+    window.BOARD_VER = 225;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2974,7 +2974,7 @@ function showPage(id) {
           if (t > nowMs + 3 * 3600000) return;
           var fx = String(h.shortForecast || "").toLowerCase();
           var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
-          if (/thunder|lightning/.test(fx) && pop >= 60) {
+          if (hourHasThunder(h)) {
             soon = true;
             if (!when) when = t <= nowMs + 3600000 ? "this hour" : new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
           }
@@ -3086,9 +3086,23 @@ function showPage(id) {
     function wxPop(h) {
       return (h && h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
     }
-    function hourHasThunder(h) {
+    function hourMentionsThunder(h) {
+      return /thunder|t-storm|lightning/.test(String((h && h.shortForecast) || "").toLowerCase());
+    }
+    function hourCoverage(h) {
       var fx = String((h && h.shortForecast) || "").toLowerCase();
-      return /thunder|t-storm|lightning/.test(fx) && wxPop(h) >= 60;
+      if (/isolated|slight chance|patchy|\bfew\b/.test(fx)) return "isolated";
+      if (/numerous|likely|widespread|categorical|severe/.test(fx)) return "likely";
+      if (/scattered|chance/.test(fx)) return "scattered";
+      return "";
+    }
+    function hourHasThunder(h) {
+      if (!hourMentionsThunder(h)) return false;
+      var cov = hourCoverage(h);
+      var pop = wxPop(h);
+      if (cov === "likely" || pop >= 50) return true;
+      if (cov === "scattered" && pop >= 40) return true;
+      return false;
     }
     function openHoursKind(kind, hr) {
       if (kind === "beach") return hr >= 7 && hr < 19;
@@ -3106,6 +3120,7 @@ function showPage(id) {
       var thunder = hourHasThunder(h);
       if (!h && window.__wxNow && window.__wxNow.lightning) thunder = true;
       if (warn || thunder) return kind === "cart" ? "win" : "no";
+      if (hourMentionsThunder(h)) return "win";
       var wet = (/rain|shower|drizzle|storm/.test(fx) && pop >= 40) || pop >= 55;
       if (kind === "boat") {
         if (wet || windMph >= 15) return "win";
@@ -3784,9 +3799,9 @@ function showPage(id) {
         if (t > nowMs + 3 * 3600000) continue;
         var fx = String(h.shortForecast || "").toLowerCase();
         var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
-        if (/thunder|lightning|t-storm/.test(fx) && pop >= 60) {
+        if (hourHasThunder(h)) {
           var when = t <= nowMs + 3600000 ? "this hour" : new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
-          return { on: true, why: "Thunder possible " + when };
+          return { on: true, why: "Thunder likely " + when };
         }
       }
       return { on: false, why: "No lightning threat in the next few hours" };
