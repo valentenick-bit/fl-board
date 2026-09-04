@@ -69,7 +69,18 @@
     header.sky-night.sky-cloud .hdr-cloud { background:rgba(180,190,210,.2); opacity:.35; }
     @keyframes cloud-drift { from { transform:translateX(-12px); } to { transform:translateX(18px); } }
 
-    header { background:var(--navy); color:#f7f1e6; padding:10px 12px 0; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:4; transition:background .6s ease; }
+
+    .hamb { width:40px; height:40px; border:0; background:transparent; display:flex; flex-direction:column; justify-content:center; gap:5px; padding:8px; z-index:6; cursor:pointer; }
+    .hamb span { display:block; height:2px; background:#f7f1e6; border-radius:2px; }
+    .drawer-back { display:none; position:fixed; inset:0; background:rgba(15,18,30,.45); z-index:20; }
+    .drawer-back.on { display:block; }
+    .drawer { position:fixed; top:0; left:0; bottom:0; width:min(360px,88vw); background:#f7f1e6; color:var(--navy); z-index:21; transform:translateX(-105%); transition:transform .22s ease; overflow:auto; padding:16px 16px 24px; box-shadow:8px 0 30px rgba(15,18,30,.25); }
+    .drawer.on { transform:translateX(0); }
+    .drawer h2 { margin:0 8px 12px; font-size:22px; }
+    .drawer .menu-block { margin:0 0 14px; }
+    .drawer .menu-grid button { background:#fff; }
+
+    header { background:var(--navy); color:#f7f1e6; padding:10px 12px 0; display:grid; grid-template-columns:auto 1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:4; transition:background .6s ease; }
     header > *:not(.palms):not(.sky-scene) { position:relative; z-index:1; }
     .palms { position:absolute; left:0; right:0; top:0; bottom:-12px; pointer-events:none; z-index:5; overflow:visible; }
     .palm { position:absolute; bottom:-11px; width:46px; height:78px; transform:none; opacity:.9; }
@@ -386,6 +397,13 @@
     .switch .off { opacity:.55; }
     .switch input:checked ~ .on-lab { opacity:1; }
     .switch input:not(:checked) ~ .off-lab { opacity:1; }
+
+    .menu-block { margin:0 0 16px; }
+    .menu-block h3 { margin:0 0 8px; font-size:12px; letter-spacing:.16em; text-transform:uppercase; opacity:.5; }
+    .menu-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .menu-grid button { min-height:52px; border:0; border-radius:16px; background:#fff; font-weight:800; font-size:15px; color:var(--navy); box-shadow:0 0 0 1px var(--hair); }
+    .menu-grid button.on { background:var(--navy); color:#f7f1e6; }
+    @media (max-width:640px) { .menu-grid { grid-template-columns:repeat(2,1fr); } }
     .dock { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:6px 8px 8px; background:var(--sand-2); }
     .dock button { flex:none; }
     .dock button { min-height:30px; border:0; border-radius:999px; background:transparent; font-weight:600; font-size:14px; color:var(--navy); padding:4px 2px; opacity:.55; }
@@ -622,6 +640,9 @@
         <svg class="palm p5" viewBox="0 0 48 72"><g class="bend"><path class="trunk" d="M24 72 L24 24"/><g class="frond crown"><path d="M24 24 C12 8 2 10 1 22 C11 14 17 18 24 24Z"/><path d="M24 24 C18 4 22 -2 24 2 C26 -2 30 4 24 24Z"/><path d="M24 24 C36 8 46 10 47 22 C37 14 31 18 24 24Z"/><path d="M24 24 C8 28 0 40 2 52 C12 38 18 30 24 24Z"/><path d="M24 24 C40 28 48 40 46 52 C36 38 30 30 24 24Z"/></g></g></svg>
         <svg class="palm p6" viewBox="0 0 48 72"><g class="bend"><path class="trunk" d="M24 72 L24 24"/><g class="frond crown"><path d="M24 24 C12 8 2 10 1 22 C11 14 17 18 24 24Z"/><path d="M24 24 C18 4 22 -2 24 2 C26 -2 30 4 24 24Z"/><path d="M24 24 C36 8 46 10 47 22 C37 14 31 18 24 24Z"/><path d="M24 24 C8 28 0 40 2 52 C12 38 18 30 24 24Z"/><path d="M24 24 C40 28 48 40 46 52 C36 38 30 30 24 24Z"/></g></g></svg>
       </div>
+      <button type="button" class="hamb" id="hamb" aria-label="Open menu" title="Menu">
+        <span></span><span></span><span></span>
+      </button>
       <div class="brand">
         <span class="titles"><b>COMMONS</b><small id="hdr-place">BeachWalk</small></span>
       </div>
@@ -631,7 +652,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v171</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v173</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1012,11 +1033,47 @@ Cart shop:</textarea>
           </ul>
         </div>
       </section>
-      <section id="health" class="page">
+      
+      <section id="menu" class="page">
+        <h2 data-k="All pages">Menu</h2>
+        <p class="pill-key">Pick a page. The main row stays Today, weather, and the house.</p>
+        <div class="menu-block">
+          <h3>Outside</h3>
+          <div class="menu-grid">
+            <button type="button" data-p="sky">Sky</button>
+            <button type="button" data-p="traffic">Roads</button>
+            <button type="button" data-p="cam">Views</button>
+            <button type="button" data-p="wink">News</button>
+            <button type="button" data-p="sports">Sports</button>
+            <button type="button" data-p="gulfsat">Gulf sat</button>
+            <button type="button" data-p="tropics">Tropics</button>
+          </div>
+        </div>
+        <div class="menu-block">
+          <h3>Storm</h3>
+          <div class="menu-grid">
+            <button type="button" data-p="bolt">Bolt</button>
+            <button type="button" data-p="cane">Tropical</button>
+            <button type="button" data-p="hurr">Hurricane</button>
+            <button type="button" data-p="contacts">Emergency</button>
+            <button type="button" data-p="prep">Prep</button>
+            <button type="button" data-p="power">Power</button>
+          </div>
+        </div>
+        <div class="menu-block">
+          <h3>House</h3>
+          <div class="menu-grid">
+            <button type="button" data-p="radio">Radio</button>
+            <button type="button" data-p="house">House</button>
+            <button type="button" data-p="villa">Villa</button>
+          </div>
+        </div>
+      </section>
+    <section id="health" class="page">
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v171</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v173</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1035,43 +1092,47 @@ Cart shop:</textarea>
       <button type="button" data-p="marine">Marine</button>
       <button type="button" data-p="ent">Fun</button>
       <button type="button" data-p="deliver">Delivery</button>
-      <button type="button" id="morebtn">More</button>
+      <button type="button" id="morebtn" aria-label="Open menu">Menu</button>
     </nav>
-    <nav class="dock-tray" id="dock-tray">
-      <div class="tray-tabs">
-        <button type="button" id="tab-home" class="on">Home</button>
-        <button type="button" id="tab-setup">Setup</button>
-      </div>
-      <div id="tray-home" class="tray-pane">
-        <p class="tray-lab">Look</p>
-        <div class="tray-row">
+    </div>
+
+    <div class="drawer-back" id="drawer-back"></div>
+    <aside class="drawer" id="drawer" aria-label="Menu">
+      <h2>Menu</h2>
+      <div class="menu-block">
+        <h3>Outside</h3>
+        <div class="menu-grid">
+          <button type="button" data-p="sky">Sky</button>
           <button type="button" data-p="traffic">Roads</button>
           <button type="button" data-p="cam">Views</button>
-          <button type="button" data-p="sky">Sky</button>
           <button type="button" data-p="wink">News</button>
           <button type="button" data-p="sports">Sports</button>
-        </div>
-        <p class="tray-lab">Stay</p>
-        <div class="tray-row">
-          <button type="button" data-p="radio">Radio</button>
-          <button type="button" data-p="house">House</button>
-          <button type="button" data-p="villa">Villa</button>
-          <button type="button" data-p="power">Power</button>
-          <button type="button" data-p="prep">Prep</button>
-        </div>
-        <p class="tray-lab">Storm</p>
-        <div class="tray-row">
-          <button type="button" data-p="bolt">Bolt</button>
-          <button type="button" data-p="cane">Tropical</button>
-          <button type="button" data-p="hurr">Hurricane</button>
-          <button type="button" data-p="contacts">Emergency</button>
           <button type="button" data-p="gulfsat">Gulf sat</button>
           <button type="button" data-p="tropics">Tropics</button>
         </div>
       </div>
-      <div id="tray-setup" class="tray-pane" hidden>
-        <p class="tray-lab">Board</p>
-        <div class="tray-row">
+      <div class="menu-block">
+        <h3>Storm</h3>
+        <div class="menu-grid">
+          <button type="button" data-p="bolt">Bolt</button>
+          <button type="button" data-p="cane">Tropical</button>
+          <button type="button" data-p="hurr">Hurricane</button>
+          <button type="button" data-p="contacts">Emergency</button>
+          <button type="button" data-p="prep">Prep</button>
+          <button type="button" data-p="power">Power</button>
+        </div>
+      </div>
+      <div class="menu-block">
+        <h3>House</h3>
+        <div class="menu-grid">
+          <button type="button" data-p="radio">Radio</button>
+          <button type="button" data-p="house">House</button>
+          <button type="button" data-p="villa">Villa</button>
+        </div>
+      </div>
+      <div class="menu-block">
+        <h3>Board</h3>
+        <div class="menu-grid">
           <button type="button" id="setbtn">Settings</button>
           <button type="button" id="refreshbtn">Refresh</button>
           <button type="button" data-p="health">Status</button>
@@ -1080,9 +1141,8 @@ Cart shop:</textarea>
           <button type="button" id="kioskbtn">Kiosk</button>
         </div>
       </div>
-    </nav>
-    </div>
-    <div class="settings" id="settings" hidden>
+    </aside>
+<div class="settings" id="settings" hidden>
       <div class="settings-head">
         <div><strong>Settings</strong><span>Board look, sound, and what rotates</span></div>
         <button type="button" class="done" id="set-done">Done</button>
@@ -1263,7 +1323,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 171;
+    window.BOARD_VER = 173;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -3010,7 +3070,14 @@ function showPage(id) {
       showPage("now");
       i = 0;
     })();
-    document.querySelectorAll(".dock, .dock-tray").forEach(function (d) {
+    var menu = document.getElementById("menu");
+    if (menu) menu.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-p]");
+      if (!btn) return;
+      var id = btn.getAttribute("data-p");
+      if (id && document.getElementById(id) && typeof showPage === "function") showPage(id);
+    });
+    document.querySelectorAll(".dock").forEach(function (d) {
       d.addEventListener("click", function (e) {
         var btn = e.target.closest("button[data-p]");
         if (btn) {
@@ -3019,7 +3086,7 @@ function showPage(id) {
             showPage(id);
             var wrap = document.querySelector(".dock-wrap");
             var homePages = { traffic:1, cam:1, sky:1, radio:1, house:1, villa:1, wink:1, sports:1, power:1, prep:1, bolt:1, cane:1, hurr:1, contacts:1, gulfsat:1, tropics:1 };
-            var setupPages = { health:1, guide:1, ideas:1 };
+            var setupPages = { health:1, guide:1, ideas:1, menu:1 };
             clearTimeout(rot); clearInterval(rot); clearTimeout(idle);
             if (setupPages[id] || homePages[id]) {
               if (wrap) {
@@ -3344,7 +3411,9 @@ function showPage(id) {
       "v168 — Header sun, moon, and clouds follow the real sky and forecast.",
       "v169 — Dock is a 7-button row plus a grouped More tray.",
       "v170 — Gulf sat and Tropics sat are their own pages. Radar is radar only.",
-      "v171 — Status clicks work. Header layout restored. More tray is labeled rows."
+      "v171 — Status clicks work. Header layout restored. More tray is labeled rows.",
+      "v172 — More opens a full Menu page of tiles instead of a second dock.",
+      "v173 — Header hamburger opens a slide-out app menu."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3354,7 +3423,7 @@ function showPage(id) {
       var place = typeof homePlace === "function" ? homePlace() : "Englewood";
       var rot = [];
       try { rot = (typeof rotateList === "function" ? rotateList() : []).slice(); } catch (e) { rot = []; }
-      var names = { now:"Today", tenday:"Weather", radar:"Radar", gulfsat:"Gulf sat", tropics:"Tropics", marine:"Marine", sky:"Sky", traffic:"Roads", cam:"Views", ent:"Fun", house:"House", deliver:"Delivery", radio:"Radio", sports:"Sports", bolt:"Bolt", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", prep:"Prep", power:"Power" };
+      var names = { now:"Today", menu:"Menu", tenday:"Weather", radar:"Radar", gulfsat:"Gulf sat", tropics:"Tropics", marine:"Marine", sky:"Sky", traffic:"Roads", cam:"Views", ent:"Fun", house:"House", deliver:"Delivery", radio:"Radio", sports:"Sports", bolt:"Bolt", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", prep:"Prep", power:"Power" };
       var rotLine = rot.map(function (id) { return names[id] || id; }).join(" → ") || "Today → Weather → Radar → …";
       var prep = typeof lightningPrep === "function" ? lightningPrep() : { on:false, why:"" };
       var nowL = typeof lightningNow === "function" ? lightningNow() : { on:false, why:"" };
@@ -3503,7 +3572,7 @@ function showPage(id) {
     }
     function rotateList() {
       var risk = window.__wxRisk || {};
-      var skip = { news:1, wink:1, contacts:1, villa:1, power:1, cane:1, hurr:1, bolt:1, prep:1, health:1, guide:1, ideas:1 };
+      var skip = { news:1, wink:1, contacts:1, villa:1, power:1, cane:1, hurr:1, bolt:1, prep:1, health:1, guide:1, ideas:1, menu:1, gulfsat:1, tropics:1 };
       var list = Array.from(document.querySelectorAll("#dock button[data-p]")).map(function (b) { return b.getAttribute("data-p"); }).filter(function (id) {
         if (!id || skip[id]) return false;
         if (id === "cam" && camOffHours()) return false;
@@ -3984,43 +4053,42 @@ function showPage(id) {
         b.hidden = !vis;
       });
     }
-    (function extraDock() {
-      var wrap = document.querySelector(".dock-wrap");
-      var moreBtn = document.getElementById("morebtn");
-      var tray = document.getElementById("dock-tray");
-      if (!wrap || !moreBtn || !tray) return;
-      var hideT;
-      var overflow = { traffic:1, cam:1, sky:1, radio:1, house:1, villa:1, wink:1, sports:1, power:1, prep:1, bolt:1, cane:1, hurr:1, contacts:1, gulfsat:1, tropics:1, health:1, guide:1, ideas:1 };
-      function close() {
-        var page = document.querySelector(".page.on");
-        if (page && overflow[page.id]) return;
-        wrap.classList.remove("open");
-        moreBtn.classList.remove("on");
-        clearTimeout(hideT);
-        if (typeof noteFeed === "function") noteFeed("dock", true, "closed");
-      }
-      moreBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        var on = wrap.classList.toggle("open");
-        moreBtn.classList.toggle("on", on);
-        if (on) {
-          showTrayTab("home");
-          clearTimeout(hideT);
-          hideT = setTimeout(close, 10000);
-          if (typeof noteFeed === "function") noteFeed("dock", true, "open");
-        } else {
-          clearTimeout(hideT);
-          if (typeof noteFeed === "function") noteFeed("dock", true, "closed");
+    
+    function openMenu(on) {
+      var d = document.getElementById("drawer");
+      var b = document.getElementById("drawer-back");
+      if (!d) return;
+      var show = on !== false;
+      if (on == null) show = !d.classList.contains("on");
+      d.classList.toggle("on", show);
+      if (b) b.classList.toggle("on", show);
+      document.body.style.overflow = show ? "hidden" : "";
+    }
+    function closeMenu() { openMenu(false); }
+    (function bindMenu() {
+      var hamb = document.getElementById("hamb");
+      var more = document.getElementById("morebtn");
+      var back = document.getElementById("drawer-back");
+      var drawer = document.getElementById("drawer");
+      if (hamb) hamb.addEventListener("click", function (e) { e.stopPropagation(); openMenu(); });
+      if (more) more.addEventListener("click", function (e) { e.stopPropagation(); openMenu(true); });
+      if (back) back.addEventListener("click", closeMenu);
+      if (drawer) drawer.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-p]");
+        if (!btn) return;
+        var id = btn.getAttribute("data-p");
+        closeMenu();
+        if (id && document.getElementById(id) && typeof showPage === "function") {
+          showPage(id);
+          window.__holdPage = /^(health|guide|ideas)$/.test(id);
         }
       });
-      var th = document.getElementById("tab-home");
-      var ts = document.getElementById("tab-setup");
-      if (th) th.addEventListener("click", function (e) { e.stopPropagation(); showTrayTab("home"); });
-      if (ts) ts.addEventListener("click", function (e) { e.stopPropagation(); showTrayTab("setup"); });
-      tray.addEventListener("pointerdown", function () {
-        clearTimeout(hideT);
-        hideT = setTimeout(close, 12000);
-      });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+    })();
+(function extraDock() {
+      var wrap = document.querySelector(".dock-wrap");
+      var moreBtn = document.getElementById("morebtn");
+      if (!wrap || !moreBtn) return;
     })();
 
     (function settingsPanel() {
