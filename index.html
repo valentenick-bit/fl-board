@@ -51,6 +51,27 @@
     .flash, .rainlayer { z-index:3; }
     .page#radar .radar-stage, .page#cam .keycam { position:relative; z-index:5; }
     header.night { filter:brightness(.68); }
+
+    .sky-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+    .hdr-sun, .hdr-moon { position:absolute; border-radius:50%; opacity:0; transition:left 45s linear, bottom 45s linear, opacity .8s ease; }
+    .hdr-sun { width:18px; height:18px; background:#f4d06f; box-shadow:0 0 16px 6px rgba(244,208,111,.45); }
+    header.sky-sun .hdr-sun, header.sky-dawn .hdr-sun, header.sky-dusk .hdr-sun { opacity:1; }
+    header.sky-dawn .hdr-sun { background:#f2b05e; }
+    header.sky-dusk .hdr-sun { background:#e07a5f; }
+    .hdr-moon { width:16px; height:16px; background:#f7f1e6; box-shadow:0 0 10px 3px rgba(247,241,230,.25); }
+    header.sky-night .hdr-moon, header.sky-dusk .hdr-moon { opacity:.92; }
+    .hdr-cloud { position:absolute; height:10px; background:rgba(247,241,230,.22); border-radius:20px; opacity:0; transition:opacity .8s ease; filter:blur(.2px); }
+    .hdr-cloud:before, .hdr-cloud:after { content:""; position:absolute; background:inherit; border-radius:50%; }
+    .hdr-cloud.c1 { width:46px; top:18%; left:18%; animation:cloud-drift 48s linear infinite; }
+    .hdr-cloud.c2 { width:34px; top:28%; left:48%; animation:cloud-drift 62s linear infinite reverse; }
+    .hdr-cloud.c3 { width:40px; top:14%; left:72%; animation:cloud-drift 54s linear infinite; }
+    header.sky-cloud .hdr-cloud, header.sky-storm .hdr-cloud, header.sky-warn .hdr-cloud { opacity:.55; }
+    header.sky-night.sky-cloud .hdr-cloud { background:rgba(180,190,210,.2); opacity:.35; }
+    @keyframes cloud-drift { from { transform:translateX(-12px); } to { transform:translateX(18px); } }
+    header.sky-dawn { background:linear-gradient(#3d4a6a,#e07a5f 55%,#f4d06f); }
+    header.sky-dusk { background:linear-gradient(#1b2a4a,#9b4d5a 50%,#e07a5f); }
+    header.sky-cloud:not(.sky-night):not(.sky-dawn):not(.sky-dusk) { background:linear-gradient(#7a8b9a,#c5d0d6); }
+
     header { background:var(--navy); color:#f7f1e6; padding:10px 12px 0; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:4; transition:background .6s ease; }
     header > *:not(.palms) { position:relative; z-index:1; }
     .palms { position:absolute; left:0; right:0; top:0; bottom:-12px; pointer-events:none; z-index:5; overflow:visible; }
@@ -368,8 +389,8 @@
     .switch .off { opacity:.55; }
     .switch input:checked ~ .on-lab { opacity:1; }
     .switch input:not(:checked) ~ .off-lab { opacity:1; }
-    .dock { display:flex; flex-wrap:wrap; gap:3px; padding:3px 6px 2px; background:var(--sand-2); }
-    .dock button { flex:1 1 12%; }
+    .dock { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:6px 8px 8px; background:var(--sand-2); }
+    .dock button { flex:none; }
     .dock button { min-height:30px; border:0; border-radius:999px; background:transparent; font-weight:600; font-size:14px; color:var(--navy); padding:4px 2px; opacity:.55; }
     .dock button.on { background:#fff; opacity:1; font-weight:800; box-shadow:0 0 0 1px var(--hair); }
     .dock button.dragging { opacity:.45; }
@@ -392,13 +413,20 @@
     .ticker .tseg b { font-weight:800; color:#e8d5a3; }
     .dock { margin-bottom:0; flex-shrink:0; }
     .dock-wrap { flex-shrink:0; }
-    .dock-tray { background:#ddd4c4; max-height:0; opacity:0; overflow:hidden; padding:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; flex-direction:column; }
-    .dock-wrap.open .dock-tray { max-height:280px; opacity:1; padding:6px 6px 8px; pointer-events:auto; display:flex; }
-    .tray-tabs { display:flex; gap:6px; width:100%; margin-bottom:4px; }
-    .tray-tabs button { flex:1; min-height:28px; }
-    .tray-row { display:flex; flex-wrap:wrap; gap:3px; width:100%; }
-    .dock-storm { display:none; }
-    .dock-storm.on { display:contents; }
+    .dock-tray { background:#efe6d4; max-height:0; opacity:0; overflow:hidden; padding:0 8px; pointer-events:none; transition:max-height .2s ease, opacity .2s ease, padding .2s ease; }
+    .dock-wrap.open .dock-tray { max-height:240px; opacity:1; padding:4px 8px 10px; pointer-events:auto; }
+    .tray-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 8px; }
+    .tray-tabs button { min-height:28px; border:0; border-radius:999px; background:transparent; font-weight:700; letter-spacing:.12em; text-transform:uppercase; font-size:11px; color:var(--navy); opacity:.45; }
+    .tray-tabs button.on { background:#fff; opacity:1; box-shadow:0 0 0 1px var(--hair); }
+    .tray-pane { display:flex; flex-direction:column; gap:6px; }
+    .tray-group { display:grid; grid-template-columns:48px repeat(5,1fr); gap:4px; align-items:center; }
+    .tray-group > span { font-size:10px; letter-spacing:.14em; text-transform:uppercase; opacity:.5; font-weight:700; }
+    .tray-group button { min-height:30px; border:0; border-radius:999px; background:rgba(255,255,255,.35); font-weight:700; font-size:13px; color:var(--navy); opacity:.8; }
+    .tray-group button.on { background:#fff; opacity:1; box-shadow:0 0 0 1px var(--hair); }
+    @media (max-width:640px) {
+      .tray-group { grid-template-columns:36px repeat(3,1fr); }
+      .tray-group > span:empty { display:none; }
+    }
     .dock-wrap { position:relative; z-index:8; }
     #morebtn.on { background:#1b2a4a; color:#fff; }
     #setbtn { grid-column:6; display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; }
@@ -586,6 +614,13 @@
 <body>
   <div class="frame">
     <header>
+      <div class="sky-scene" aria-hidden="true">
+        <div class="hdr-sun" id="hdr-sun"></div>
+        <div class="hdr-moon" id="hdr-moon"></div>
+        <div class="hdr-cloud c1"></div>
+        <div class="hdr-cloud c2"></div>
+        <div class="hdr-cloud c3"></div>
+      </div>
       <div class="palms" aria-hidden="true">
         <svg class="palm p2" viewBox="0 0 48 72"><g class="bend"><path class="trunk" d="M24 72 L24 24"/><g class="frond crown"><path d="M24 24 C12 8 2 10 1 22 C11 14 17 18 24 24Z"/><path d="M24 24 C18 4 22 -2 24 2 C26 -2 30 4 24 24Z"/><path d="M24 24 C36 8 46 10 47 22 C37 14 31 18 24 24Z"/><path d="M24 24 C8 28 0 40 2 52 C12 38 18 30 24 24Z"/><path d="M24 24 C40 28 48 40 46 52 C36 38 30 30 24 24Z"/></g></g></svg>
         <svg class="palm p3" viewBox="0 0 48 72"><g class="bend"><path class="trunk" d="M24 72 L24 24"/><g class="frond crown"><path d="M24 24 C12 8 2 10 1 22 C11 14 17 18 24 24Z"/><path d="M24 24 C18 4 22 -2 24 2 C26 -2 30 4 24 24Z"/><path d="M24 24 C36 8 46 10 47 22 C37 14 31 18 24 24Z"/><path d="M24 24 C8 28 0 40 2 52 C12 38 18 30 24 24Z"/><path d="M24 24 C40 28 48 40 46 52 C36 38 30 30 24 24Z"/></g></g></svg>
@@ -602,7 +637,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v167</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v169</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -980,7 +1015,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v167</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v169</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -999,42 +1034,53 @@ Cart shop:</textarea>
       <button type="button" data-p="marine">Marine</button>
       <button type="button" data-p="ent">Fun</button>
       <button type="button" data-p="deliver">Delivery</button>
-      <span id="dock-storm" class="dock-storm">
-        <button type="button" data-p="bolt">Bolt</button>
-        <button type="button" data-p="cane">Tropical</button>
-        <button type="button" data-p="hurr">Hurricane</button>
-        <button type="button" data-p="contacts">Emergency</button>
-      </span>
       <button type="button" id="morebtn">More</button>
     </nav>
-    <nav class="dock dock-tray" id="dock-tray">
+    <nav class="dock-tray" id="dock-tray">
       <div class="tray-tabs">
         <button type="button" id="tab-home" class="on">Home</button>
         <button type="button" id="tab-setup">Setup</button>
       </div>
-      <div id="tray-home" class="tray-row">
-        <button type="button" data-p="traffic">Roads</button>
-        <button type="button" data-p="cam">Views</button>
-        <button type="button" data-p="sky">Sky</button>
-        <button type="button" data-p="radio">Radio</button>
-        <button type="button" data-p="house">House</button>
-        <button type="button" data-p="villa">Villa</button>
-        <button type="button" data-p="wink">News</button>
-        <button type="button" data-p="sports">Sports</button>
-        <button type="button" data-p="power">Power</button>
-        <button type="button" data-p="prep">Prep</button>
-        <button type="button" data-p="bolt">Bolt</button>
-        <button type="button" data-p="cane">Tropical</button>
-        <button type="button" data-p="hurr">Hurricane</button>
-        <button type="button" data-p="contacts">Emergency</button>
+      <div id="tray-home" class="tray-pane">
+        <div class="tray-group">
+          <span>Look</span>
+          <button type="button" data-p="traffic">Roads</button>
+          <button type="button" data-p="cam">Views</button>
+          <button type="button" data-p="sky">Sky</button>
+          <button type="button" data-p="wink">News</button>
+          <button type="button" data-p="sports">Sports</button>
+        </div>
+        <div class="tray-group">
+          <span>Stay</span>
+          <button type="button" data-p="radio">Radio</button>
+          <button type="button" data-p="house">House</button>
+          <button type="button" data-p="villa">Villa</button>
+          <button type="button" data-p="power">Power</button>
+          <button type="button" data-p="prep">Prep</button>
+        </div>
+        <div class="tray-group">
+          <span>Storm</span>
+          <button type="button" data-p="bolt">Bolt</button>
+          <button type="button" data-p="cane">Tropical</button>
+          <button type="button" data-p="hurr">Hurricane</button>
+          <button type="button" data-p="contacts">Emergency</button>
+          <span></span>
+        </div>
       </div>
-      <div id="tray-setup" class="tray-row" hidden>
-        <button type="button" id="setbtn" title="Settings" aria-label="Settings">Settings</button>
-        <button type="button" id="refreshbtn">Refresh</button>
-        <button type="button" data-p="health">Status</button>
-        <button type="button" data-p="guide">How it works</button>
-        <button type="button" data-p="ideas">Ideas</button>
-        <button type="button" id="kioskbtn">Kiosk</button>
+      <div id="tray-setup" class="tray-pane" hidden>
+        <div class="tray-group">
+          <span>Board</span>
+          <button type="button" id="setbtn">Settings</button>
+          <button type="button" id="refreshbtn">Refresh</button>
+          <button type="button" data-p="health">Status</button>
+          <button type="button" data-p="guide">How it works</button>
+          <button type="button" data-p="ideas">Ideas</button>
+        </div>
+        <div class="tray-group">
+          <span>Mode</span>
+          <button type="button" id="kioskbtn">Kiosk</button>
+          <span></span><span></span><span></span><span></span>
+        </div>
       </div>
     </nav>
     </div>
@@ -1219,7 +1265,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 167;
+    window.BOARD_VER = 169;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -2221,18 +2267,67 @@ function showPage(id) {
     function stampGreet() {
       if (typeof writeGreetingCard === "function") writeGreetingCard();
     }
+
+    function skySlotNow() {
+      var c = window.__bwCharts || {};
+      var now = Date.now();
+      var rise = Date.parse(c.rise || "") || 0;
+      var set = Date.parse(c.set || "") || 0;
+      var dawn = Date.parse(c.dawn || "") || (rise ? rise - 35*60000 : 0);
+      var dusk = Date.parse(c.dusk || "") || (set ? set + 35*60000 : 0);
+      if (rise && now >= dawn && now < rise + 25*60000) return "dawn";
+      if (set && now >= set - 25*60000 && now < dusk) return "dusk";
+      if (rise && set && now >= rise && now < set) return "day";
+      return "night";
+    }
+    function placeSkyBodies(slot) {
+      var sun = document.getElementById("hdr-sun");
+      var moon = document.getElementById("hdr-moon");
+      var c = window.__bwCharts || {};
+      var now = Date.now();
+      var rise = Date.parse(c.rise || "") || 0;
+      var set = Date.parse(c.set || "") || 0;
+      if (sun) {
+        var p = (rise && set && set > rise) ? Math.max(0, Math.min(1, (now - rise) / (set - rise))) : 0.5;
+        sun.style.left = (6 + p * 84) + "%";
+        sun.style.bottom = (8 + Math.sin(p * Math.PI) * 42) + "%";
+      }
+      if (moon) {
+        var nightStart = set || now;
+        var nightEnd = rise ? rise + 86400000 : now + 12*3600000;
+        if (rise && now < rise) nightEnd = rise;
+        var span = Math.max(1, nightEnd - nightStart);
+        var mp = (now - nightStart) / span;
+        if (mp < 0) mp += 1;
+        mp = Math.max(0, Math.min(1, mp));
+        moon.style.left = (4 + mp * 88) + "%";
+        moon.style.bottom = (10 + Math.sin(mp * Math.PI) * 38) + "%";
+        var ph = typeof moonPhase === "function" ? moonPhase() : 0.3;
+        var shade = Math.cos(ph * Math.PI * 2);
+        var shift = (shade * 6).toFixed(1);
+        moon.style.boxShadow = "inset " + shift + "px 0 0 3px #1b2a4a, 0 0 10px 3px rgba(247,241,230,.25)";
+      }
+    }
+    setInterval(function () { if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 60000);
     function paintSkyHeader() {
       var head = document.querySelector("header");
       if (!head) return;
       var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
       var storm = /storm|thunder|lightning/i.test(window.__nextStorm || "");
-      head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night");
+      head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night","sky-dawn","sky-dusk","sky-cloud");
+      var hourTxt = String((window.__wxNow && window.__wxNow.hour) || "");
+      var cloudy = /cloud|overcast|fog|mist|rain|shower|storm|thunder/i.test(hourTxt);
       var nightLook = document.documentElement.classList.contains("dark");
+      var slot = (typeof skySlotNow === "function") ? skySlotNow() : (nightLook ? "night" : "day");
       if (warn) head.classList.add("sky-warn");
-      else if (nightLook) head.classList.add("sky-night","night");
       else if (storm) head.classList.add("sky-storm");
+      else if (slot === "dawn") head.classList.add("sky-dawn");
+      else if (slot === "dusk") head.classList.add("sky-dusk");
+      else if (slot === "night" || nightLook) head.classList.add("sky-night","night");
       else head.classList.add("sky-sun");
+      if (cloudy) head.classList.add("sky-cloud");
+      if (typeof placeSkyBodies === "function") placeSkyBodies(slot);
       var tempTxt = (document.getElementById("live-temp") || {}).textContent || "";
       var tempN = parseInt(tempTxt, 10);
       head.classList.toggle("hot", tempN >= 90);
@@ -3236,7 +3331,9 @@ function showPage(id) {
       "v164 — Place name no longer falls back to just Florida. Delivery still needs a public Drive file.",
       "v165 — One More tray with Home and Setup. Main row is the daily pages.",
       "v166 — Sports leagues in the briefing use Weather-style spacing.",
-      "v167 — Night header stars are scattered and twinkle instead of a sliding grid."
+      "v167 — Night header stars are scattered and twinkle instead of a sliding grid.",
+      "v168 — Header sun, moon, and clouds follow the real sky and forecast.",
+      "v169 — Dock is a 7-button row plus a grouped More tray."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -5225,7 +5322,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var lab = document.getElementById("live-sun-label");
           var watch = document.getElementById("live-sky-watch");
           if (lab && r.sunrise && r.sunset) lab.textContent = "Sun path · " + hh(r.sunrise) + " to " + hh(r.sunset);
-          window.__bwCharts.rise = r.sunrise; window.__bwCharts.set = r.sunset;
+          window.__bwCharts.rise = r.sunrise; window.__bwCharts.set = r.sunset; window.__bwCharts.dawn = r.civil_twilight_begin; window.__bwCharts.dusk = r.civil_twilight_end;
           applySunDark();
           drawSunChart(r.sunrise, r.sunset);
           drawMoonChart();
