@@ -138,8 +138,8 @@
 
     .sky-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2; background:transparent; }
     .hdr-sun, .hdr-moon { position:absolute; border-radius:50%; opacity:0; }
-    .hdr-sun { transition:left 120s linear, bottom 120s linear, opacity .8s ease; }
-    .hdr-moon { transition:none; }
+    .hdr-sun { transition:left 120s linear, bottom 120s linear, opacity 60s linear, background 60s linear; }
+    .hdr-moon { transition:opacity 60s linear, left 120s linear, bottom 120s linear; }
     .hdr-sun { width:26px; height:26px; z-index:4; background:#f6d56b; box-shadow:0 0 22px 10px rgba(246,213,107,.55); }
     header.sky-sun .hdr-sun, header.sky-partly .hdr-sun, header.sky-dawn .hdr-sun { opacity:1; }
     header.sky-cloud .hdr-sun { opacity:.55; }
@@ -214,7 +214,8 @@
     .rot-row button { border:0; background:var(--sand); color:var(--navy); border-radius:8px; padding:6px 10px; font-weight:700; }
     html.dark .rot-row button { background:#2a2444; color:#f7f1e6; }
 
-    header { background:var(--navy); color:#f7f1e6; padding:20px 12px 28px; min-height:136px; display:grid; grid-template-columns:auto 1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:10; pointer-events:auto; transition:background .6s ease; }
+    header { background:var(--navy); color:#f7f1e6; padding:20px 12px 28px; min-height:136px; display:grid; grid-template-columns:auto 1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:10; pointer-events:auto; }
+    .sky-fade { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; transition:opacity 60s linear; }
     header .hamb, header #hamb, #hamb { pointer-events:auto; position:relative; z-index:11; }
     header > *:not(.palms):not(.sky-scene):not(.hdr-stars):not(.hdr-moon):not(.hdr-sea):not(.sandshelf) { position:relative; z-index:8; }
     .hdr-sea { position:absolute; left:0; right:0; bottom:10px; height:16%; z-index:2; pointer-events:none;
@@ -222,8 +223,9 @@
     header.sky-night .hdr-sea, header.sky-storm .hdr-sea { background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.04) 100%); }
     header.sky-dusk .hdr-sea { background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,210,180,.08) 100%); }
     header.sky-dawn .hdr-sea { background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.07) 100%); }
-    .hdr-sea .wavebar { position:absolute; left:0; right:0; bottom:0; height:14px; background:transparent; }
-    .hdr-sea .wavebar svg { width:200%; height:14px; display:block; animation:wave 16s linear infinite; }
+    .hdr-sea .wavebar { position:absolute; left:0; right:0; bottom:0; height:14px; background:transparent; overflow:hidden; }
+    .hdr-sea .wavetrack { display:flex; width:200%; height:14px; animation:wave 24s linear infinite; will-change:transform; }
+    .hdr-sea .wavetrack svg { width:50%; height:14px; flex:0 0 50%; display:block; }
     .hdr-sea .wavebar svg path { fill:rgba(255,255,255,.2); }
     header.sky-night .hdr-sea .wavebar svg path { fill:rgba(255,255,255,.1); }
     .sandshelf { position:absolute; left:0; right:0; bottom:0; height:10px; z-index:5; background:#d4c199; pointer-events:none; }
@@ -286,7 +288,7 @@
     header.sky-sun .sandshelf, header.sky-partly .sandshelf, header.sky-dawn .sandshelf, header.sky-cloud .sandshelf { background:#d4c199; }
     header.sky-storm { background:linear-gradient(180deg,#1a2438 0%,#121820 72%); border-bottom-color:#2a9d8f; }
     header.sky-warn { background:linear-gradient(180deg,#6b2f28 0%,#1b2a4a 78%); border-bottom-color:#e07a5f; }
-    header.sky-night { background:linear-gradient(180deg,#0a1020 0%,#05060c 78%); border-bottom-color:#3a4660; }
+    header.sky-night { background:linear-gradient(180deg,#05070d 0%,#020308 78%); border-bottom-color:#1c2434; }
     .rainlayer { display:none; position:absolute; inset:-35vh -45vw; pointer-events:none; z-index:7; overflow:hidden; }
     html.raining .rainlayer { display:block; }
     html.raining .rainlayer span { position:absolute; top:-20px; width:2px; background:linear-gradient(rgba(255,255,255,0), rgba(230,240,255,.55)); animation:rain-fall linear infinite; border-radius:2px; transform: rotate(var(--rain-ang, 0deg)); }
@@ -298,17 +300,16 @@
     header.hot .temp, header.hot .feels strong { animation:heat-pulse 2.4s ease-in-out infinite; }
     @keyframes heat-pulse { 0%,100% { text-shadow:0 0 0 transparent; } 50% { text-shadow:0 0 18px rgba(224,122,95,.7); } }
     header.sky-night::before, header.sky-night::after { content:none; display:none; }
-    .hdr-stars { position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0; display:none; }
-    header.sky-night .hdr-stars, header.night .hdr-stars { opacity:1; display:block; }
-    html.dark header.sky-night .hdr-stars, html.dark header.night .hdr-stars { opacity:1; display:block; }
+    .hdr-stars { position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0; display:block; transition:opacity 60s linear; }
+    header.sky-night .hdr-stars, header.night .hdr-stars, header.sky-dusk .hdr-stars { opacity:1; }
     html.dark header.sky-sun .hdr-stars,
     html.dark header.sky-partly .hdr-stars,
-    html.dark header.sky-dawn .hdr-stars { opacity:0; display:none; }
-    .hdr-stars i { position:absolute; width:1px; height:1px; border-radius:50%; background:rgba(255,255,255,.7); box-shadow:none; animation:star-twinkle 3.8s ease-in-out infinite; }
-    .hdr-stars i:nth-child(2), .hdr-stars i:nth-child(8), .hdr-stars i:nth-child(11) { width:2px; height:2px; background:#fff; box-shadow:0 0 3px rgba(255,255,255,.45); animation-duration:5.4s; }
+    html.dark header.sky-dawn .hdr-stars { opacity:0; }
+    .hdr-stars i { position:absolute; width:1px; height:1px; border-radius:50%; background:rgba(255,255,255,.88); box-shadow:0 0 2px rgba(255,255,255,.35); animation:star-twinkle 3.8s ease-in-out infinite; }
+    .hdr-stars i:nth-child(2), .hdr-stars i:nth-child(8), .hdr-stars i:nth-child(11) { width:2px; height:2px; background:#fff; box-shadow:0 0 4px rgba(255,255,255,.55); animation-duration:5.4s; }
     .hdr-stars i:nth-child(3n) { animation-duration:4.6s; animation-delay:-1.1s; }
     .hdr-stars i:nth-child(4n) { animation-duration:6.2s; animation-delay:-2.6s; }
-    @keyframes star-twinkle { 0%,100% { opacity:.3; } 50% { opacity:.95; } }
+    @keyframes star-twinkle { 0%,100% { opacity:.45; } 50% { opacity:1; } }
     .hdr-stars i:nth-child(1) { left:6%; top:16%; }
     .hdr-stars i:nth-child(2) { left:14%; top:28%; width:3px; height:3px; }
     .hdr-stars i:nth-child(3) { left:22%; top:12%; }
@@ -326,7 +327,7 @@
     .hdr-stars i:nth-child(15) { left:70%; top:38%; }
     .hdr-stars i:nth-child(16) { left:92%; top:34%; }
     .wavebar { height:0; }
-    @keyframes wave { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+    @keyframes wave { from { transform:translate3d(0,0,0); } to { transform:translate3d(-50%,0,0); } }
     .flash { position:absolute; inset:0; pointer-events:none; background:#fff; opacity:0; z-index:8; }
     .flash.on { animation:boltflash .45s ease-out; }
     @keyframes boltflash { 0% { opacity:0; } 12% { opacity:.55; } 28% { opacity:.08; } 40% { opacity:.35; } 100% { opacity:0; } }
@@ -901,7 +902,7 @@
     }
     html.dark body { background:#100e20; color:var(--ink); }
     html.dark .frame { background:var(--page); color:var(--ink); }
-    html.dark header.sky-night { background:linear-gradient(180deg,#12101c 0%,#0e0c1c 70%); }
+    html.dark header.sky-night { background:linear-gradient(180deg,#05070d 0%,#020308 78%); }
     html.dark .sky, html.dark .wx-nowline, html.dark .pill-key, html.dark #who-line, html.dark #do-hour { color:#efe4c8; }
     html.dark h2, html.dark .card b, html.dark .tile strong { color:var(--ink); }
     html.dark .card span, html.dark .tile label, html.dark .lo, html.dark .pbar-read span, html.dark .pbar-scale { color:var(--muted); }
@@ -956,6 +957,7 @@
 <body>
   <div class="frame">
     <header>
+      <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <div class="hdr-sun" id="hdr-sun"></div>
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -971,7 +973,10 @@
       </div>
       <div class="hdr-sea" aria-hidden="true">
         <div class="wavebar">
-          <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 10 Q60 4 120 10 T240 10 T360 10 T480 10 T600 10 T720 10 T840 10 T960 10 T1080 10 T1200 10 V24 H0 Z" fill="#154a66"/></svg>
+          <div class="wavetrack">
+            <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 10 Q60 4 120 10 T240 10 T360 10 T480 10 T600 10 T720 10 T840 10 T960 10 T1080 10 T1200 10 V24 H0 Z"/></svg>
+            <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 10 Q60 4 120 10 T240 10 T360 10 T480 10 T600 10 T720 10 T840 10 T960 10 T1080 10 T1200 10 V24 H0 Z"/></svg>
+          </div>
         </div>
       </div>
       <div class="sandshelf" aria-hidden="true"></div>
@@ -989,7 +994,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v294</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v298</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1894,7 +1899,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 294;
+    window.BOARD_VER = 298;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -3301,7 +3306,7 @@ function currentRotation() {
         moon.style.opacity = day ? "0" : "1";
       }
     }
-    setInterval(function () { if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 60000);
+    setInterval(function () { if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 15000);
     (function driftClouds() {
       function cap() {
         var head = document.querySelector("header");
@@ -3425,7 +3430,17 @@ function currentRotation() {
       if (!head) return;
       var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
-      head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night","sky-dawn","sky-dusk","sky-cloud","sky-partly");
+      var nextSlot = (typeof skySlotNow === "function") ? skySlotNow() : ((hr >= 20 || hr < 6) ? "night" : "day");
+      var veil = document.getElementById("sky-fade");
+      if (veil && window.__skySlot && window.__skySlot !== nextSlot) {
+        var look = getComputedStyle(head);
+        veil.style.background = look.background;
+        veil.style.opacity = "1";
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { veil.style.opacity = "0"; });
+        });
+      }
+      window.__skySlot = nextSlot;
       var hourTxt = [
         (window.__wxNow && (window.__wxNow.hour || window.__wxNow.text || window.__wxNow.sky)) || "",
         ((document.getElementById("wx-nowline") || {}).textContent || ""),
@@ -3435,15 +3450,20 @@ function currentRotation() {
       var overcast = /overcast|fog|mist|mostly cloudy/i.test(hourTxt) && !sunny;
       var rainingNow = /\brain\b|shower|drizzle/i.test(hourTxt) && !/scattered|isolated|slight chance|possible/i.test(hourTxt);
       var stormNow = /thunder|lightning/i.test(hourTxt) && !/possible|chance|scattered/i.test(hourTxt);
-      var slot = (typeof skySlotNow === "function") ? skySlotNow() : ((hr >= 20 || hr < 6) ? "night" : "day");
-      if (warn) head.classList.add("sky-warn");
-      else if (stormNow || rainingNow) head.classList.add("sky-storm");
-      else if (slot === "dawn") head.classList.add("sky-dawn");
-      else if (slot === "dusk") head.classList.add("sky-dusk");
-      else if (slot === "night") head.classList.add("sky-night","night");
-      else head.classList.add("sky-sun");
-      if (overcast || rainingNow) head.classList.add("sky-cloud");
-      else if (sunny || slot === "day" || slot === "dawn") head.classList.add("sky-partly");
+      var slot = nextSlot;
+      var skyKey = [slot, warn ? "warn" : "", (stormNow || rainingNow) ? "storm" : "", (overcast || rainingNow) ? "cloud" : ((sunny || slot === "day" || slot === "dawn") ? "partly" : "")].join("|");
+      if (window.__skyKey !== skyKey) {
+        head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night","sky-dawn","sky-dusk","sky-cloud","sky-partly");
+        if (warn) head.classList.add("sky-warn");
+        else if (stormNow || rainingNow) head.classList.add("sky-storm");
+        else if (slot === "dawn") head.classList.add("sky-dawn");
+        else if (slot === "dusk") head.classList.add("sky-dusk");
+        else if (slot === "night") head.classList.add("sky-night","night");
+        else head.classList.add("sky-sun");
+        if (overcast || rainingNow) head.classList.add("sky-cloud");
+        else if (sunny || slot === "day" || slot === "dawn") head.classList.add("sky-partly");
+        window.__skyKey = skyKey;
+      }
       if (typeof placeSkyBodies === "function") placeSkyBodies(slot);
       var tempTxt = (document.getElementById("live-temp") || {}).textContent || "";
       var tempN = parseInt(tempTxt, 10);
@@ -4593,6 +4613,10 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v298 — Header wave loops without a reset jump.",
+      "v297 — Day, dusk, night, and dawn crossfade for 60 seconds.",
+      "v296 — Night sky is darker. Stars are a little brighter.",
+      "v295 — Header sky fades 18s between day, dusk, night, and dawn.",
       "v294 — Sun and moon no longer share the sky. Moon face follows today's phase.",
       "v293 — Emergency tables are one row per number, name left, phone right.",
       "v292 — Gulf sat is labeled Gulf.",
