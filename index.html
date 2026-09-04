@@ -410,8 +410,18 @@
     .go-srow[data-kind="courts"] .go-sbar span.go { background:#e07a5f; }
     .go-srow[data-kind="courts"] .go-sbar span.win { background:#e07a5f99; }
     .go-saxis { display:grid; grid-template-columns:repeat(12,1fr); font-size:9px; letter-spacing:.04em; text-transform:uppercase; opacity:.7; margin:0 0 8px 5.6em; }
-    .pausebtn { border:0; background:transparent; color:#f7f1e6; font-size:12px; letter-spacing:.1em; cursor:pointer; z-index:11; padding:0; display:block; margin:0 0 2px auto; }
-    .pausebtn.on { color:#e07a5f; }
+    main { position:relative; }
+    .pausebtn {
+      position:sticky; top:4px; float:right; clear:both;
+      z-index:12; width:44px; height:44px; margin:0 2px 8px 8px; padding:0;
+      border:0; border-radius:12px; cursor:pointer;
+      background:rgba(27,42,74,.88); color:#f7f1e6;
+      font-size:18px; line-height:44px; letter-spacing:0;
+      box-shadow:0 6px 16px rgba(15,18,30,.28);
+    }
+    .pausebtn.on { background:#e07a5f; color:#fff; }
+    html.dark .pausebtn { background:rgba(34,30,54,.94); color:#f7f1e6; }
+    html.dark .pausebtn.on { background:#e07a5f; color:#fff; }
     html.dark .go-sbar { background:rgba(247,241,230,.08); background-image:repeating-linear-gradient(to right, rgba(247,241,230,.2) 0, rgba(247,241,230,.2) 1px, transparent 1px, transparent 8.333%); }
     html.dark .go-strip { background:#221e36; }
     html.dark .go-sname { color:#efe4c8; }
@@ -809,7 +819,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v236</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v238</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -819,6 +829,7 @@
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <div class="ptr" id="ptr">Pull to refresh</div>
     <main>
+      <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
 <p class="today-stamp" id="today-stamp"></p>
@@ -1172,23 +1183,6 @@ Cart shop:</textarea>
           <span>Fills the screen, hides browser chrome habits, and keeps the rotation on. Uber and Instacart ideas will live here later. Address stays the one in Settings.</span>
         </div>
       </section>
-      <section id="triggers" class="page">
-        <h2 data-k="Developer">Triggers</h2>
-        <p class="pill-key">Start a rotation now, or reorder the pages in that loop. Bolt, tropical, hurricane, and satellite pages still only appear when their weather condition is true.</p>
-        <div class="card">
-          <b>Normal rotation</b>
-          <span>Today loop when there is no warning.</span>
-          <p><button type="button" id="trig-run-normal">Start normal rotation</button></p>
-          <div id="trig-normal"></div>
-        </div>
-        <div class="card">
-          <b>Storm rotation</b>
-          <span>Warning loop: radar first, then storm pages, then emergency.</span>
-          <p><button type="button" id="trig-run-storm">Start storm rotation</button></p>
-          <div id="trig-storm"></div>
-        </div>
-        <p><button type="button" id="trig-reset">Reset both rotations to defaults</button></p>
-      </section>
       <section id="ideas" class="page">
         <h2 data-k="Developer">Ideas</h2>
         <div class="card">
@@ -1429,13 +1423,12 @@ Cart shop:</textarea>
         <button type="button" data-p="ideas">Ideas</button>
         <button type="button" data-p="business">Business</button>
         <button type="button" data-p="kioskpage">Kiosk</button>
-        <button type="button" data-p="triggers">Triggers</button>
       </nav>
     </aside>
     <div class="dev-lock" id="dev-lock">
       <div class="dev-lock-card">
         <b>Developer</b>
-        <p>Enter the board PIN to open Status, Triggers, and the shop pages.</p>
+        <p>Enter the board PIN to open Status and the shop pages.</p>
         <div class="pin-dots" id="pin-dots"><i></i><i></i><i></i><i></i></div>
         <div class="pin-pad" id="pin-pad">
           <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
@@ -1501,14 +1494,14 @@ Cart shop:</textarea>
         </div>
         <div class="set-line"><label>NOAA on warning</label>
           <div class="set-row" id="set-noaa">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
         <div class="set-line"><label>Radio on load</label>
           <div class="set-row" id="set-radioauto">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
       </div>
@@ -1569,20 +1562,20 @@ Cart shop:</textarea>
         </div>
         <div class="set-line"><label>Lightning chip</label>
           <div class="set-row" id="set-chipbolt">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
         <div class="set-line"><label>Named storm chip</label>
           <div class="set-row" id="set-chipcane">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
         <div class="set-line"><label>Trash chip</label>
           <div class="set-row" id="set-chiptrash">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
       </div>
@@ -1608,39 +1601,39 @@ Cart shop:</textarea>
         <h3>Tickers</h3>
         <div class="set-line"><label>Briefing</label>
           <div class="set-row" id="set-brief">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
         <div class="set-line"><label>Weather</label>
           <div class="set-row" id="set-briefwx">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
         <div class="set-line"><label>Sports</label>
           <div class="set-row" id="set-briefsports">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
         <p class="hint">Weather is the Today greeting plus lightning and named-storm chips. Sports is scores for the teams you pick below.</p>
         <div class="set-line"><label>Breaking news</label>
           <div class="set-row" id="set-break">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
         <div class="set-line"><label>National</label>
           <div class="set-row" id="set-breaknat">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
         <div class="set-line"><label>Local</label>
           <div class="set-row" id="set-breakloc">
-            <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
           </div>
         </div>
       </div>
@@ -1673,7 +1666,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 237;
+    window.BOARD_VER = 238;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2577,12 +2570,18 @@ function showPage(id) {
         });
       });
     })();
-    document.getElementById("radio") && document.getElementById("radio").addEventListener("click", function (e) {
-      var btn = e.target.closest("button[data-stream], button[data-scan]");
-      if (!btn || !document.getElementById("radio").contains(btn)) return;
-      var scan = btn.getAttribute("data-scan");
-      playStation(scan ? "scan:" + scan : btn.getAttribute("data-stream"), btn.textContent);
-    });
+    (function bindSettingsRadio() {
+      var host = document.getElementById("set-radio") || document.getElementById("radio");
+      if (!host) return;
+      host.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-stream], button[data-scan]");
+        if (!btn || !host.contains(btn)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var scan = btn.getAttribute("data-scan");
+        if (typeof playStation === "function") playStation(scan ? "scan:" + scan : btn.getAttribute("data-stream"), btn.textContent);
+      });
+    })();
     var RADIO_PRESETS = {
       TBW: [
         ["94.9 Magic", "https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac"],
