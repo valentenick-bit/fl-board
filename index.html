@@ -61,9 +61,22 @@
           if (typeof window.openDeveloper === "function") window.openDeveloper();
           return;
         }
-        if (t.id === "hamb" || t.id === "morebtn") {
+        if (t.id === "hamb" || t.id === "morebtn" || t.id === "menu-close" || t.id === "dev-close") {
           e.preventDefault();
           e.stopPropagation();
+          var dNow = document.getElementById("drawer");
+          var devNow = document.getElementById("dev-drawer");
+          var openNow = (dNow && dNow.classList.contains("on")) || (devNow && devNow.classList.contains("on"));
+          if (t.id === "menu-close" || t.id === "dev-close" || (t.id === "hamb" && openNow)) {
+            if (typeof window.closeAllMenus === "function") window.closeAllMenus();
+            else {
+              if (dNow) dNow.classList.remove("on");
+              if (devNow) devNow.classList.remove("on");
+              var bb = document.getElementById("drawer-back");
+              if (bb) bb.classList.remove("on");
+            }
+            return;
+          }
           if (typeof window.openMenu === "function") window.openMenu(t.id === "morebtn" ? true : undefined);
           else {
             var d = document.getElementById("drawer");
@@ -745,7 +758,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v185</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v186</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1222,6 +1235,7 @@ Cart shop:</textarea>
     <aside class="drawer" id="drawer" aria-label="Menu">
       <div class="drawer-head">
         <h2>Menu</h2>
+        <button type="button" id="menu-close" class="drawer-gear" title="Close">✕</button>
         <button type="button" id="setbtn" class="drawer-gear" title="Settings" aria-label="Settings">⚙</button>
       </div>
       <nav class="drawer-list">
@@ -1245,6 +1259,7 @@ Cart shop:</textarea>
         <button type="button" data-p="house">House</button>
         <button type="button" data-p="villa">Villa</button>
         <p class="drawer-lab">Board</p>
+        <button type="button" data-p="health">Status</button>
         <button type="button" id="refreshbtn">Refresh</button>
         <button type="button" id="devbtn">Developer</button>
         <p class="drawer-lab">Account</p>
@@ -1254,7 +1269,7 @@ Cart shop:</textarea>
     <aside class="drawer" id="dev-drawer" aria-label="Developer">
       <div class="drawer-head">
         <h2>Developer</h2>
-        <button type="button" id="dev-lock-btn" class="drawer-gear" title="Lock">Lock</button>
+        <button type="button" id="dev-close" class="drawer-gear" title="Close">✕</button>
       </div>
       <nav class="drawer-list">
         <p class="drawer-lab">Board shop</p>
@@ -1461,7 +1476,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 185;
+    window.BOARD_VER = 186;
     (function clearBlockers() {
       ["drawer-back", "drawer", "dev-drawer", "dev-lock", "settings"].forEach(function (id) {
         var el = document.getElementById(id);
@@ -4255,6 +4270,16 @@ function showPage(id) {
       });
     }
     
+    function closeAllMenus() {
+      ["drawer", "dev-drawer", "drawer-back", "dev-lock"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove("on", "open");
+        if (id === "dev-lock") el.hidden = true;
+      });
+      document.body.style.overflow = "";
+    }
+    window.closeAllMenus = closeAllMenus;
     function openMenu(on) {
       window.openMenu = openMenu;
       var d = document.getElementById("drawer");
@@ -4271,7 +4296,7 @@ function showPage(id) {
       document.body.style.overflow = show ? "hidden" : "";
     }
     window.openMenu = openMenu;
-    function closeMenu() { openMenu(false); }
+    function closeMenu() { closeAllMenus(); }
     var DEV_PIN = "0000";
     window.__pinBuf = "";
     function paintPinDots() {
@@ -4383,12 +4408,12 @@ function showPage(id) {
       var dev = document.getElementById("dev-drawer");
       if (hamb) hamb.addEventListener("click", function (e) { e.stopPropagation(); openMenu(); });
       if (more) more.addEventListener("click", function (e) { e.stopPropagation(); openMenu(true); });
-      if (back) back.addEventListener("click", function () {
-        closeMenu();
-        openDevDrawer(false);
-        var lock = document.getElementById("dev-lock");
-        if (lock) lock.classList.remove("on");
-      });
+      function shut() { closeAllMenus(); }
+      if (back) back.addEventListener("click", shut);
+      var mc = document.getElementById("menu-close");
+      var dc = document.getElementById("dev-close");
+      if (mc) mc.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); shut(); });
+      if (dc) dc.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); shut(); });
       function pageFromDrawer(btn) {
         var id = btn.getAttribute("data-p");
         closeMenu();
