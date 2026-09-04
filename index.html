@@ -96,6 +96,19 @@
     html.dark .drawer-list button.on { background:#2a2444; }
     html.dark .drawer .menu-grid button { background:#2a2444; color:#f7f1e6; }
     html.dark .drawer-back { background:rgba(8,8,16,.62); }
+    .dev-lock { position:fixed; inset:0; z-index:40; background:rgba(15,18,30,.55); display:flex; align-items:center; justify-content:center; padding:20px; }
+    .dev-lock[hidden] { display:none; }
+    .dev-lock-card { width:min(360px,92vw); background:#f7f1e6; color:var(--navy); border-radius:16px; padding:18px 16px; box-shadow:0 16px 40px rgba(15,18,30,.3); }
+    .dev-lock-card b { display:block; font-size:20px; margin-bottom:6px; }
+    .dev-lock-card p { margin:0 0 10px; color:var(--muted); }
+    .dev-lock-card input { width:100%; font-size:22px; letter-spacing:.3em; text-align:center; padding:10px; border-radius:10px; border:1px solid var(--hair); background:#fff; color:var(--navy); }
+    .dev-lock-card .go { margin-top:10px; width:100%; border:0; background:var(--navy); color:#f7f1e6; padding:10px; border-radius:10px; font-weight:700; }
+    html.dark .dev-lock-card { background:#1b1730; color:#f7f1e6; }
+    html.dark .dev-lock-card input { background:#2a2444; color:#f7f1e6; border-color:#3a3458; }
+    .trig-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--hair); }
+    .trig-row b { flex:1; }
+    .trig-row button { border:0; background:#fff; color:var(--navy); border-radius:8px; padding:6px 10px; font-weight:700; }
+    html.dark .trig-row button { background:#2a2444; color:#f7f1e6; }
 
     header { background:var(--navy); color:#f7f1e6; padding:10px 12px 0; display:grid; grid-template-columns:auto 1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:4; transition:background .6s ease; }
     header > *:not(.palms):not(.sky-scene) { position:relative; z-index:1; }
@@ -666,7 +679,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v176</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v177</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1029,6 +1042,35 @@ Cart shop:</textarea>
         <p class="sky">Pick teams for the briefing ticker. Nearby teams for this address start checked.</p>
         <div id="sports-box"></div>
       </section>
+      <section id="kioskpage" class="page">
+        <h2 data-k="Developer">Kiosk</h2>
+        <div class="card">
+          <b>Wall mode</b>
+          <span>Use this on the always-on touch panel. Phone and laptop stay in browser mode.</span>
+          <p><button type="button" id="kioskbtn">Kiosk</button></p>
+        </div>
+        <div class="card">
+          <b>What kiosk changes</b>
+          <span>Fills the screen, hides browser chrome habits, and keeps the rotation on. Uber and Instacart ideas will live here later. Address stays the one in Settings.</span>
+        </div>
+      </section>
+      <section id="triggers" class="page">
+        <h2 data-k="Developer">Triggers</h2>
+        <p class="pill-key">Start a rotation now, or reorder the pages in that loop. Bolt, tropical, hurricane, and satellite pages still only appear when their weather condition is true.</p>
+        <div class="card">
+          <b>Normal rotation</b>
+          <span>Today loop when there is no warning.</span>
+          <p><button type="button" id="trig-run-normal">Start normal rotation</button></p>
+          <div id="trig-normal"></div>
+        </div>
+        <div class="card">
+          <b>Storm rotation</b>
+          <span>Warning loop: radar first, then storm pages, then emergency.</span>
+          <p><button type="button" id="trig-run-storm">Start storm rotation</button></p>
+          <div id="trig-storm"></div>
+        </div>
+        <p><button type="button" id="trig-reset">Reset both rotations to defaults</button></p>
+      </section>
       <section id="ideas" class="page">
         <h2 data-k="Developer">Ideas</h2>
         <div class="card">
@@ -1087,7 +1129,7 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
-        <div class="card"><b>Build</b><span id="health-build">v176</span></div>
+        <div class="card"><b>Build</b><span id="health-build">v177</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Stale</b><span id="health-stale">Checking ages…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
@@ -1138,14 +1180,34 @@ Cart shop:</textarea>
         <button type="button" data-p="villa">Villa</button>
         <p class="drawer-lab">Board</p>
         <button type="button" id="refreshbtn">Refresh</button>
-        <button type="button" data-p="health">Status</button>
-        <button type="button" data-p="guide">How it works</button>
-        <button type="button" data-p="ideas">Ideas</button>
-        <button type="button" id="kioskbtn">Kiosk</button>
+        <button type="button" id="devbtn">Developer</button>
         <p class="drawer-lab">Account</p>
         <button type="button" class="soon" disabled>Sign in — coming soon</button>
       </nav>
     </aside>
+    <aside class="drawer" id="dev-drawer" aria-label="Developer">
+      <div class="drawer-head">
+        <h2>Developer</h2>
+        <button type="button" id="dev-lock-btn" class="drawer-gear" title="Lock">Lock</button>
+      </div>
+      <nav class="drawer-list">
+        <p class="drawer-lab">Board shop</p>
+        <button type="button" data-p="health">Status</button>
+        <button type="button" data-p="guide">How it works</button>
+        <button type="button" data-p="ideas">Ideas</button>
+        <button type="button" data-p="kioskpage">Kiosk</button>
+        <button type="button" data-p="triggers">Triggers</button>
+      </nav>
+    </aside>
+    <div class="dev-lock" id="dev-lock" hidden>
+      <div class="dev-lock-card">
+        <b>Developer</b>
+        <p>Enter the board PIN to open Status, Triggers, and the shop pages.</p>
+        <input id="dev-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" />
+        <button type="button" class="go" id="dev-pin-go">Open</button>
+        <p id="dev-pin-err" hidden>Wrong PIN</p>
+      </div>
+    </div>
 <div class="settings" id="settings" hidden>
       <div class="settings-head">
         <div><strong>Settings</strong><span>Board look, sound, and what rotates</span></div>
@@ -1327,7 +1389,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 176;
+    window.BOARD_VER = 177;
     window.__crashes = window.__crashes || [];
     function logCrash(src, msg) {
       var line = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " · " + src + " · " + String(msg || "").slice(0, 180);
@@ -3030,22 +3092,43 @@ function showPage(id) {
     })();
     clock(); setInterval(clock, 15000);
     var pages = ["now","tenday","radar","marine","sky","traffic","cam","ent","house","deliver","radio"], i = 0, rot, idle;
-    function warnList() {
+    var ROT_DEFAULTS = {
+      normal: ["now","tenday","radar","marine","sky","ent","deliver"],
+      storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
+    };
+    var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
+    function loadRots() {
+      try {
+        var s = JSON.parse(localStorage.getItem("bw-rots") || "null");
+        if (s && Array.isArray(s.normal) && Array.isArray(s.storm) && s.normal.length && s.storm.length) {
+          if (s.normal.indexOf("sky") < 0) {
+            var at = s.normal.indexOf("marine");
+            s.normal.splice(at >= 0 ? at + 1 : s.normal.length, 0, "sky");
+          }
+          return s;
+        }
+      } catch (e) {}
+      return { normal: ROT_DEFAULTS.normal.slice(), storm: ROT_DEFAULTS.storm.slice() };
+    }
+    function saveRots(r) {
+      try { localStorage.setItem("bw-rots", JSON.stringify(r)); } catch (e) {}
+    }
+    function rotVisible(id) {
+      if (!id || !document.getElementById(id)) return false;
+      if (id === "cam" && typeof camOffHours === "function" && camOffHours()) return false;
       var ev = (window.__wxRisk && window.__wxRisk.warnTypes) || "";
-      var list = ["radar"];
-      if (boltWanted() || /thunder|tornado|severe|lightning/.test(ev)) list.push("bolt");
-      if (/hurricane|tropical|surge/.test(ev) || (window.__namedStorms && window.__namedStorms.length)) {
-        list.push("cane");
-        if (/hurricane|tropical storm|storm surge/.test(ev) || (window.__wxRisk && window.__wxRisk.hurr)) list.push("hurr");
-      }
       var basins = window.__satBasins || {};
-      if (basins.gulf) list.push("gulfsat");
-      if (basins.atl) list.push("tropics");
-      if (/flood|marine|small craft|gale|waterspout|rip|surf|coastal|tropical|hurricane/.test(ev) && list.indexOf("marine") < 0) list.push("marine");
-      list.push("contacts", "prep", "power");
+      if (id === "bolt") return !!(typeof boltWanted === "function" && boltWanted()) || /thunder|tornado|severe|lightning/.test(ev);
+      if (id === "cane") return !!(window.__namedStorms && window.__namedStorms.length) || /hurricane|tropical|surge/.test(ev);
+      if (id === "hurr") return !!(window.__wxRisk && window.__wxRisk.hurr) || /hurricane|tropical storm|storm surge/.test(ev);
+      if (id === "gulfsat") return !!basins.gulf;
+      if (id === "tropics") return !!basins.atl;
+      return true;
+    }
+    function warnList() {
       var seen = {};
-      return list.filter(function (id) {
-        if (seen[id] || !document.getElementById(id)) return false;
+      return loadRots().storm.filter(function (id) {
+        if (seen[id] || !rotVisible(id)) return false;
         seen[id] = true;
         return true;
       });
@@ -3091,7 +3174,7 @@ function showPage(id) {
             showPage(id);
             var wrap = document.querySelector(".dock-wrap");
             var homePages = { traffic:1, cam:1, sky:1, radio:1, house:1, villa:1, wink:1, sports:1, power:1, prep:1, bolt:1, cane:1, hurr:1, contacts:1, gulfsat:1, tropics:1 };
-            var setupPages = { health:1, guide:1, ideas:1, menu:1 };
+            var setupPages = { health:1, guide:1, ideas:1, menu:1, triggers:1, kioskpage:1 };
             clearTimeout(rot); clearInterval(rot); clearTimeout(idle);
             if (setupPages[id] || homePages[id]) {
               if (wrap) {
@@ -3421,7 +3504,8 @@ function showPage(id) {
       "v173 — Header hamburger opens a slide-out app menu.",
       "v174 — Dock follows rotation. Drawer is a list. Community name is BeachWalk by Manasota Key.",
       "v175 — Deliveries pull from the Worker. Gator card no longer sticks on Checking range. Traffic health treats the Google map as live.",
-      "v176 — Palms stay inside the header. Drawer follows dark mode. Tide and gator cards leave the loading placeholders."
+      "v176 — Palms stay inside the header. Drawer follows dark mode. Tide and gator cards leave the loading placeholders.",
+      "v177 — Sky is back in the normal loop. Developer menu is PIN 0000 and holds Status, How it works, Ideas, Kiosk, and Triggers."
     ];
     function paintGuide() {
       var box = document.getElementById("guide-body");
@@ -3589,7 +3673,7 @@ function showPage(id) {
     }
 
     function pageLabel(id) {
-      var names = { now:"Today", tenday:"Weather", radar:"Radar", marine:"Marine", ent:"Fun", deliver:"Delivery", bolt:"Bolt", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf sat", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views" };
+      var names = { now:"Today", tenday:"Weather", radar:"Radar", marine:"Marine", sky:"Sky", traffic:"Roads", ent:"Fun", deliver:"Delivery", bolt:"Bolt", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf sat", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", health:"Status", guide:"How it works", ideas:"Ideas", triggers:"Triggers", kioskpage:"Kiosk" };
       return names[id] || id;
     }
     function rebuildDock() {
@@ -3610,25 +3694,16 @@ function showPage(id) {
       }
     }
     function rotateList() {
-      var risk = window.__wxRisk || {};
-      var skip = { news:1, wink:1, contacts:1, villa:1, power:1, cane:1, hurr:1, bolt:1, prep:1, health:1, guide:1, ideas:1, menu:1, gulfsat:1, tropics:1 };
-      var list = ["now","tenday","radar","marine","ent","deliver"].filter(function (id) {
-        if (!id || skip[id]) return false;
-        if (id === "cam" && camOffHours()) return false;
-        return !!document.getElementById(id);
+      var skip = { news:1, wink:1, villa:1, health:1, guide:1, ideas:1, menu:1, triggers:1, kioskpage:1 };
+      var seen = {};
+      var list = loadRots().normal.filter(function (id) {
+        if (!id || skip[id] || seen[id] || !rotVisible(id)) return false;
+        seen[id] = true;
+        return true;
       });
-      if (boltWanted()) insertAfter(list, "radar", "bolt");
-      if (risk.cane || (window.__namedStorms && window.__namedStorms.length)) {
-        var after = list.indexOf("bolt") >= 0 ? "bolt" : "radar";
-        insertAfter(list, after, "cane");
-      }
-      if (risk.hurr) insertAfter(list, list.indexOf("cane") >= 0 ? "cane" : (list.indexOf("bolt") >= 0 ? "bolt" : "radar"), "hurr");
-      var basins = window.__satBasins || {};
-      if (basins.gulf) insertAfter(list, "radar", "gulfsat");
-      if (basins.atl) insertAfter(list, list.indexOf("gulfsat") >= 0 ? "gulfsat" : "radar", "tropics");
       if (typeof noteFeed === "function") {
-        noteFeed("bolt-rot", true, boltWanted() ? "after radar" : "idle");
-        noteFeed("cane-rot", true, (risk.cane || (window.__namedStorms && window.__namedStorms.length)) ? "after bolt/radar" : "idle");
+        noteFeed("bolt-rot", true, list.indexOf("bolt") >= 0 ? "in rotation" : "idle");
+        noteFeed("cane-rot", true, list.indexOf("cane") >= 0 ? "in rotation" : "idle");
       }
       return list;
     }
@@ -4010,7 +4085,7 @@ function showPage(id) {
       setInterval(function () { next(0); }, 30 * 60 * 1000);
     })();
     (function loadKeyJson() {
-      var urls = ["/key.json", "key.json", "./key.json", "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1Cnwb8P1qLPc9G6rCZSy2Dw5zhjlAZp_D")];
+      var urls = ["/key.json", "key.json", "./key.json", "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1cG8FQEWreTiyfgdEPTkX49DfBqVuuf83")];
       function apply(d) {
         if (!d) return;
         if (d.fishing && document.getElementById("live-fish")) document.getElementById("live-fish").innerHTML = d.fishing;
@@ -4101,29 +4176,163 @@ function showPage(id) {
       var show = on !== false;
       if (on == null) show = !d.classList.contains("on");
       d.classList.toggle("on", show);
+      if (!show) {
+        var dev = document.getElementById("dev-drawer");
+        if (dev) dev.classList.remove("on");
+      }
       if (b) b.classList.toggle("on", show);
       document.body.style.overflow = show ? "hidden" : "";
     }
     function closeMenu() { openMenu(false); }
+    var DEV_PIN = "0000";
+    function devUnlocked() {
+      try { return sessionStorage.getItem("bw-dev") === "1"; } catch (e) { return false; }
+    }
+    function setDevUnlock(on) {
+      try { if (on) sessionStorage.setItem("bw-dev", "1"); else sessionStorage.removeItem("bw-dev"); } catch (e) {}
+    }
+    function openDevDrawer(show) {
+      var d = document.getElementById("dev-drawer");
+      var main = document.getElementById("drawer");
+      var b = document.getElementById("drawer-back");
+      if (!d) return;
+      d.classList.toggle("on", !!show);
+      if (main) main.classList.toggle("on", false);
+      if (b) b.classList.toggle("on", !!show);
+      document.body.style.overflow = show ? "hidden" : "";
+    }
+    function askDevPin() {
+      var lock = document.getElementById("dev-lock");
+      var err = document.getElementById("dev-pin-err");
+      var pin = document.getElementById("dev-pin");
+      if (err) err.hidden = true;
+      if (pin) pin.value = "";
+      if (lock) lock.hidden = false;
+      if (pin) setTimeout(function () { pin.focus(); }, 50);
+    }
+    function openDeveloper() {
+      closeMenu();
+      if (devUnlocked()) openDevDrawer(true);
+      else askDevPin();
+    }
+    function paintTriggers() {
+      function rowHtml(kind, arr) {
+        return arr.map(function (id, idx) {
+          var cond = ROT_COND[id] ? " · only if active" : "";
+          return '<div class="trig-row" data-kind="' + kind + '" data-i="' + idx + '"><b>' + pageLabel(id) + cond + '</b><button type="button" data-mv="-1">Up</button><button type="button" data-mv="1">Down</button></div>';
+        }).join("");
+      }
+      var r = loadRots();
+      var n = document.getElementById("trig-normal");
+      var s = document.getElementById("trig-storm");
+      if (n) n.innerHTML = rowHtml("normal", r.normal);
+      if (s) s.innerHTML = rowHtml("storm", r.storm);
+    }
+    function startNamedRotation(kind) {
+      window.__storm = kind === "storm";
+      window.__holdPage = false;
+      pages = kind === "storm" ? warnList() : rotateList();
+      i = 0;
+      if (pages[0] && typeof showPage === "function") showPage(pages[0]);
+      if (typeof rebuildDock === "function") rebuildDock();
+      if (typeof startRotate === "function") startRotate();
+    }
     (function bindMenu() {
       var hamb = document.getElementById("hamb");
       var more = document.getElementById("morebtn");
       var back = document.getElementById("drawer-back");
       var drawer = document.getElementById("drawer");
+      var dev = document.getElementById("dev-drawer");
       if (hamb) hamb.addEventListener("click", function (e) { e.stopPropagation(); openMenu(); });
       if (more) more.addEventListener("click", function (e) { e.stopPropagation(); openMenu(true); });
-      if (back) back.addEventListener("click", closeMenu);
-      if (drawer) drawer.addEventListener("click", function (e) {
-        var btn = e.target.closest("button[data-p]");
-        if (!btn) return;
+      if (back) back.addEventListener("click", function () {
+        closeMenu();
+        openDevDrawer(false);
+        var lock = document.getElementById("dev-lock");
+        if (lock) lock.hidden = true;
+      });
+      function pageFromDrawer(btn) {
         var id = btn.getAttribute("data-p");
         closeMenu();
+        openDevDrawer(false);
         if (id && document.getElementById(id) && typeof showPage === "function") {
           showPage(id);
-          window.__holdPage = /^(health|guide|ideas)$/.test(id);
+          window.__holdPage = /^(health|guide|ideas|triggers|kioskpage)$/.test(id);
+          if (id === "triggers") paintTriggers();
+        }
+      }
+      if (drawer) drawer.addEventListener("click", function (e) {
+        if (e.target && e.target.id === "devbtn") {
+          e.preventDefault();
+          openDeveloper();
+          return;
+        }
+        var btn = e.target.closest("button[data-p]");
+        if (!btn) return;
+        pageFromDrawer(btn);
+      });
+      if (dev) dev.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-p]");
+        if (btn) pageFromDrawer(btn);
+      });
+      var lockBtn = document.getElementById("dev-lock-btn");
+      if (lockBtn) lockBtn.addEventListener("click", function () {
+        setDevUnlock(false);
+        openDevDrawer(false);
+      });
+      var go = document.getElementById("dev-pin-go");
+      var pin = document.getElementById("dev-pin");
+      function tryPin() {
+        var val = pin ? String(pin.value || "") : "";
+        var err = document.getElementById("dev-pin-err");
+        if (val === DEV_PIN) {
+          setDevUnlock(true);
+          var lock = document.getElementById("dev-lock");
+          if (lock) lock.hidden = true;
+          openDevDrawer(true);
+        } else if (err) err.hidden = false;
+      }
+      if (go) go.addEventListener("click", tryPin);
+      if (pin) pin.addEventListener("keydown", function (e) { if (e.key === "Enter") tryPin(); });
+      var lockBox = document.getElementById("dev-lock");
+      if (lockBox) lockBox.addEventListener("click", function (e) {
+        if (e.target === lockBox) lockBox.hidden = true;
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          closeMenu();
+          openDevDrawer(false);
+          var lock = document.getElementById("dev-lock");
+          if (lock) lock.hidden = true;
         }
       });
-      document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+      var rn = document.getElementById("trig-run-normal");
+      var rs = document.getElementById("trig-run-storm");
+      var rr = document.getElementById("trig-reset");
+      if (rn) rn.addEventListener("click", function () { startNamedRotation("normal"); });
+      if (rs) rs.addEventListener("click", function () { startNamedRotation("storm"); });
+      if (rr) rr.addEventListener("click", function () {
+        saveRots({ normal: ROT_DEFAULTS.normal.slice(), storm: ROT_DEFAULTS.storm.slice() });
+        paintTriggers();
+        if (typeof rebuildDock === "function") rebuildDock();
+      });
+      document.addEventListener("click", function (e) {
+        var row = e.target.closest && e.target.closest(".trig-row");
+        if (!row) return;
+        var mv = e.target.getAttribute && e.target.getAttribute("data-mv");
+        if (!mv) return;
+        var kind = row.getAttribute("data-kind");
+        var idx = parseInt(row.getAttribute("data-i"), 10);
+        var dir = parseInt(mv, 10);
+        var r = loadRots();
+        var arr = r[kind];
+        var j = idx + dir;
+        if (!arr || j < 0 || j >= arr.length) return;
+        var t = arr[idx]; arr[idx] = arr[j]; arr[j] = t;
+        saveRots(r);
+        paintTriggers();
+        if (typeof rebuildDock === "function") rebuildDock();
+      });
     })();
 (function extraDock() {
       var wrap = document.querySelector(".dock-wrap");
