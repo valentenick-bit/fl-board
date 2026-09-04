@@ -641,7 +641,15 @@
     html.dark a.dial b { color:#f7f1e6; }
     html.dark a.dial em { color:#7fd3c6; }
     html.dark .dials h3 { color:var(--gold); }
-    a { color:var(--navy); font-weight:700; }
+    .emerg-sheet { max-width:34em; margin:0 0 12px; }
+    .emerg-sheet .emerg-lead { font-size:17px; line-height:1.45; margin:0 0 12px; color:var(--navy); }
+    .emerg-sheet h3 { margin:16px 0 4px; padding:0; background:transparent; color:var(--gold); font-family:"Source Sans 3",system-ui,sans-serif; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
+    .emerg-sheet p.eline { display:flex; justify-content:space-between; gap:16px; align-items:baseline; margin:0; padding:7px 0; border-bottom:1px solid var(--hair); font-size:16px; }
+    .emerg-sheet p.eline span { color:var(--navy); font-weight:600; }
+    .emerg-sheet p.eline a { font-family:Fraunces,Georgia,serif; font-size:20px; font-weight:600; color:var(--teal); text-decoration:none; white-space:nowrap; }
+    html.dark .emerg-sheet .emerg-lead, html.dark .emerg-sheet p.eline span { color:#f7f1e6; }
+    html.dark .emerg-sheet p.eline { border-bottom-color:#3a3458; }
+    html.dark .emerg-sheet p.eline a { color:#7fd3c6; }
     .rowbtns { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     .rowbtns button, .rowbtns a { background:#fff; border:1px solid var(--hair); border-radius:999px; padding:8px 14px; font-weight:700; text-decoration:none; color:var(--navy); cursor:pointer; }
     .rowbtns button.on { background:var(--navy); color:#fff; }
@@ -986,7 +994,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v285</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v286</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1310,10 +1318,14 @@ Cart shop:</textarea>
           <span id="evac-body">Sarasota County levels A–E. The Key itself is Level A (first out). BeachWalk on Englewood Rd is inland of the bridge. Do not go to a shelter until the county says it is open. Nearest listed Englewood sites: Sports Complex, 1300 S River Rd · Buchan Airport Park, 1390 Old Englewood Rd.</span>
           <p id="evac-links"><a href="https://www.arcgis.com/apps/instant/lookup/index.html?appid=0219841617274028b5bf5867fcf4c57b" target="_blank" rel="noopener">Know your level</a> · <a href="https://www.scgov.net/government/emergency-services/emergency-management-4420" target="_blank" rel="noopener">Sarasota EM</a></p>
         </div>
-        <div class="dials" id="emerg-call"></div>
-        <div class="dials" id="emerg-util"></div>
+        <div class="emerg-sheet" id="emerg-sheet">
+          <p class="emerg-lead" id="emerg-lead">If someone is hurt or a line is down, call 911.</p>
+          <div id="emerg-call"></div>
+          <div id="emerg-util"></div>
+          <div id="emerg-after"></div>
+          <p class="pill-key" id="emerg-refs">Numbers follow the home ZIP. Confirm with the county or utility before you need them.</p>
+        </div>
         <span id="live-fpl" hidden></span>
-        <div class="dials" id="emerg-after"></div>
       </section>
       <section id="power" class="page">
         <h2 data-k="FPL">Power</h2>
@@ -1892,7 +1904,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 285;
+    window.BOARD_VER = 286;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2589,7 +2601,7 @@ Cart shop:</textarea>
       function dial(name, tel) {
         if (!tel) return "";
         var clean = String(tel).replace(/[^\d]/g, "");
-        return '<a class="dial" href="tel:' + clean + '"><b>' + name + "</b><em>" + tel + "</em></a>";
+        return '<p class="eline"><span>' + name + '</span><a href="tel:' + clean + '">' + tel + "</a></p>";
       }
       var st = homeState();
       var zip = getSet().zip || "";
@@ -2598,7 +2610,7 @@ Cart shop:</textarea>
         sheriff: ["Local sheriff / police", "911"],
         info: null,
         em: ["County emergency management", "911"],
-        extra: zip === "34223" ? ["Castle after hours", "800-337-5850"] : null,
+        extra: null,
         power: ["Power outage", ""],
         gas: ["Gas leak", "911"],
         water: ["Water utility", ""],
@@ -2616,16 +2628,27 @@ Cart shop:</textarea>
         pack.two11 = ["Florida 211", "211"];
         if (/sarasota/.test(county) || zip.indexOf("342") === 0) {
           pack.sheriff = ["Sarasota Sheriff", "941-861-5800"];
-          pack.info = ["Sarasota 311", "941-861-5000"];
-          pack.em = ["Sarasota EM", "941-861-5000"];
-          pack.water = ["Englewood water", "941-474-3217"];
-          pack.redcross = ["Red Cross Sarasota", "941-379-9300"];
+          pack.info = ["Englewood sheriff office", "941-474-3000"];
+          pack.em = ["Sarasota EM", "941-861-5495"];
+          pack.extra = ["Englewood Area Fire", "941-474-3311"];
+          pack.water = ["Englewood Water District", "941-474-3217"];
+          pack.gas = ["Peoples Gas leak", "877-832-6747"];
+          pack.net = ["Frontier", "800-921-8101"];
+          pack.redcross = ["Red Cross SW Florida", "941-379-9300"];
           pack.animal = ["Sarasota animal services", "941-861-9500"];
         }
         if (/charlotte/.test(county) || /339[0-9]{2}/.test(zip)) {
-          pack.sheriff = ["Charlotte Sheriff", "941-639-2101"];
+          pack.sheriff = ["Charlotte Sheriff Dist. 1", "941-474-3233"];
+          pack.info = ["Charlotte Sheriff business", "941-475-9005"];
           pack.em = ["Charlotte EM", "941-833-4000"];
           pack.water = ["Charlotte water", "941-764-4300"];
+        }
+        if (zip === "34223") {
+          pack.sheriff = ["Sarasota Sheriff", "941-861-5800"];
+          pack.info = ["Englewood sheriff office", "941-474-3000"];
+          pack.em = ["Sarasota EM", "941-861-5495"];
+          pack.extra = ["Englewood Area Fire", "941-474-3311"];
+          pack.water = ["Englewood Water District", "941-474-3217"];
         }
         if (/lee/.test(county) || /3390[0-9]|3391[0-9]|3393[0-1]/.test(zip)) {
           pack.sheriff = ["Lee Sheriff", "239-477-1000"];
@@ -2653,6 +2676,8 @@ Cart shop:</textarea>
         pack.state = ["Ready.gov", "202-646-2500"];
         pack.power = ["Utility outage", "911"];
       }
+      var lead = document.getElementById("emerg-lead");
+      if (lead) lead.innerHTML = 'If someone is hurt or a line is down, call <a href="tel:911">911</a>.';
       var call = document.getElementById("emerg-call");
       if (call) call.innerHTML = "<h3>Call first</h3>" +
         dial("Life emergency", "911") +
@@ -4582,6 +4607,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v286 — Emergency is a call sheet. Englewood numbers checked against county and utility pages.",
       "v285 — Emergency numbers are a directory list, not chips: name left, number right.",
       "v284 — Emergency: Right now card, then contact chips. No navy dial stacks.",
       "v283 — Chart cards use the same title + caption as story cards. Times sit in the caption.",
