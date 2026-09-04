@@ -132,7 +132,7 @@
     .page#radar .radar-stage, .page#cam .keycam { position:relative; z-index:5; }
     header.night { filter:none; }
 
-    .sky-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2; }
+    .sky-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2; background:transparent; }
     .hdr-sun, .hdr-moon { position:absolute; border-radius:50%; opacity:0; }
     .hdr-sun { transition:left 120s linear, bottom 120s linear, opacity .8s ease; }
     .hdr-moon { transition:none; }
@@ -239,8 +239,8 @@
     }
     .palm .frond { transform-origin:24px 24px; }
 
-    header.sky-sun { background:linear-gradient(180deg,#8ecfff 0%,#5aa7e0 55%,#3d8fd0 100%); border-bottom-color:#7ec8f0; }
-    header.sky-partly { background:linear-gradient(180deg,#9ad4ff 0%,#68b4ea 55%,#4a9ad8 100%); border-bottom-color:#8ecfff; }
+    header.sky-sun { background:linear-gradient(180deg,#b9e4ff 0%,#7ec8f5 48%,#4aa6e0 100%) !important; border-bottom-color:#7ec8f0; }
+    header.sky-partly { background:linear-gradient(180deg,#c5e9ff 0%,#8fd0f8 48%,#57abe4 100%) !important; border-bottom-color:#8ecfff; }
     header.sky-cloud { background:linear-gradient(180deg,#b7c9d8 0%,#7f96ab 78%); border-bottom-color:#9aafc0; }
     header.sky-dawn { background:linear-gradient(180deg,#ffd4a8 0%,#7eb6e8 78%); }
     header.sky-dusk { background:linear-gradient(180deg,#f0a070 0%,#3d6aa0 78%); }
@@ -270,12 +270,12 @@
     header.hot .temp, header.hot .feels strong { animation:heat-pulse 2.4s ease-in-out infinite; }
     @keyframes heat-pulse { 0%,100% { text-shadow:0 0 0 transparent; } 50% { text-shadow:0 0 18px rgba(224,122,95,.7); } }
     header.sky-night::before, header.sky-night::after { content:none; display:none; }
-    .hdr-stars { position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0; }
-    header.sky-night .hdr-stars, header.night .hdr-stars { opacity:1; }
-    html.dark header.sky-night .hdr-stars, html.dark header.night .hdr-stars { opacity:1; }
+    .hdr-stars { position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0; display:none; }
+    header.sky-night .hdr-stars, header.night .hdr-stars { opacity:1; display:block; }
+    html.dark header.sky-night .hdr-stars, html.dark header.night .hdr-stars { opacity:1; display:block; }
     html.dark header.sky-sun .hdr-stars,
     html.dark header.sky-partly .hdr-stars,
-    html.dark header.sky-dawn .hdr-stars { opacity:0; }
+    html.dark header.sky-dawn .hdr-stars { opacity:0; display:none; }
     .hdr-stars i { position:absolute; width:1px; height:1px; border-radius:50%; background:rgba(255,255,255,.7); box-shadow:none; animation:star-twinkle 3.8s ease-in-out infinite; }
     .hdr-stars i:nth-child(2), .hdr-stars i:nth-child(8), .hdr-stars i:nth-child(11) { width:2px; height:2px; background:#fff; box-shadow:0 0 3px rgba(255,255,255,.45); animation-duration:5.4s; }
     .hdr-stars i:nth-child(3n) { animation-duration:4.6s; animation-delay:-1.1s; }
@@ -303,8 +303,9 @@
     header.sky-storm + .wavebar svg path { fill:#2a9d8f; }
     header.sky-night + .wavebar { background:#0b0a14; }
     header.sky-night + .wavebar svg path { fill:#6e63a3; }
-    html.dark .wavebar { background:#100e20; }
-    html.dark .wavebar svg path { fill:#3f8f88; }
+    html.dark header.sky-night + .wavebar,
+    html.dark header.sky-storm + .wavebar { background:#100e20; }
+    html.dark header.sky-night + .wavebar svg path { fill:#8b7cc8; }
     html.dark header.sky-night + .wavebar { background:#0b0a14; }
     html.dark header.sky-night + .wavebar svg path { fill:#8b7cc8; }
     html.dark header.sky-warn + .wavebar svg path { fill:#e07a5f; }
@@ -843,7 +844,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v242</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v243</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -1379,92 +1380,7 @@ Cart shop:</textarea>
         <div class="card"><b>Last updates</b><span id="health-all"></span></div>
         <div class="card"><b>Developer</b><span>How it works and the ideas list live in the Dev dock, left of the gear.</span></div>
       </section>
-    </main>
-    <div class="dock-wrap">
-    <nav class="dock" id="dock">
-      <button type="button" data-p="now" class="on">Today</button>
-      <button type="button" data-p="tenday">Weather</button>
-      <button type="button" data-p="radar">Radar</button>
-      <button type="button" data-p="marine">Marine</button>
-      <button type="button" data-p="sky">Sky</button>
-      <button type="button" data-p="ent">Fun</button>
-      <button type="button" data-p="deliver">Delivery</button>
-      <button type="button" id="morebtn" aria-label="Open menu">Menu</button>
-    </nav>
-    </div>
-
-    <div class="drawer-back" id="drawer-back"></div>
-    <aside class="drawer" id="drawer" aria-label="Menu">
-      <div class="drawer-head">
-        <h2>Menu</h2>
-      </div>
-      <nav class="drawer-list">
-        <p class="drawer-lab">Daily</p>
-        <button type="button" data-p="welcome">Welcome</button>
-        <button type="button" data-p="now">Today</button>
-        <button type="button" data-p="tenday">Weather</button>
-        <button type="button" data-p="radar">Radar</button>
-        <button type="button" data-p="marine">Marine</button>
-        <button type="button" data-p="sky">Sky</button>
-        <button type="button" data-p="ent">Fun</button>
-        <button type="button" data-p="deliver">Delivery</button>
-        <p class="drawer-lab">Out</p>
-        <button type="button" data-p="cam">Views</button>
-        <button type="button" data-p="traffic">Roads</button>
-        <button type="button" data-p="wink">News</button>
-        <p class="drawer-lab">Storms</p>
-        <button type="button" data-p="bolt">Lightning</button>
-        <button type="button" data-p="cane">Tropical</button>
-        <button type="button" data-p="hurr">Hurricane</button>
-        <button type="button" data-p="gulfsat">Gulf sat</button>
-        <button type="button" data-p="tropics">Tropics</button>
-        <p class="drawer-lab">Safety</p>
-        <button type="button" data-p="contacts">Emergency</button>
-        <button type="button" data-p="prep">Prep</button>
-        <button type="button" data-p="power">Power</button>
-        <p class="drawer-lab">Villa</p>
-        <button type="button" data-p="house">House</button>
-        <button type="button" data-p="villa">Open / close</button>
-        <p class="drawer-lab">Board</p>
-        <button type="button" data-p="health">Status</button>
-        <button type="button" id="setbtn" data-p="settings">Settings</button>
-        <button type="button" id="pausemenu">Pause rotation</button>
-        <button type="button" id="refreshbtn">Refresh</button>
-        <button type="button" id="devbtn">Developer</button>
-        <p class="drawer-lab">Account</p>
-        <button type="button" data-p="account">Account</button>
-      </nav>
-    </aside>
-    <aside class="drawer" id="dev-drawer" aria-label="Developer">
-      <div class="drawer-head">
-        <button type="button" id="dev-back" class="drawer-back-btn" title="Back" aria-label="Back">‹</button>
-        <h2>Developer</h2>
-      </div>
-      <nav class="drawer-list">
-        <p class="drawer-lab">Board shop</p>
-        <button type="button" data-p="health">Status</button>
-        <button type="button" data-p="guide">How it works</button>
-        <button type="button" data-p="ideas">Ideas</button>
-        <button type="button" data-p="business">Business</button>
-        <button type="button" data-p="kioskpage">Kiosk</button>
-      </nav>
-    </aside>
-    <div class="dev-lock" id="dev-lock">
-      <div class="dev-lock-card">
-        <b>Developer</b>
-        <p>Enter the board PIN to open Status and the shop pages.</p>
-        <div class="pin-dots" id="pin-dots"><i></i><i></i><i></i><i></i></div>
-        <div class="pin-pad" id="pin-pad">
-          <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
-          <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
-          <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
-          <button type="button" data-k="c">Clear</button><button type="button" data-k="0">0</button><button type="button" data-k="ok">Open</button>
-        </div>
-        <input id="dev-pin" type="text" inputmode="numeric" maxlength="8" autocomplete="off" hidden />
-        <p id="dev-pin-err" hidden>Wrong PIN</p>
-      </div>
-    </div>
-<section class="page settings" id="settings">
+    <section class="page settings" id="settings">
       <h2 data-k="Board">Settings</h2>
       <div class="settings-head">
         <div><strong>Settings</strong><span>Board look, sound, radio, teams, and what rotates</span></div>
@@ -1698,7 +1614,92 @@ Cart shop:</textarea>
         <button type="button" class="soon" disabled>Sign in — coming soon</button>
       </div>
     </section>
-    <div class="ticker-stack">
+        </main>
+    <div class="dock-wrap">
+    <nav class="dock" id="dock">
+      <button type="button" data-p="now" class="on">Today</button>
+      <button type="button" data-p="tenday">Weather</button>
+      <button type="button" data-p="radar">Radar</button>
+      <button type="button" data-p="marine">Marine</button>
+      <button type="button" data-p="sky">Sky</button>
+      <button type="button" data-p="ent">Fun</button>
+      <button type="button" data-p="deliver">Delivery</button>
+      <button type="button" id="morebtn" aria-label="Open menu">Menu</button>
+    </nav>
+    </div>
+
+    <div class="drawer-back" id="drawer-back"></div>
+    <aside class="drawer" id="drawer" aria-label="Menu">
+      <div class="drawer-head">
+        <h2>Menu</h2>
+      </div>
+      <nav class="drawer-list">
+        <p class="drawer-lab">Daily</p>
+        <button type="button" data-p="welcome">Welcome</button>
+        <button type="button" data-p="now">Today</button>
+        <button type="button" data-p="tenday">Weather</button>
+        <button type="button" data-p="radar">Radar</button>
+        <button type="button" data-p="marine">Marine</button>
+        <button type="button" data-p="sky">Sky</button>
+        <button type="button" data-p="ent">Fun</button>
+        <button type="button" data-p="deliver">Delivery</button>
+        <p class="drawer-lab">Out</p>
+        <button type="button" data-p="cam">Views</button>
+        <button type="button" data-p="traffic">Roads</button>
+        <button type="button" data-p="wink">News</button>
+        <p class="drawer-lab">Storms</p>
+        <button type="button" data-p="bolt">Lightning</button>
+        <button type="button" data-p="cane">Tropical</button>
+        <button type="button" data-p="hurr">Hurricane</button>
+        <button type="button" data-p="gulfsat">Gulf sat</button>
+        <button type="button" data-p="tropics">Tropics</button>
+        <p class="drawer-lab">Safety</p>
+        <button type="button" data-p="contacts">Emergency</button>
+        <button type="button" data-p="prep">Prep</button>
+        <button type="button" data-p="power">Power</button>
+        <p class="drawer-lab">Villa</p>
+        <button type="button" data-p="house">House</button>
+        <button type="button" data-p="villa">Open / close</button>
+        <p class="drawer-lab">Board</p>
+        <button type="button" data-p="health">Status</button>
+        <button type="button" id="setbtn" data-p="settings">Settings</button>
+        <button type="button" id="pausemenu">Pause rotation</button>
+        <button type="button" id="refreshbtn">Refresh</button>
+        <button type="button" id="devbtn">Developer</button>
+        <p class="drawer-lab">Account</p>
+        <button type="button" data-p="account">Account</button>
+      </nav>
+    </aside>
+    <aside class="drawer" id="dev-drawer" aria-label="Developer">
+      <div class="drawer-head">
+        <button type="button" id="dev-back" class="drawer-back-btn" title="Back" aria-label="Back">‹</button>
+        <h2>Developer</h2>
+      </div>
+      <nav class="drawer-list">
+        <p class="drawer-lab">Board shop</p>
+        <button type="button" data-p="health">Status</button>
+        <button type="button" data-p="guide">How it works</button>
+        <button type="button" data-p="ideas">Ideas</button>
+        <button type="button" data-p="business">Business</button>
+        <button type="button" data-p="kioskpage">Kiosk</button>
+      </nav>
+    </aside>
+    <div class="dev-lock" id="dev-lock">
+      <div class="dev-lock-card">
+        <b>Developer</b>
+        <p>Enter the board PIN to open Status and the shop pages.</p>
+        <div class="pin-dots" id="pin-dots"><i></i><i></i><i></i><i></i></div>
+        <div class="pin-pad" id="pin-pad">
+          <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+          <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+          <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+          <button type="button" data-k="c">Clear</button><button type="button" data-k="0">0</button><button type="button" data-k="ok">Open</button>
+        </div>
+        <input id="dev-pin" type="text" inputmode="numeric" maxlength="8" autocomplete="off" hidden />
+        <p id="dev-pin-err" hidden>Wrong PIN</p>
+      </div>
+    </div>
+<div class="ticker-stack">
     <div id="allclear" hidden>All clear — the last warning for this zip has ended.</div>
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
     <div class="alert-ticker" id="alertbar"><span id="alerttext"></span></div>
@@ -1707,7 +1708,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 242;
+    window.BOARD_VER = 243;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2792,6 +2793,8 @@ function showPage(id) {
       if (rise && now >= dawn && now < rise + 25*60000) return "dawn";
       if (set && now >= set - 25*60000 && now < dusk) return "dusk";
       if (rise && set && now >= rise && now < set) return "day";
+      var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
+      if (hr >= 6 && hr < 20) return "day";
       return "night";
     }
     function placeSkyBodies(slot) {
