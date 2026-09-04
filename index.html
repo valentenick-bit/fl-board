@@ -745,7 +745,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v210</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v211</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -1470,7 +1470,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 210;
+    window.BOARD_VER = 211;
     window.ROT_DEFAULTS = {
       normal: ["now","tenday","radar","marine","sky","ent","deliver"],
       storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
@@ -2573,12 +2573,14 @@ function showPage(id) {
         job.start = now;
       }
       function armMoon(now) {
-        var dir = Math.random() < 0.55 ? 1 : -1;
-        moonJob.x0 = 52 + Math.random() * 20;
-        moonJob.y0 = 6 + Math.random() * 8;
-        moonJob.x1 = Math.max(50, Math.min(82, moonJob.x0 + dir * (8 + Math.random() * 10)));
-        moonJob.y1 = Math.max(4, Math.min(16, moonJob.y0 + (Math.random() * 4 - 2)));
-        moonJob.dur = 80000 + Math.random() * 50000;
+        var dir = Math.random() < 0.6 ? 1 : -1;
+        var dist = 10 + Math.random() * 18;
+        moonJob.x0 = 8 + Math.random() * 72;
+        moonJob.y0 = 4 + Math.random() * 28;
+        moonJob.x1 = Math.max(4, Math.min(90, moonJob.x0 + dir * dist));
+        moonJob.y1 = Math.max(4, Math.min(36, moonJob.y0 + (Math.random() * 8 - 4)));
+        moonJob.dur = 80000 + Math.random() * 60000;
+        moonJob.fade = 5000 + Math.random() * 2500;
         moonJob.start = now;
       }
       function place(el, xPct, yPx) {
@@ -2616,10 +2618,12 @@ function showPage(id) {
           var mt = now - moonJob.start;
           if (mt >= moonJob.dur) { armMoon(now); mt = 0; }
           var mp = mt / moonJob.dur;
+          var fadeIn = Math.min(1, mt / (moonJob.fade || 5000));
+          var fadeOut = Math.min(1, (moonJob.dur - mt) / (moonJob.fade || 5000));
           var mx = moonJob.x0 + (moonJob.x1 - moonJob.x0) * mp;
           var my = (moonJob.y0 + (moonJob.y1 - moonJob.y0) * mp) / 100 * hh;
           place(moonEl, mx, my);
-          moonEl.style.opacity = night ? "1" : "0";
+          moonEl.style.opacity = night ? String(fadeIn * fadeOut) : "0";
         }
         requestAnimationFrame(tick);
       }
