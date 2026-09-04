@@ -37,7 +37,46 @@
     window.addEventListener("pageshow", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("focus", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("resize", function () { setTimeout(wakeBoard, 50); });
-
+    document.addEventListener("DOMContentLoaded", function () {
+      ["drawer-back","dev-lock","settings"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove("on", "open");
+        el.hidden = true;
+      });
+      document.addEventListener("click", function (e) {
+        var t = e.target && e.target.closest ? e.target.closest("button, [data-p], #hamb, #morebtn") : null;
+        if (!t) return;
+        if (t.id === "hamb" || t.id === "morebtn") {
+          if (typeof window.openMenu === "function") return;
+          var d = document.getElementById("drawer");
+          var b = document.getElementById("drawer-back");
+          var show = d && !d.classList.contains("on");
+          if (d) d.classList.toggle("on", !!show);
+          if (b) b.classList.toggle("on", !!show);
+          return;
+        }
+        var id = t.getAttribute("data-p");
+        if (id && document.getElementById(id)) {
+          if (typeof window.showPage === "function") window.showPage(id);
+          else {
+            document.querySelectorAll(".page").forEach(function (p) { p.classList.toggle("on", p.id === id); });
+          }
+        }
+      }, true);
+      setTimeout(function () {
+        if (window.__rotStarted) return;
+        var ids = ["now","tenday","radar","marine","sky","ent","deliver"];
+        var n = 0;
+        window.__fallbackRot = setInterval(function () {
+          if (window.__rotStarted) { clearInterval(window.__fallbackRot); return; }
+          n = (n + 1) % ids.length;
+          var id = ids[n];
+          if (typeof window.showPage === "function") window.showPage(id);
+          else document.querySelectorAll(".page").forEach(function (p) { p.classList.toggle("on", p.id === id); });
+        }, 15000);
+      }, 4000);
+    });
     </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -72,8 +111,8 @@
 
     .hamb { width:40px; height:40px; border:0; background:transparent; display:flex; flex-direction:column; justify-content:center; gap:5px; padding:8px; z-index:6; cursor:pointer; }
     .hamb span { display:block; height:2px; background:#f7f1e6; border-radius:2px; }
-    .drawer-back { display:none; position:fixed; inset:0; background:rgba(15,18,30,.45); z-index:20; }
-    .drawer-back.on { display:block; }
+    .drawer-back { display:none !important; position:fixed; inset:0; background:rgba(15,18,30,.45); z-index:20; pointer-events:none !important; }
+    .drawer-back.on { display:block !important; pointer-events:auto !important; }
     .drawer { position:fixed; top:0; left:0; bottom:0; width:min(360px,88vw); background:#f7f1e6; color:var(--navy); z-index:21; transform:translateX(-105%); transition:transform .22s ease; overflow:auto; padding:16px 16px 24px; box-shadow:8px 0 30px rgba(15,18,30,.25); }
     .drawer.on { transform:translateX(0); }
 
@@ -96,8 +135,8 @@
     html.dark .drawer-list button.on { background:#2a2444; }
     html.dark .drawer .menu-grid button { background:#2a2444; color:#f7f1e6; }
     html.dark .drawer-back { background:rgba(8,8,16,.62); }
-    .dev-lock { display:none; position:fixed; inset:0; z-index:40; background:rgba(15,18,30,.55); align-items:center; justify-content:center; padding:20px; pointer-events:none; }
-    .dev-lock.on { display:flex; pointer-events:auto; }
+    .dev-lock { display:none !important; position:fixed; inset:0; z-index:40; background:rgba(15,18,30,.55); align-items:center; justify-content:center; padding:20px; pointer-events:none !important; }
+    .dev-lock.on { display:flex !important; pointer-events:auto !important; }
     .dev-lock-card { width:min(360px,92vw); background:#f7f1e6; color:var(--navy); border-radius:16px; padding:18px 16px; box-shadow:0 16px 40px rgba(15,18,30,.3); }
     .dev-lock-card b { display:block; font-size:20px; margin-bottom:6px; }
     .dev-lock-card p { margin:0 0 10px; color:var(--muted); }
@@ -476,14 +515,14 @@
     #setbtn { grid-column:6; display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; }
     #setbtn svg { width:18px; height:18px; display:block; }
     .settings {
-      display:none; position:absolute; left:10px; right:10px; bottom:62px; z-index:12;
+      display:none !important; position:absolute; left:10px; right:10px; bottom:62px; z-index:12; pointer-events:none;
       max-height:78vh; overflow:auto; color:var(--navy);
       background:rgba(247,241,230,.97);
       border:1px solid var(--hair); border-radius:22px; padding:0 0 14px;
       box-shadow:0 18px 50px rgba(15,18,30,.32);
       backdrop-filter:blur(12px);
     }
-    .settings.open { display:block; }
+    .settings.open { display:block !important; pointer-events:auto; }
     .settings-head {
       position:sticky; top:0; z-index:2;
       display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -681,7 +720,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v179</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v180</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1391,7 +1430,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 179;
+    window.BOARD_VER = 180;
     (function clearBlockers() {
       ["drawer-back", "drawer", "dev-drawer", "dev-lock", "settings"].forEach(function (id) {
         var el = document.getElementById(id);
@@ -2083,6 +2122,7 @@ Cart shop:</textarea>
     }
 
 function showPage(id) {
+      window.showPage = showPage;
       document.querySelectorAll(".page.on").forEach(function (p) { p.classList.remove("on"); });
       document.querySelectorAll(".page").forEach(function (p) { if (p.id === id) p.classList.add("on"); });
       document.querySelectorAll(".dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
@@ -3150,6 +3190,7 @@ function showPage(id) {
       return (id === "now" || id === "cam") ? Math.max(base, 20000) : (id === "gulfsat" || id === "tropics") ? Math.max(base, 20000) : base;
     }
     function startRotate() {
+      window.__rotStarted = true;
       clearInterval(rot);
       clearTimeout(rot);
       function step() {
@@ -4184,6 +4225,7 @@ function showPage(id) {
     }
     
     function openMenu(on) {
+      window.openMenu = openMenu;
       var d = document.getElementById("drawer");
       var b = document.getElementById("drawer-back");
       if (!d) return;
@@ -4197,6 +4239,7 @@ function showPage(id) {
       if (b) b.classList.toggle("on", show);
       document.body.style.overflow = show ? "hidden" : "";
     }
+    window.openMenu = openMenu;
     function closeMenu() { openMenu(false); }
     var DEV_PIN = "0000";
     function devUnlocked() {
