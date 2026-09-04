@@ -128,15 +128,20 @@
     header.sky-sun .hdr-sun, header.sky-dawn .hdr-sun, header.sky-dusk .hdr-sun { opacity:1; }
     header.sky-dawn .hdr-sun { background:#f2b05e; }
     header.sky-dusk .hdr-sun { background:#e07a5f; }
-    .hdr-moon { width:16px; height:16px; background:#f7f1e6; box-shadow:0 0 10px 3px rgba(247,241,230,.25); }
-    header.sky-night .hdr-moon, header.sky-dusk .hdr-moon { opacity:.92; }
-    .hdr-cloud { position:absolute; height:10px; background:rgba(247,241,230,.22); border-radius:20px; opacity:0; transition:opacity .8s ease; filter:blur(.2px); }
-    .hdr-cloud:before, .hdr-cloud:after { content:""; position:absolute; background:inherit; border-radius:50%; }
-    .hdr-cloud.c1 { width:46px; top:18%; left:18%; animation:cloud-drift 48s linear infinite; }
-    .hdr-cloud.c2 { width:34px; top:28%; left:48%; animation:cloud-drift 62s linear infinite reverse; }
-    .hdr-cloud.c3 { width:40px; top:14%; left:72%; animation:cloud-drift 54s linear infinite; }
-    header.sky-cloud .hdr-cloud, header.sky-storm .hdr-cloud, header.sky-warn .hdr-cloud { opacity:.55; }
-    header.sky-night.sky-cloud .hdr-cloud { background:rgba(180,190,210,.2); opacity:.35; }
+    .hdr-moon { width:28px; height:28px; background:#f7f1e6; box-shadow:0 0 14px 4px rgba(247,241,230,.35); z-index:3; }
+    header.sky-night .hdr-moon, header.sky-dusk .hdr-moon { opacity:.95; }
+    .hdr-puff { position:absolute; height:14px; width:34px; background:rgba(247,241,230,.5); border-radius:20px; opacity:0; z-index:2; transition:opacity .8s ease; filter:blur(.3px); }
+    .hdr-puff:before, .hdr-puff:after { content:""; position:absolute; background:inherit; border-radius:50%; }
+    .hdr-puff:before { width:16px; height:16px; left:6px; top:-8px; }
+    .hdr-puff:after { width:20px; height:14px; right:4px; top:-6px; }
+    .hdr-puff.p1 { top:22%; left:16%; animation:cloud-drift 56s linear infinite; }
+    .hdr-puff.p2 { top:30%; left:62%; width:28px; animation:cloud-drift 70s linear infinite reverse; }
+    .hdr-puff.p3 { top:16%; left:40%; width:42px; opacity:0; animation:cloud-drift 64s linear infinite; }
+    header.sky-partly .hdr-puff.p1, header.sky-partly .hdr-puff.p2 { opacity:.4; }
+    header.sky-cloud .hdr-puff, header.sky-storm .hdr-puff, header.sky-warn .hdr-puff { opacity:.55; }
+    header.sky-cloud .hdr-puff.p3 { opacity:.45; }
+    header.sky-night.sky-partly .hdr-puff { background:rgba(210,218,230,.45); }
+    header.sky-night.sky-cloud .hdr-puff { background:rgba(180,190,210,.28); }
     @keyframes cloud-drift { from { transform:translateX(-12px); } to { transform:translateX(18px); } }
 
 
@@ -738,6 +743,9 @@
       <div class="sky-scene" aria-hidden="true">
         <div class="hdr-sun" id="hdr-sun"></div>
         <div class="hdr-moon" id="hdr-moon"></div>
+        <div class="hdr-puff p1"></div>
+        <div class="hdr-puff p2"></div>
+        <div class="hdr-puff p3"></div>
       </div>
       <div class="palms" aria-hidden="true">
         <svg class="palm p2" viewBox="0 0 48 72"><g class="bend"><path class="trunk" d="M24 72 L24 24"/><g class="frond crown"><path d="M24 24 C12 8 2 10 1 22 C11 14 17 18 24 24Z"/><path d="M24 24 C18 4 22 -2 24 2 C26 -2 30 4 24 24Z"/><path d="M24 24 C36 8 46 10 47 22 C37 14 31 18 24 24Z"/><path d="M24 24 C8 28 0 40 2 52 C12 38 18 30 24 24Z"/><path d="M24 24 C40 28 48 40 46 52 C36 38 30 30 24 24Z"/></g></g></svg>
@@ -758,7 +766,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v189</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v192</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1476,7 +1484,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 189;
+    window.BOARD_VER = 192;
     window.ROT_DEFAULTS = {
       normal: ["now","tenday","radar","marine","sky","ent","deliver"],
       storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
@@ -2557,9 +2565,11 @@ function showPage(id) {
       var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
       var storm = /storm|thunder|lightning/i.test(window.__nextStorm || "");
-      head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night","sky-dawn","sky-dusk","sky-cloud");
-      var hourTxt = String((window.__wxNow && window.__wxNow.hour) || "");
-      var cloudy = /cloud|overcast|fog|mist|rain|shower|storm|thunder/i.test(hourTxt);
+      head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night","sky-dawn","sky-dusk","sky-cloud","sky-partly");
+      var hourTxt = String((window.__wxNow && window.__wxNow.hour) || "") + " " + ((document.getElementById("wx-nowline") || {}).textContent || "");
+      var overcast = /overcast|fog|mist|mostly cloudy/i.test(hourTxt);
+      var partly = /partly|few clouds|fair|mostly sunny|partly sunny|(^|[^a-z])cloudy([^a-z]|$)/i.test(hourTxt) && !overcast;
+      var cloudy = !partly && (overcast || /rain|shower|storm|thunder/i.test(hourTxt));
       var nightLook = document.documentElement.classList.contains("dark");
       var slot = (typeof skySlotNow === "function") ? skySlotNow() : (nightLook ? "night" : "day");
       if (warn) head.classList.add("sky-warn");
@@ -2568,7 +2578,8 @@ function showPage(id) {
       else if (slot === "dusk") head.classList.add("sky-dusk");
       else if (slot === "night" || nightLook) head.classList.add("sky-night","night");
       else head.classList.add("sky-sun");
-      if (cloudy) head.classList.add("sky-cloud");
+      if (partly && !overcast) head.classList.add("sky-partly");
+      else if (cloudy || overcast) head.classList.add("sky-cloud");
       if (typeof placeSkyBodies === "function") placeSkyBodies(slot);
       var tempTxt = (document.getElementById("live-temp") || {}).textContent || "";
       var tempN = parseInt(tempTxt, 10);
