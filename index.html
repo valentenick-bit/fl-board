@@ -758,7 +758,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v186</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v187</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1476,7 +1476,14 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 186;
+    window.BOARD_VER = 187;
+    window.ROT_DEFAULTS = {
+      normal: ["now","tenday","radar","marine","sky","ent","deliver"],
+      storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
+    };
+    var ROT_DEFAULTS = window.ROT_DEFAULTS;
+    var pages = ROT_DEFAULTS.normal.slice();
+    var i = 0, rot, idle;
     (function clearBlockers() {
       ["drawer-back", "drawer", "dev-drawer", "dev-lock", "settings"].forEach(function (id) {
         var el = document.getElementById(id);
@@ -2172,6 +2179,7 @@ function showPage(id) {
       document.querySelectorAll(".page.on").forEach(function (p) { p.classList.remove("on"); });
       document.querySelectorAll(".page").forEach(function (p) { if (p.id === id) p.classList.add("on"); });
       document.querySelectorAll(".dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
+      if (!Array.isArray(pages)) pages = (window.ROT_DEFAULTS && window.ROT_DEFAULTS.normal.slice()) || ["now"];
       var idx = pages.indexOf(id);
       if (idx >= 0) i = idx;
       try { localStorage.setItem("bw-page", id); } catch (e) {}
@@ -3205,7 +3213,8 @@ function showPage(id) {
           return s;
         }
       } catch (e) {}
-      return { normal: ROT_DEFAULTS.normal.slice(), storm: ROT_DEFAULTS.storm.slice() };
+      var def = window.ROT_DEFAULTS || ROT_DEFAULTS || { normal: ["now","tenday","radar","marine","sky","ent","deliver"], storm: ["radar"] };
+      return { normal: (def.normal || []).slice(), storm: (def.storm || []).slice() };
     }
     function saveRots(r) {
       try { localStorage.setItem("bw-rots", JSON.stringify(r)); } catch (e) {}
