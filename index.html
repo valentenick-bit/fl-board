@@ -392,8 +392,16 @@
     .go-srow[data-kind="courts"] .go-sname svg { color:#e07a5f; }
     .go-sbar { height:22px; border-radius:999px; position:relative; background:rgba(27,42,74,.08); overflow:hidden; background-image:repeating-linear-gradient(to right, rgba(27,42,74,.16) 0, rgba(27,42,74,.16) 1px, transparent 1px, transparent 8.333%); }
     .go-sbar span { position:absolute; top:0; bottom:0; border-radius:999px; }
-    .go-sbar span.go { background:#2a9d8f; }
-    .go-sbar span.win { background:#c4a35a; }
+    .go-srow[data-kind="beach"] .go-sbar span.go { background:#2a9d8f; }
+    .go-srow[data-kind="beach"] .go-sbar span.win { background:#2a9d8f99; }
+    .go-srow[data-kind="pool"] .go-sbar span.go { background:#3d7ea6; }
+    .go-srow[data-kind="pool"] .go-sbar span.win { background:#3d7ea699; }
+    .go-srow[data-kind="cart"] .go-sbar span.go { background:#c4a35a; }
+    .go-srow[data-kind="cart"] .go-sbar span.win { background:#c4a35a99; }
+    .go-srow[data-kind="boat"] .go-sbar span.go { background:#1b2a4a; }
+    .go-srow[data-kind="boat"] .go-sbar span.win { background:#1b2a4a99; }
+    .go-srow[data-kind="courts"] .go-sbar span.go { background:#e07a5f; }
+    .go-srow[data-kind="courts"] .go-sbar span.win { background:#e07a5f99; }
     .go-saxis { display:grid; grid-template-columns:repeat(12,1fr); font-size:9px; letter-spacing:.04em; text-transform:uppercase; opacity:.7; margin:0 0 8px 5.6em; }
     .pausebtn { border:0; background:transparent; color:#f7f1e6; font-size:12px; letter-spacing:.1em; cursor:pointer; z-index:11; padding:0; display:block; margin:0 0 2px auto; }
     .pausebtn.on { color:#e07a5f; }
@@ -788,7 +796,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v221</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v223</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -1542,7 +1550,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 221;
+    window.BOARD_VER = 223;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2971,11 +2979,12 @@ function showPage(id) {
             if (!when) when = t <= nowMs + 3600000 ? "this hour" : new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
           }
         });
-        var on = getSet().chipBolt !== "0" && (typeof lightningPrep === "function" ? lightningPrep().on : !!(nowx.lightning || alertBolt || soon));
+        var prep = typeof lightningPrep === "function" ? lightningPrep() : { on: !!(nowx.lightning || alertBolt || soon), why: "" };
+        var on = getSet().chipBolt !== "0" && prep.on;
         bolt.classList.toggle("on", on);
         if (on) {
-          var line = alertBolt ? "Warning up for the Key." : nowx.lightning ? "Thunder in the current hour." : ("Thunder possible " + when + ".");
-          bolt.querySelector("span").textContent = line + " Stay off the water and the pool.";
+          var line = prep.why || (alertBolt ? "Warning up for this address." : nowx.lightning ? "Thunder in the current hour." : ("Thunder possible " + when + "."));
+          bolt.querySelector("span").textContent = line + ". Stay off the beach, the pool, the boat, and the courts.";
         }
       }
       if (cane) {
@@ -3077,10 +3086,42 @@ function showPage(id) {
     function wxPop(h) {
       return (h && h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
     }
+    function hourHasThunder(h) {
+      var fx = String((h && h.shortForecast) || "").toLowerCase();
+      return /thunder|t-storm|lightning/.test(fx) && wxPop(h) >= 30;
+    }
+    function openHoursKind(kind, hr) {
+      if (kind === "beach") return hr >= 7 && hr < 19;
+      if (kind === "pool") return hr >= 8 && hr < 21;
+      if (kind === "cart") return hr >= 6 && hr < 23;
+      if (kind === "boat") return hr >= 7 && hr < 19;
+      if (kind === "courts") return hr >= 8 && hr < 20;
+      return true;
+    }
+    function hourOutlook(h, kind) {
+      var fx = String((h && h.shortForecast) || "").toLowerCase();
+      var pop = wxPop(h);
+      var windMph = parseInt((h && h.windSpeed) || "", 10) || 0;
+      var warn = !!(window.__wxRisk && window.__wxRisk.warn && /thunder|tornado|severe/.test(window.__wxRisk.warnTypes || ""));
+      var thunder = hourHasThunder(h);
+      if (!h && window.__wxNow && window.__wxNow.lightning) thunder = true;
+      if (warn || thunder) return kind === "cart" ? "win" : "no";
+      var wet = (/rain|shower|drizzle|storm/.test(fx) && pop >= 40) || pop >= 55;
+      if (kind === "boat") {
+        if (wet || windMph >= 15) return "win";
+        return "go";
+      }
+      if (kind === "cart") {
+        if (wet || windMph >= 20) return "win";
+        return "go";
+      }
+      if (wet || windMph >= 18) return "win";
+      return "go";
+    }
     function wxWet(h) {
       var fx = String((h && h.shortForecast) || "").toLowerCase();
       var pop = wxPop(h);
-      if (/thunder/.test(fx) && pop >= 40) return "storms";
+      if (hourHasThunder(h)) return "storms";
       if (/thunder|rain|shower/.test(fx) || pop >= 40) return "showers";
       if (pop >= 25) return "a shower chance";
       return "";
@@ -3106,45 +3147,46 @@ function showPage(id) {
       return null;
     }
     function outdoorAdvice() {
-      function ok(h, kind) {
-        var fx = String((h && h.shortForecast) || "").toLowerCase();
-        var pop = wxPop(h);
-        var isolated = /isolated|slight|patchy/.test(fx);
-        var thunder = /thunder|t-storm|lightning/.test(fx) && !isolated && pop >= 50;
-        var wet = (!isolated && pop >= 40) || pop >= 55;
-        var wind = parseInt((h && h.windSpeed) || "", 10) || 0;
-        if (thunder) return false;
-        if (kind === "boat") return !wet && wind < 15;
-        if (kind === "cart") return !thunder && wind < 20 && pop < 55;
-        return !wet && wind < 18;
-      }
+      var prep = typeof lightningPrep === "function" ? lightningPrep() : { on: false };
+      var nowL = typeof lightningNow === "function" ? lightningNow() : { on: false };
+      if (nowL.on) return "Lightning is in play now. Stay off the beach, the pool, the boat, and the courts until it clears. " + nowL.why + ".";
       var left = todayHoursLeft();
-      function blockOk(kind, fromHr, toHr) {
-        var slice = left.filter(function (h) { var hr = wxHourET(h); return hr >= fromHr && hr < toHr; });
-        if (!slice.length) return false;
-        var good = 0;
-        slice.forEach(function (h) { if (ok(h, kind)) good++; });
-        return good >= Math.ceil(slice.length * 0.6);
-      }
-      var morn = { beach: blockOk("beach", 6, 12), cart: blockOk("cart", 6, 12), boat: blockOk("boat", 6, 12) };
-      var aft = { beach: blockOk("beach", 12, 17), cart: blockOk("cart", 12, 17), boat: blockOk("boat", 12, 17) };
-      var eve = { beach: blockOk("beach", 17, 20), cart: blockOk("cart", 17, 20), boat: blockOk("boat", 17, 20) };
       var hr = parseInt(new Date().toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
-      if (hr < 12) {
-        if (morn.beach && morn.cart && morn.boat && aft.beach) return "If you are heading out, morning through early afternoon is the time to do it.";
-        if (morn.beach && morn.cart && !aft.beach) return "Get the beach or a cart ride in this morning. I would wrap it up before the afternoon weather moves in, and I would leave the boat on the lift.";
-        if (morn.beach || morn.cart) return "There is still a decent morning close to home, but I would keep plans short and skip a launch.";
-        if (aft.beach || aft.cart) return "This morning is not the window. Wait and see if it dries after lunch.";
-        return "I would not plan the beach, the cart, or a launch today.";
+      function labelHour(h) {
+        return new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
       }
-      if (hr < 17) {
-        if (aft.beach && aft.cart && aft.boat) return "Afternoon still works if you go soon.";
-        if (aft.beach || aft.cart) return "You can still sneak in the beach or a cart this afternoon. I would not launch.";
-        if (eve.beach || eve.cart) return "This afternoon looks messy. There might be a short evening window if the storms pull away.";
-        return "The outdoor day is pretty much over.";
+      var stormAt = firstChange(left, hourHasThunder);
+      var go = { beach: [], pool: [], cart: [], boat: [], courts: [] };
+      left.forEach(function (h) {
+        var clock = wxHourET(h);
+        ["beach","pool","cart","boat","courts"].forEach(function (kind) {
+          if (!openHoursKind(kind, clock)) return;
+          if (hourOutlook(h, kind) === "go") go[kind].push(h);
+        });
+      });
+      function run(kind) {
+        var arr = go[kind];
+        if (!arr.length) return "";
+        var a = labelHour(arr[0]);
+        var last = arr[0];
+        for (var i = 1; i < arr.length; i++) {
+          if (wxHourET(arr[i]) === wxHourET(last) + 1 || wxHourET(arr[i]) === wxHourET(last)) last = arr[i];
+          else break;
+        }
+        var b = labelHour(last);
+        return a === b ? a : a + " to " + b;
       }
-      if (eve.beach || eve.cart) return "A short evening walk or cart ride is about all that is left.";
-      return "That's it for today.";
+      var bits = [];
+      ["beach","pool","cart","boat","courts"].forEach(function (kind) {
+        var w = run(kind);
+        if (w) bits.push(kind + " " + w);
+      });
+      if (prep.on && stormAt) {
+        return "Thunder is possible " + labelHour(stormAt) + ". Best window before then: " + (bits.length ? bits.join(", ") : "stay close to home") + ".";
+      }
+      if (bits.length) return "Best window: " + bits.join(", ") + ".";
+      if (hr >= 19) return "That's it for today.";
+      return "I would not plan the beach, the pool, the boat, or the courts right now.";
     }
     function writeGreetingCard() {
       var el = document.getElementById("live-sky");
@@ -6182,26 +6224,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var warn = !!(window.__wxRisk && window.__wxRisk.warn && /thunder|tornado|severe/.test(window.__wxRisk.warnTypes || ""));
       function rank(k) { return k === "no" ? 2 : k === "win" ? 1 : 0; }
       function scoreHour(h, kind) {
-        var fx = String((h && h.shortForecast) || "").toLowerCase();
-        var pop = (h && h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
-        var isolated = /isolated|slight|patchy/.test(fx);
-        var likely = /likely|numerous|heavy|severe/.test(fx);
-        var thunder = /thunder|t-storm|lightning/.test(fx) && !isolated && (likely || pop >= 50);
-        var wet = (/rain|shower|drizzle|storm/.test(fx) && !isolated && pop >= 40) || pop >= 55;
-        var windMph = parseInt((h && h.windSpeed) || "", 10) || 0;
-        if (kind === "boat") {
-          if (warn || thunder) return "no";
-          if (wet || windMph >= 15) return "win";
-          return "go";
-        }
-        if (kind === "cart") {
-          if (warn || thunder) return "no";
-          if (wet || windMph >= 20) return "win";
-          return "go";
-        }
-        if (warn || thunder) return "no";
-        if (wet || windMph >= 18) return "win";
-        return "go";
+        return hourOutlook(h, kind);
       }
       function windowKind(which, kind) {
         var worst = "go";
@@ -6338,6 +6361,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         });
       }
       paintGoGrid();
+      try { writeGreetingCard(); } catch (e) {}
+      try { writeTodayChips(); } catch (e) {}
       fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=uv_index,wind_speed_10m,wind_gusts_10m&hourly=uv_index&forecast_days=1&wind_speed_unit=mph&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .then(function (d) {
@@ -7210,8 +7235,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             var thunderWords = /thunder|t-storm|lightning/.test(hour);
             var raining = wetWords && !isolated && (likely || pop >= 40);
             if (isolated && pop >= 55) raining = true;
-            var boltNow = thunderWords && !isolated && (likely || pop >= 50);
-            if (/severe|lightning storm/.test(hour)) boltNow = true;
+            var boltNow = hourHasThunder(nowH) || (/severe|lightning storm/.test(hour));
             window.__wxNow = {
               rain: raining,
               hard: raining && (likely || /heavy|downpour|torrential/.test(hour + " " + hourD) || pop >= 70),
