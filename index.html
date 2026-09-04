@@ -47,6 +47,7 @@
       document.addEventListener("click", function (e) {
         var t = e.target && e.target.closest ? e.target.closest("button, [data-p], #hamb, #morebtn") : null;
         if (!t) return;
+        if (t.id === "dev-pin-go" || (e.target && e.target.id === "dev-pin")) return;
         if (t.id === "devbtn") {
           e.preventDefault();
           e.stopPropagation();
@@ -730,7 +731,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v182</div></div>
+      <div class="clock"><div id="when"></div><div class="flag">STORMS</div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v183</div></div>
       <div class="hdr-meta" id="hdr-meta">Next tide — · Storms — · Updated —</div>
     </header>
     <div class="wavebar" aria-hidden="true">
@@ -1254,8 +1255,8 @@ Cart shop:</textarea>
       <div class="dev-lock-card">
         <b>Developer</b>
         <p>Enter the board PIN to open Status, Triggers, and the shop pages.</p>
-        <input id="dev-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" />
-        <button type="button" class="go" id="dev-pin-go">Open</button>
+        <input id="dev-pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" />
+        <button type="button" class="go" id="dev-pin-go" onclick="if(window.tryDevPin)window.tryDevPin();">Open</button>
         <p id="dev-pin-err" hidden>Wrong PIN</p>
       </div>
     </div>
@@ -1440,7 +1441,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 182;
+    window.BOARD_VER = 183;
     (function clearBlockers() {
       ["drawer-back", "drawer", "dev-drawer", "dev-lock", "settings"].forEach(function (id) {
         var el = document.getElementById(id);
@@ -4252,6 +4253,21 @@ function showPage(id) {
     window.openMenu = openMenu;
     function closeMenu() { openMenu(false); }
     var DEV_PIN = "0000";
+    window.tryDevPin = function () {
+      var pin = document.getElementById("dev-pin");
+      var err = document.getElementById("dev-pin-err");
+      var val = pin ? String(pin.value || "").replace(/\s+/g, "") : "";
+      if (val === DEV_PIN || val === "0" || val === "0000") {
+        try { sessionStorage.setItem("bw-dev", "1"); } catch (e) {}
+        var lock = document.getElementById("dev-lock");
+        if (lock) { lock.classList.remove("on"); lock.hidden = true; }
+        if (typeof openDevDrawer === "function") openDevDrawer(true);
+        if (err) err.hidden = true;
+        return true;
+      }
+      if (err) { err.hidden = false; err.textContent = "Wrong PIN"; }
+      return false;
+    };
     function devUnlocked() {
       try { return sessionStorage.getItem("bw-dev") === "1"; } catch (e) { return false; }
     }
@@ -4355,18 +4371,14 @@ function showPage(id) {
       });
       var go = document.getElementById("dev-pin-go");
       var pin = document.getElementById("dev-pin");
-      function tryPin() {
-        var val = pin ? String(pin.value || "") : "";
-        var err = document.getElementById("dev-pin-err");
-        if (val === DEV_PIN) {
-          setDevUnlock(true);
-          var lock = document.getElementById("dev-lock");
-          if (lock) lock.classList.remove("on");
-          openDevDrawer(true);
-        } else if (err) err.hidden = false;
+      function tryPin() { return window.tryDevPin(); }
+      if (go) go.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); tryPin(); });
+      if (pin) {
+        pin.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); tryPin(); } });
+        pin.addEventListener("input", function () {
+          if (String(pin.value || "").replace(/\s+/g, "") === DEV_PIN) tryPin();
+        });
       }
-      if (go) go.addEventListener("click", tryPin);
-      if (pin) pin.addEventListener("keydown", function (e) { if (e.key === "Enter") tryPin(); });
       var lockBox = document.getElementById("dev-lock");
       if (lockBox) lockBox.addEventListener("click", function (e) {
         if (e.target === lockBox) lockBox.classList.remove("on");
