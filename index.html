@@ -378,12 +378,21 @@
     .go-opt { margin:14px 0 6px; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); font-weight:800; }
     .go-strip { display:flex; flex-direction:column; gap:8px; margin:0 0 16px; padding:12px; border:1px solid var(--hair); border-radius:16px; background:rgba(255,255,255,.45); position:relative; }
     .go-srow { display:grid; grid-template-columns:5.6em 1fr; gap:8px; align-items:center; }
-    .go-sname { font-weight:800; font-size:13px; color:var(--navy); }
-    .go-sbar { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; height:22px; border-radius:999px; overflow:hidden; position:relative; background:#d9d3c8; }
-    .go-sbar i { display:block; }
-    .go-sbar i.go { background:#2a9d8f; }
-    .go-sbar i.win { background:#c4a35a; }
-    .go-sbar i.no { background:#8a8494; }
+    .go-sname { font-weight:800; font-size:13px; color:var(--navy); display:flex; align-items:center; gap:6px; }
+    .go-sname svg { width:22px; height:22px; flex:none; color:#2a9d8f; }
+    .go-srow[data-kind="beach"] .go-sname svg { color:#2a9d8f; }
+    .go-srow[data-kind="pool"] .go-sname svg { color:#3d7ea6; }
+    .go-srow[data-kind="cart"] .go-sname svg { color:#c4a35a; }
+    .go-srow[data-kind="boat"] .go-sname svg { color:#1b2a4a; }
+    .go-srow[data-kind="courts"] .go-sname svg { color:#e07a5f; }
+    .go-sbar { height:22px; border-radius:999px; position:relative; background:rgba(27,42,74,.08); overflow:hidden; }
+    .go-sbar span { position:absolute; top:0; bottom:0; border-radius:999px; }
+    .go-sbar span.go { background:#2a9d8f; }
+    .go-sbar span.win { background:#c4a35a; }
+    .go-saxis { display:flex; justify-content:space-between; font-size:10px; letter-spacing:.08em; text-transform:uppercase; opacity:.65; margin:0 0 8px 5.6em; }
+    .pausebtn { border:0; background:transparent; color:#f7f1e6; font-size:12px; letter-spacing:.1em; cursor:pointer; z-index:11; padding:0; display:block; margin:0 0 2px auto; }
+    .pausebtn.on { color:#e07a5f; }
+    html.dark .go-sbar { background:rgba(247,241,230,.08); }
     .go-saxis { display:grid; grid-template-columns:5.6em 1fr 1fr 1fr 1fr; font-size:10px; letter-spacing:.08em; text-transform:uppercase; opacity:.65; margin:0 0 4px; }
     .go-snow { height:2px; background:#e07a5f; margin:2px 0 8px 5.6em; position:relative; }
     .go-snow:before { content:"NOW"; position:absolute; left:var(--now,12.5%); top:-14px; font-size:9px; font-weight:800; color:#e07a5f; transform:translateX(-50%); }
@@ -765,7 +774,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v215</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><button type="button" class="pausebtn" id="pausebtn" title="Pause rotation">❚❚</button><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v216</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="wavebar" aria-hidden="true">
       <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 T750 12 T900 12 T1050 12 T1200 12 V24 H0 Z" fill="#2a9d8f"/></svg>
@@ -780,8 +789,7 @@
         <p class="sky" id="live-sky">Good evening.</p><small class="stamp" data-feed="wx"></small>
         <div class="rip-banner" id="rip-banner">Rip current: High — swim near a lifeguard.</div>
         <div class="best-chip" id="best-window"></div>
-        <p class="go-opt">Option 1 · colored grid</p>
-        <div class="pills go4">
+        <div class="pills go4" id="go-grid-legacy" hidden>
           <div class="tg-head" id="go-head"><span></span><span data-col="0">—</span><span data-col="1">—</span><span data-col="2">—</span><span data-col="3">—</span></div>
           <div class="tg-row" id="pill-beach"><span class="tg-name">Beach</span><span class="tg-cell go" data-col="0">—</span><span class="tg-cell go" data-col="1">—</span><span class="tg-cell go" data-col="2">—</span><span class="tg-cell go" data-col="3">—</span></div>
           <div class="tg-row" id="pill-rip"><span class="tg-name">Rip</span><span class="tg-cell go" data-col="0">—</span><span class="tg-cell go" data-col="1">—</span><span class="tg-cell go" data-col="2">—</span><span class="tg-cell go" data-col="3">—</span></div>
@@ -790,15 +798,13 @@
           <div class="tg-row" id="pill-boat"><span class="tg-name">Boat</span><span class="tg-cell go" data-col="0">—</span><span class="tg-cell go" data-col="1">—</span><span class="tg-cell go" data-col="2">—</span><span class="tg-cell go" data-col="3">—</span></div>
           <div class="tg-row" id="pill-courts"><span class="tg-name">Courts</span><span class="tg-cell go" data-col="0">—</span><span class="tg-cell go" data-col="1">—</span><span class="tg-cell go" data-col="2">—</span><span class="tg-cell go" data-col="3">—</span></div>
         </div>
-        <p class="go-opt">Option 3 · day strip</p>
         <div class="go-strip" id="go-strip">
-          <div class="go-saxis"><span></span><span>Now</span><span>+6h</span><span>+12h</span><span>+18h</span></div>
-          <div class="go-snow" id="go-snow"></div>
-          <div class="go-srow" data-kind="beach"><span class="go-sname">Beach</span><div class="go-sbar"><i></i><i></i><i></i><i></i></div></div>
-          <div class="go-srow" data-kind="pool"><span class="go-sname">Pool</span><div class="go-sbar"><i></i><i></i><i></i><i></i></div></div>
-          <div class="go-srow" data-kind="cart"><span class="go-sname">Golf cart</span><div class="go-sbar"><i></i><i></i><i></i><i></i></div></div>
-          <div class="go-srow" data-kind="boat"><span class="go-sname">Boat</span><div class="go-sbar"><i></i><i></i><i></i><i></i></div></div>
-          <div class="go-srow" data-kind="courts"><span class="go-sname">Courts</span><div class="go-sbar"><i></i><i></i><i></i><i></i></div></div>
+          <div class="go-saxis" id="go-axis"></div>
+          <div class="go-srow" data-kind="beach"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M6 24c4-6 8-9 10-9s6 3 10 9H6z"/><path fill="none" stroke="currentColor" stroke-width="2" d="M16 6v9M10 10l6-4 6 4"/></svg>Beach</span><div class="go-sbar" id="bar-beach"></div></div>
+          <div class="go-srow" data-kind="pool"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M8 8v10M8 8h6M8 14h5"/><path fill="currentColor" d="M4 22c3 2 5 2 8 0s5-2 8 0 5 2 8 0v3c-3 2-5 2-8 0s-5-2-8 0-5 2-8 0z"/></svg>Pool</span><div class="go-sbar" id="bar-pool"></div></div>
+          <div class="go-srow" data-kind="cart"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M6 20h16l4-8H16V8"/><circle cx="10" cy="22" r="2.2" fill="currentColor"/><circle cx="22" cy="22" r="2.2" fill="currentColor"/></svg>Cart</span><div class="go-sbar" id="bar-cart"></div></div>
+          <div class="go-srow" data-kind="boat"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 6l8 12H8z"/><path fill="none" stroke="currentColor" stroke-width="2" d="M6 22c3 3 17 3 20 0"/></svg>Boat</span><div class="go-sbar" id="bar-boat"></div></div>
+          <div class="go-srow" data-kind="courts"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M10 26l8-16M9 10h10"/><circle cx="22" cy="22" r="3" fill="currentColor"/></svg>Courts</span><div class="go-sbar" id="bar-courts"></div></div>
         </div>
         <div class="today-chips">
           <div class="today-chip bolt" id="chip-bolt"><b>Lightning</b><span></span></div>
@@ -1286,6 +1292,7 @@ Cart shop:</textarea>
         <p class="drawer-lab">Board</p>
         <button type="button" data-p="health">Status</button>
         <button type="button" id="setbtn">Settings</button>
+        <button type="button" id="pausemenu">Pause rotation</button>
         <button type="button" id="refreshbtn">Refresh</button>
         <button type="button" id="devbtn">Developer</button>
         <p class="drawer-lab">Account</p>
@@ -1502,7 +1509,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 215;
+    window.BOARD_VER = 216;
     window.ROT_DEFAULTS = {
       normal: ["now","tenday","radar","marine","sky","ent","deliver"],
       storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
@@ -3406,6 +3413,22 @@ function showPage(id) {
     function pageDwell(id) {
       return (Number(getSet().rotate) || 15) * 1000;
     }
+    window.togglePause = function () {
+      window.__paused = !window.__paused;
+      window.__holdPage = !!window.__paused;
+      var b = document.getElementById("pausebtn");
+      var m = document.getElementById("pausemenu");
+      if (b) { b.classList.toggle("on", window.__paused); b.textContent = window.__paused ? "▶" : "❚❚"; }
+      if (m) m.textContent = window.__paused ? "Resume rotation" : "Pause rotation";
+      clearTimeout(rot); clearInterval(rot);
+      if (!window.__paused) startRotate();
+    };
+    document.addEventListener("click", function (e) {
+      if (e.target && (e.target.id === "pausebtn" || e.target.id === "pausemenu")) {
+        e.preventDefault();
+        window.togglePause();
+      }
+    });
     function holdThenRotate(ms) {
       window.__holdPage = true;
       clearTimeout(rot); clearInterval(rot); clearTimeout(idle);
@@ -3421,7 +3444,7 @@ function showPage(id) {
       clearTimeout(rot);
       if (typeof rebuildDock === "function") rebuildDock();
       function step() {
-        if (window.__holdPage) return;
+        if (window.__paused || window.__holdPage) return;
         if (typeof syncStormDock === "function") syncStormDock();
         if (typeof rebuildDock === "function") rebuildDock();
         pages = window.__storm ? warnList() : rotateList();
@@ -6208,19 +6231,49 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           ban.classList.toggle("on", ripK === "no" || ripK === "win");
           ban.textContent = ripK === "no" ? "Rip current: High — swim near a lifeguard." : ripK === "win" ? "Rip current: Moderate — be careful." : "";
         }
-        var strip = document.getElementById("go-strip");
-        if (strip) {
-          ["beach","pool","cart","boat","courts"].forEach(function (kind) {
-            var row = strip.querySelector('[data-kind="' + kind + '"]');
-            if (!row) return;
-            var bits = row.querySelectorAll("i");
-            for (var c = 0; c < 4 && c < bits.length; c++) {
-              bits[c].className = blockKind(c, kind).k;
-            }
+        var SPAN = 12;
+        function hourKind(kind, hr) {
+          if (!openHours(kind, hr)) return "no";
+          var scoreKind = (kind === "boat" || kind === "cart") ? kind : "beach";
+          var hit = null;
+          (hours || []).forEach(function (h) {
+            if (!h || !h.startTime) return;
+            var dhr = parseInt(new Date(h.startTime).toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" }), 10);
+            if (dhr === 24) dhr = 0;
+            if (dhr === hr) hit = h;
           });
-          var needle = document.getElementById("go-snow");
-          if (needle) needle.style.setProperty("--now", ((hrNow % 6) / 6 * 25 + 0) + "%");
+          return scoreHour(hit || nowH, scoreKind);
         }
+        var axis = document.getElementById("go-axis");
+        if (axis) {
+          var labs = [];
+          for (var a = 0; a <= SPAN; a += 3) {
+            var hr = (hrNow + a) % 24;
+            var am = hr >= 12 ? "p" : "a";
+            var h12 = hr % 12; if (!h12) h12 = 12;
+            labs.push(a === 0 ? "Now" : h12 + am);
+          }
+          axis.innerHTML = labs.map(function (t) { return "<span>" + t + "</span>"; }).join("");
+        }
+        ["beach","pool","cart","boat","courts"].forEach(function (kind) {
+          var bar = document.getElementById("bar-" + kind);
+          if (!bar) return;
+          bar.innerHTML = "";
+          var seq = [];
+          for (var h = 0; h < SPAN; h++) seq.push(hourKind(kind, (hrNow + h) % 24));
+          var i0 = 0;
+          while (i0 < SPAN) {
+            if (seq[i0] === "no") { i0++; continue; }
+            var i1 = i0;
+            while (i1 < SPAN && seq[i1] === seq[i0]) i1++;
+            var el = document.createElement("span");
+            el.className = seq[i0];
+            el.style.left = (i0 / SPAN * 100) + "%";
+            el.style.width = ((i1 - i0) / SPAN * 100) + "%";
+            bar.appendChild(el);
+            i0 = i1;
+          }
+        });
       }
       paintGoGrid();
       fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=uv_index,wind_speed_10m,wind_gusts_10m&hourly=uv_index&forecast_days=1&wind_speed_unit=mph&timezone=America%2FNew_York")
