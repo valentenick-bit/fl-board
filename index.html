@@ -1087,7 +1087,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v344</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v345</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -2063,7 +2063,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 344;
+    window.BOARD_VER = 345;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4921,7 +4921,78 @@ function currentRotation() {
         if (fl) fl.classList.remove("on");
       }
     }
+    window.__bzHits = window.__bzHits || [];
+    function strikeTimeMs(t) {
+      var n = Number(t);
+      if (!isFinite(n) || n <= 0) return Date.now();
+      if (n > 1e16) return Math.floor(n / 1e6);
+      if (n > 1e14) return Math.floor(n / 1e3);
+      if (n < 1e11) return n * 1000;
+      return n;
+    }
+    function pruneBzHits() {
+      var cut = Date.now() - 15 * 60 * 1000;
+      window.__bzHits = (window.__bzHits || []).filter(function (h) { return h.t > cut; });
+    }
+    function publishStrikes() {
+      pruneBzHits();
+      var hits = window.__bzHits || [];
+      var h10 = hits.filter(function (h) { return h.mi <= 10; }).sort(function (a, b) { return a.mi - b.mi; });
+      var h25 = hits.filter(function (h) { return h.mi <= 25; }).sort(function (a, b) { return a.mi - b.mi; });
+      var lsr = window.__lsrNear || {};
+      var closest = h10[0] || h25[0];
+      var closestMi = closest ? closest.mi : (lsr.closest ? parseFloat(lsr.closest) : null);
+      window.__strikesNear = {
+        count: h10.length,
+        closest: closestMi != null && isFinite(closestMi) ? Math.max(0.1, closestMi).toFixed(1) : null,
+        close10: h10.length > 0 || !!lsr.close10,
+        close25: h25.length > 0 || !!lsr.close25
+      };
+      if (typeof noteFeed === "function") {
+        noteFeed("strikes", true, h10.length
+          ? (h10.length + " live strikes within 10mi · closest " + window.__strikesNear.closest + "mi")
+          : (h25.length ? (h25.length + " live strikes within 25mi") : "no live strikes within 25mi"));
+      }
+      if (typeof syncLightningUI === "function") syncLightningUI();
+    }
+    function addBzHit(lat, lon, t) {
+      lat = Number(lat); lon = Number(lon);
+      if (!isFinite(lat) || !isFinite(lon)) return;
+      var when = strikeTimeMs(t);
+      if (Date.now() - when > 15 * 60 * 1000) return;
+      var mi = milesBetween(homeLat(), homeLon(), lat, lon);
+      if (!(mi <= 40)) return;
+      window.__bzHits.push({ lat: lat, lon: lon, t: when, mi: mi });
+      if (window.__bzHits.length > 400) window.__bzHits = window.__bzHits.slice(-300);
+      publishStrikes();
+    }
+    function connectBlitzWs() {
+      if (window.__bzWs && (window.__bzWs.readyState === 0 || window.__bzWs.readyState === 1)) return;
+      var n = ((window.__bzWsN || 0) % 8) + 1;
+      window.__bzWsN = n;
+      var url = "wss://ws" + n + ".blitzortung.org/";
+      try {
+        var ws = new WebSocket(url);
+        window.__bzWs = ws;
+        ws.onopen = function () {
+          try { ws.send('{"a":111}'); } catch (e) {}
+          if (typeof noteFeed === "function") noteFeed("strikes", true, "blitzortung socket up");
+        };
+        ws.onmessage = function (ev) {
+          var raw = ev.data;
+          if (typeof raw !== "string") return;
+          var obj = null;
+          try { obj = JSON.parse(raw); } catch (e) { return; }
+          if (obj && obj.lat != null && obj.lon != null) addBzHit(obj.lat, obj.lon, obj.time);
+        };
+        ws.onclose = function () { setTimeout(connectBlitzWs, 4000); };
+        ws.onerror = function () { try { ws.close(); } catch (e) {} };
+      } catch (e) {
+        setTimeout(connectBlitzWs, 8000);
+      }
+    }
     function pollNearbyStrikes() {
+      connectBlitzWs();
       var lat = typeof homeLat === "function" ? homeLat() : 26.97;
       var lon = typeof homeLon === "function" ? homeLon() : -82.36;
       var url = "https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=2";
@@ -4943,24 +5014,21 @@ function currentRotation() {
         });
         hits10.sort(function (a, b) { return a - b; });
         hits25.sort(function (a, b) { return a - b; });
-        window.__strikesNear = {
+        window.__lsrNear = {
           count: hits10.length,
           closest: hits10.length ? Math.max(0.1, hits10[0]).toFixed(1) : (hits25.length ? Math.max(0.1, hits25[0]).toFixed(1) : null),
           close10: hits10.length > 0,
           close25: hits25.length > 0
         };
-        if (typeof noteFeed === "function") {
-          noteFeed("strikes", true, hits10.length ? (hits10.length + " lightning reports within 10mi") : "no lightning reports within 10mi");
-        }
-        if (typeof syncLightningUI === "function") syncLightningUI();
+        publishStrikes();
       }).catch(function () {
-        window.__strikesNear = window.__strikesNear || { count: 0, closest: null, close10: false, close25: false };
-        if (typeof noteFeed === "function") noteFeed("strikes", true, "feed down · using forecast");
-        if (typeof syncLightningUI === "function") syncLightningUI();
+        window.__lsrNear = window.__lsrNear || { count: 0, closest: null, close10: false, close25: false };
+        publishStrikes();
       });
     }
 
     window.BOARD_NOTES = [
+      "v345 — Lightning chip and rotation use live Blitzortung strikes, not storm reports.",
       "v344 — Header sky follows sunrise/sunset only. Dark mode is separate.",
       "v343 — Drop WeatherBug. Smaller header temps. Night sky while dark mode is on.",
       "v342 — Lightning live map is Blitzortung; WeatherBug Spark opens their site.",
@@ -7145,7 +7213,7 @@ function currentRotation() {
         localStorage.setItem("bw-cam-slot", "sky-roads");
       } catch (e) {}
     })();
-    if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 60 * 1000); }
+    if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 60 * 1000); setInterval(function(){ if (typeof publishStrikes === "function") publishStrikes(); }, 30 * 1000); }
     if (typeof loadHistWx === "function") { loadHistWx(); setInterval(loadHistWx, 30 * 60 * 1000); }
     if (typeof paintGuide === "function") paintGuide();
     if (typeof paintSources === "function") paintSources();
