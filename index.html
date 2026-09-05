@@ -1042,7 +1042,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v321</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v322</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1948,7 +1948,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 321;
+    window.BOARD_VER = 322;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4751,6 +4751,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v322 — Full horoscope text. Deliveries read the current Drive Gmail scan first.",
       "v321 — Pull-to-refresh only after a deliberate pull from the top of the page.",
       "v320 — Phone keeps the dock and tickers pinned to the bottom while pages scroll.",
       "v319 — Phone pages scroll with the document instead of a locked inner pane.",
@@ -5388,12 +5389,14 @@ function currentRotation() {
       var box = document.getElementById("deliv-list");
       if (!box) return;
       if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
+      var DELIV_ID = "18kaVQLMewQVTecC42N89aBhRu0L7VgTA";
       var urls = [
+        "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=" + DELIV_ID),
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://drive.google.com/uc?export=download&id=" + DELIV_ID),
+        "https://drive.google.com/uc?export=download&id=" + DELIV_ID,
         "/deliveries.json",
         "deliveries.json",
-        "./deliveries.json",
-        "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1-nvrCNp80RVxqSGnaqZKGjrsZHJoOeQa"),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://drive.google.com/uc?export=download&id=1-nvrCNp80RVxqSGnaqZKGjrsZHJoOeQa")
+        "./deliveries.json"
       ];
       function esc(s) {
         return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
@@ -5439,8 +5442,13 @@ function currentRotation() {
             if (typeof saveHouse === "function") saveHouse();
           });
         });
-        if (note) note.textContent = "Report " + (src.updated || "") + " · automation 8 a.m. and 6 p.m. Check the box if no email arrived.";
         var nIn = (view.incoming || []).length, nDel = (view.delivered || []).length;
+        if (note) {
+          var when = src.updated ? new Date(src.updated) : null;
+          var whenTxt = when && !isNaN(when) ? when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : (src.updated || "unknown");
+          var srcTxt = src.source ? " from Gmail scan" : "";
+          note.textContent = "Last email scan " + whenTxt + srcTxt + ". Incoming " + nIn + ", delivered " + nDel + ". Check the box if a package arrived with no email.";
+        }
         if (typeof noteFeed === "function") {
           var live = !!(src.updated && src.updated !== "");
           noteFeed("deliveries", live || nIn + nDel > 0, live ? (nIn + " incoming · " + nDel + " delivered · " + src.updated) : "no live report");
@@ -7737,9 +7745,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         askSky(dawn, 3, "Dawn");
         function fillHoro(sign, id) {
           function clip(s) {
-            s = String(s || "").replace(/\s+/g, " ").trim();
-            if (s.length > 280) s = s.slice(0, 277).replace(/\s+\S*$/, "") + "…";
-            return s;
+            return String(s || "").replace(/\s+/g, " ").trim();
           }
           function parse(j) {
             if (!j) return "";
