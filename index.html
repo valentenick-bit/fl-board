@@ -170,7 +170,8 @@
     header.sky-dawn .hdr-sun { background:#f2b05e; }
     header.sky-dusk .hdr-sun { opacity:0; }
     header.sky-dusk .hdr-sun.up { opacity:1; background:#e07a5f; }
-    .hdr-moon { width:22px; height:22px; left:0; top:0; background:#f4efe2; box-shadow:0 0 12px 3px rgba(247,241,230,.45); z-index:3; }
+    .hdr-moon { width:22px; height:22px; left:0; top:0; background:transparent; box-shadow:none; z-index:3; overflow:visible; }
+    .hdr-moon svg { display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 0 6px rgba(247,241,230,.45)); }
     @media (max-width: 720px) {
       .hdr-moon { right:30%; top:4px; width:14px; height:14px; }
     }
@@ -1100,7 +1101,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v350</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v352</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -2077,7 +2078,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 350;
+    window.BOARD_VER = 352;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3542,7 +3543,8 @@ function currentRotation() {
         "now " + hhmm(nowM),
         "dawn " + hhmm(dawnM) + " · sunrise " + hhmm(riseM) + " · day " + hhmm(dayM) + " · dusk " + hhmm(duskM) + " · night " + hhmm(nightM),
         "sun " + (sunOn ? "showing" : "hidden") + (sunShould ? " · up" : " · down") + (sunOk ? "" : " MISMATCH"),
-        "moon " + (moonOn ? "showing" : "hidden")
+        "moon " + (moonOn ? "showing" : "hidden"),
+        "clouds " + ((window.__skyWx && window.__skyWx.kind) || "unknown") + " @" + Math.round(((window.__skyWx && window.__skyWx.cap) || 0) * 100) + "%"
       ].join(" · ");
       window.__headerPlan = { ok: ok, text: text, slot: slot, cls: cls, sunOn: sunOn, sunShould: sunShould, moonOn: moonOn };
       if (typeof noteFeed === "function") noteFeed("header", ok, text);
@@ -3652,15 +3654,39 @@ function currentRotation() {
       }
     }
     setInterval(function () { if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 15000);
+
+    function skyWeatherNow() {
+      var hours = window.__hours || [];
+      var txt = [
+        window.__wxNow && (window.__wxNow.shortForecast || window.__wxNow.hour || window.__wxNow.text || window.__wxNow.sky),
+        hours[0] && hours[0].shortForecast,
+        (document.getElementById("wx-nowline") || {}).textContent
+      ].join(" ").toLowerCase();
+      var cover = window.__wxNow && (window.__wxNow.cloudCover != null ? window.__wxNow.cloudCover : window.__wxNow.cloud);
+      if (cover == null && hours[0] && hours[0].cloudCover != null) cover = hours[0].cloudCover;
+      cover = cover != null ? Number(cover) : null;
+      var storm = /thunder|lightning/.test(txt) && !/possible|chance|scattered|isolated/.test(txt);
+      var rain = /\brain\b|shower|drizzle/.test(txt) && !/scattered|isolated|slight chance|possible/.test(txt);
+      var overcast = /overcast|fog|mist/.test(txt) || (/mostly cloudy/.test(txt) && !/partly/.test(txt)) || (cover != null && cover >= 85);
+      var cloudy = /cloudy/.test(txt) && !/partly|mostly sunny/.test(txt) || (cover != null && cover >= 60);
+      var partly = /partly cloudy|partly sunny|mostly sunny|few clouds/.test(txt) || (cover != null && cover >= 20 && cover < 60);
+      var clear = /sunny|clear|fair/.test(txt) && !/partly|mostly cloudy|cloudy/.test(txt) || (cover != null && cover < 20);
+      var kind = storm ? "storm" : rain ? "rain" : overcast ? "overcast" : cloudy ? "cloudy" : partly ? "partly" : clear ? "clear" : "unknown";
+      var cap = kind === "storm" || kind === "rain" || kind === "overcast" ? 0.62
+        : kind === "cloudy" ? 0.42
+        : kind === "partly" ? 0.22
+        : kind === "clear" ? 0
+        : 0.12;
+      return { kind: kind, cap: cap, text: txt.slice(0, 80), cover: cover };
+    }
     (function driftClouds() {
       function cap() {
-        var head = document.querySelector("header");
-        if (!head) return 0;
-        var night = head.classList.contains("sky-night");
-        if (head.classList.contains("sky-cloud") || head.classList.contains("sky-storm")) return night ? 0.4 : 0.58;
-        if (head.classList.contains("sky-partly")) return night ? 0.16 : 0.28;
-        if (head.classList.contains("sky-sun")) return night ? 0.08 : 0.14;
-        return 0.2;
+        var w = typeof skyWeatherNow === "function" ? skyWeatherNow() : { cap: 0.12, kind: "unknown" };
+        var night = document.querySelector("header") && document.querySelector("header").classList.contains("sky-night");
+        var n = w.cap;
+        if (night && n) n = Math.max(0, n * 0.55);
+        window.__skyWx = w;
+        return n;
       }
       var clouds = [].slice.call(document.querySelectorAll(".hdr-cloud-svg"));
       var jobs = clouds.map(function (el, i) {
@@ -3801,17 +3827,13 @@ function currentRotation() {
         var riseM = typeof isoMinutesET === "function" ? isoMinutesET(c.rise) : null;
         return riseM != null ? riseM - 35 : null;
       })();
-      var hourTxt = [
-        (window.__wxNow && (window.__wxNow.hour || window.__wxNow.text || window.__wxNow.sky)) || "",
-        ((document.getElementById("wx-nowline") || {}).textContent || ""),
-        ((document.getElementById("live-sky") || {}).textContent || "")
-      ].join(" ");
-      var sunny = /sunny|clear|fair|partly cloudy|partly sunny|mostly sunny/i.test(hourTxt);
-      var overcast = /overcast|fog|mist|mostly cloudy/i.test(hourTxt) && !sunny;
-      var rainingNow = /\brain\b|shower|drizzle/i.test(hourTxt) && !/scattered|isolated|slight chance|possible/i.test(hourTxt);
-      var stormNow = /thunder|lightning/i.test(hourTxt) && !/possible|chance|scattered/i.test(hourTxt);
+      var wx = typeof skyWeatherNow === "function" ? skyWeatherNow() : { kind: "unknown" };
+      var sunny = wx.kind === "clear" || wx.kind === "partly";
+      var overcast = wx.kind === "overcast" || wx.kind === "cloudy";
+      var rainingNow = wx.kind === "rain";
+      var stormNow = wx.kind === "storm";
       var slot = nextSlot;
-      var skyKey = [slot, warn ? "warn" : "", (stormNow || rainingNow) ? "storm" : "", (overcast || rainingNow) ? "cloud" : ((sunny || slot === "day" || slot === "dawn") ? "partly" : "")].join("|");
+      var skyKey = [slot, warn ? "warn" : "", wx.kind || ""].join("|");
       if (window.__skyKey !== skyKey) {
         head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night","sky-dawn","sky-dusk","sky-cloud","sky-partly");
         if (warn) head.classList.add("sky-warn");
@@ -5115,6 +5137,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v352 — Header moon shows only the lit phase. The dark disk is gone.",
+      "v351 — Header clouds follow the live forecast. Clear skies stay clear.",
       "v350 — Dawn and dusk header text is cream so it does not wash out on the dark sky.",
       "v349 — Status tracks header slot, sunrise clock, sun disk, and moon disk.",
       "v348 — Sun and moon follow real rise/set. Sky color stays on the dawn/day/dusk clock.",
@@ -7399,18 +7423,26 @@ function currentRotation() {
     function paintMoonFace(el) {
       if (!el) return;
       var ph = moonPhase();
-      var size = Math.max(14, el.offsetWidth || 22);
       var illum = (1 - Math.cos(ph * Math.PI * 2)) / 2;
       var waxing = ph < 0.5;
       el.title = moonPhaseName(ph) + " · " + Math.round(illum * 100) + "% lit";
+      el.style.background = "transparent";
+      el.style.boxShadow = "none";
       if (illum < 0.04) {
-        el.style.background = "#1a1f2c";
-        el.style.boxShadow = "0 0 6px 1px rgba(247,241,230,.12)";
+        el.innerHTML = "";
+        el.setAttribute("data-moon", "new");
         return;
       }
-      var off = ((0.5 - illum) / 0.5) * size * (waxing ? 1 : -1);
-      el.style.background = "#f4efe2";
-      el.style.boxShadow = "inset " + off.toFixed(1) + "px 0 0 " + Math.max(1, size * 0.06).toFixed(1) + "px #161b28, 0 0 10px 2px rgba(247,241,230,.28)";
+      var id = "moonmask" + Math.round(ph * 1000);
+      var shift = (waxing ? -1 : 1) * illum * 20;
+      el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><defs><mask id="' + id + '">' +
+        '<rect width="22" height="22" fill="#000"/>' +
+        '<circle cx="11" cy="11" r="10" fill="#fff"/>' +
+        '<circle cx="' + (11 + shift).toFixed(2) + '" cy="11" r="10" fill="#000"/>' +
+        '</mask></defs>' +
+        '<circle cx="11" cy="11" r="10" fill="#f4efe2" mask="url(#' + id + ')"/>' +
+        '</svg>';
+      el.setAttribute("data-moon", moonPhaseName(ph));
     }
     function drawMoonChart() {
       var box = document.getElementById("moon-chart");
