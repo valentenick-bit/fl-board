@@ -509,6 +509,21 @@
     html.dark .go-legend i.solid { background:#3db8d4; }
     html.dark .go-legend i.soft { background:repeating-linear-gradient(-55deg, #3db8d4 0 4px, #3db8d433 4px 8px); }
     html.dark .go-legend i.off { box-shadow:inset 0 0 0 1px rgba(247,241,230,.4); }
+    html.a11y-lg { font-size:18px; }
+    html.a11y-xl { font-size:20px; }
+    html.a11y-xl .page h2 { font-size:28px; }
+    html.a11y-contrast { --navy:#0b1020; --muted:#3d4a5c; --hair:#1b2a4a; }
+    html.a11y-contrast.dark, html.dark.a11y-contrast { --navy:#f7f1e6; --muted:#d7c7a4; --hair:#efe4c8; }
+    html.a11y-contrast .card, html.a11y-contrast .tile, html.a11y-contrast .go-strip { box-shadow:inset 0 0 0 2px var(--navy); }
+    html.a11y-nomotion *, html.a11y-nomotion *::before, html.a11y-nomotion *::after {
+      animation: none !important; transition: none !important;
+    }
+    html.a11y-nomotion .palms { transform: none !important; }
+    html.a11y-nopattern .go-sbar span.win { background-image: none !important; opacity: .55; }
+    html.a11y-tap button, html.a11y-tap .dock button, html.a11y-tap .drawer button { min-height: 48px; min-width: 44px; }
+    html.a11y-tap .pausebtn { width: 52px; height: 52px; }
+    .skip-a11y { position:absolute; left:-999px; top:8px; z-index:40; background:#1b2a4a; color:#fff; padding:8px 12px; border-radius:8px; }
+    .skip-a11y:focus { left:8px; }
     .compass { display:flex; align-items:center; gap:4px; margin-top:4px; color:var(--muted); font-style:normal; font-size:11px; font-weight:800; letter-spacing:.06em; }
     .compass svg { width:22px; height:22px; flex:none; }
     .compass .needle { transform-origin:12px 12px; transition:transform .4s ease; }
@@ -1019,6 +1034,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
@@ -1058,7 +1074,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v326</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v327</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1072,8 +1088,8 @@
       <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
-<p class="today-stamp" id="today-stamp"></p>
-        <div class="card greet-card">
+<p class="today-stamp" id="today-stamp" hidden></p>
+        <div class="card greet-card" aria-live="polite">
           <b id="greet-hi">Good evening</b>
           <span id="live-sky">Checking the day…</span>
         </div>
@@ -1099,11 +1115,6 @@
           <div class="go-srow" data-kind="cart"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M6 20h16l4-8H16V8"/><circle cx="10" cy="22" r="2.2" fill="currentColor"/><circle cx="22" cy="22" r="2.2" fill="currentColor"/></svg>Cart</span><div class="go-sbar" id="bar-cart"></div></div>
           <div class="go-srow" data-kind="boat"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 6l8 12H8z"/><path fill="none" stroke="currentColor" stroke-width="2" d="M6 22c3 3 17 3 20 0"/></svg>Boat</span><div class="go-sbar" id="bar-boat"></div></div>
           <div class="go-srow" data-kind="courts"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M10 26l8-16M9 10h10"/><circle cx="22" cy="22" r="3" fill="currentColor"/></svg>Courts</span><div class="go-sbar" id="bar-courts"></div></div>
-          <div class="go-legend">
-            <span><i class="solid"></i>Solid = good</span>
-            <span><i class="soft"></i>Striped = okay</span>
-            <span><i class="off"></i>Empty = skip</span>
-          </div>
         </div>
         <div class="today-chips">
           <div class="today-chip bolt" id="chip-bolt"><b>Lightning</b><span></span></div>
@@ -1653,6 +1664,41 @@ Cart shop:</textarea>
         <p class="hint">Today and Cam stay a little longer than the other pages.</p>
       </div>
       <div class="set-card">
+        <h3>Accessibility</h3>
+        <p class="hint">These stay on this device. Color help is on by default so good / okay / skip is not color-only.</p>
+        <div class="set-line"><label>Text size</label>
+          <div class="set-row" id="set-a11ytext">
+            <button type="button" data-v="default">Default</button>
+            <button type="button" data-v="large">Larger</button>
+            <button type="button" data-v="xl">Biggest</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Contrast</label>
+          <div class="set-row" id="set-contrast">
+            <button type="button" data-v="0">Default</button>
+            <button type="button" data-v="1">High</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Motion</label>
+          <div class="set-row" id="set-motion">
+            <button type="button" data-v="full">Full</button>
+            <button type="button" data-v="reduce">Reduce</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Color help</label>
+          <div class="set-row" id="set-colorhelp">
+            <button type="button" data-v="1">Patterns on</button>
+            <button type="button" data-v="0">Color only</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Tap targets</label>
+          <div class="set-row" id="set-tap">
+            <button type="button" data-v="0">Default</button>
+            <button type="button" data-v="1">Larger</button>
+          </div>
+        </div>
+      </div>
+      <div class="set-card">
         <h3>Quiet hours</h3>
         <div class="set-row" id="set-quiet">
           <button type="button" data-v="1">Follow dark</button>
@@ -1972,7 +2018,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 326;
+    window.BOARD_VER = 327;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2174,8 +2220,9 @@ Cart shop:</textarea>
       zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL", address: "29051 Coral Harbour Dr, Englewood, FL 34223", streetNum: "29051", gmapsKey: "",
       community: "BeachWalk by Manasota Key",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1",
-      brief: "1", briefWx: "1", briefSports: "1", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
+      brief: "1", briefWx: "1", briefSports: "1", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
+      contrast: "0", motion: "full", colorHelp: "1", tap: "0",
       horo: "gemini,aquarius"
     };
     function getSet() {
@@ -2201,7 +2248,18 @@ Cart shop:</textarea>
       var s = getSet();
       Object.keys(part || {}).forEach(function (k) { s[k] = part[k]; });
       try { localStorage.setItem("bw-set", JSON.stringify(s)); } catch (e) {}
+      if (typeof applyA11y === "function") applyA11y();
       return s;
+    }
+    function applyA11y() {
+      var s = getSet();
+      var root = document.documentElement;
+      root.classList.toggle("a11y-lg", s.text === "large");
+      root.classList.toggle("a11y-xl", s.text === "xl");
+      root.classList.toggle("a11y-contrast", s.contrast === "1");
+      root.classList.toggle("a11y-nomotion", s.motion === "reduce");
+      root.classList.toggle("a11y-nopattern", s.colorHelp === "0");
+      root.classList.toggle("a11y-tap", s.tap === "1");
     }
     (function seedHomeAddress() {
       var s = getSet();
@@ -3694,6 +3752,7 @@ function currentRotation() {
         }
       });
     }
+    try { applyA11y(); } catch (eA) {}
     function clock() {
       document.getElementById("when").textContent = new Date().toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
       var stamp = document.getElementById("today-stamp");
@@ -4108,64 +4167,51 @@ function currentRotation() {
       var hi = document.getElementById("greet-hi");
       if (!el) return;
       var wx = window.__nowWx || {};
-      var place = typeof homePlace === "function" ? homePlace() : "the Key";
+      var place = typeof homePlace === "function" ? homePlace() : "Englewood";
       var greet = (wx.greet || greetWord()).replace(/\.$/, "");
-      if (hi) hi.textContent = greet;
-      var word = String(wx.word || "").replace(/\.$/, "");
+      if (hi) hi.textContent = greet + " in " + place;
+      var word = String(wx.word || "fair skies").replace(/\.$/, "").toLowerCase();
       var hrNow = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}),10);
       if (hrNow === 24) hrNow = 0;
-      var bits = [];
-      bits.push(greet + ".");
-      var syn = [];
-      if (wx.temp != null) {
-        var t = "It's " + wx.temp + "°";
-        if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) t += ", feels like " + wx.feel + "°";
-        syn.push(t);
-      }
-      if (word) syn.push(word.toLowerCase());
-      var todayP = window.__nwsToday || {};
-      var hiLo = [];
-      if (todayP.temperature != null && /day|afternoon|morning/i.test(todayP.name || "")) hiLo.push("high near " + todayP.temperature + "°");
-      var maxPop = 0, stormy = false, hours = window.__hours || [];
+      var hours = window.__hours || [];
+      var maxPop = 0, stormy = false;
       hours.forEach(function (h) {
         if (!h || !h.startTime) return;
-        if (wxDayET(h.startTime) !== new Date().toLocaleDateString("en-CA", { timeZone:"America/New_York" })) return;
-        var p = wxPop(h);
-        if (p > maxPop) maxPop = p;
-        if (hourMentionsThunder(h)) stormy = true;
+        if (typeof wxDayET === "function" && wxDayET(h.startTime) !== new Date().toLocaleDateString("en-CA", { timeZone:"America/New_York" })) return;
+        if (typeof wxPop === "function" && wxPop(h) > maxPop) maxPop = wxPop(h);
+        if (typeof hourMentionsThunder === "function" && hourMentionsThunder(h)) stormy = true;
       });
-      if (stormy) syn.push("storms in the forecast");
-      else if (maxPop >= 50) syn.push("rain likely");
-      else if (maxPop >= 30) syn.push("a shower chance");
-      else syn.push("mostly dry");
-      if (hiLo.length) syn.push(hiLo[0]);
-      bits.push(syn.filter(Boolean).join(" · ") + ".");
+      var todayP = window.__nwsToday || {};
+      var nowLine = "Right now we're at " + (wx.temp != null ? wx.temp + "°" : "a mild reading");
+      if (wx.feel != null && wx.temp != null && Math.abs(wx.feel - wx.temp) >= 3) nowLine += ", though it feels more like " + wx.feel + "°";
+      nowLine += ", with " + word + ".";
+      if (todayP.temperature != null && /day|afternoon|morning/i.test(todayP.name || "")) {
+        nowLine += " Looking at a high near " + todayP.temperature + "°.";
+      }
+      if (stormy) nowLine += " The forecast has thunderstorms in the mix, so keep an eye on the sky.";
+      else if (maxPop >= 50) nowLine += " Rain looks likely at some point.";
+      else if (maxPop >= 30) nowLine += " There's a passing shower chance, nothing that has to ruin the day.";
+      else nowLine += " It stays mostly dry.";
+      var playLine = "";
       if (hrNow >= 21 || hrNow < 6) {
-        bits.push("Quiet hours now — save the beach, pool, cart, and boat for after sunrise.");
+        playLine = " Overnight is for sleeping — beach, pool, cart, and boat can wait until after sunrise.";
       } else {
         var beach = dayPlay("beach"), pool = dayPlay("pool"), cart = dayPlay("cart"), boat = dayPlay("boat");
-        function say(label, k) {
-          if (k === "good") return "good " + label + " day";
-          if (k === "ok") return label + " is usable";
-          if (k === "mixed") return "mixed " + label;
-          if (k === "skip") return "skip the " + label;
-          return "";
+        function playTalk(k, good, mixed, skip) {
+          if (k === "good" || k === "ok") return good;
+          if (k === "mixed") return mixed;
+          return skip;
         }
-        var play = [say("beach", beach), say("pool", pool)].filter(Boolean);
-        bits.push(play.length ? ("Looks like a " + play.join(" and a ") + ".") : "Outdoor water time is limited.");
-        var ride = [];
-        if (cart === "good") ride.push("the golf cart is a yes");
-        else if (cart === "ok" || cart === "mixed") ride.push("cart is fine if you watch the sky");
-        else ride.push("leave the cart in");
-        if (boat === "good") ride.push("the boat is a yes");
-        else if (boat === "ok" || boat === "mixed") ride.push("boat only if you like it a little sporty");
-        else ride.push("keep the boat on the lift");
-        bits.push(ride.join(". ") + ".");
+        playLine = " " + playTalk(beach, "The beach looks worthwhile.", "The beach is a maybe — pick your window.", "I'd skip the beach.");
+        playLine += " " + playTalk(pool, "The pool is a yes.", "Pool is fine if you don't mind a cloud.", "I'd stay out of the pool.");
+        playLine += " " + playTalk(cart, "Take the golf cart if you want it.", "Cart is okay if you watch the sky.", "Leave the cart in.");
+        playLine += " " + playTalk(boat, "If you've been waiting to take the boat, this is your window.", "The boat would be a sporty ride — only if you're comfortable.", "Keep the boat on the lift.");
       }
-      if (window.__wxRisk && window.__wxRisk.warn) bits.push("A warning is up — check Should we leave.");
+      var kick = [];
+      if (window.__wxRisk && window.__wxRisk.warn) kick.push("We do have a warning in effect, so check Should we leave before you head out.");
       var storms = window.__namedStorms || [];
-      if (storms.length) bits.push((storms[0].name || "A named storm") + " is on the board.");
-      if (typeof lightningNow === "function" && lightningNow().on) bits.push("Lightning is in play right now.");
+      if (storms.length) kick.push((storms[0].name || "A named storm") + " is on the board if you want the track.");
+      if (typeof lightningNow === "function" && lightningNow().on) kick.push("Lightning is nearby right now — stay inside until it clears.");
       var flights = ((window.__flightData || {}).flights) || [];
       var soonFly = flights.filter(function (f) {
         var s = String(f.when || "").replace(/(\d)([ap])$/i, "$1 $2m");
@@ -4175,17 +4221,18 @@ function currentRotation() {
       });
       if (soonFly.length) {
         var f0 = soonFly[0];
-        bits.push((f0.who || "A flight") + " " + (f0.flight || "") + " " + (f0.from || "") + " to " + (f0.to || "") + " " + (f0.when || "") + ".");
+        kick.push("Travel desk: " + (f0.who || "a flight") + " " + (f0.flight || "") + " " + (f0.from || "") + " to " + (f0.to || "") + ", " + (f0.when || "") + ".");
       }
       var inc = ((window.__delivData || {}).incoming || []).length;
-      if (inc) bits.push(inc === 1 ? "One package is on the way." : inc + " packages are on the way.");
+      if (inc === 1) kick.push("One package is still on the way.");
+      else if (inc > 1) kick.push(inc + " packages are still on the way.");
       var evs = (window.__entAll || []).filter(function (e) {
         return e && e.when && typeof isTodayET === "function" && isTodayET(e.when);
       });
       var music = evs.filter(function (e) { return e.music || /live|music|band|duo|dj/i.test(e.sum || ""); });
-      if (music.length) bits.push("Live music tonight: " + (music[0].sum || "on the Fun page") + ".");
-      else if (evs.length) bits.push(evs.length === 1 ? "One thing on the calendar today." : evs.length + " things on the calendar today.");
-      var text = bits.join(" ").replace(/\s+/g, " ").replace(/\.\s*\./g, ".").trim();
+      if (music.length) kick.push("If you're looking for a night out, there's live music: " + (music[0].sum || "see Fun") + ".");
+      else if (evs.length) kick.push("A few things are on the calendar today if you want to get out.");
+      var text = (nowLine + playLine + (kick.length ? " " + kick.join(" ") : "")).replace(/\s+/g, " ").trim();
       el.textContent = text;
       window.__bestWindow = text;
     }
@@ -4855,6 +4902,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v327 — Weatherman greeting, Accessibility settings, drop When-to-go legend line.",
       "v326 — Boat bar cyan in dark mode. Okay hours are striped, not just lighter.",
       "v325 — Hourly greeting synopsis, On the water card, drop When-to-go footnote.",
       "v324 — When-to-go title, fill-not-color legend, compass icons, Worker flights proxy.",
@@ -6046,6 +6094,11 @@ function currentRotation() {
         fillTimes(document.getElementById("set-quiet-start"), s.quietStart || "22:00");
         fillTimes(document.getElementById("set-quiet-end"), s.quietEnd || "07:00");
         mark("set-text", s.text);
+        mark("set-a11ytext", s.text);
+        mark("set-contrast", s.contrast);
+        mark("set-motion", s.motion);
+        mark("set-colorhelp", s.colorHelp);
+        mark("set-tap", s.tap);
         mark("set-rot", String(s.rotate));
         mark("set-vol", s.vol);
         mark("set-noaa", s.noaa);
@@ -6177,7 +6230,12 @@ function currentRotation() {
             if (typeof syncLightningUI === "function") syncLightningUI();
         });
       });
-      tap("set-text", "text");
+      tap("set-text", "text", function () { if (typeof applyA11y === "function") applyA11y(); });
+      tap("set-a11ytext", "text", function () { if (typeof applyA11y === "function") applyA11y(); paint(); });
+      tap("set-contrast", "contrast", function () { if (typeof applyA11y === "function") applyA11y(); });
+      tap("set-motion", "motion", function () { if (typeof applyA11y === "function") applyA11y(); });
+      tap("set-colorhelp", "colorHelp", function () { if (typeof applyA11y === "function") applyA11y(); });
+      tap("set-tap", "tap", function () { if (typeof applyA11y === "function") applyA11y(); });
       tap("set-rot", "rotate");
       tap("set-vol", "vol");
       tap("set-noaa", "noaa");
@@ -7712,6 +7770,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             bar.appendChild(el);
             i0 = i1;
           }
+          var good = seq.filter(function (k) { return k === "go"; }).length;
+          bar.setAttribute("role", "img");
+          bar.setAttribute("aria-label", kind + ": " + good + " good hours of the next " + SPAN);
         });
       }
       paintGoGrid();
