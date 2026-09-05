@@ -1101,7 +1101,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v352</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v353</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -2078,7 +2078,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 352;
+    window.BOARD_VER = 353;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5137,6 +5137,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v353 — Now-line uses this hour from NWS, not the all-day outlook.",
       "v352 — Header moon shows only the lit phase. The dark disk is gone.",
       "v351 — Header clouds follow the live forecast. Clear skies stay clear.",
       "v350 — Dawn and dusk header text is cream so it does not wash out on the dark sky.",
@@ -6999,7 +7000,12 @@ function currentRotation() {
           ["aqi", txt("live-aqi")],
           ["rain-month", txt("live-rain-mo")],
           ["uv", txt("live-uv")],
-          ["hourly", document.querySelectorAll(".hourly .hour").length ? (document.querySelectorAll(".hourly .hour").length + " hours") : ""],
+          ["hourly", (function(){
+            var n = document.querySelectorAll(".hourly .hour").length;
+            var first = document.querySelector(".hourly .hour.now") || document.querySelector(".hourly .hour");
+            var label = first ? (first.textContent || "").replace(/\s+/g, " ").trim() : "";
+            return n ? (n + " hours · " + label) : "";
+          })()],
           ["10-day", (function(){ var n=document.querySelectorAll(".tenday .day").length; var deg=0; document.querySelectorAll(".tenday .day").forEach(function(el){ if (/°|\d/.test(el.textContent||"")) deg++; }); return n>=8 && deg>=8 ? (n+" days") : (n? n+" days thin":""); })()],
           ["humid-chart", chartOk("humid-chart") ? ((document.getElementById("humid-chart").getAttribute("data-n") || "") + " hours") : ""],
           ["rain-chart", chartOk("rainmo-chart") ? ((document.getElementById("rainmo-chart").getAttribute("data-n") || "") + " hours") : ""],
@@ -9020,8 +9026,14 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
                 return '<div class="day' + (r.label === "Today" ? " today" : "") + '"><span>' + r.label + "</span>" + wxSvg(wxKind(r.row.fx), 24) + pop + '<span class="lo">' + r.row.lo + "°</span>" + tbar(r.row.lo, r.row.hi) + '<span class="hi">' + r.row.hi + "°</span></div>";
               }).join("");
               var nowline = document.getElementById("wx-nowline");
-              if (nowline && list[0] && list[0].row) {
-                nowline.textContent = homePlace() + " · " + (list[0].row.fx || "") + " · H " + list[0].row.hi + "° / L " + list[0].row.lo + "°";
+              if (nowline) {
+                var hourFx = (nowH && nowH.shortForecast) || "";
+                var day = list[0] && list[0].row;
+                var bits = [homePlace(), hourFx || (day && day.fx) || ""];
+                var tnow = (document.getElementById("live-temp") || {}).textContent || "";
+                if (tnow) bits.push(tnow.replace(/\s+/g, ""));
+                if (day && day.hi != null) bits.push("H " + day.hi + "° / L " + (day.lo != null ? day.lo + "°" : ""));
+                nowline.textContent = bits.filter(Boolean).join(" · ");
               }
             }
             function omWord(c) {
