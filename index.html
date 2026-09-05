@@ -225,8 +225,8 @@
     .rot-row button { border:0; background:var(--sand); color:var(--navy); border-radius:8px; padding:6px 10px; font-weight:700; }
     html.dark .rot-row button { background:#2a2444; color:#f7f1e6; }
 
-    header { background:var(--navy); color:#f7f1e6; padding:20px 12px 28px; min-height:136px; display:grid; grid-template-columns:auto 1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:10; pointer-events:auto; }
-    .sky-fade { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; transition:opacity 60s linear; }
+    header { background:var(--navy); color:#f7f1e6; padding:20px 12px 28px; min-height:136px; display:grid; grid-template-columns:auto 1fr auto 1fr; align-items:center; gap:8px; border-bottom:none; position:relative; overflow:visible; z-index:10; pointer-events:auto; transition:background 90s linear, color 45s linear, border-color 90s linear; }
+    .sky-fade { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; transition:opacity 90s linear; }
     header .hamb, header #hamb, #hamb { pointer-events:auto; position:relative; z-index:11; }
     header > *:not(.palms):not(.sky-scene):not(.hdr-stars):not(.hdr-moon):not(.hdr-sea):not(.sandshelf):not(.sky-fade) { position:relative; z-index:8; }
     .hdr-sea { position:absolute; left:0; right:0; bottom:10px; height:16%; z-index:2; pointer-events:none;
@@ -284,6 +284,7 @@
     header.sky-sun { background:linear-gradient(180deg,#b9e4ff 0%,#7ec8f5 48%,#4aa6e0 100%) !important; border-bottom-color:#7ec8f0; }
     header.sky-partly { background:linear-gradient(180deg,#c5e9ff 0%,#8fd0f8 48%,#57abe4 100%) !important; border-bottom-color:#8ecfff; }
     header.sky-cloud { background:linear-gradient(180deg,#b7c9d8 0%,#7f96ab 78%); border-bottom-color:#9aafc0; }
+    header.sky-night { background:linear-gradient(180deg,#1b2a4a 0%,#12182c 100%); }
     header.sky-dawn { background:linear-gradient(180deg,#ffd4a8 0%,#7eb6e8 78%); }
     header.sky-dusk { background:linear-gradient(180deg,#f0a070 0%,#3d6aa0 78%); }
     header.sky-sun, header.sky-partly, header.sky-dawn, header.sky-cloud { color:#10263c; text-shadow:0 1px 0 rgba(255,255,255,.28); }
@@ -1010,7 +1011,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v312</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v316</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1163,7 +1164,7 @@
         <div class="card chart"><b id="tide-title">Tide</b><span id="live-tide-today">Loading tides…</span><span id="live-tide-station" hidden></span>
           <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/></svg></div>
         </div>
-        <div class="card chart"><b>Ocean surge</b><span id="live-surge">24 hours vs predicted tide</span>
+        <div class="card chart"><b>Ocean surge</b><span id="live-surge">Loading water level…</span>
           <div class="tide hist" id="surge-chart"></div>
         </div>
         </div>
@@ -1914,7 +1915,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 312;
+    window.BOARD_VER = 316;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -2016,11 +2017,37 @@ Cart shop:</textarea>
         var f = window.__feeds[k];
         return k + ": " + String(f.detail || "down").slice(0, 80);
       });
+      var ua = navigator.userAgent || "";
+      var os = /iPhone|iPad|iPod/i.test(ua) ? (/iPad/i.test(ua) ? "iPad" : "iPhone") : /Android/i.test(ua) ? "Android" : /CrOS/i.test(ua) ? "ChromeOS" : /Mac OS X/i.test(ua) ? "Mac" : /Windows/i.test(ua) ? "Windows" : "OS?";
+      var br = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) && !/Edg\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : (/Safari\//.test(ua) && !/Chrome\//.test(ua) ? "Safari" : "browser");
+      var form = document.documentElement.classList.contains("kiosk") ? "kiosk" : ((document.documentElement.classList.contains("phone") || window.innerWidth <= 720) ? "phone" : "desktop");
+      var net = (navigator.connection && (navigator.connection.effectiveType || navigator.connection.type)) || "";
+      var device = [
+        form, os, br,
+        window.innerWidth + "x" + window.innerHeight + "vp",
+        (screen.width || "?") + "x" + (screen.height || "?") + "screen",
+        "dpr " + (window.devicePixelRatio || 1),
+        (window.matchMedia && window.matchMedia("(orientation: portrait)").matches ? "portrait" : "landscape"),
+        ("ontouchstart" in window ? "touch" : "mouse"),
+        navigator.onLine ? "online" : "offline",
+        net
+      ].filter(Boolean).join(" · ");
+      var runtime = [
+        "sky " + (window.__skySlot || "?"),
+        "paused " + (window.__paused ? "1" : "0"),
+        "hold " + (window.__holdPage ? "1" : "0"),
+        "html.dark " + (document.documentElement.classList.contains("dark") ? "1" : "0"),
+        "html.phone " + (document.documentElement.classList.contains("phone") ? "1" : "0"),
+        "html.kiosk " + (document.documentElement.classList.contains("kiosk") ? "1" : "0"),
+        "radio " + (((document.getElementById("radioPlayer") || {}).muted) ? "muted" : "on")
+      ].join(" · ");
       var lines = [
         "Commons report",
         "version: v" + (window.BOARD_VER || "?"),
         "url: " + location.href,
         "when: " + new Date().toISOString(),
+        "device: " + device,
+        "runtime: " + runtime,
         "now: " + now,
         "zip/place: " + (typeof homePlace === "function" ? homePlace() : "") + " " + (set.zip || ""),
         "page: " + (on ? on.id : "?"),
@@ -3251,8 +3278,6 @@ function currentRotation() {
     }
     function skySlotNow() {
       var nowM = etMinutesNow();
-      if (nowM >= 19 * 60 && nowM < 20 * 60 + 45) return "dusk";
-      if (nowM >= 20 * 60 + 45 || nowM < 6 * 60) return "night";
       var c = window.__bwCharts || {};
       var riseM = isoMinutesET(c.rise);
       var setM = isoMinutesET(c.set);
@@ -3260,11 +3285,14 @@ function currentRotation() {
       var duskM = isoMinutesET(c.dusk);
       if (dawnM == null && riseM != null) dawnM = riseM - 35;
       if (duskM == null && setM != null) duskM = setM + 40;
-      if (riseM != null && nowM >= (dawnM == null ? riseM - 35 : dawnM) && nowM < riseM + 25) return "dawn";
-      if (setM != null && nowM >= setM - 30 && nowM < (duskM == null ? setM + 40 : duskM)) return "dusk";
-      if (riseM != null && setM != null && nowM >= riseM && nowM < setM) return "day";
-      if (nowM >= 18 * 60) return "dusk";
-      return "day";
+      if (dawnM == null) dawnM = 6 * 60;
+      if (riseM == null) riseM = 6 * 60 + 50;
+      if (setM == null) setM = 19 * 60 + 45;
+      if (duskM == null) duskM = 20 * 60 + 45;
+      if (nowM >= dawnM && nowM < riseM + 25) return "dawn";
+      if (nowM >= riseM + 25 && nowM < setM - 30) return "day";
+      if (nowM >= setM - 30 && nowM < duskM) return "dusk";
+      return "night";
     }
     function headerSkyBlocks() {
       var head = document.querySelector("header");
@@ -3480,13 +3508,19 @@ function currentRotation() {
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
       var nextSlot = (typeof skySlotNow === "function") ? skySlotNow() : ((hr >= 20 || hr < 6) ? "night" : "day");
       var veil = document.getElementById("sky-fade");
-      if (veil && window.__skySlot && window.__skySlot !== nextSlot) {
+      if (veil && window.__skySlot && window.__skySlot !== nextSlot && !window.__skyFading) {
+        window.__skyFading = true;
         var look = getComputedStyle(head);
-        veil.style.background = look.background;
+        veil.style.transition = "none";
+        veil.style.backgroundColor = look.backgroundColor;
+        veil.style.backgroundImage = look.backgroundImage;
         veil.style.opacity = "1";
-        requestAnimationFrame(function () {
-          requestAnimationFrame(function () { veil.style.opacity = "0"; });
-        });
+        void veil.offsetWidth;
+        setTimeout(function () {
+          veil.style.transition = "opacity 90s linear";
+          veil.style.opacity = "0";
+          setTimeout(function () { window.__skyFading = false; }, 91000);
+        }, 80);
       }
       window.__skySlot = nextSlot;
       var hourTxt = [
@@ -4663,6 +4697,10 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v316 — Status report includes device, viewport, and runtime flags.",
+      "v315 — Night holds until dawn, then dawn fades into day over 90 seconds.",
+      "v314 — Ocean surge pulls 48 hours of NOAA water level and draws the line.",
+      "v313 — Dusk to night in the header fades over 90 seconds.",
       "v312 — Views live cam fills most of the page again.",
       "v311 — Only one page shows at a time. Today no longer stacks other pages.",
       "v310 — Phone view no longer clips to a blank white screen.",
@@ -7082,31 +7120,43 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           window.__bwCharts.preds = preds; drawTideChart(preds);
           if (!window.__bwCharts.surge || window.__bwCharts.surge.length < 2) surgeFallbackTide();
         }).catch(function () { touchFeed("tide", false, "NOAA tide fetch failed"); });
-      var day = new Date().toLocaleString("en-CA", { timeZone: "America/New_York" }).slice(0,10).replace(/-/g,"");
+      function noaaDay(offset) {
+        var d = new Date(Date.now() + (offset || 0) * 86400000);
+        return d.toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
+      }
+      var day = noaaDay(-1);
       function surgeFromStation(id, label) {
         if (!id) return Promise.resolve(false);
+        var wl = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=Commons&begin_date=" + day + "&range=48&datum=MLLW&station=" + id + "&time_zone=gmt&units=english&format=json";
+        var prUrl = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=Commons&begin_date=" + day + "&range=48&datum=MLLW&station=" + id + "&time_zone=gmt&units=english&interval=h&format=json";
         return Promise.all([
-          fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=" + id + "&time_zone=lst_ldt&units=english&format=json").then(function (r) { return r.json(); }),
-          fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=BeachWalkBoard&begin_date=" + day + "&range=24&datum=MLLW&station=" + id + "&time_zone=lst_ldt&units=english&interval=h&format=json").then(function (r) { return r.json(); })
+          fetch(wl).then(function (r) { return r.json(); }),
+          fetch(prUrl).then(function (r) { return r.json(); })
         ]).then(function (pair) {
           var obs = ((pair[0] || {}).data) || [];
           var pr = ((pair[1] || {}).predictions) || [];
           if (!obs.length) return false;
+          function noaaMs(t) {
+            var s = String(t || "").trim().replace(" ", "T");
+            if (s && s.indexOf("Z") < 0 && !/[+-]\d{2}:?\d{2}$/.test(s)) s += "Z";
+            var ms = new Date(s).getTime();
+            return isNaN(ms) ? 0 : ms;
+          }
           function predNear(tstr) {
-            var ts = new Date(String(tstr).replace(" ", "T")).getTime();
+            var ts = noaaMs(tstr);
             var best = null, bestD = 1e15;
             pr.forEach(function (p) {
-              var d = Math.abs(new Date(String(p.t).replace(" ", "T")).getTime() - ts);
+              var d = Math.abs(noaaMs(p.t) - ts);
               if (d < bestD) { bestD = d; best = parseFloat(p.v); }
             });
-            return bestD <= 45 * 60 * 1000 && best != null && !isNaN(best) ? best : null;
+            return bestD <= 70 * 60 * 1000 && best != null && !isNaN(best) ? best : null;
           }
           var pts = [];
           obs.forEach(function (o) {
             var pred = predNear(o.t);
             var obsV = parseFloat(o.v);
             if (pred == null || isNaN(obsV)) return;
-            pts.push({ t: new Date(String(o.t).replace(" ", "T")).getTime(), v: obsV - pred });
+            pts.push({ t: noaaMs(o.t), v: obsV - pred });
           });
           var vs = pts.filter(function (p) { return !isNaN(p.v); });
           if (vs.length < 3) {
