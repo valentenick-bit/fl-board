@@ -1087,7 +1087,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v345</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v346</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -2063,7 +2063,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 345;
+    window.BOARD_VER = 346;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3452,8 +3452,19 @@ function currentRotation() {
     }
 
     function etMinutesNow() {
-      var d = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
-      return d.getHours() * 60 + d.getMinutes();
+      try {
+        var parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
+        var hr = 0, mn = 0;
+        parts.forEach(function (p) {
+          if (p.type === "hour") hr = parseInt(p.value, 10);
+          if (p.type === "minute") mn = parseInt(p.value, 10);
+        });
+        if (hr === 24) hr = 0;
+        return hr * 60 + mn;
+      } catch (e) {
+        var d = new Date();
+        return d.getHours() * 60 + d.getMinutes();
+      }
     }
     function isoMinutesET(iso) {
       var s = String(iso || "");
@@ -3469,10 +3480,8 @@ function currentRotation() {
       var c = window.__bwCharts || {};
       var riseM = isoMinutesET(c.rise);
       var setM = isoMinutesET(c.set);
-      var dawnM = isoMinutesET(c.dawn);
-      var duskM = isoMinutesET(c.dusk);
-      if (dawnM == null && riseM != null) dawnM = riseM - 35;
-      if (duskM == null && setM != null) duskM = setM + 40;
+      var dawnM = riseM != null ? riseM - 35 : null;
+      var duskM = setM != null ? setM + 40 : null;
       if (dawnM == null) dawnM = 6 * 60 + 40;
       if (riseM == null) riseM = 7 * 60 + 10;
       if (setM == null) setM = 19 * 60 + 45;
@@ -3715,6 +3724,11 @@ function currentRotation() {
         }, 80);
       }
       window.__skySlot = nextSlot;
+      window.__skyDawnAt = (function () {
+        var c = window.__bwCharts || {};
+        var riseM = typeof isoMinutesET === "function" ? isoMinutesET(c.rise) : null;
+        return riseM != null ? riseM - 35 : null;
+      })();
       var hourTxt = [
         (window.__wxNow && (window.__wxNow.hour || window.__wxNow.text || window.__wxNow.sky)) || "",
         ((document.getElementById("wx-nowline") || {}).textContent || ""),
@@ -5028,6 +5042,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v346 — Dawn starts 35 minutes before sunrise on the house clock, not civil twilight.",
       "v345 — Lightning chip and rotation use live Blitzortung strikes, not storm reports.",
       "v344 — Header sky follows sunrise/sunset only. Dark mode is separate.",
       "v343 — Drop WeatherBug. Smaller header temps. Night sky while dark mode is on.",
