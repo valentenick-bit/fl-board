@@ -1076,7 +1076,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v334</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v335</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -2019,7 +2019,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 334;
+    window.BOARD_VER = 335;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3599,6 +3599,10 @@ function currentRotation() {
           job.el.style.opacity = String(max * fadeIn * fadeOut);
         });
         if (moonEl && window.__sunUp) moonEl.style.opacity = "0";
+        if (moonEl && !window.__sunUp && now - (moonJob.faceAt || 0) > 8000) {
+          moonJob.faceAt = now;
+          if (typeof paintMoonFace === "function") paintMoonFace(moonEl);
+        }
         requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);
@@ -4912,6 +4916,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v335 — Header moon face uses tonight's real phase, not a full disk.",
       "v334 — Remove leftover Beach now line under Today chips.",
       "v333 — Status splits chip setting vs showing. Normalize 0/1 toggles.",
       "v332 — Chips under When to go. White legend swatches. Drive usercontent URLs.",
@@ -7179,19 +7184,18 @@ function currentRotation() {
     function paintMoonFace(el) {
       if (!el) return;
       var ph = moonPhase();
-      var size = el.offsetWidth || 22;
+      var size = Math.max(14, el.offsetWidth || 22);
       var illum = (1 - Math.cos(ph * Math.PI * 2)) / 2;
+      var waxing = ph < 0.5;
+      el.title = moonPhaseName(ph) + " · " + Math.round(illum * 100) + "% lit";
       if (illum < 0.04) {
         el.style.background = "#1a1f2c";
-        el.style.boxShadow = "0 0 8px 1px rgba(247,241,230,.15)";
-        el.title = moonPhaseName(ph);
+        el.style.boxShadow = "0 0 6px 1px rgba(247,241,230,.12)";
         return;
       }
+      var off = ((0.5 - illum) / 0.5) * size * (waxing ? 1 : -1);
       el.style.background = "#f4efe2";
-      var waxing = ph < 0.5;
-      var shift = ((0.5 - illum) * size * (waxing ? 1 : -1)).toFixed(1);
-      el.style.boxShadow = "inset " + shift + "px 0 0 " + Math.max(2, size * 0.12).toFixed(1) + "px #121826, 0 0 10px 2px rgba(247,241,230,.35)";
-      el.title = moonPhaseName(ph);
+      el.style.boxShadow = "inset " + off.toFixed(1) + "px 0 0 " + Math.max(1, size * 0.06).toFixed(1) + "px #161b28, 0 0 10px 2px rgba(247,241,230,.28)";
     }
     function drawMoonChart() {
       var box = document.getElementById("moon-chart");
