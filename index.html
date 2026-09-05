@@ -418,6 +418,11 @@
     .tempblock { flex:1; min-width:0; }
     .tempblock label, .feels label { display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
     .temp, .feels strong { font-family:Fraunces,Georgia,serif; font-size:52px; line-height:.9; }
+    header .temp, header .feels strong { font-family:Fraunces,Georgia,serif; font-size:22px; line-height:24px; height:24px; font-weight:600; }
+    @media (max-width: 720px) {
+      header .temp, header .feels strong { font-size:16px; line-height:18px; height:18px; }
+    }
+    html.text-lg header .temp, html.text-lg header .feels strong { font-size:18px; line-height:20px; height:20px; }
     .wxicon { width:52px; height:52px; flex:0 0 52px; margin-bottom:4px; }
     .feels { flex:1; min-width:0; text-align:right; }
     .sky { font-size:17px; line-height:1.45; color:#3d4a5c; margin:6px 0 12px; max-width:none; width:100%; box-sizing:border-box; }
@@ -1082,7 +1087,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v342</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v344</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1368,13 +1373,9 @@ Cart shop:</textarea>
       </section>
       <section id="bolt" class="page">
         <h2 data-k="Storms">Lightning</h2>
-        <p class="pill-key" id="bolt-note">Live strikes on Blitzortung. WeatherBug Spark blocks embeds — open it from the button.</p>
-        <div class="map-src" id="bolt-src">
-          <button type="button" data-bolt="bz" class="on">Live map</button>
-          <a id="bolt-wb-link" class="bolt-spark" target="_blank" rel="noopener">WeatherBug Spark</a>
-        </div>
+        <p class="pill-key" id="bolt-note">Strikes near the home address.</p>
         <span id="live-bolt" hidden>Clear</span>
-        <iframe class="lite" id="bolt-map" title="Lightning" src="about:blank" referrerpolicy="no-referrer-when-downgrade" allow="fullscreen"></iframe>
+        <iframe class="lite" id="bolt-map" title="Lightning" src="https://map.blitzortung.org/#7/26.96/-82.35"></iframe>
       </section>
       <section id="traffic" class="page">
         <h2 data-k="The drive">Traffic</h2>
@@ -2062,7 +2063,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 342;
+    window.BOARD_VER = 344;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2754,39 +2755,13 @@ Cart shop:</textarea>
       window.__radarBase = url;
       if (typeof paintPageRefs === "function") paintPageRefs();
     }
-    function boltWbUrl(lat, lon) {
-      return "https://www.weatherbug.com/maps?layerId=lxflash-consumer&center=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + ",8";
-    }
-    function boltBzUrl(lat, lon) {
-      return "https://map.blitzortung.org/#7/" + lat + "/" + lon;
-    }
-    function applyBoltMap() {
-      var lat = homeLat(), lon = homeLon(), place = homePlace();
-      var live = boltBzUrl(lat, lon);
-      var spark = boltWbUrl(lat, lon);
-      window.__boltSrc = "bz";
-      window.__boltWbBlocked = true;
-      var iframe = document.getElementById("bolt-map");
-      if (iframe && iframe.getAttribute("data-src") !== live) {
-        iframe.setAttribute("data-src", live);
-        iframe.src = live;
-      }
-      var link = document.getElementById("bolt-wb-link");
-      if (link) {
-        link.href = spark;
-        link.textContent = "WeatherBug Spark";
-      }
-      var note = document.getElementById("bolt-note");
-      if (note) note.innerHTML = "Live strikes near " + place + " on Blitzortung. WeatherBug blocks embeds on this board — tap WeatherBug Spark for their map.";
-      if (typeof noteFeed === "function") {
-        noteFeed("bolt-map", true, "blitzortung live");
-        noteFeed("weatherbug", false, "blocked embed · Spark link");
-      }
-    }
-    function wireBoltMap() {}
     function applyLocalMaps() {
       var lat = homeLat(), lon = homeLon(), place = homePlace();
-      if (typeof applyBoltMap === "function") applyBoltMap();
+      var bolt = document.getElementById("bolt-map");
+      if (bolt) bolt.src = "https://map.blitzortung.org/#7/" + lat + "/" + lon;
+      var boltNote = document.getElementById("bolt-note");
+      if (boltNote) boltNote.textContent = "Strikes near " + place + ".";
+      if (typeof noteFeed === "function") noteFeed("bolt-map", true, "blitzortung");
       var traf = document.getElementById("traffic-map");
       var pinTxt = homeAddress() || place || "";
       var pin = encodeURIComponent(pinTxt);
@@ -3498,8 +3473,8 @@ function currentRotation() {
       var duskM = isoMinutesET(c.dusk);
       if (dawnM == null && riseM != null) dawnM = riseM - 35;
       if (duskM == null && setM != null) duskM = setM + 40;
-      if (dawnM == null) dawnM = 6 * 60;
-      if (riseM == null) riseM = 6 * 60 + 50;
+      if (dawnM == null) dawnM = 6 * 60 + 40;
+      if (riseM == null) riseM = 7 * 60 + 10;
       if (setM == null) setM = 19 * 60 + 45;
       if (duskM == null) duskM = 20 * 60 + 45;
       if (nowM >= dawnM && nowM < riseM + 25) return "dawn";
@@ -3759,7 +3734,7 @@ function currentRotation() {
         else if (slot === "dusk") head.classList.add("sky-dusk");
         else if (slot === "night") head.classList.add("sky-night","night");
         else head.classList.add("sky-sun");
-        if (slot === "dusk" || slot === "night") { /* keep dusk/night colors */ }
+        if (slot === "dusk" || slot === "night") { /* dusk/night colors */ }
         else if (overcast || rainingNow) head.classList.add("sky-cloud");
         else if (sunny || slot === "day" || slot === "dawn") head.classList.add("sky-partly");
         window.__skyKey = skyKey;
@@ -4986,6 +4961,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v344 — Header sky follows sunrise/sunset only. Dark mode is separate.",
+      "v343 — Drop WeatherBug. Smaller header temps. Night sky while dark mode is on.",
       "v342 — Lightning live map is Blitzortung; WeatherBug Spark opens their site.",
       "v341 — Restore after a broken changelog line killed the script.",
       "v340 — Lightning map: WeatherBug primary, Blitzortung backup.",
@@ -6871,8 +6848,7 @@ function currentRotation() {
         ],
         extra: [
           ["radar", imgOk("radar-view") || imgOk("radar-loop") ? (window.__satViews || ["loop"]).join("+") : txt("radar-cap")],
-          ["bolt-map", "blitzortung live"],
-          ["weatherbug", window.__boltWbBlocked ? "blocked embed" : ""],
+          ["bolt-map", "blitzortung"],
           ["bolt-rot", (typeof boltWanted === "function" && boltWanted()) ? "in rotation" : "idle"],
           ["sat", (function(){
             var b = window.__satBasins || {};
