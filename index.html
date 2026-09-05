@@ -18,13 +18,19 @@
   
     function wakeBoard() {
       try {
-        document.documentElement.style.height = "100dvh";
-        document.body.style.minHeight = "100dvh";
+        if (document.documentElement.classList.contains("phone")) {
+          document.documentElement.style.height = "auto";
+          document.body.style.minHeight = "100vh";
+        } else {
+          document.documentElement.style.height = "100vh";
+          document.body.style.minHeight = "100vh";
+        }
         var on = document.querySelector(".page.on");
         if (!on) {
           var first = document.getElementById("now") || document.querySelector(".page");
           if (first) first.classList.add("on");
         }
+        document.querySelectorAll(".page.on").forEach(function (p) { p.style.opacity = "1"; p.style.display = "block"; });
         ["ticktext","alerttext","breaktext"].forEach(function (id) {
           var el = document.getElementById(id);
           if (el && typeof spinEl === "function") spinEl(el, 112, true);
@@ -129,9 +135,11 @@
     :root { --lean:0deg; --wag:2deg; --sway-dur:3.6s; --sand:#f3eee4; --sand-2:#e8dfcf; --navy:#1b2a4a; --teal:#2a9d8f; --gold:#c4a35a; --coral:#e07a5f; --muted:#5c6b7a; --hair:rgba(196,163,90,.42); }
     * { box-sizing: border-box; }
 
-    html, body { margin:0; min-height:100dvh; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
+    html, body { margin:0; min-height:100vh; min-height:100dvh; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
     html, body { background:var(--sand); }
-    .frame { position:relative; width:100vw; height:100dvh; min-height:100dvh; max-width:none; max-height:none; margin:0; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
+    .frame { position:relative; width:100%; height:100%; min-height:100vh; min-height:100dvh; max-width:none; max-height:none; margin:0; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
+    html.phone, html.phone body { overflow:auto; height:auto; min-height:100vh; min-height:100dvh; }
+    html.phone .frame { height:auto; min-height:100vh; min-height:100dvh; overflow:visible; }
     .flash, .rainlayer { z-index:3; }
     .page#radar .radar-stage, .page#cam .keycam { position:relative; z-index:5; }
     header.night { filter:none; }
@@ -378,9 +386,11 @@
     main { flex:1; padding:8px 10px 6px; overflow-y:auto; min-height:0; overscroll-behavior-y:contain; }
     .ptr { position:absolute; left:0; right:0; top:88px; height:0; overflow:hidden; display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--navy); pointer-events:none; z-index:9; }
     .ptr.on { height:28px; }
-    .page { display:none; opacity:0; background:transparent; border-radius:16px; padding:8px 8px 4px; }
+    .page { display:none; opacity:1; background:transparent; border-radius:16px; padding:8px 8px 4px; }
+    html.phone .page.on { display:block !important; opacity:1 !important; animation:none; }
+    html.phone main { flex:1 1 auto; min-height:50vh; overflow:visible; }
     html.dark .page { background:transparent; }
-    .page.on { display:block; animation:pagein .32s ease forwards; }
+    .page.on { display:block; opacity:1; animation:pagein .32s ease forwards; }
     @keyframes pagein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
     .hour.now, .day.today { box-shadow:inset 0 0 0 2px var(--gold); border-radius:10px; background:rgba(196,163,90,.12); }
     @keyframes warnpulse { 0%,100% { box-shadow:0 0 0 0 rgba(224,122,95,.0); } 50% { box-shadow:0 0 0 3px rgba(224,122,95,.9); } }
@@ -996,7 +1006,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v309</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v310</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1900,7 +1910,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 309;
+    window.BOARD_VER = 310;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -4646,6 +4656,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v310 — Phone view no longer clips to a blank white screen.",
       "v309 — Ideas list: digital picture frame option.",
       "v308 — History charts drop the milky wash and use a stronger line.",
       "v307 — 7:00–8:45 p.m. is always dusk in the header.",
