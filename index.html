@@ -564,6 +564,7 @@
     .best-chip span, .today-chip span { display:block; font-weight:650; font-size:16px; line-height:1.4; color:var(--navy); }
     .today-chips { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
     .today-chips:not(:has(.on)) { display:none; }
+    .go-title small { display:block; margin-top:4px; font-size:12px; font-weight:650; letter-spacing:.02em; color:var(--muted); text-transform:none; }
     .today-chip { display:none; }
     .today-chip.on {
       display:flex; align-items:baseline; gap:8px; flex:1 1 240px;
@@ -1075,7 +1076,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v328</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v330</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1118,7 +1119,7 @@
         </div>
         <div class="go-strip" id="go-strip">
           <div class="go-head-row">
-            <h3 class="go-title">When to go</h3>
+            <h3 class="go-title">When to go <small>Solid = good · Striped = okay · Empty = skip</small></h3>
           </div>
           <div class="go-saxis" id="go-axis"></div>
           <div class="go-srow" data-kind="beach"><span class="go-sname"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M6 24c4-6 8-9 10-9s6 3 10 9H6z"/><path fill="none" stroke="currentColor" stroke-width="2" d="M16 6v9M10 10l6-4 6 4"/></svg>Beach</span><div class="go-sbar" id="bar-beach"></div></div>
@@ -1649,12 +1650,6 @@ Cart shop:</textarea>
             <button type="button" data-v="night">Night</button>
           </div>
         </div>
-        <div class="set-line"><label>Text size</label>
-          <div class="set-row" id="set-text">
-            <button type="button" data-v="default">Default</button>
-            <button type="button" data-v="large">Larger</button>
-          </div>
-        </div>
         <div class="set-line"><label>Page turn</label>
           <div class="set-row" id="set-rot">
             <button type="button" data-v="10">10s</button>
@@ -2019,7 +2014,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 328;
+    window.BOARD_VER = 330;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3893,7 +3888,7 @@ function currentRotation() {
         hours.slice(0, 4).forEach(function (h) {
           if (!h || !h.startTime) return;
           var t = new Date(h.startTime).getTime();
-          if (t > nowMs + 3 * 3600000) return;
+          if (t > nowMs + 6 * 3600000) return;
           var fx = String(h.shortForecast || "").toLowerCase();
           var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
           if (hourHasThunder(h)) {
@@ -4826,7 +4821,7 @@ function currentRotation() {
         var h = hours[i];
         if (!h) continue;
         var t = h.startTime ? new Date(h.startTime).getTime() : nowMs;
-        if (t > nowMs + 3 * 3600000) continue;
+        if (t > nowMs + 6 * 3600000) continue;
         if (hourMentionsThunder(h) || hourHasThunder(h)) {
           var when = t <= nowMs + 3600000 ? "this hour" : new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
           return { on: true, why: "Thunder in the forecast " + when };
@@ -4903,6 +4898,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v330 — One text-size control, under Accessibility.",
+      "v329 — When-to-go legend in the title. Lightning chip looks 6 hours ahead.",
       "v328 — Move chips off When-to-go. Fresh Drive IDs for deliveries and flights.",
       "v327 — Weatherman greeting, Accessibility settings, drop When-to-go legend line.",
       "v326 — Boat bar cyan in dark mode. Okay hours are striped, not just lighter.",
@@ -6099,7 +6096,6 @@ function currentRotation() {
         }
         fillTimes(document.getElementById("set-quiet-start"), s.quietStart || "22:00");
         fillTimes(document.getElementById("set-quiet-end"), s.quietEnd || "07:00");
-        mark("set-text", s.text);
         mark("set-a11ytext", s.text);
         mark("set-contrast", s.contrast);
         mark("set-motion", s.motion);
@@ -6236,7 +6232,6 @@ function currentRotation() {
             if (typeof syncLightningUI === "function") syncLightningUI();
         });
       });
-      tap("set-text", "text", function () { if (typeof applyA11y === "function") applyA11y(); });
       tap("set-a11ytext", "text", function () { if (typeof applyA11y === "function") applyA11y(); paint(); });
       tap("set-contrast", "contrast", function () { if (typeof applyA11y === "function") applyA11y(); });
       tap("set-motion", "motion", function () { if (typeof applyA11y === "function") applyA11y(); });
