@@ -253,7 +253,7 @@
     .hdr-sea .wavetrack svg { width:50%; height:14px; flex:0 0 50%; display:block; }
     .hdr-sea .wavebar svg path { fill:rgba(255,255,255,.2); }
     header.sky-night .hdr-sea .wavebar svg path { fill:rgba(255,255,255,.1); }
-    .sandshelf { position:absolute; left:0; right:0; bottom:0; height:10px; z-index:5; background:#d4c199; pointer-events:none; }
+    .sandshelf { position:absolute; left:0; right:0; bottom:0; height:10px; z-index:5; background:#d4c199; pointer-events:none; transition:background 45s linear; }
     header.sky-night .sandshelf { background:#3a3428; }
     .palms { position:absolute; left:20px; right:20px; top:0; bottom:8px; pointer-events:none; z-index:6; overflow:visible; }
     .palm { position:absolute; bottom:0; width:46px; height:72px; transform:none; opacity:1; overflow:visible; filter:drop-shadow(0 1px 1px rgba(12,28,46,.4)); }
@@ -346,7 +346,10 @@
     header.sky-partly .tempblock label, header.sky-partly .iconblock label, header.sky-partly .feels label,
     header.sky-cloud .tempblock label, header.sky-cloud .iconblock label, header.sky-cloud .feels label { color:#061018; }
     header.sky-sun .hamb span, header.sky-partly .hamb span, header.sky-cloud .hamb span { background:#041018; }
-    header.sky-sun .sandshelf, header.sky-partly .sandshelf, header.sky-dawn .sandshelf, header.sky-cloud .sandshelf { background:#d4c199; }
+    header.sky-sun .sandshelf { background:#e8c27a; }
+    header.sky-partly .sandshelf { background:#d4c199; }
+    header.sky-cloud .sandshelf { background:#b7a888; }
+    header.sky-dawn .sandshelf { background:#c48a6a; }
 
     header.sky-dawn, header.sky-dusk {
       color:#f7f1e6;
@@ -554,14 +557,26 @@
     .go-srow[data-kind="courts"] .go-sbar span.win { background:repeating-linear-gradient(-55deg, #e07a5f 0 5px, #e07a5f33 5px 10px); }
     .go-saxis { display:grid; grid-template-columns:repeat(12,1fr); font-size:9px; letter-spacing:.04em; text-transform:uppercase; opacity:.7; margin:0 0 8px 5.6em; }
     main { position:relative; }
+    .hdr-tools { display:flex; align-items:center; gap:6px; }
     .pausebtn {
-      position:sticky; top:4px; float:right; clear:both;
-      z-index:12; width:44px; height:44px; margin:0 2px 8px 8px; padding:0;
-      border:0; border-radius:12px; cursor:pointer;
-      background:rgba(27,42,74,.88); color:#f7f1e6;
-      font-size:18px; line-height:44px; letter-spacing:0;
-      box-shadow:0 6px 16px rgba(15,18,30,.28);
+      z-index:12; width:36px; height:36px; margin:0; padding:0;
+      border:0; border-radius:10px; cursor:pointer;
+      background:rgba(27,42,74,.55); color:#f7f1e6;
+      font-size:14px; line-height:36px; letter-spacing:0;
     }
+    header.sky-sun .pausebtn, header.sky-partly .pausebtn, header.sky-cloud .pausebtn { background:rgba(6,16,24,.18); color:#061018; }
+    .hdr-wind { display:block; font-size:11px; font-weight:700; letter-spacing:.04em; line-height:1.1; margin-top:2px; opacity:.9; }
+    .clock-bits { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; margin-top:4px; }
+    .hdr-chip {
+      display:none; align-items:center; border:0; cursor:pointer;
+      font:700 10px/1 inherit; letter-spacing:.08em; text-transform:uppercase;
+      padding:3px 7px; border-radius:999px; background:rgba(8,16,28,.5); color:#f7f1e6;
+    }
+    .hdr-chip.on { display:inline-flex; }
+    .hdr-chip.watch { background:#c4a35a; color:#1b2a4a; }
+    .hdr-chip.warn { background:#c45c4a; color:#fff; }
+    .hdr-chip.radio { background:rgba(42,157,143,.85); color:#fff; }
+    .temprow { cursor:pointer; }
     .pausebtn.on { background:#e07a5f; color:#fff; }
     html.dark .pausebtn { background:rgba(34,30,54,.94); color:#f7f1e6; }
     html.dark .pausebtn.on { background:#e07a5f; color:#fff; }
@@ -1142,19 +1157,28 @@
       <div class="sandshelf" aria-hidden="true"></div>
       <div class="hdr-stars" id="hdr-stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <div class="hdr-moon" id="hdr-moon" aria-hidden="true"></div>
+      <div class="hdr-tools">
       <button type="button" class="hamb" id="hamb" aria-label="Open menu" title="Menu" onclick="if(window.openMenu)window.openMenu();">
         <span></span><span></span><span></span>
       </button>
+      </div>
       <div class="brand">
         <span class="titles"><b>COMMONS</b><small id="hdr-place">BEACHWALK by Manasota Key</small></span>
       </div>
-      <div class="temprow">
+      <div class="temprow" id="hdr-tempjump" title="Open Weather">
         <div class="tempblock"><label>Temp</label><div class="temp" id="live-temp">77&deg;</div></div>
         <div class="iconblock"><label>&nbsp;</label>
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
-        <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
+        <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong><em id="hdr-wind" class="hdr-wind"></em></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v365</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock">
+        <div id="when"></div>
+        <div class="clock-bits">
+          <span id="live-heat">Heat</span>
+          <button type="button" class="hdr-chip" id="hdr-alert" hidden></button>
+          <button type="button" class="hdr-chip radio" id="hdr-radio" hidden></button>
+        </div>
+      </div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1165,7 +1189,6 @@
     <audio id="radioPlayer" preload="auto" autoplay playsinline></audio>
     <div class="ptr" id="ptr">Pull to refresh</div>
     <main>
-      <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
 <p class="today-stamp" id="today-stamp" hidden></p>
@@ -1535,11 +1558,16 @@ Cart shop:</textarea>
           <span>Fills the screen, hides browser chrome habits, and keeps the rotation on. Uber and Instacart ideas will live here later. Address stays the one in Settings.</span>
         </div>
         <div class="card">
-          <b>Hyperlinks</b>
-          <span>Off keeps every tap on this board. On lets a tap open Maps, NWS, calendars, and other sites in the browser.</span>
-          <div class="set-row" id="set-links" style="margin-top:10px">
-            <button type="button" data-v="0">Off</button>
-            <button type="button" data-v="1">On</button>
+          <b>Settings</b>
+          <span>Wall-only controls. More will land in this card.</span>
+          <div class="set-line">
+            <label for="kiosk-links">Hyperlinks</label>
+            <label class="switch">
+              <span class="off-lab">Off</span>
+              <input type="checkbox" id="kiosk-links" checked />
+              <i></i>
+              <span class="on-lab">On</span>
+            </label>
           </div>
         </div>
       </section>
@@ -2139,7 +2167,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 365;
+    window.BOARD_VER = 366;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3273,6 +3301,7 @@ function currentRotation() {
       }
       if (String(url).indexOf("scan:") === 0) {
         window.__radioWant = { url: url, label: label || "" };
+      if (typeof paintHdrRadio === "function") paintHdrRadio();
         clearInterval(window.__nwrKeep);
         hideScan();
         if (!opts.keepSaved) saveRadio(url);
@@ -3291,6 +3320,7 @@ function currentRotation() {
       }
       hideScan();
       window.__radioWant = { url: url, label: label || "" };
+      if (typeof paintHdrRadio === "function") paintHdrRadio();
       if (!opts.keepSaved) saveRadio(url);
       if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert) {
         audio.pause();
@@ -3325,6 +3355,7 @@ function currentRotation() {
       var play = audio.play();
       if (play && play.then) play.then(function () {
         if (status) status.textContent = "Playing " + (label || "station");
+        if (typeof paintHdrRadio === "function") paintHdrRadio();
       }).catch(function () {
         if (status) status.textContent = "Tap a station once — Chrome blocks sound until a click.";
       });
@@ -3861,6 +3892,38 @@ function currentRotation() {
         p.style.transform = "translateX(-50%)";
       });
     }
+
+    function paintHdrWind() {
+      var src = document.getElementById("live-wind");
+      var dest = document.getElementById("hdr-wind");
+      if (!dest) return;
+      var raw = ((src && src.textContent) || "").replace(/mph/ig, "").replace(/\s+/g, " ").trim();
+      dest.textContent = raw && raw !== "—" ? raw : "";
+    }
+    function paintHdrRadio() {
+      var el = document.getElementById("hdr-radio");
+      if (!el) return;
+      var audio = document.getElementById("radioPlayer");
+      var want = window.__radioWant || {};
+      var playing = !!(audio && !audio.paused && (audio.getAttribute("src") || want.url));
+      var label = want.label || "";
+      if (!playing || !label) { el.hidden = true; el.classList.remove("on"); return; }
+      var short = (label.match(/\d{2,3}\.\d/) || [label.split(/\s+/)[0]])[0];
+      if (/NOAA|NWR|scanner|police|fire/i.test(label) && !/\d{2,3}\.\d/.test(short)) {
+        short = /NOAA|NWR/i.test(label) ? "NOAA" : (/police/i.test(label) ? "PD" : (/fire/i.test(label) ? "FD" : short.slice(0, 6)));
+      }
+      el.hidden = false;
+      el.classList.add("on");
+      el.textContent = String(short).slice(0, 8);
+    }
+    function paintHdrAlert(keep, isWarn) {
+      var el = document.getElementById("hdr-alert");
+      if (!el) return;
+      if (!keep || !keep.length) { el.hidden = true; el.classList.remove("on","watch","warn"); el.textContent = ""; return; }
+      el.hidden = false;
+      el.className = "hdr-chip on " + (isWarn ? "warn" : "watch");
+      el.textContent = isWarn ? "Warning" : "Watch";
+    }
     function paintSkyHeader() {
       var head = document.querySelector("header");
       if (!head) return;
@@ -3910,6 +3973,8 @@ function currentRotation() {
       }
       if (typeof placeSkyBodies === "function") placeSkyBodies(slot);
       if (typeof headerPlanStatus === "function") headerPlanStatus();
+      if (typeof paintHdrWind === "function") paintHdrWind();
+      if (typeof paintHdrRadio === "function") paintHdrRadio();
       var tempTxt = (document.getElementById("live-temp") || {}).textContent || "";
       var tempN = parseInt(tempTxt, 10);
       head.classList.toggle("hot", tempN >= 90);
@@ -4177,11 +4242,11 @@ function currentRotation() {
     }
     writeTodayChips();
     function writeHdrMeta() {
-      var el = document.getElementById("hdr-updated") || document.getElementById("hdr-meta");
-      if (!el) return;
-      el.textContent = window.__bwUpdated
-        ? "Updated " + new Date(window.__bwUpdated).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" })
-        : "Updated —";
+      var build = document.getElementById("health-build");
+      var when = window.__bwUpdated
+        ? new Date(window.__bwUpdated).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" })
+        : "";
+      if (build) build.textContent = "v" + (window.BOARD_VER || "") + (when ? " · weather " + when : "");
     }
     function writeDoHour() {
       return;
@@ -4792,6 +4857,22 @@ function currentRotation() {
       if (!window.__paused) startRotate();
     };
     document.addEventListener("click", function (e) {
+      var jump = e.target && e.target.closest ? e.target.closest("#hdr-tempjump") : null;
+      if (jump && typeof showPage === "function") {
+        showPage("tenday");
+        if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        return;
+      }
+      if (e.target && e.target.id === "hdr-radio") {
+        if (typeof showPage === "function") showPage("radio");
+        if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        return;
+      }
+      if (e.target && e.target.id === "hdr-alert") {
+        if (typeof showPage === "function") showPage("contacts");
+        if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        return;
+      }
       if (e.target && (e.target.id === "pausebtn" || e.target.id === "pausemenu")) {
         e.preventDefault();
         window.togglePause();
@@ -5210,6 +5291,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v366 — Header: alert and radio chips, wind under Feels, pause by the menu, tap temp for Weather. Kiosk Settings card with a links toggle.",
       "v365 — Kiosk page can turn hyperlinks off so the wall cannot leave Commons.",
       "v364 — Temp and Feels labels are a step larger and bold.",
       "v363 — News can join the daily loop. Page titles match menu and dock. Source lines sit at the bottom. Today drops events that already ended.",
@@ -6476,7 +6558,6 @@ function currentRotation() {
         var s = getSet();
         mark("set-dark", s.dark);
         mark("set-kiosk", s.kiosk);
-        mark("set-links", s.links);
         mark("set-quiet", s.quiet);
         var qt = document.getElementById("set-quiet-times");
         if (qt) qt.hidden = s.quiet !== "custom";
@@ -6548,6 +6629,8 @@ function currentRotation() {
         try { localStorage.setItem("bw-kiosk", s.kiosk === "1" ? "1" : "0"); } catch (e) {}
         document.documentElement.classList.toggle("kiosk", s.kiosk === "1");
         document.documentElement.classList.toggle("nolinks", s.links === "0");
+        var lk = document.getElementById("kiosk-links");
+        if (lk) lk.checked = s.links !== "0";
         var kbtn = document.getElementById("kioskbtn");
         if (kbtn) { kbtn.classList.toggle("on", s.kiosk === "1"); kbtn.textContent = s.kiosk === "1" ? "Kiosk on" : "Kiosk"; }
         if (typeof applySunDark === "function") applySunDark();
@@ -6611,7 +6694,11 @@ function currentRotation() {
         else paintHoroCards();
       });
       tap("set-dark", "dark");
-      tap("set-links", "links");
+      var linksTog = document.getElementById("kiosk-links");
+      if (linksTog) linksTog.addEventListener("change", function () {
+        putSet({ links: linksTog.checked ? "1" : "0" });
+        document.documentElement.classList.toggle("nolinks", !linksTog.checked);
+      });
       var kioskBtn = document.getElementById("kioskbtn");
       if (kioskBtn) kioskBtn.addEventListener("click", function () {
         var on = getSet().kiosk === "1" ? "0" : "1";
@@ -9869,6 +9956,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         }
         pagesFromDock();
         if (!keep.length) {
+          if (typeof paintHdrAlert === "function") paintHdrAlert([], false);
           bar.className = "alert-ticker";
           txt.setAttribute("data-hash", "");
           frame.classList.remove("has-alert"); stackTickers();
@@ -9887,6 +9975,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var body = parts.join("\u00a0".repeat(160));
         if (window.__hurrTick) body += "\u00a0".repeat(160) + spaceSentences("Hurricane tracker. " + window.__hurrTick);
         bar.className = "alert-ticker on " + (isWarn ? "warning" : "watch");
+        if (typeof paintHdrAlert === "function") paintHdrAlert(keep, isWarn);
         var lab = document.getElementById("alertlab");
         if (lab) lab.textContent = isWarn ? "WARNING" : "WATCH";
         frame.classList.add("has-alert"); stackTickers();
