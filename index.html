@@ -301,10 +301,30 @@
     header.sky-night { background:linear-gradient(180deg,#1b2a4a 0%,#12182c 100%); }
     header.sky-dawn { background:linear-gradient(180deg,#1b1028 0%,#7a2f48 28%,#e07a5f 52%,#f2b05e 72%,#7eb6e8 100%) !important; border-bottom-color:#e07a5f; }
     header.sky-dusk { background:linear-gradient(180deg,#f0a070 0%,#7a3a4a 48%,#1b2a4a 100%) !important; border-bottom-color:#e07a5f; }
-    header.sky-sun, header.sky-partly, header.sky-cloud { color:#061018; text-shadow:0 1px 0 rgba(255,255,255,.55); }
+    header.sky-sun, header.sky-partly, header.sky-cloud { color:#061018; text-shadow:0 1px 0 rgba(255,255,255,.35); }
+    header .temp, header .feels strong, #live-heat {
+      text-shadow:none !important;
+      -webkit-text-stroke:0;
+    }
+    header .temp, header .feels strong {
+      display:inline-block;
+      min-width:2.2em;
+      padding:2px 8px 1px;
+      border-radius:10px;
+      background:rgba(8,16,28,.46);
+      color:#f7f1e6;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+    header.sky-night .temp, header.sky-night .feels strong,
+    header.sky-dawn .temp, header.sky-dawn .feels strong,
+    header.sky-dusk .temp, header.sky-dusk .feels strong,
+    header.sky-storm .temp, header.sky-storm .feels strong,
+    header.sky-warn .temp, header.sky-warn .feels strong {
+      background:rgba(8,12,22,.55);
+    }
     header.sky-sun .temp, header.sky-sun .feels strong,
     header.sky-partly .temp, header.sky-partly .feels strong,
-    header.sky-cloud .temp, header.sky-cloud .feels strong { color:#041018; }
+    header.sky-cloud .temp, header.sky-cloud .feels strong { color:#f7f1e6; }
     header.sky-sun .tempblock label, header.sky-sun .iconblock label, header.sky-sun .feels label,
     header.sky-partly .tempblock label, header.sky-partly .iconblock label, header.sky-partly .feels label,
     header.sky-cloud .tempblock label, header.sky-cloud .iconblock label, header.sky-cloud .feels label { color:#102030; }
@@ -336,7 +356,7 @@
       to { transform: rotate(var(--rain-ang, 0deg)) translateY(160vh); }
     }
     header.hot .temp, header.hot .feels strong { animation:heat-pulse 2.4s ease-in-out infinite; }
-    @keyframes heat-pulse { 0%,100% { text-shadow:0 0 0 transparent; } 50% { text-shadow:0 0 18px rgba(224,122,95,.7); } }
+    @keyframes heat-pulse { 0%,100% { box-shadow:inset 0 0 0 1px rgba(255,255,255,.12); } 50% { box-shadow:inset 0 0 0 1px rgba(224,122,95,.85), 0 0 10px rgba(224,122,95,.35); } }
     header.sky-night::before, header.sky-night::after { content:none; display:none; }
     .hdr-stars { position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0; display:block; transition:opacity 60s linear; }
     header.sky-night .hdr-stars, header.night .hdr-stars, header.sky-dusk .hdr-stars { opacity:1; }
@@ -1056,8 +1076,8 @@
     html.dark #radio-status, html.dark #deliv-note, html.dark #ent-count { color:#efe4c8; }
     html.dark .card.music { background:#3a2430; }
     html.dark textarea, html.dark input, html.dark .check label { background:#2a2444; color:#f7f1e6; border-color:#c4a35a; }
-    #live-heat { display:none; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#e07a5f; }
-    #live-heat.on { display:block; }
+    #live-heat { display:none; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#ffe8dc; background:rgba(8,16,28,.5); padding:2px 8px; border-radius:999px; margin-top:2px; box-shadow:inset 0 0 0 1px rgba(224,122,95,.55); text-shadow:none; }
+    #live-heat.on { display:inline-block; }
     .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
     iframe.lite { width:100%; height:40vh; border:0; border-radius:12px; background:#111; }
 
@@ -1104,7 +1124,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v359</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v360</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -2083,7 +2103,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 359;
+    window.BOARD_VER = 360;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5142,6 +5162,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v360 — Header temps sit on a dark plate with no white glow so Now, Feels, and Heat stay readable on any sky.",
       "v359 — Ideas grouped. Events follow the home address into a community record. Business page is a working brief for an HOA sale.",
       "v358 — Ideas: community page named and branded for the HOA; desk-owned hours, note, and events.",
       "v357 — Ideas: maintenance tickets with status, call-the-desk button, and a live hours board.",
@@ -8579,12 +8600,13 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     function paintTemp(el, n) {
       if (!el || n == null || isNaN(n)) return;
       var c = "#f7f1e6";
-      if (n <= 64) c = "#8ec5ff";
+      if (n <= 64) c = "#b7dcff";
       else if (n <= 74) c = "#f7f1e6";
-      else if (n <= 82) c = "#e6c36a";
-      else if (n <= 89) c = "#e07a5f";
-      else c = "#ff5a3c";
+      else if (n <= 82) c = "#f0d27a";
+      else if (n <= 89) c = "#ffb08a";
+      else c = "#ff8a6a";
       el.style.color = c;
+      el.style.textShadow = "none";
     }
 
     function isNightAt(ms) {
@@ -8901,7 +8923,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var hiVal = (obs.heatIndex && obs.heatIndex.value != null) ? Math.round(obs.heatIndex.value * 9/5 + 32) : tempF;
           if (obs.heatIndex && obs.heatIndex.unitCode && /degF/.test(obs.heatIndex.unitCode)) hiVal = Math.round(obs.heatIndex.value);
           if (heatEl) {
-            if (hiVal != null && hiVal >= 90) { heatEl.textContent = "Heat " + hiVal + "°"; heatEl.classList.add("on"); }
+            if (hiVal != null && hiVal >= 90) { heatEl.textContent = "Heat " + hiVal + "°"; heatEl.classList.add("on"); heatEl.style.color = "#ffe8dc"; }
             else heatEl.classList.remove("on");
           }
           var windEl = document.getElementById("live-wind");
