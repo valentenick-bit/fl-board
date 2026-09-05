@@ -886,6 +886,15 @@
     html.kiosk iframe.full, html.kiosk iframe.lite, html.kiosk img.radar-loop, html.kiosk .radar-crop { height:auto; }
     .radar-crop.wide img { transform:scale(1.35); transform-origin:50% 50%; }
     html.kiosk .tenday { margin:6px 0 0; }
+    html.phone header { position:sticky; top:0; z-index:20; }
+    html.phone .board-foot {
+      position:fixed;
+      left:0; right:0; bottom:0;
+      z-index:18;
+      background:var(--sand-2);
+      box-shadow:0 -8px 20px rgba(15,18,30,.12);
+    }
+    html.dark.phone .board-foot { background:#1a1630; }
     html.phone main {
       flex:none !important;
       height:auto !important;
@@ -893,7 +902,7 @@
       max-height:none !important;
       overflow:visible !important;
       overscroll-behavior:auto !important;
-      padding-bottom:28px;
+      padding-bottom:148px;
       touch-action:pan-y;
     }
     html.phone #health.page.on { height:auto; max-height:none; overflow:visible !important; }
@@ -1033,7 +1042,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v319</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v320</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1847,6 +1856,7 @@ Cart shop:</textarea>
       </div>
     </section>
         </main>
+    <div class="board-foot">
     <div class="dock-wrap">
     <nav class="dock" id="dock">
       <button type="button" data-p="now" class="on">Today</button>
@@ -1862,6 +1872,7 @@ Cart shop:</textarea>
     <div id="allclear" hidden>All clear — the last warning for this zip has ended.</div>
     <div class="break-ticker" id="breakbar"><span id="breaktext"></span></div>
     <div class="ticker"><span id="ticktext"></span></div>
+    </div>
     </div>
 
     <div class="drawer-back" id="drawer-back"></div>
@@ -1937,7 +1948,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 319;
+    window.BOARD_VER = 320;
     (function pullRefresh() {
       var startY = 0, pulling = false;
       var box = document.querySelector("main");
@@ -1963,6 +1974,18 @@ Cart shop:</textarea>
         if (hint) hint.classList.remove("on");
         if (dy > 72 && box.scrollTop < 8) location.reload();
       }, { passive: true });
+    })();
+    (function pinPhoneFoot() {
+      function pad() {
+        if (!document.documentElement.classList.contains("phone")) return;
+        var foot = document.querySelector(".board-foot");
+        var main = document.querySelector("main");
+        if (!foot || !main) return;
+        main.style.paddingBottom = Math.max(120, foot.offsetHeight + 16) + "px";
+      }
+      window.addEventListener("resize", pad);
+      setInterval(pad, 4000);
+      setTimeout(pad, 200);
     })();
     window.ROT_DEFAULTS = {
       normal: ["now","tenday","radar","marine","sky","cam","traffic","ent","deliver"],
@@ -4719,6 +4742,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v320 — Phone keeps the dock and tickers pinned to the bottom while pages scroll.",
       "v319 — Phone pages scroll with the document instead of a locked inner pane.",
       "v318 — Status page scrolls on the phone.",
       "v317 — Quiet NHC list is healthy, not a failure. Radio status matches mute.",
