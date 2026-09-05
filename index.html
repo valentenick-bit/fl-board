@@ -503,12 +503,12 @@
     .go-legend { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 28px; margin:12px 0 0; font-size:12px; font-weight:650; color:var(--muted); }
     .go-legend span { display:flex; align-items:center; gap:8px; }
     .go-legend i { display:inline-block; width:18px; height:8px; border-radius:99px; }
-    .go-legend i.solid { background:#2a9d8f; }
-    .go-legend i.soft { background:repeating-linear-gradient(-55deg, #2a9d8f 0 4px, #2a9d8f33 4px 8px); box-shadow:inset 0 0 0 1px rgba(27,42,74,.2); }
-    .go-legend i.off { background:transparent; box-shadow:inset 0 0 0 1px rgba(27,42,74,.35); }
-    html.dark .go-legend i.solid { background:#3db8d4; }
-    html.dark .go-legend i.soft { background:repeating-linear-gradient(-55deg, #3db8d4 0 4px, #3db8d433 4px 8px); }
-    html.dark .go-legend i.off { box-shadow:inset 0 0 0 1px rgba(247,241,230,.4); }
+    .go-legend i.solid { background:#f7f1e6; }
+    .go-legend i.soft { background:repeating-linear-gradient(-55deg, #f7f1e6 0 4px, rgba(247,241,230,.25) 4px 8px); box-shadow:inset 0 0 0 1px rgba(247,241,230,.55); }
+    .go-legend i.off { background:transparent; box-shadow:inset 0 0 0 1px rgba(247,241,230,.7); }
+    html.dark .go-legend i.solid { background:#f7f1e6; }
+    html.dark .go-legend i.soft { background:repeating-linear-gradient(-55deg, #f7f1e6 0 4px, rgba(247,241,230,.22) 4px 8px); }
+    html.dark .go-legend i.off { box-shadow:inset 0 0 0 1px rgba(247,241,230,.7); }
     html.a11y-lg { font-size:18px; }
     html.a11y-xl { font-size:20px; }
     html.a11y-xl .page h2 { font-size:28px; }
@@ -1076,7 +1076,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v331</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v332</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1098,16 +1098,6 @@
         <small class="stamp" data-feed="wx"></small>
         <div class="rip-banner" id="rip-banner">Rip current: High — swim near a lifeguard.</div>
         <div class="best-chip" id="best-window" hidden></div>
-        <div class="today-chips">
-          <div class="today-chip bolt" id="chip-bolt"><b>Lightning</b><span></span></div>
-          <div class="today-chip cane" id="chip-cane"><b>Named storm</b><span></span></div>
-          <div class="today-chip trash" id="chip-trash"><b>Trash</b><span></span></div>
-        </div>
-        <div class="card leave-card" id="leave-card" hidden>
-          <b>Should we leave?</b>
-          <span class="leave-body">Checking warnings…</span>
-          <small class="stamp" data-feed="alerts"></small>
-        </div>
         <div class="pills go4" id="go-grid-legacy" hidden>
           <div class="tg-head" id="go-head"><span></span><span data-col="0">—</span><span data-col="1">—</span><span data-col="2">—</span><span data-col="3">—</span></div>
           <div class="tg-row" id="pill-beach"><span class="tg-name">Beach</span><span class="tg-cell go" data-col="0">—</span><span class="tg-cell go" data-col="1">—</span><span class="tg-cell go" data-col="2">—</span><span class="tg-cell go" data-col="3">—</span></div>
@@ -1132,6 +1122,16 @@
             <span><i class="soft"></i>= okay</span>
             <span><i class="off"></i>= skip</span>
           </div>
+        </div>
+        <div class="today-chips">
+          <div class="today-chip bolt" id="chip-bolt"><b>Lightning</b><span></span></div>
+          <div class="today-chip cane" id="chip-cane"><b>Named storm</b><span></span></div>
+          <div class="today-chip trash" id="chip-trash"><b>Trash</b><span></span></div>
+        </div>
+        <div class="card leave-card" id="leave-card" hidden>
+          <b>Should we leave?</b>
+          <span class="leave-body">Checking warnings…</span>
+          <small class="stamp" data-feed="alerts"></small>
         </div>
         <p class="sky" id="do-hour" hidden></p>
         <div class="today-boards">
@@ -2020,7 +2020,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 331;
+    window.BOARD_VER = 332;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4823,6 +4823,10 @@ function currentRotation() {
       if (/thunder|t-storm|lightning/.test(nowFx)) {
         return { on: true, why: "Thunder in the current forecast" };
       }
+      var period = String(((window.__nwsToday || {}).shortForecast) || ((window.__nwsToday || {}).detailedForecast) || "");
+      if (/thunder|t-storm|lightning/i.test(period)) {
+        return { on: true, why: "Thunder in tonight's forecast" };
+      }
       for (var i = 0; i < hours.length && i < 4; i++) {
         var h = hours[i];
         if (!h) continue;
@@ -4904,6 +4908,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v332 — Chips under When to go. White legend swatches. Drive usercontent URLs.",
       "v331 — When-to-go swatch legend. Drop dead corsproxy for Drive files.",
       "v330 — One text-size control, under Accessibility.",
       "v329 — When-to-go legend in the title. Lightning chip looks 6 hours ahead.",
@@ -5553,14 +5558,13 @@ function currentRotation() {
       if (!box) return;
       if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
       var DELIV_ID = "1BgMv1lbah1gm0ExsVyoXpOSZL7hMIL-u";
-      var drive = "https://drive.google.com/uc?export=download&id=" + DELIV_ID;
+      var drive = "https://drive.usercontent.google.com/download?id=" + DELIV_ID + "&export=download&confirm=t";
       var urls = [
         "/deliveries.json",
         "https://api.allorigins.win/raw?url=" + encodeURIComponent(drive),
         "https://api.allorigins.win/get?url=" + encodeURIComponent(drive),
         "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(drive),
-        drive,
-        "deliveries.json"
+        drive
       ];
       function esc(s) {
         return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
@@ -5676,7 +5680,7 @@ function currentRotation() {
       var el = document.getElementById("live-flights");
       if (!el) return;
       var FLIGHT_ID = "11n-b4ZRelqtGhqsswBuNDOqVQlNgZ2_R";
-      var driveF = "https://drive.google.com/uc?export=download&id=" + FLIGHT_ID;
+      var driveF = "https://drive.usercontent.google.com/download?id=" + FLIGHT_ID + "&export=download&confirm=t";
       var urls = [
         "/flights.json",
         "https://api.allorigins.win/raw?url=" + encodeURIComponent(driveF),
