@@ -460,6 +460,7 @@
     .map-src { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 8px; }
     .map-src button { border:0; border-radius:999px; padding:6px 12px; font:700 12px/1.2 inherit; background:rgba(27,42,74,.08); color:var(--navy); }
     .map-src button.on { background:var(--teal); color:#fff; }
+    .map-src a.bolt-spark { border-radius:999px; padding:6px 12px; font:700 12px/1.2 inherit; background:#e07a5f; color:#fff; text-decoration:none; display:inline-flex; align-items:center; }
     html.dark .map-src button { background:#2a2444; color:#efe4c8; }
     html.dark .map-src button.on { background:var(--teal); color:#fff; }
     .rip-banner { display:none; margin:0 0 10px; padding:8px 12px; border-radius:12px; background:#e07a5f; color:#fff; font-weight:800; font-size:13px; }
@@ -1081,7 +1082,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v341</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v342</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -1367,10 +1368,10 @@ Cart shop:</textarea>
       </section>
       <section id="bolt" class="page">
         <h2 data-k="Storms">Lightning</h2>
-        <p class="pill-key" id="bolt-note">WeatherBug lightning near the home address. Blitzortung is the backup.</p>
+        <p class="pill-key" id="bolt-note">Live strikes on Blitzortung. WeatherBug Spark blocks embeds — open it from the button.</p>
         <div class="map-src" id="bolt-src">
-          <button type="button" data-bolt="wb" class="on">WeatherBug</button>
-          <button type="button" data-bolt="bz">Blitzortung</button>
+          <button type="button" data-bolt="bz" class="on">Live map</button>
+          <a id="bolt-wb-link" class="bolt-spark" target="_blank" rel="noopener">WeatherBug Spark</a>
         </div>
         <span id="live-bolt" hidden>Clear</span>
         <iframe class="lite" id="bolt-map" title="Lightning" src="about:blank" referrerpolicy="no-referrer-when-downgrade" allow="fullscreen"></iframe>
@@ -2061,7 +2062,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 341;
+    window.BOARD_VER = 342;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2759,45 +2760,30 @@ Cart shop:</textarea>
     function boltBzUrl(lat, lon) {
       return "https://map.blitzortung.org/#7/" + lat + "/" + lon;
     }
-    function boltSource() {
-      try { return localStorage.getItem("bw-bolt") === "bz" ? "bz" : "wb"; } catch (e) { return "wb"; }
-    }
-    function applyBoltMap(force) {
+    function applyBoltMap() {
       var lat = homeLat(), lon = homeLon(), place = homePlace();
-      var src = force || boltSource();
-      window.__boltSrc = src;
-      try { localStorage.setItem("bw-bolt", src); } catch (e) {}
+      var live = boltBzUrl(lat, lon);
+      var spark = boltWbUrl(lat, lon);
+      window.__boltSrc = "bz";
+      window.__boltWbBlocked = true;
       var iframe = document.getElementById("bolt-map");
-      var url = src === "bz" ? boltBzUrl(lat, lon) : boltWbUrl(lat, lon);
-      if (iframe && iframe.getAttribute("data-src") !== url) {
-        iframe.setAttribute("data-src", url);
-        iframe.src = url;
+      if (iframe && iframe.getAttribute("data-src") !== live) {
+        iframe.setAttribute("data-src", live);
+        iframe.src = live;
       }
-      document.querySelectorAll("#bolt-src [data-bolt]").forEach(function (b) {
-        b.classList.toggle("on", b.getAttribute("data-bolt") === src);
-      });
+      var link = document.getElementById("bolt-wb-link");
+      if (link) {
+        link.href = spark;
+        link.textContent = "WeatherBug Spark";
+      }
       var note = document.getElementById("bolt-note");
-      if (note) note.textContent = (src === "wb" ? "WeatherBug lightning near " : "Blitzortung backup near ") + place + ".";
-      if (typeof noteFeed === "function") noteFeed("bolt-map", true, src === "wb" ? "weatherbug" : "blitzortung backup");
-    }
-    function wireBoltMap() {
-      var row = document.getElementById("bolt-src");
-      var iframe = document.getElementById("bolt-map");
-      if (row && !row.getAttribute("data-wired")) {
-        row.setAttribute("data-wired", "1");
-        row.addEventListener("click", function (e) {
-          var b = e.target.closest("[data-bolt]");
-          if (b) applyBoltMap(b.getAttribute("data-bolt"));
-        });
-      }
-      if (iframe && !iframe.getAttribute("data-wired")) {
-        iframe.setAttribute("data-wired", "1");
-        iframe.addEventListener("error", function () {
-          if (window.__boltSrc !== "bz") applyBoltMap("bz");
-        });
+      if (note) note.innerHTML = "Live strikes near " + place + " on Blitzortung. WeatherBug blocks embeds on this board — tap WeatherBug Spark for their map.";
+      if (typeof noteFeed === "function") {
+        noteFeed("bolt-map", true, "blitzortung live");
+        noteFeed("weatherbug", false, "blocked embed · Spark link");
       }
     }
-    wireBoltMap();
+    function wireBoltMap() {}
     function applyLocalMaps() {
       var lat = homeLat(), lon = homeLon(), place = homePlace();
       if (typeof applyBoltMap === "function") applyBoltMap();
@@ -5000,6 +4986,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v342 — Lightning live map is Blitzortung; WeatherBug Spark opens their site.",
       "v341 — Restore after a broken changelog line killed the script.",
       "v340 — Lightning map: WeatherBug primary, Blitzortung backup.",
       "v339 — Ideas: same-size maps, sign-in, storm cache, desk publish.",
@@ -6884,7 +6871,8 @@ function currentRotation() {
         ],
         extra: [
           ["radar", imgOk("radar-view") || imgOk("radar-loop") ? (window.__satViews || ["loop"]).join("+") : txt("radar-cap")],
-          ["bolt-map", window.__boltSrc === "bz" ? "blitzortung backup" : (window.__boltSrc === "wb" ? "weatherbug" : "")],
+          ["bolt-map", "blitzortung live"],
+          ["weatherbug", window.__boltWbBlocked ? "blocked embed" : ""],
           ["bolt-rot", (typeof boltWanted === "function" && boltWanted()) ? "in rotation" : "idle"],
           ["sat", (function(){
             var b = window.__satBasins || {};
