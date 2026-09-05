@@ -1076,7 +1076,7 @@
         <svg class="wxicon" id="live-wxicon" viewBox="0 0 32 32" aria-label="sky"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg></div>
         <div class="feels"><label>Feels</label><strong id="live-feels">78&deg;</strong></div>
       </div>
-      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v332</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
+      <div class="clock"><div id="when"></div><div id="live-heat">Heat</div><div id="hdr-ver" class="hdr-ver">v333</div><div id="hdr-updated" class="hdr-updated">Updated —</div></div>
     </header>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
@@ -2020,7 +2020,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 332;
+    window.BOARD_VER = 333;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2231,6 +2231,12 @@ Cart shop:</textarea>
       var s = {};
       try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e) { s = {}; }
       Object.keys(SET_DEFAULTS).forEach(function (k) { if (s[k] == null) s[k] = SET_DEFAULTS[k]; });
+      ["chipBolt","chipCane","chipTrash","camNight","brief","briefWx","briefSports","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp"].forEach(function (k) {
+        var v = s[k];
+        if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
+        else if (v === false || v === 0 || v === "off" || v === "false") s[k] = "0";
+        else s[k] = String(v == null ? SET_DEFAULTS[k] : v);
+      });
       return s;
     }
     var ZODIAC = ["aries","taurus","gemini","cancer","leo","virgo","libra","scorpio","sagittarius","capricorn","aquarius","pisces"];
@@ -4908,6 +4914,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v333 — Status splits chip setting vs showing. Normalize 0/1 toggles.",
       "v332 — Chips under When to go. White legend swatches. Drive usercontent URLs.",
       "v331 — When-to-go swatch legend. Drop dead corsproxy for Drive files.",
       "v330 — One text-size control, under Accessibility.",
@@ -5627,8 +5634,8 @@ function currentRotation() {
       window.__paintDeliveries = function () { paint(); };
       function next(i) {
         if (i >= urls.length) {
-          if (note) note.textContent = "No live delivery report. Share deliveries.json in Drive: Anyone with the link can view.";
-          if (typeof noteFeed === "function") noteFeed("deliveries", false, "Drive file blocked or missing");
+          if (note) note.textContent = "No live delivery report. In Drive, each file must be Anyone with the link → Viewer. Restricted to named people will not load.";
+          if (typeof noteFeed === "function") noteFeed("deliveries", false, "Drive not public to the Worker");
           paint({ updated: "", incoming: [], delivered: [] });
           return;
         }
@@ -6263,9 +6270,9 @@ function currentRotation() {
       tap("set-noaa", "noaa");
       tap("set-radioauto", "radioauto");
       tap("set-camnight", "camNight");
-      tap("set-chipbolt", "chipBolt");
-      tap("set-chipcane", "chipCane");
-      tap("set-chiptrash", "chipTrash");
+      tap("set-chipbolt", "chipBolt", function () { if (typeof writeTodayChips === "function") writeTodayChips(); if (typeof syncLightningUI === "function") syncLightningUI(); });
+      tap("set-chipcane", "chipCane", function () { if (typeof writeTodayChips === "function") writeTodayChips(); });
+      tap("set-chiptrash", "chipTrash", function () { if (typeof writeTodayChips === "function") writeTodayChips(); });
       tap("set-brief", "brief", function (v) {
         var s = getSet();
         if (v === "0") putSet({ briefPrevWx: s.briefWx, briefPrevSports: s.briefSports, briefWx: "0", briefSports: "0" });
@@ -6811,12 +6818,17 @@ function currentRotation() {
             if ((t.match(/beach|pool|cart|boat|courts/gi) || []).length >= 4) return "lists activities";
             return "brief";
           })()],
-          ["chip-bolt", document.getElementById("chip-bolt") && document.getElementById("chip-bolt").classList.contains("on") ? "on" : "off"],
+          ["chip-bolt", (function(){
+            var setOn = (typeof getSet === "function" ? getSet().chipBolt : "1") !== "0";
+            var show = document.getElementById("chip-bolt") && document.getElementById("chip-bolt").classList.contains("on");
+            return (setOn ? "setting on" : "setting off") + " · " + (show ? "showing" : "hidden");
+          })()],
           ["chip-cane", (function(){
-            var on = document.getElementById("chip-cane") && document.getElementById("chip-cane").classList.contains("on");
+            var setOn = (typeof getSet === "function" ? getSet().chipCane : "1") !== "0";
+            var show = document.getElementById("chip-cane") && document.getElementById("chip-cane").classList.contains("on");
             var n = (window.__namedStorms || []).length;
-            if (n && !on) return "off but " + n + " named";
-            return on ? "on" : "off";
+            if (n && setOn && !show) return "setting on · hidden · " + n + " named";
+            return (setOn ? "setting on" : "setting off") + " · " + (show ? "showing" : "hidden");
           })()],
           ["dev-dock", document.querySelector(".dock-wrap.dev-open") ? "open" : "closed"],
           ["guide", document.getElementById("guide") ? ((document.querySelectorAll("#guide .card").length) + " cards") : ""],
