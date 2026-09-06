@@ -2397,7 +2397,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 432;
+    window.BOARD_VER = 433;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5861,6 +5861,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v433 — Flight card reads live ADS-B status instead of the booking line.",
       "v432 — Today tile pictures are the same size.",
       "v431 — Named storm and Trash use the same titled card blocks as Lightning and Flight.",
       "v430 — House no longer repeats flights. Old lightning chip stays hidden.",
@@ -6487,30 +6488,47 @@ function currentRotation() {
         return (flightWhenMs(a) || 0) - (flightWhenMs(b) || 0);
       });
     }
+    var IATA_ICAO = { MX:"MXY", B6:"JBU", AA:"AAL", DL:"DAL", UA:"UAL", WN:"SWA", NK:"NKS", F9:"FFT", AS:"ASA", HA:"HAL", G4:"AAY", SY:"SCX", XP:"CXP", MXA:"MXY", WN:"SWA", NK:"NKS", Breeze:"MXY", JETBLUE:"JBU", DELTA:"DAL", UNITED:"UAL", AMERICAN:"AAL", SOUTHWEST:"SWA", SPIRIT:"NKS", ALASKA:"ASA", FRONTIER:"FFT" };
+    function parseFlightCode(f) {
+      var raw = String((f && f.flight) || "").toUpperCase();
+      var m = raw.match(/\b([A-Z]{2,3})\s*-?\s*(\d{1,4}[A-Z]?)\b/);
+      if (!m) return { iata: "", icao: "", num: "", codes: [] };
+      var pre = m[1], num = m[2];
+      var icao = pre.length === 3 ? pre : (IATA_ICAO[pre] || "");
+      var iata = pre.length === 2 ? pre : "";
+      var codes = [];
+      if (icao) codes.push(icao + num);
+      if (iata) codes.push(iata + num);
+      codes.push(pre + num);
+      return { iata: iata, icao: icao, num: num, codes: codes.filter(function (c, i, a) { return a.indexOf(c) === i; }) };
+    }
     function flyStatusLabel(raw) {
       var s = String(raw || "").toLowerCase();
       if (/cancel/.test(s)) return "Cancelled";
       if (/divert/.test(s)) return "Diverted";
       if (/landed late|delayed|delay|\blate\b/.test(s) && !/on[- ]time/.test(s)) return "Delayed";
+      if (/in flight|en ?route|airborne|in the air|in-air/.test(s)) return "In flight";
       if (/arriv|landed/.test(s)) return "Arrived";
-      if (/taxi|gate closed|boarding/.test(s)) return "Boarding";
-      if (/depart|took off|en ?route|airborne|in flight|in the air|in-air/.test(s)) return "Departed";
-      if (/on[- ]time|early/.test(s)) return "On time";
+      if (/taxi/.test(s)) return "Taxiing";
+      if (/gate closed|boarding/.test(s)) return "Boarding";
+      if (/depart|took off/.test(s)) return "Departed";
+      if (/on[- ]time|early|scheduled|confirmed/.test(s)) return "On time";
       return "";
     }
     function inferFlyStatus(f, live) {
-      var labeled = flyStatusLabel(live || (f && (f.liveStatus || f.status)));
-      if (labeled) return labeled;
+      if (f && f.liveKind) return f.liveKind;
+      var labeled = flyStatusLabel(live || (f && (f.liveStatus || "")));
+      if (labeled && labeled !== "On time") return labeled;
       var dep = typeof flightWhenMs === "function" ? flightWhenMs(f) : NaN;
       var arr = NaN;
       if (f && f.arriveMs) arr = Number(f.arriveMs);
       else if (f && f.arriveIso) arr = Date.parse(f.arriveIso);
       var now = Date.now();
       if (!isNaN(arr) && now >= arr + 8 * 60000) return "Arrived";
-      if (isNaN(dep)) return "On time";
-      if (now < dep - 2 * 60000) return "On time";
+      if (isNaN(dep)) return labeled || "On time";
+      if (now < dep - 2 * 60000) return labeled || "On time";
       if (!isNaN(arr) && now >= dep && now < arr) return "Departed";
-      if (now < dep + 20 * 60000) return "On time";
+      if (now < dep + 20 * 60000) return labeled || "On time";
       if (now < dep + 4.5 * 3600000) return "Departed";
       return "Arrived";
     }
@@ -6523,30 +6541,53 @@ function currentRotation() {
       if (!isNaN(tm)) when = fmtClockDate(tm) + " · " + fmtClockTime(tm);
       var st = inferFlyStatus(f, live);
       var tagClass = /delay|cancel|divert/i.test(st) ? "music-tag" : "place-tag place-out";
-      if (/on time|arriv|depart|board/i.test(st)) tagClass = "place-tag place-bw";
+      if (/on time|arriv|depart|board|in flight|taxi|gate/i.test(st)) tagClass = "place-tag place-bw";
+      var extra = f.liveDetail || "";
+      var book = String(f.status || "");
+      if (/confirm|schedul|booked/i.test(book)) book = "";
       return stampTodayArt(
         '<div class="card"><span class="place-tag place-out">' + (path || "Flight") + "</span>" +
         '<span class="' + tagClass + '">' + st + "</span>" +
         "<b>" + [who, num, when].filter(Boolean).join(" · ") + "</b>" +
-        "<span>" + [f.detail, f.gate ? "Gate " + f.gate : "", f.status && f.status !== st ? f.status : ""].filter(Boolean).join(" · ") + "</span></div>",
+        "<span>" + [extra, f.detail, f.gate ? "Gate " + f.gate : "", book && book !== st ? book : ""].filter(Boolean).join(" · ") + "</span></div>",
         "fly"
       );
     }
+    function applyLivePlane(f, ac) {
+      if (!ac) return "";
+      var alt = Number(ac.alt_baro || ac.alt_geom || 0);
+      var gs = Number(ac.gs || 0);
+      var track = Math.round(Number(ac.track || 0));
+      if (alt >= 800 || gs >= 80) {
+        f.liveKind = "In flight";
+        f.liveDetail = [alt ? Math.round(alt).toLocaleString() + " ft" : "", gs ? Math.round(gs) + " kt" : "", track ? track + "°" : ""].filter(Boolean).join(" · ");
+        return "In flight";
+      }
+      if (gs >= 15) {
+        f.liveKind = "Taxiing";
+        f.liveDetail = gs ? Math.round(gs) + " kt on the ground" : "Moving on the ground";
+        return "Taxiing";
+      }
+      f.liveKind = "At gate";
+      f.liveDetail = "Seen on the ground";
+      return "At gate";
+    }
     function lookupFlightStatus(f, done) {
-      var code = String(f.flight || "").replace(/\s+/g, "").toLowerCase();
-      if (!code) return done("");
-      var pages = [
-        "https://flightaware.com/live/flight/" + code.toUpperCase(),
-        "https://www.airportia.com/flights/" + code + "/",
-        "https://www.google.com/search?q=" + encodeURIComponent((f.flight || code) + " flight status")
-      ];
+      var parsed = parseFlightCode(f);
+      var codes = parsed.codes;
+      if (!codes.length) return done("");
+      var endpoints = [];
+      codes.forEach(function (c) {
+        endpoints.push("https://api.adsb.lol/v2/callsign/" + c);
+        endpoints.push("https://opendata.adsb.fi/v2/callsign/" + c);
+      });
       function next(i) {
-        if (i >= pages.length) return done("");
-        var url = "https://api.allorigins.win/raw?url=" + encodeURIComponent(pages[i]);
-        fetch(url).then(function (r) { return r.text(); }).then(function (html) {
-          var m = String(html || "").match(/Landed On Time|Landed Late|Arrived|Departed|Took Off|On Time|Delayed|Cancelled|Diverted|In Air|En Route|Landed|Taxiing|Boarding/i);
-          if (m && !/^scheduled$/i.test(m[0])) done(m[0]);
-          else next(i + 1);
+        if (i >= endpoints.length) return done(f.liveKind || "");
+        fetch(endpoints[i]).then(function (r) { return r.json(); }).then(function (d) {
+          var ac = d && (d.ac && d.ac[0] || (Array.isArray(d) && d[0]));
+          if (ac && (ac.hex || ac.flight || ac.lat)) {
+            done(applyLivePlane(f, ac));
+          } else next(i + 1);
         }).catch(function () { next(i + 1); });
       }
       next(0);
@@ -6573,14 +6614,18 @@ function currentRotation() {
       if (typeof noteFeed === "function") noteFeed("today-fly", true, rows.length + " upcoming");
       rows.slice(0, 2).forEach(function (f, i) {
         lookupFlightStatus(f, function (live) {
-          if (!live) return;
-          f.liveStatus = live;
+          if (!live && !f.liveKind) return;
+          f.liveStatus = live || f.liveKind;
           var wrap = body.children[i];
-          if (wrap) wrap.outerHTML = paintOneFlight(f, live);
+          if (wrap) wrap.outerHTML = paintOneFlight(f, f.liveStatus);
           if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (e) {}
-          if (typeof paintHouseFlights === "function") try { paintHouseFlights(); } catch (eH) {}
         });
       });
+      if (!window.__flyLiveT) {
+        window.__flyLiveT = setInterval(function () {
+          if (typeof paintTodayFly === "function") paintTodayFly();
+        }, 2 * 60 * 1000);
+      }
     }
     function paintHouseFlights() {
       return;
