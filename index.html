@@ -718,15 +718,26 @@
     .pulse.box { border-left-color:#4a90a4; }
     .pulse.box .pulse-art { background:rgba(74,144,164,.14); }
     .pulse.box b { color:#3a7084; }
+    .card.today-card { display:flex; align-items:flex-start; gap:12px; }
+    .card.today-card > .pulse-art { flex:0 0 64px; width:64px; height:64px; border-radius:16px; }
+    .card.today-card > .pulse-art svg { width:48px; height:48px; }
+    .card.today-card > .today-body { flex:1; min-width:0; }
+    .card.today-card.fly > .pulse-art { background:rgba(42,157,143,.16); }
+    .card.today-card.fun > .pulse-art { background:rgba(196,90,106,.12); }
+    .card.today-card.box > .pulse-art { background:rgba(74,144,164,.14); }
     #now .sky { display:block; width:100%; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:16px; padding:12px 14px; }
-    .today-boards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .today-boards { display:grid; grid-template-columns:1fr; gap:12px; }
+    #today-do, #today-deliv, #today-fly-body { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:stretch; }
+    .card.today-card.quiet { opacity:.92; }
     #now .ent-h { display:block; background:transparent; color:var(--gold); padding:0; border-radius:0; }
     html.dark #now .sky { background:#2a2444; }
     html.dark .today-stamp { color:#7fd3c6; }
     @media (max-width:720px) {
       .today-boards { grid-template-columns:1fr; }
       .pulse-grid { grid-template-columns:1fr; }
+      #today-do, #today-deliv, #today-fly-body { grid-template-columns:1fr; }
     }
+    html.phone #today-do, html.phone #today-deliv, html.phone #today-fly-body { grid-template-columns:1fr; }
     #ent-list .card { padding:8px 10px; margin-bottom:6px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
@@ -2352,7 +2363,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 395;
+    window.BOARD_VER = 398;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5708,6 +5719,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v398 — Today flight, event, and package cards say when the list is empty so it does not look broken.",
+      "v397 — Today flight, event, and package cards sit two across on desktop, one column on phone.",
+      "v396 — Today flight, event, and package cards keep Fun/Delivery layout and get the drawings back on the left.",
       "v395 — Greeting drops beach/pool/cart/boat recs. Weather voice only. Activities stay on the go chart.",
       "v394 — Today uses Fun/Delivery cards. All of today's events, no cap, drop when the event ends. Same calendar list on every device.",
       "v393 — Today Out and about includes the next 48 hours so weekend festivals stay on both devices.",
@@ -6319,10 +6333,13 @@ function currentRotation() {
       var st = flyStatusLabel(live || f.status || f.liveStatus);
       var tagClass = /delay|cancel|divert/i.test(st) ? "music-tag" : "place-tag place-out";
       if (/on time|landed|in the air/i.test(st)) tagClass = "place-tag place-bw";
-      return '<div class="card"><span class="place-tag place-out">' + (path || "Flight") + "</span>" +
+      return stampTodayArt(
+        '<div class="card"><span class="place-tag place-out">' + (path || "Flight") + "</span>" +
         '<span class="' + tagClass + '">' + st + "</span>" +
         "<b>" + [who, num, when].filter(Boolean).join(" · ") + "</b>" +
-        "<span>" + [f.detail, f.gate ? "Gate " + f.gate : "", f.status && f.status !== st ? f.status : ""].filter(Boolean).join(" · ") + "</span></div>";
+        "<span>" + [f.detail, f.gate ? "Gate " + f.gate : "", f.status && f.status !== st ? f.status : ""].filter(Boolean).join(" · ") + "</span></div>",
+        "fly"
+      );
     }
     function lookupFlightStatus(f, done) {
       var code = String(f.flight || "").replace(/\s+/g, "").toLowerCase();
@@ -6347,11 +6364,15 @@ function currentRotation() {
       var body = document.getElementById("today-fly-body");
       if (!card || !body) return;
       var rows = flightsSoon(36, 3);
+      card.hidden = false;
+      card.classList.add("on");
       if (!rows.length) {
-        card.hidden = true;
-        card.classList.remove("on");
-        body.innerHTML = "";
-        if (typeof noteFeed === "function") noteFeed("today-fly", true, "hidden");
+        var waiting = !window.__flightData;
+        body.innerHTML = todayEmpty("fly",
+          waiting ? "Checking flights" : "No flights in the next day",
+          waiting ? "Waiting on the Gmail flight scan." : "Nothing booked in the next 36 hours."
+        );
+        if (typeof noteFeed === "function") noteFeed("today-fly", true, waiting ? "loading" : "none");
         return;
       }
       card.hidden = false;
@@ -6368,6 +6389,18 @@ function currentRotation() {
         });
       });
     }
+    var TODAY_ART = {
+      fly: '<svg viewBox="0 0 44 44"><path d="M4 26l28-10-8 6 4 8-5-2-6-8-13 6z" fill="#2a9d8f"/><path d="M16 18l8-12 4 2-6 12" fill="#c4a35a"/><path d="M6 28c8 3 24 3 32 0" fill="none" stroke="#c4a35a" stroke-width="2"/></svg>',
+      fun: '<svg viewBox="0 0 44 44"><path d="M22 36V16" stroke="#1b2a4a" stroke-width="2"/><path d="M22 18c-6-2-9 2-10 6 4-1 8 1 10 4 2-3 6-5 10-4-1-4-4-8-10-6z" fill="#2a9d8f"/><path d="M22 22c-5-1-8 2-8 5 3 0 6 1 8 3 2-2 5-3 8-3-1-3-3-6-8-5z" fill="#c4a35a"/><circle cx="32" cy="12" r="3" fill="#c45a6a"/><path d="M32 15v8" stroke="#c45a6a" stroke-width="1.6"/></svg>',
+      box: '<svg viewBox="0 0 44 44"><path d="M8 18l14-6 14 6v16l-14 6-14-6z" fill="#4a90a4"/><path d="M22 12v28M8 18l14 6 14-6" fill="none" stroke="#f4efe4" stroke-width="1.6"/><path d="M16 8h12v4H16z" fill="#c4a35a"/></svg>'
+    };
+    function stampTodayArt(html, kind) {
+      var art = TODAY_ART[kind] || TODAY_ART.fun;
+      return String(html || "").replace(/<div class="card([^"]*)">/, '<div class="card today-card ' + kind + '$1"><div class="pulse-art" aria-hidden="true">' + art + '</div><div class="today-body">') + "</div>";
+    }
+    function todayEmpty(kind, title, detail) {
+      return stampTodayArt('<div class="card quiet"><b>' + title + "</b><span>" + detail + "</span></div>", kind);
+    }
     function paintToday() {
       var doBox = document.getElementById("today-do");
       var delBox = document.getElementById("today-deliv");
@@ -6377,17 +6410,29 @@ function currentRotation() {
           var end = e.end ? new Date(e.end).getTime() : 0;
           return !end || end >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
-        if (!evs.length) doBox.innerHTML = "";
-        else if (window.entCardHtml) doBox.innerHTML = evs.map(window.entCardHtml).join("");
-        else doBox.innerHTML = evs.map(function (e) { return '<div class="card"><b>' + (e.sum || "") + "</b></div>"; }).join("");
+        if (!evs.length) {
+          var waitingE = !window.__entAll;
+          doBox.innerHTML = todayEmpty("fun",
+            waitingE ? "Loading today's events" : "Nothing left today",
+            waitingE ? "Pulling BeachWalk and Englewood calendars." : "No events covering the rest of today. Tomorrow is on Fun."
+          );
+        }
+        else if (window.entCardHtml) doBox.innerHTML = evs.map(function (e) { return stampTodayArt(window.entCardHtml(e), "fun"); }).join("");
+        else doBox.innerHTML = evs.map(function (e) { return stampTodayArt('<div class="card"><b>' + (e.sum || "") + "</b></div>", "fun"); }).join("");
       }
       if (delBox) {
         var marks = window.__deliveredMarks || {};
         function key(item) { return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim(); }
         var inc = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks[key(x)]; });
-        if (!inc.length) delBox.innerHTML = "";
+        if (!inc.length) {
+          var waitingD = !window.__delivData;
+          delBox.innerHTML = todayEmpty("box",
+            waitingD ? "Checking packages" : "No packages on the way",
+            waitingD ? "Reading the delivery scan." : "Nothing incoming right now."
+          );
+        }
         else if (window.delivCardHtml) {
-          delBox.innerHTML = inc.map(function (x) { return window.delivCardHtml(x, true); }).join("");
+          delBox.innerHTML = inc.map(function (x) { return stampTodayArt(window.delivCardHtml(x, true), "box"); }).join("");
           delBox.querySelectorAll("input[data-deliv]").forEach(function (cb) {
             cb.addEventListener("change", function () {
               if (!cb.checked) return;
