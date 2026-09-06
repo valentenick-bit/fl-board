@@ -1907,9 +1907,13 @@ Cart shop:</textarea>
       </section>
     <section id="health" class="page">
         <h2 data-k="Board">Status</h2>
-        <p class="pill-key">Copy the report when something is wrong. Failed and crashes are the first things to read.</p>
+        <p class="pill-key">Copy the report when something is wrong. Summary first. New live-* tiles show up here on their own.</p>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
+        <div class="card"><b>Summary</b><span id="health-sum">Checking…</span></div>
+        <div class="card"><b>Look first</b><span id="health-hints">Checking…</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
+        <div class="card"><b>Waiting</b><span id="health-wait">Checking…</span></div>
+        <div class="card"><b>New tiles</b><span id="health-new">Scanning live fields…</span></div>
         <div class="card"><b>Crashes</b><span id="health-crash">None yet.</span></div>
         <div class="card"><b>Build</b><span id="health-build">v263</span></div>
         <div class="card"><b>Now</b><span id="health-now">Checking…</span></div>
@@ -2366,7 +2370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 413;
+    window.BOARD_VER = 415;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2527,6 +2531,10 @@ Cart shop:</textarea>
         "rotation: " + (rot.join(" > ") || "none"),
         "temp: " + ((document.getElementById("live-temp") || {}).textContent || ""),
         "named: " + ((window.__namedStorms || []).length ? (window.__namedStorms || []).map(function (s) { return s.name || s; }).join(", ") : "none"),
+        "summary: " + ((document.getElementById("health-sum") || {}).textContent || ""),
+        "new-tiles: " + ((document.getElementById("health-new") || {}).textContent || ""),
+        "waiting: " + ((document.getElementById("health-wait") || {}).textContent || ""),
+        "hints: " + ((typeof diagnoseBoard === "function" ? diagnoseBoard(window.__lastProbe) : []).join(" || ") || "none"),
         "crashes: " + ((window.__crashes || []).slice(0, 8).join(" || ") || "none"),
         "failed: " + fail,
         "down-feeds: " + (downFeeds.join(" | ") || "none"),
@@ -5741,6 +5749,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v415 — Status auto-scans new live-* tiles, summarizes down/waiting/ok, and keeps a short look-first list.",
+      "v414 — Status Look first card turns past board failures into next-step hints in the copied report.",
       "v413 — Header wind is not italic. Moon card shows a live phase drawing.",
       "v412 — Header wind shows direction and mph, same line as the Weather tile.",
       "v411 — Moon chart is a rise-to-set arc like the sun card, not the old monthly wave.",
@@ -7794,6 +7804,10 @@ function currentRotation() {
       window.__feeds = window.__feeds || {};
       window.__feeds[key] = { ok: ok !== false, detail: detail || "", at: Date.now() };
     }
+    window.__healthWatch = window.__healthWatch || [];
+    window.watchHealth = function (key, group, read) {
+      window.__healthWatch.push({ key: String(key || ""), group: group || "extra", read: read });
+    };
     function touchFeed(key, ok, detail) {
       noteFeed(key, ok, detail);
       if (window.__paintingHealth) return;
@@ -8063,11 +8077,38 @@ function currentRotation() {
           ["tick-brief", (document.getElementById("ticktext") && (document.getElementById("ticktext").textContent || "").trim()) ? "rolling" : ""],
           ["leave", (window.__wxRisk && window.__wxRisk.warn) ? (txt("leave-copy") || ((document.querySelector(".leave-body") || {}).textContent || "")) : "No warning. Stay put."],
           ["header-temp", txt("live-temp") + " " + txt("live-feels")],
+          ["header-wind", txt("hdr-wind")],
+          ["moon-face", document.querySelector("#sky-moon-face svg") ? "drawn" : ""],
+          ["tick-warn", (document.getElementById("tick-warn") && (document.getElementById("tick-warn").textContent || "").trim()) ? "on" : "off"],
+          ["tick-break", (document.getElementById("tick-break") && (document.getElementById("tick-break").textContent || "").trim()) ? "on" : "off"],
+          ["rotation-on", (typeof rotateList === "function" ? rotateList() : []).join(">") || ""],
+          ["js-ready", window.__rotStarted ? "rotation started" : "rotation not started"],
           ["header", (window.__headerPlan && window.__headerPlan.text) || (window.__feeds && window.__feeds.header && window.__feeds.header.detail) || ""],
           ["sources", document.querySelectorAll("#source-list .card").length ? (document.querySelectorAll("#source-list .card").length + " sources") : ""],
           ["villa", document.querySelectorAll("#villa input[type=checkbox]").length ? (document.querySelectorAll("#villa input[type=checkbox]").length + " checks") : ""]
-        ]
+        ],
+        fresh: []
       };
+      var known = {};
+      Object.keys(groups).forEach(function (g) {
+        (groups[g] || []).forEach(function (row) { known[row[0]] = 1; known["live-" + row[0]] = 1; });
+      });
+      document.querySelectorAll("[id^='live-']").forEach(function (el) {
+        var id = el.id;
+        var short = id.replace(/^live-/, "");
+        if (known[id] || known[short]) return;
+        if (/planet\d+d$|note$|wxicon|heat|nwr|tide-station/.test(id)) return;
+        known[id] = 1;
+        groups.fresh.push([id, txt(id)]);
+      });
+      (window.__healthWatch || []).forEach(function (w) {
+        if (!w || !w.key || known[w.key]) return;
+        var val = "";
+        try { val = typeof w.read === "function" ? String(w.read() || "") : txt(w.key); } catch (e) { val = "watch error"; }
+        var g = groups[w.group] ? w.group : "fresh";
+        groups[g].push([w.key, val]);
+        known[w.key] = 1;
+      });
       function score(rows) {
         var out = { ok: [], bad: [], hold: [] };
         rows.forEach(function (row) {
@@ -8101,15 +8142,46 @@ function currentRotation() {
         el.className = pack.bad.length ? "health-bad" : "";
         return pack;
       }
-      return {
+      var out = {
         wx: paint("health-wx", score(groups.wx), "weather"),
         marine: paint("health-marine", score(groups.marine), "marine"),
         sky: paint("health-sky", score(groups.sky), "sky"),
         extra: paint("health-extra", score(groups.extra), "other"),
+        fresh: score(groups.fresh),
         grace: grace
       };
+      window.__lastProbe = out;
+      return out;
     }
 
+    function diagnoseBoard(probed) {
+      probed = probed || window.__lastProbe || {};
+      var hints = [];
+      var ver = String(window.BOARD_VER || "");
+      var urlV = ((location.search.match(/[?&]v=([^&]+)/) || [])[1] || "");
+      if (urlV && urlV !== ver && !/^\d{12,}$/.test(urlV)) hints.push("Copy on the wall is v" + ver + " but the URL is v=" + urlV + ". Re-upload GitHub index.html and open ?v=" + ver + ".");
+      if (!urlV) hints.push("No ?v= in the URL. After each upload open ?v=" + ver + " so Cloudflare does not keep an old file.");
+      if (!navigator.onLine) hints.push("Device is offline. Live feeds will stay down.");
+      if (!document.querySelector(".page.on")) hints.push("No page is marked on. The wall will look empty.");
+      var rot = [];
+      try { rot = typeof rotateList === "function" ? rotateList() : []; } catch (e) { rot = []; }
+      if (!rot.length) hints.push("Rotation list is empty.");
+      if (!window.__rotStarted && !window.__paused) hints.push("Rotation has not started. A script error may have stopped startRotate.");
+      if (window.__paused) hints.push("Rotation is paused.");
+      var crashes = window.__crashes || [];
+      if (crashes.some(function (c) { return /Unexpected token|not valid JSON|is not defined/i.test(c); })) hints.push("Syntax crash in this tab. The last GitHub file may be broken.");
+      if (crashes.some(function (c) { return /Cannot read properties of undefined/i.test(c); })) hints.push("A function ran before its data existed. Check the newest feature that touches that page.");
+      if (crashes.some(function (c) { return /Failed to fetch|net ·/i.test(c); })) hints.push("At least one network fetch failed. Down cards below are the ones that did not recover.");
+      ["wx", "marine", "sky", "extra", "fresh"].forEach(function (g) {
+        var pack = probed[g];
+        if (!pack) return;
+        (pack.bad || []).slice(0, 4).forEach(function (s) {
+          hints.push((g === "fresh" ? "New tile" : g) + " down: " + s);
+        });
+      });
+      var seen = {};
+      return hints.filter(function (h) { if (seen[h]) return false; seen[h] = 1; return true; }).slice(0, 8);
+    }
     function paintHealth() {
       if (window.__paintingHealth) return;
       window.__paintingHealth = true;
@@ -8126,6 +8198,13 @@ function currentRotation() {
           });
           if (!note) note = "v" + ver + " — current wall copy.";
           buildEl.textContent = note.replace(/^v/, "v");
+        }
+        var hintEl = document.getElementById("health-hints");
+        var hints = typeof diagnoseBoard === "function" ? diagnoseBoard(probed) : [];
+        if (hintEl) {
+          hintEl.innerHTML = hints.length
+            ? hints.map(function (s, i) { return '<span class="health-bad">' + (i + 1) + ". " + s + "</span>"; }).join("<br>")
+            : '<span class="health-ok">No usual failure points right now. If something is still wrong, copy the report anyway.</span>';
         }
         var crashEl = document.getElementById("health-crash");
         if (crashEl) crashEl.textContent = (window.__crashes && window.__crashes.length) ? window.__crashes.join(" | ") : "None yet.";
@@ -8163,10 +8242,34 @@ function currentRotation() {
         rows.push("refresh — ok — last used " + fmtAge(Date.now() - Number(lastRef)));
         if (refreshEl) refreshEl.textContent = "Last used " + fmtAge(Date.now() - Number(lastRef)) + ". That tap should change the ?v= number in the address bar.";
       }
+      var waiting = [];
       if (probed) {
-        ["wx","marine","sky","extra"].forEach(function (g) {
+        ["wx","marine","sky","extra","fresh"].forEach(function (g) {
           (probed[g] && probed[g].bad || []).forEach(function (s) { bad.push(g + " / " + s); });
+          (probed[g] && probed[g].hold || []).forEach(function (s) { waiting.push(g + " / " + s); });
         });
+      }
+      var okN = 0, downN = 0, holdN = 0;
+      if (probed) {
+        ["wx","marine","sky","extra","fresh"].forEach(function (g) {
+          var p = probed[g] || {};
+          okN += (p.ok || []).length;
+          downN += (p.bad || []).length;
+          holdN += (p.hold || []).length;
+        });
+      }
+      var sum = document.getElementById("health-sum");
+      if (sum) sum.textContent = downN + " down · " + holdN + " waiting · " + okN + " ok · " + (window.__crashes || []).length + " crashes · v" + (window.BOARD_VER || "?");
+      var waitEl = document.getElementById("health-wait");
+      if (waitEl) waitEl.innerHTML = waiting.length ? waiting.map(function (s) { return "<span>" + s + "</span>"; }).join("<br>") : '<span class="health-ok">Nothing waiting.</span>';
+      var newEl = document.getElementById("health-new");
+      if (newEl) {
+        var fresh = (probed && probed.fresh) || { ok: [], bad: [], hold: [] };
+        var bits = [];
+        if (fresh.bad.length) bits.push("Down: " + fresh.bad.join(" · "));
+        if (fresh.hold.length) bits.push("Waiting: " + fresh.hold.join(", "));
+        if (fresh.ok.length) bits.push("OK: " + fresh.ok.join(", "));
+        newEl.textContent = bits.join("  |  ") || "No extra live-* tiles beyond the named groups.";
       }
       if (fail) fail.innerHTML = bad.length ? bad.map(function (s) { return '<span class="health-bad">' + s + "</span>"; }).join("<br>") : '<span class="health-ok">Nothing marked failed.</span>';
       if (stale) stale.textContent = old.length ? old.join(" · ") : "Nothing stale over its limit.";
