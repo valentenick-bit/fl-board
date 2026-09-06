@@ -163,19 +163,19 @@
     .sky-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2; background:transparent; }
     .hdr-sun, .hdr-moon { position:absolute; border-radius:50%; opacity:0; }
     .hdr-sun { transition:left 120s linear, bottom 120s linear, opacity 60s linear, background 60s linear; }
-    .hdr-moon { transition:opacity 60s linear, left 120s linear, bottom 120s linear; }
+    .hdr-moon { transition:opacity 2.4s linear; }
     .hdr-sun { width:26px; height:26px; z-index:4; background:#f6d56b; box-shadow:0 0 22px 10px rgba(246,213,107,.55); }
     header.sky-sun .hdr-sun.up, header.sky-partly .hdr-sun.up, header.sky-dawn .hdr-sun.up, header.sky-dusk .hdr-sun.up, header.sky-cloud .hdr-sun.up { opacity:1; }
     header.sky-cloud .hdr-sun { opacity:.55; }
     header.sky-dawn .hdr-sun { background:#f2b05e; }
     header.sky-dusk .hdr-sun { opacity:0; }
     header.sky-dusk .hdr-sun.up { opacity:1; background:#e07a5f; }
-    .hdr-moon { width:22px; height:22px; left:0; top:0; background:transparent; box-shadow:none; z-index:3; overflow:visible; }
-    .hdr-moon svg { display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 0 6px rgba(247,241,230,.45)); }
+    .hdr-moon { width:26px; height:26px; left:12%; top:8px; background:transparent; box-shadow:none; z-index:5; overflow:visible; pointer-events:none; }
+    .hdr-moon svg { display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 0 8px rgba(247,241,230,.55)); }
     @media (max-width: 720px) {
-      .hdr-moon { right:30%; top:4px; width:14px; height:14px; }
+      .hdr-moon { width:20px; height:20px; }
     }
-    header.sky-night .hdr-moon { opacity:1; }
+    header.sky-night .hdr-moon, header.sky-dusk .hdr-moon { opacity:1; }
     .hdr-cloud-svg { position:absolute; z-index:2; opacity:0; color:#eef3f8; filter:drop-shadow(0 2px 2px rgba(8,12,24,.18)); pointer-events:none; will-change:left,opacity; }
     .hdr-cloud-svg circle, .hdr-cloud-svg ellipse { fill:currentColor; }
     .hdr-cloud-svg.c1 { width:78px; top:8%; left:-20%; }
@@ -2364,7 +2364,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 400;
+    window.BOARD_VER = 401;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3964,22 +3964,11 @@ function currentRotation() {
         }
       }
       if (moon) {
-        var dayMs = 24 * 3600000;
-        var upMs = 12.4 * 3600000;
-        var ph = (typeof moonPhase === "function") ? moonPhase() : 0.5;
-        var mRise = (rise || now) + ph * dayMs;
-        while (mRise > now) mRise -= dayMs;
-        while (mRise + upMs < now) mRise += dayMs;
-        var mSet = mRise + upMs;
-        var moonUp = now >= mRise && now < mSet;
-        var mp = Math.max(0, Math.min(1, (now - mRise) / Math.max(1, mSet - mRise)));
-        moon.style.left = "calc(" + skySafePct(6 + mp * 84) + "% - 11px)";
-        moon.style.bottom = (12 + Math.sin(mp * Math.PI) * 34) + "%";
-        moon.style.top = "auto";
-        moon.style.right = "auto";
-        moon.style.transform = "none";
+        var night = slot === "night" || slot === "dusk" || !day;
         paintMoonFace(moon);
-        moon.style.opacity = moonUp ? (day ? "0.55" : "1") : "0";
+        if (!night) {
+          moon.style.opacity = "0";
+        }
       }
     }
     setInterval(function () { if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 15000);
@@ -4079,10 +4068,25 @@ function currentRotation() {
           place(job.el, x, y);
           job.el.style.opacity = String(max * fadeIn * fadeOut);
         });
-        if (moonEl && window.__sunUp) moonEl.style.opacity = "0";
-        if (moonEl && !window.__sunUp && now - (moonJob.faceAt || 0) > 8000) {
-          moonJob.faceAt = now;
-          if (typeof paintMoonFace === "function") paintMoonFace(moonEl);
+        if (moonEl) {
+          if (window.__sunUp) {
+            moonEl.style.opacity = "0";
+          } else {
+            if (!moonJob.start) armMoon(now);
+            var mt = now - moonJob.start;
+            if (mt >= moonJob.dur) { armMoon(now); mt = 0; }
+            var mp = mt / moonJob.dur;
+            var fadeIn = Math.min(1, mt / moonJob.fade);
+            var fadeOut = Math.min(1, (moonJob.dur - mt) / moonJob.fade);
+            var mx = moonJob.x0 + (moonJob.x1 - moonJob.x0) * mp;
+            var my = (moonJob.y0 + (moonJob.y1 - moonJob.y0) * mp) / 100 * hh;
+            place(moonEl, mx, my);
+            moonEl.style.opacity = String(Math.max(0.55, fadeIn * fadeOut));
+            if (now - (moonJob.faceAt || 0) > 30000) {
+              moonJob.faceAt = now;
+              if (typeof paintMoonFace === "function") paintMoonFace(moonEl);
+            }
+          }
         }
         requestAnimationFrame(tick);
       }
@@ -5720,6 +5724,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v401 — Header moon stays up from dusk through night in a clear gap. Bad rise/set math was hiding it.",
       "v400 — Flight cards use a takeoff drawing: climbing plane, gold wing, coral tail, short runway.",
       "v399 — Today event cards use the calendar-star drawing. Live music events use the guitar.",
       "v398 — Today flight, event, and package cards say when the list is empty so it does not look broken.",
@@ -8349,8 +8354,8 @@ function currentRotation() {
       el.title = moonPhaseName(ph) + " · " + Math.round(illum * 100) + "% lit";
       el.style.background = "transparent";
       el.style.boxShadow = "none";
-      if (illum < 0.04) {
-        el.innerHTML = "";
+      if (illum < 0.08) {
+        el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="none" stroke="#f4efe2" stroke-width="1.4" opacity=".55"/></svg>';
         el.setAttribute("data-moon", "new");
         return;
       }
