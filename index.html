@@ -729,6 +729,10 @@
     .card.today-card > .today-body { flex:1; min-width:0; }
     .card.today-card.fly > .pulse-art { background:#e7f4f1; }
     .card.today-card.fly > .pulse-art img { object-fit:cover; border-radius:10px; }
+    #today-fly-track { margin:8px 0 12px; }
+    #today-fly-track iframe { width:100%; height:210px; border:0; border-radius:16px; background:#d7ece8; }
+    #today-fly-track .fly-meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; font-size:13px; }
+    #today-fly-track a { color:var(--teal); font-weight:700; }
     .card.today-card.bolt > .pulse-art { background:rgba(232,120,96,.16); }
     .card.today-card.cane > .pulse-art { background:rgba(27,42,74,.10); }
     .card.today-card.trash > .pulse-art { background:rgba(196,163,90,.18); }
@@ -1344,6 +1348,7 @@
         <div id="today-fly" hidden>
           <h3 class="ent-h">Flight</h3>
           <div id="today-fly-body"></div>
+          <div id="today-fly-track" hidden></div>
         </div>
         <div class="today-boards">
           <div>
@@ -2397,7 +2402,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 433;
+    window.BOARD_VER = 434;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5861,6 +5866,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v434 — Flight card adds live ETA, route progress, map, and FlightRadar24 link.",
       "v433 — Flight card reads live ADS-B status instead of the booking line.",
       "v432 — Today tile pictures are the same size.",
       "v431 — Named storm and Trash use the same titled card blocks as Lightning and Flight.",
@@ -6532,6 +6538,34 @@ function currentRotation() {
       if (now < dep + 4.5 * 3600000) return "Departed";
       return "Arrived";
     }
+    var APT = { RSW:[26.5362,-81.7552], BDL:[41.9389,-72.6832], BOS:[42.3656,-71.0096], MCO:[28.4312,-81.3081], TPA:[27.9755,-82.5332], SRQ:[27.3954,-82.5544], PGD:[26.9202,-81.9905], FMY:[26.5866,-81.8633], EYW:[24.5561,-81.7596], JAX:[30.4941,-81.6879], MIA:[25.7959,-80.2870], FLL:[26.0726,-80.1527], PBI:[26.6832,-80.0956], ATL:[33.6407,-84.4277], JFK:[40.6413,-73.7781], LGA:[40.7769,-73.8740], EWR:[40.6895,-74.1745], PHL:[39.8720,-75.2411], CLT:[35.2140,-80.9431], ORD:[41.9742,-87.9073], DFW:[32.8998,-97.0403] };
+    function aptLL(code) {
+      var c = String(code || "").toUpperCase();
+      return APT[c] || null;
+    }
+    function nmBetween(a, b) {
+      if (!a || !b) return NaN;
+      var r = 3440.065;
+      var p1 = a[0] * Math.PI / 180, p2 = b[0] * Math.PI / 180;
+      var dP = (b[0] - a[0]) * Math.PI / 180, dL = (b[1] - a[1]) * Math.PI / 180;
+      var h = Math.sin(dP / 2) * Math.sin(dP / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dL / 2) * Math.sin(dL / 2);
+      return 2 * r * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    }
+    function fillFlightEta(f) {
+      var dest = aptLL(f.to);
+      var here = (f.liveLat && f.liveLon) ? [f.liveLat, f.liveLon] : null;
+      var orig = aptLL(f.from);
+      if (here && dest && f.liveGs >= 80) {
+        var left = nmBetween(here, dest);
+        var hours = left / Math.max(80, f.liveGs);
+        f.etaMs = Date.now() + hours * 3600000;
+        f.nmLeft = left;
+        f.routeNm = orig ? nmBetween(orig, dest) : NaN;
+        f.routePct = isNaN(f.routeNm) ? NaN : Math.max(0, Math.min(99, Math.round((1 - left / f.routeNm) * 100)));
+      } else if (!isNaN(Number(f.arriveMs))) {
+        f.etaMs = Number(f.arriveMs);
+      }
+    }
     function paintOneFlight(f, live) {
       var who = f.who || "";
       var num = f.flight || "";
@@ -6542,14 +6576,19 @@ function currentRotation() {
       var st = inferFlyStatus(f, live);
       var tagClass = /delay|cancel|divert/i.test(st) ? "music-tag" : "place-tag place-out";
       if (/on time|arriv|depart|board|in flight|taxi|gate/i.test(st)) tagClass = "place-tag place-bw";
+      var eta = "";
+      if (f.etaMs) eta = "ETA " + fmtClockTime(f.etaMs);
       var extra = f.liveDetail || "";
       var book = String(f.status || "");
       if (/confirm|schedul|booked/i.test(book)) book = "";
+      var tags = '<span class="place-tag place-out">' + (path || "Flight") + "</span>" +
+        '<span class="' + tagClass + '">' + st + "</span>";
+      if (eta) tags += '<span class="place-tag place-bw">' + eta + "</span>";
+      if (!isNaN(f.routePct)) tags += '<span class="place-tag place-out">' + f.routePct + "% of route</span>";
       return stampTodayArt(
-        '<div class="card"><span class="place-tag place-out">' + (path || "Flight") + "</span>" +
-        '<span class="' + tagClass + '">' + st + "</span>" +
+        '<div class="card">' + tags +
         "<b>" + [who, num, when].filter(Boolean).join(" · ") + "</b>" +
-        "<span>" + [extra, f.detail, f.gate ? "Gate " + f.gate : "", book && book !== st ? book : ""].filter(Boolean).join(" · ") + "</span></div>",
+        "<span>" + [extra, !isNaN(f.nmLeft) ? Math.round(f.nmLeft) + " nm to go" : "", f.detail, f.gate ? "Gate " + f.gate : "", book && book !== st ? book : ""].filter(Boolean).join(" · ") + "</span></div>",
         "fly"
       );
     }
@@ -6558,19 +6597,57 @@ function currentRotation() {
       var alt = Number(ac.alt_baro || ac.alt_geom || 0);
       var gs = Number(ac.gs || 0);
       var track = Math.round(Number(ac.track || 0));
+      f.liveLat = Number(ac.lat);
+      f.liveLon = Number(ac.lon);
+      f.liveGs = gs;
+      f.liveAlt = alt;
+      f.liveTrack = track;
+      f.liveReg = ac.r || "";
+      f.liveType = ac.t || "";
+      f.liveHex = ac.hex || "";
+      fillFlightEta(f);
+      var bits = [
+        alt ? Math.round(alt).toLocaleString() + " ft" : "",
+        gs ? Math.round(gs) + " kt" : "",
+        track ? track + "°" : "",
+        f.liveReg,
+        f.liveType
+      ].filter(Boolean);
       if (alt >= 800 || gs >= 80) {
         f.liveKind = "In flight";
-        f.liveDetail = [alt ? Math.round(alt).toLocaleString() + " ft" : "", gs ? Math.round(gs) + " kt" : "", track ? track + "°" : ""].filter(Boolean).join(" · ");
+        f.liveDetail = bits.join(" · ");
         return "In flight";
       }
       if (gs >= 15) {
         f.liveKind = "Taxiing";
-        f.liveDetail = gs ? Math.round(gs) + " kt on the ground" : "Moving on the ground";
+        f.liveDetail = (gs ? Math.round(gs) + " kt · " : "") + bits.slice(3).join(" · ");
         return "Taxiing";
       }
       f.liveKind = "At gate";
-      f.liveDetail = "Seen on the ground";
+      f.liveDetail = bits.slice(3).join(" · ") || "Seen on the ground";
       return "At gate";
+    }
+    function paintFlyTrack(f) {
+      var box = document.getElementById("today-fly-track");
+      if (!box) return;
+      if (!f || !f.liveLat) { box.hidden = true; box.innerHTML = ""; return; }
+      var lat = f.liveLat, lon = f.liveLon;
+      var pad = 2.4;
+      var bbox = [lon - pad, lat - pad, lon + pad, lat + pad].join("%2C");
+      var osm = "https://www.openstreetmap.org/export/embed.html?bbox=" + bbox + "&layer=mapnik&marker=" + lat + "%2C" + lon;
+      var code = (parseFlightCode(f).codes[0] || String(f.flight || "").replace(/\s+/g, "")).toUpperCase();
+      var fr = "https://www.flightradar24.com/" + code;
+      var fa = "https://www.flightaware.com/live/flight/" + code;
+      box.hidden = false;
+      box.innerHTML =
+        '<iframe title="Live flight map" src="' + osm + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>' +
+        '<div class="fly-meta">' +
+          (f.etaMs ? "<span>ETA " + fmtClockTime(f.etaMs) + "</span>" : "") +
+          (!isNaN(f.nmLeft) ? "<span>" + Math.round(f.nmLeft) + " nm remaining</span>" : "") +
+          (f.liveReg ? "<span>" + f.liveReg + (f.liveType ? " · " + f.liveType : "") + "</span>" : "") +
+          '<a href="' + fr + '" target="_blank" rel="noopener">FlightRadar24</a>' +
+          '<a href="' + fa + '" target="_blank" rel="noopener">FlightAware</a>' +
+        "</div>";
     }
     function lookupFlightStatus(f, done) {
       var parsed = parseFlightCode(f);
@@ -6605,12 +6682,14 @@ function currentRotation() {
           waiting ? "Checking flights" : "No flights in the next day",
           waiting ? "Waiting on the Gmail flight scan." : "Nothing booked in the next 36 hours."
         );
+        if (typeof paintFlyTrack === "function") paintFlyTrack(null);
         if (typeof noteFeed === "function") noteFeed("today-fly", true, waiting ? "loading" : "none");
         return;
       }
       card.hidden = false;
       card.classList.add("on");
       body.innerHTML = rows.slice(0, 2).map(function (f) { return paintOneFlight(f); }).join("");
+      if (typeof paintFlyTrack === "function") paintFlyTrack(rows[0]);
       if (typeof noteFeed === "function") noteFeed("today-fly", true, rows.length + " upcoming");
       rows.slice(0, 2).forEach(function (f, i) {
         lookupFlightStatus(f, function (live) {
@@ -6618,6 +6697,7 @@ function currentRotation() {
           f.liveStatus = live || f.liveKind;
           var wrap = body.children[i];
           if (wrap) wrap.outerHTML = paintOneFlight(f, f.liveStatus);
+          if (i === 0 && typeof paintFlyTrack === "function") paintFlyTrack(f);
           if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (e) {}
         });
       });
