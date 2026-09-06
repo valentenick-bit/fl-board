@@ -692,6 +692,7 @@
     .go-title small { display:block; margin-top:4px; font-size:12px; font-weight:650; letter-spacing:.02em; color:var(--muted); text-transform:none; }
     .pulse-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 0 12px; }
     .pulse { display:none; align-items:center; gap:12px; margin:0; padding:10px 12px; border-radius:18px; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-left:5px solid var(--teal); color:var(--navy); }
+    #chip-bolt { display:none !important; }
     .pulse.on { display:flex; }
     .pulse-art { flex:0 0 72px; width:72px; height:72px; border-radius:18px; background:rgba(42,157,143,.16); display:grid; place-items:center; }
     .pulse-art svg { width:56px; height:56px; display:block; overflow:visible; }
@@ -1523,11 +1524,6 @@
         <div class="card"><b id="house-occ">Occupied</b><span id="house-seen">Last seen —</span></div>
         <div class="card"><b>AC filter</b><span id="ac-filter-note">Set the date you last changed it. Reminder is 90 days.</span><input type="date" id="ac-filter-date" /></div>
         <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
-        <div class="card"><b>Fly</b><span id="cal-fly">Drop a flight number on the Fly calendar.</span></div>
-        <div class="card"><b>Arrive FL</b><span id="cal-arrive">No Arrive FL event in range.</span></div>
-        <div class="card"><b>Leave FL</b><span id="cal-leave">No Leave FL event in range.</span></div>
-        <div class="card"><b>Flights</b><div id="live-flights">Loading Gmail flight scan…</div></div>
-        <div class="card"><b>Next flight</b><div id="cal-flight">None stored.</div></div>
         <div class="card"><b>Vendors</b>
           <span>Castle after-hours 800-337-5850. Shared with every board when house.json is on GitHub/Drive.</span>
           <p id="house-sync" class="pill-key">House list is loading…</p>
@@ -4568,6 +4564,7 @@ function currentRotation() {
         var prep = typeof lightningPrep === "function" ? lightningPrep() : { on: !!(nowx.lightning || alertBolt || soon), why: "" };
         var on = getSet().chipBolt !== "0" && prep.on;
         bolt.classList.toggle("on", on);
+        bolt.hidden = true;
         var boltBox = document.getElementById("today-bolt");
         var boltBody = document.getElementById("today-bolt-body");
         if (boltBox) boltBox.hidden = !on;
@@ -6557,6 +6554,7 @@ function currentRotation() {
       });
     }
     function paintHouseFlights() {
+      return;
       var el = document.getElementById("live-flights");
       var nextEl = document.getElementById("cal-flight");
       var flyEl = document.getElementById("cal-fly");
@@ -6952,7 +6950,6 @@ function currentRotation() {
     })();
     (function loadFlights() {
       var el = document.getElementById("live-flights");
-      if (!el) return;
       var FLIGHT_ID = "11n-b4ZRelqtGhqsswBuNDOqVQlNgZ2_R";
       var driveF = "https://drive.usercontent.google.com/download?id=" + FLIGHT_ID + "&export=download&confirm=t";
       var urls = [
@@ -6985,7 +6982,7 @@ function currentRotation() {
       }
       function next(i) {
         if (i >= urls.length) {
-          el.textContent = "No flight scan yet. The 6 AM / 6 PM Commons refresh writes flights.json.";
+          if (el) el.textContent = "No flight scan yet. The 6 AM / 6 PM Commons refresh writes flights.json.";
           if (typeof touchFeed === "function") touchFeed("flights", false, "flights.json failed");
           if (typeof paintTodayFly === "function") paintTodayFly();
           return;
