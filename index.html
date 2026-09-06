@@ -695,9 +695,12 @@
     .pulse-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 0 12px; }
     .pulse { display:none; align-items:center; gap:12px; margin:0; padding:10px 12px; border-radius:18px; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-left:5px solid var(--teal); color:var(--navy); }
     .pulse.on { display:flex; }
-    .pulse-art { flex:0 0 56px; width:56px; height:56px; border-radius:16px; background:rgba(42,157,143,.12); display:grid; place-items:center; }
-    .pulse-art svg { width:44px; height:44px; display:block; }
+    .pulse-art { flex:0 0 72px; width:72px; height:72px; border-radius:18px; background:rgba(42,157,143,.16); display:grid; place-items:center; }
+    .pulse-art svg { width:56px; height:56px; display:block; overflow:visible; }
     .pulse-copy { min-width:0; flex:1; }
+    .pulse-copy .card { margin:0; padding:0; background:transparent; border:0; box-shadow:none; }
+    .pulse-copy .card b { font-size:16px; letter-spacing:0; text-transform:none; font-family:Georgia,serif; color:var(--navy); }
+    .pulse-copy .place-tag, .pulse-copy .music-tag { margin-right:6px; margin-bottom:4px; }
     .pulse-copy b { display:block; margin:0 0 3px; color:var(--teal); font-family:"Source Sans 3",system-ui,sans-serif; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
     .pulse-copy span { display:block; font-weight:650; font-size:15px; line-height:1.35; color:var(--navy); }
     .pulse.bolt { border-left-color:var(--coral); }
@@ -1307,8 +1310,8 @@
             <div class="pulse-copy"><b>Trash</b><span></span></div>
           </article>
           <article class="pulse fly" id="today-fly">
-            <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><path d="M6 24l32-8-6 4 2 8-4-1-4-7-20 4z" fill="#2a9d8f"/><path d="M18 18l6-10 3 2-4 10" fill="#1b2a4a"/><path d="M8 26c6 2 22 2 28 0" fill="none" stroke="#c4a35a" stroke-width="1.4" opacity=".7"/></svg></div>
-            <div class="pulse-copy"><b>Flight</b><span id="today-fly-body"></span></div>
+            <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><path d="M4 26l28-10-8 6 4 8-5-2-6-8-13 6z" fill="#2a9d8f"/><path d="M16 18l8-12 4 2-6 12" fill="#c4a35a"/><path d="M6 28c8 3 24 3 32 0" fill="none" stroke="#c4a35a" stroke-width="2"/></svg></div>
+            <div class="pulse-copy" id="today-fly-body"></div>
           </article>
           <article class="pulse fun" id="pulse-fun">
             <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><path d="M22 36V16" stroke="#1b2a4a" stroke-width="2"/><path d="M22 18c-6-2-9 2-10 6 4-1 8 1 10 4 2-3 6-5 10-4-1-4-4-8-10-6z" fill="#2a9d8f"/><path d="M22 22c-5-1-8 2-8 5 3 0 6 1 8 3 2-2 5-3 8-3-1-3-3-6-8-5z" fill="#c4a35a"/><circle cx="32" cy="12" r="3" fill="#c45a6a"/><path d="M32 15v8" stroke="#c45a6a" stroke-width="1.6"/></svg></div>
@@ -2347,7 +2350,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 391;
+    window.BOARD_VER = 392;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4896,7 +4899,8 @@ function currentRotation() {
         var tm0 = typeof flightWhenMs === "function" ? flightWhenMs(f0) : NaN;
         var when0 = !isNaN(tm0) ? fmtClockTime(tm0) : (f0.when || "");
         var path0 = (f0.from && f0.to) ? (f0.from + " to " + f0.to) : "";
-        var flyBits = [f0.who, f0.flight, path0, when0].filter(Boolean).join(" ");
+        var st0 = flyStatusLabel(f0.liveStatus || f0.status);
+        var flyBits = [f0.who, f0.flight, path0, when0, st0 !== "Checking status" ? st0 : ""].filter(Boolean).join(" ");
         if (soonFly.length === 1) bits.push("Flight in the next day: " + flyBits + ".");
         else bits.push("Flights in the next day: " + flyBits + ", plus " + (soonFly.length - 1) + " more.");
       }
@@ -5717,6 +5721,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v392 — Today flight tile matches event/delivery cards and shows on-time or delayed. Icons larger.",
       "v391 — Today pulse tiles: same card for lightning, storm, trash, flight, fun, boxes. Trash only 24 hours before pickup.",
       "v390 — Parse Sun Sep 6 10:00a style flight times so Dayna MX 537 shows on Today.",
       "v389 — Greeting uses the same 24-hour flight list as the Today card.",
@@ -6294,6 +6299,51 @@ function currentRotation() {
         return (flightWhenMs(a) || 0) - (flightWhenMs(b) || 0);
       });
     }
+    function flyStatusLabel(raw) {
+      var s = String(raw || "").toLowerCase();
+      if (/cancel/.test(s)) return "Cancelled";
+      if (/divert/.test(s)) return "Diverted";
+      if (/landed late|delayed|delay|late/.test(s) && !/landed on time/.test(s)) return "Delayed";
+      if (/landed/.test(s)) return "Landed";
+      if (/en ?route|airborne|in flight|departed/.test(s)) return "In the air";
+      if (/on[- ]time/.test(s)) return "On time";
+      if (/scheduled|confirmed|booked/.test(s)) return "Scheduled";
+      if (s) return String(raw).replace(/\s+/g, " ").trim();
+      return "Checking status";
+    }
+    function paintOneFlight(f, live) {
+      var who = f.who || "";
+      var num = f.flight || "";
+      var path = (f.from && f.to) ? (f.from + " → " + f.to) : (f.from || f.to || "");
+      var when = f.when || "";
+      var tm = flightWhenMs(f);
+      if (!isNaN(tm)) when = fmtClockDate(tm) + " · " + fmtClockTime(tm);
+      var st = flyStatusLabel(live || f.status || f.liveStatus);
+      var tagClass = /delay|cancel|divert/i.test(st) ? "music-tag" : "place-tag place-out";
+      if (/on time|landed|in the air/i.test(st)) tagClass = "place-tag place-bw";
+      return '<div class="card"><span class="place-tag place-out">' + (path || "Flight") + "</span>" +
+        '<span class="' + tagClass + '">' + st + "</span>" +
+        "<b>" + [who, num, when].filter(Boolean).join(" · ") + "</b>" +
+        "<span>" + [f.detail, f.gate ? "Gate " + f.gate : "", f.status && f.status !== st ? f.status : ""].filter(Boolean).join(" · ") + "</span></div>";
+    }
+    function lookupFlightStatus(f, done) {
+      var code = String(f.flight || "").replace(/\s+/g, "").toLowerCase();
+      if (!code) return done("");
+      var pages = [
+        "https://www.airportia.com/flights/" + code + "/",
+        "https://www.flightradar24.com/data/flights/" + code
+      ];
+      function next(i) {
+        if (i >= pages.length) return done("");
+        var url = "https://api.allorigins.win/raw?url=" + encodeURIComponent(pages[i]);
+        fetch(url).then(function (r) { return r.text(); }).then(function (html) {
+          var m = String(html || "").match(/Landed On Time|Landed Late|On Time|Delayed|Cancelled|Diverted|Scheduled|In Air|En Route|Landed/i);
+          if (m) done(m[0]);
+          else next(i + 1);
+        }).catch(function () { next(i + 1); });
+      }
+      next(0);
+    }
     function paintTodayFly() {
       var card = document.getElementById("today-fly");
       var body = document.getElementById("today-fly-body");
@@ -6302,23 +6352,23 @@ function currentRotation() {
       if (!rows.length) {
         card.hidden = true;
         card.classList.remove("on");
-        body.textContent = "";
+        body.innerHTML = "";
         if (typeof noteFeed === "function") noteFeed("today-fly", true, "hidden");
         return;
       }
       card.hidden = false;
       card.classList.add("on");
-      body.innerHTML = rows.slice(0, 2).map(function (f) {
-        var who = f.who || "";
-        var num = f.flight || "";
-        var path = (f.from && f.to) ? (f.from + " → " + f.to) : (f.from || f.to || "");
-        var when = f.when || "";
-        var tm = flightWhenMs(f);
-        if (!isNaN(tm)) when = fmtClockDate(tm) + " · " + fmtClockTime(tm);
-        var st = f.status ? " · " + f.status : "";
-        return [who, num, path, when].filter(Boolean).join(" · ") + st;
-      }).join("<br>");
+      body.innerHTML = rows.slice(0, 2).map(function (f) { return paintOneFlight(f); }).join("");
       if (typeof noteFeed === "function") noteFeed("today-fly", true, rows.length + " upcoming");
+      rows.slice(0, 2).forEach(function (f, i) {
+        lookupFlightStatus(f, function (live) {
+          if (!live) return;
+          f.liveStatus = live;
+          var wrap = body.children[i];
+          if (wrap) wrap.outerHTML = paintOneFlight(f, live);
+          if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (e) {}
+        });
+      });
     }
     function paintToday() {
       var doBox = document.getElementById("today-do");
@@ -6332,14 +6382,11 @@ function currentRotation() {
         var fun = document.getElementById("pulse-fun");
         if (!evs.length) {
           if (fun) fun.classList.remove("on");
-          doBox.textContent = "";
+          doBox.innerHTML = "";
         } else {
           if (fun) fun.classList.add("on");
-          doBox.textContent = evs.slice(0, 3).map(function (e) {
-            var when = e.allDay ? "all day" : (e.when ? fmtClockTime(e.when) : "");
-            var tag = (e.music || /live|music|band|duo|dj|steel drum|acoustic|karaoke|open mic/i.test(e.sum || "")) ? "Live music · " : "";
-            return tag + (e.sum || "Event") + (when ? " · " + when : "");
-          }).join(" · ");
+          if (window.entCardHtml) doBox.innerHTML = evs.slice(0, 2).map(window.entCardHtml).join("");
+          else doBox.textContent = evs[0].sum || "Event";
         }
       }
       if (delBox) {
@@ -6349,12 +6396,23 @@ function currentRotation() {
         var inc = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks[key(x)]; });
         if (!inc.length) {
           if (box) box.classList.remove("on");
-          delBox.textContent = "";
+          delBox.innerHTML = "";
         } else {
           if (box) box.classList.add("on");
-          delBox.textContent = inc.slice(0, 3).map(function (x) {
-            return [x.who || x.carrier || "", x.title || "Package", x.when || ""].filter(Boolean).join(" · ");
-          }).join(" · ");
+          if (window.delivCardHtml) {
+            delBox.innerHTML = inc.slice(0, 2).map(function (x) { return window.delivCardHtml(x, true); }).join("");
+            delBox.querySelectorAll("input[data-deliv]").forEach(function (cb) {
+              cb.addEventListener("change", function () {
+                if (!cb.checked) return;
+                window.__deliveredMarks = window.__deliveredMarks || {};
+                window.__deliveredMarks[cb.getAttribute("data-deliv")] = { at: new Date().toISOString() };
+                try { localStorage.setItem("bw-deliv-marks", JSON.stringify(window.__deliveredMarks)); } catch (e2) {}
+                if (typeof window.__paintDeliveries === "function") window.__paintDeliveries();
+                else paintToday();
+                if (typeof saveHouse === "function") saveHouse();
+              });
+            });
+          } else delBox.textContent = inc[0].title || "Package";
         }
       }
       if (typeof paintTodayFly === "function") paintTodayFly();
