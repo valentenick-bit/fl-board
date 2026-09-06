@@ -2402,7 +2402,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 435;
+    window.BOARD_VER = 436;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3929,6 +3929,7 @@ function currentRotation() {
       ].join(" · ");
       window.__headerPlan = { ok: ok, text: text, slot: slot, cls: cls, sunOn: sunOn, sunShould: sunShould, moonOn: moonOn };
       if (typeof noteFeed === "function") noteFeed("header", ok, text);
+      if (typeof noteDarkMode === "function") noteDarkMode();
       var el = document.getElementById("health-header");
       if (el) {
         el.textContent = text;
@@ -5191,6 +5192,16 @@ function currentRotation() {
       }
       return now >= (set + pad) || now < (rise - pad);
     }
+    function noteDarkMode() {
+      var mode = (typeof getSet === "function" && getSet().dark) || "auto";
+      var want = mode === "night" ? true : mode === "day" ? false : (typeof sunShouldDark === "function" ? sunShouldDark() : false);
+      var have = document.documentElement.classList.contains("dark");
+      var slot = window.__skySlot || (typeof skySlotNow === "function" ? skySlotNow() : "?");
+      var ok = have === want && !(mode === "auto" && have && (slot === "day" || slot === "dawn"));
+      var detail = mode + " · want " + (want ? "night" : "day") + " · html.dark " + (have ? "1" : "0") + " · sky " + slot + (ok ? "" : " · MISMATCH");
+      if (typeof noteFeed === "function") noteFeed("dark-mode", ok, detail);
+      return ok;
+    }
     function applySunDark() {
       var mode = getSet().dark || "auto";
       var on = mode === "night" ? true : mode === "day" ? false : sunShouldDark();
@@ -5207,6 +5218,7 @@ function currentRotation() {
       } catch (e) {}
       if (typeof paintSkyHeader === "function") paintSkyHeader();
             if (typeof syncLightningUI === "function") syncLightningUI();
+      if (typeof noteDarkMode === "function") noteDarkMode();
       var btn = document.getElementById("darkbtn");
       if (btn) {
         btn.classList.toggle("on", on);
@@ -5871,6 +5883,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v436 — Status report flags dark-mode vs daylight mismatches.",
       "v435 — Dark mode no longer flips: use today's sunrise, not yesterday's.",
       "v434 — Flight card adds live ETA, route progress, map, and FlightRadar24 link.",
       "v433 — Flight card reads live ADS-B status instead of the booking line.",
@@ -8490,6 +8503,12 @@ function currentRotation() {
       if (crashes.some(function (c) { return /Unexpected token|not valid JSON|is not defined/i.test(c); })) hints.push("Syntax crash in this tab. The last GitHub file may be broken.");
       if (crashes.some(function (c) { return /Cannot read properties of undefined/i.test(c); })) hints.push("A function ran before its data existed. Check the newest feature that touches that page.");
       if (crashes.some(function (c) { return /Failed to fetch|net ·/i.test(c); })) hints.push("At least one network fetch failed. Down cards below are the ones that did not recover.");
+      var darkHave = document.documentElement.classList.contains("dark");
+      var darkMode = (typeof getSet === "function" && getSet().dark) || "auto";
+      var darkWant = darkMode === "night" ? true : darkMode === "day" ? false : (typeof sunShouldDark === "function" ? sunShouldDark() : false);
+      var skySlot = window.__skySlot || "";
+      if (darkHave !== darkWant) hints.push("Theme mismatch: settings " + darkMode + " wants " + (darkWant ? "night" : "day") + " but html.dark is " + (darkHave ? "on" : "off") + ".");
+      else if (darkMode === "auto" && darkHave && (skySlot === "day" || skySlot === "dawn")) hints.push("html.dark is on while the header sky is " + skySlot + ". Auto dark should be off in daylight.");
       ["wx", "marine", "sky", "extra", "fresh"].forEach(function (g) {
         var pack = probed[g];
         if (!pack) return;
@@ -8505,6 +8524,7 @@ function currentRotation() {
       window.__paintingHealth = true;
       var probed = null;
       try {
+        if (typeof noteDarkMode === "function") noteDarkMode();
         probed = typeof probeBoardCards === "function" ? probeBoardCards() : null;
         var buildEl = document.getElementById("health-build");
         if (buildEl) {
