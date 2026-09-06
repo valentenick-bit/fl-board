@@ -729,7 +729,26 @@
     .card.today-card > .today-body { flex:1; min-width:0; }
     .card.today-card.fly > .pulse-art { background:#e7f4f1; }
     .card.today-card.fly > .pulse-art img { object-fit:cover; border-radius:10px; }
-    #today-fly-track { margin:8px 0 12px; }
+
+
+    .busy-tag { display:inline-block; margin:0 6px 0 0; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.02em; background:#e7f4f1; color:#1b6b62; }
+    .busy-tag.busy { background:#f3e6c4; color:#7a5a12; }
+    .busy-tag.long { background:#f6d6ce; color:#8a2f1f; }
+    .busy-tag.quiet { background:#e7f4f1; color:#1b6b62; }
+    html.dark .busy-tag { background:#23464d; color:#b7e0d8; }
+    html.dark .busy-tag.busy { background:#4a3d1c; color:#f0d48a; }
+    html.dark .busy-tag.long { background:#5a2a22; color:#f3b6a8; }
+    #map-pop { display:none; position:fixed; inset:0; z-index:80; align-items:center; justify-content:center; background:rgba(12,28,36,.55); padding:18px; }
+    #map-pop.on { display:flex; }
+    #map-pop .pop-card { width:min(920px,100%); max-height:92vh; background:var(--sand,#f4efe4); color:var(--navy,#1b2a4a); border-radius:18px; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.28); display:flex; flex-direction:column; }
+    html.dark #map-pop .pop-card { background:#17313a; color:#efe4c8; }
+    #map-pop .pop-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; font-weight:800; }
+    #map-pop .pop-bar button { border:0; background:transparent; color:inherit; font:inherit; font-size:22px; cursor:pointer; }
+    #map-pop iframe { width:100%; height:min(62vh,520px); border:0; background:#d7ece8; }
+    #map-pop .pop-links { display:flex; flex-wrap:wrap; gap:10px; padding:10px 14px 14px; font-size:13px; }
+    #map-pop .pop-links a { color:var(--teal); font-weight:700; }
+    .card.map-hit { cursor:pointer; }
+    #today-fly-track { margin:8px 0 12px; display:none !important; }
     #today-fly-track iframe { width:100%; height:210px; border:0; border-radius:16px; background:#d7ece8; }
     #today-fly-track .fly-meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; font-size:13px; }
     #today-fly-track a { color:var(--teal); font-weight:700; }
@@ -2311,6 +2330,15 @@ Cart shop:</textarea>
       </div>
     </section>
         </main>
+
+    <div id="map-pop" aria-hidden="true">
+      <div class="pop-card" role="dialog" aria-modal="true">
+        <div class="pop-bar"><span id="map-pop-title">Map</span><button type="button" id="map-pop-x" aria-label="Close">×</button></div>
+        <iframe id="map-pop-frame" title="Map"></iframe>
+        <div class="pop-links" id="map-pop-links"></div>
+      </div>
+    </div>
+
     <div class="board-foot">
     <div class="dock-wrap">
     <nav class="dock" id="dock">
@@ -2403,7 +2431,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 442;
+    window.BOARD_VER = 444;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5884,6 +5912,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v444 — Today venue cards can show a Busy / Quiet / wait pill when Google publishes it.",
+      "v443 — Tap flight, lightning, or an event card for a map popup.",
       "v442 — Live flight card: status, ETA, miles left, altitude, speed, heading, tail, map.",
       "v441 — Flights and deliveries keep a fallback when Drive is private.",
       "v440 — Flight card always shows route, map, and tracker links. House page lists the flight.",
@@ -6715,6 +6745,83 @@ function currentRotation() {
       }
       next(0);
     }
+
+    function openMapPop(title, src, links) {
+      var pop = document.getElementById("map-pop");
+      var frame = document.getElementById("map-pop-frame");
+      var ttl = document.getElementById("map-pop-title");
+      var link = document.getElementById("map-pop-links");
+      if (!pop || !frame) return;
+      if (ttl) ttl.textContent = title || "Map";
+      frame.src = src || "about:blank";
+      if (link) link.innerHTML = links || "";
+      pop.classList.add("on");
+      pop.setAttribute("aria-hidden", "false");
+    }
+    function closeMapPop() {
+      var pop = document.getElementById("map-pop");
+      var frame = document.getElementById("map-pop-frame");
+      if (frame) frame.src = "about:blank";
+      if (pop) { pop.classList.remove("on"); pop.setAttribute("aria-hidden", "true"); }
+    }
+    function flyMapSrc(f) {
+      if (!f) return "";
+      var dest = typeof aptLL === "function" ? aptLL(f.to) : null;
+      var orig = typeof aptLL === "function" ? aptLL(f.from) : null;
+      var lat = f.liveLat || (dest && dest[0]) || (orig && orig[0]);
+      var lon = f.liveLon || (dest && dest[1]) || (orig && orig[1]);
+      if (!lat || !lon) return "";
+      var pad = f.liveLat ? 2.4 : 4.2;
+      var bbox = [lon - pad, lat - pad, lon + pad, lat + pad].join("%2C");
+      return "https://www.openstreetmap.org/export/embed.html?bbox=" + bbox + "&layer=mapnik&marker=" + lat + "%2C" + lon;
+    }
+    function flyMapLinks(f) {
+      if (!f) return "";
+      var code = (typeof parseFlightCode === "function" && parseFlightCode(f).codes[0]) || String(f.flight || "").replace(/\s+/g, "");
+      code = String(code || "MXY537").toUpperCase();
+      return '<a href="https://www.flightradar24.com/' + code + '" target="_blank" rel="noopener">FlightRadar24</a>' +
+        '<a href="https://www.flightaware.com/live/flight/' + code + '" target="_blank" rel="noopener">FlightAware</a>';
+    }
+    function boltMapSrc() {
+      var lat = (window.__home && window.__home.lat) || 26.9595;
+      var lon = (window.__home && window.__home.lon) || -82.3543;
+      return "https://map.blitzortung.org/#7/" + lat + "/" + lon;
+    }
+    function eventMapQuery(el, ev) {
+      if (ev && ev.loc) return ev.loc + (ev.inside ? " BeachWalk Manasota Key Florida" : " Englewood Florida");
+      if (el && el.getAttribute("data-map")) return el.getAttribute("data-map");
+      var loc = el && (el.getAttribute("data-loc") || "");
+      var place = el && (el.getAttribute("data-place") || "");
+      var q = loc || place || (el && el.innerText) || "Englewood FL";
+      if (!/fl|florida|englewood|beachwalk|manasota/i.test(q)) q += " Englewood FL";
+      return q;
+    }
+    window.openMapPop = openMapPop;
+    window.closeMapPop = closeMapPop;
+    document.addEventListener("click", function (e) {
+      if (e.target && (e.target.id === "map-pop" || e.target.id === "map-pop-x")) { closeMapPop(); return; }
+      if (e.target.closest && e.target.closest("input, textarea, a, button, label, .switch")) return;
+      var fly = e.target.closest && e.target.closest("#today-fly-body .card, #live-flights .card, #today-fly .card");
+      if (fly) {
+        var f = (window.__flightData && window.__flightData.flights && window.__flightData.flights[0]) || window.__lastFly;
+        var src = flyMapSrc(f);
+        if (src) openMapPop((f && f.flight) || "Flight", src, flyMapLinks(f));
+        return;
+      }
+      var bolt = e.target.closest && e.target.closest("#today-bolt, #today-bolt-body .card, #chip-bolt, #chip-bolt .card");
+      if (bolt) {
+        openMapPop("Lightning", boltMapSrc(), '<a href="' + boltMapSrc() + '" target="_blank" rel="noopener">Open live lightning map</a>');
+        return;
+      }
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #ent-list .card");
+      if (evCard) {
+        var q = eventMapQuery(evCard);
+        var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
+        var link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+        openMapPop(q, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+      }
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMapPop(); });
     function paintTodayFly() {
       var card = document.getElementById("today-fly");
       var body = document.getElementById("today-fly-body");
@@ -6794,6 +6901,39 @@ function currentRotation() {
     function todayEmpty(kind, title, detail) {
       return stampTodayArt('<div class="card quiet"><b>' + title + "</b><span>" + detail + "</span></div>", kind);
     }
+
+    function venueLooksPublic(q) {
+      return /grill|grille|tiki|bar|brew|pub|pizza|cafe|coffee|restaurant|diner|tavern|marina restaurant|oyster|seafood|steak|lounge|winery|distill/i.test(q || "");
+    }
+    function applyBusyPill(card, info) {
+      if (!card || !info || !info.label) return;
+      var pill = card.querySelector(".busy-tag");
+      if (!pill) {
+        pill = document.createElement("span");
+        pill.className = "busy-tag";
+        var first = card.querySelector(".place-tag, .music-tag");
+        if (first && first.parentNode) first.parentNode.insertBefore(pill, first.nextSibling);
+        else card.insertBefore(pill, card.firstChild);
+      }
+      pill.hidden = false;
+      pill.textContent = info.label;
+      pill.className = "busy-tag " + (info.level || "");
+    }
+    function loadBusyPills() {
+      var cards = document.querySelectorAll("#today-do .card[data-busy]");
+      var n = 0;
+      cards.forEach(function (card) {
+        var q = card.getAttribute("data-busy") || "";
+        if (!venueLooksPublic(q + " " + card.textContent)) return;
+        n += 1;
+        fetch("/busy?q=" + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (d) {
+          applyBusyPill(card, d);
+          if (typeof noteFeed === "function" && d && d.label) noteFeed("busy-pills", true, d.label);
+        }).catch(function () {});
+      });
+      if (typeof noteFeed === "function") noteFeed("busy-pills", true, n ? ("checked " + n + " venues") : "no public venues");
+    }
+    window.loadBusyPills = loadBusyPills;
     function paintToday() {
       var doBox = document.getElementById("today-do");
       var delBox = document.getElementById("today-deliv");
@@ -6811,6 +6951,7 @@ function currentRotation() {
           );
         }
         else if (window.entCardHtml) doBox.innerHTML = evs.map(function (e) { return stampTodayArt(window.entCardHtml(e), e.live ? "music" : "fun"); }).join("");
+        if (typeof loadBusyPills === "function") setTimeout(loadBusyPills, 80);
         else doBox.innerHTML = evs.map(function (e) { return stampTodayArt('<div class="card"><b>' + (e.sum || "") + "</b></div>", e.live ? "music" : "fun"); }).join("");
       }
       if (delBox) {
@@ -6939,7 +7080,8 @@ function currentRotation() {
         }
         if (place.length > 28) place = place.slice(0, 26).replace(/\s+\S*$/, "") + "…";
         var pclass = e.inside ? "place-tag place-bw" : "place-tag place-out";
-        return '<div class="card' + (live ? " music" : "") + '"><span class="' + pclass + '">' + place + "</span>" + (live ? '<span class="music-tag">Live music</span>' : "") + "<b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
+        var mapQ = e.inside ? ("BeachWalk by Manasota Key, Englewood FL") : ((e.loc || place || e.sum) + ", Englewood FL");
+        return '<div class="card map-hit' + (live ? " music" : "") + '" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '"><span class="' + pclass + '">' + place + "</span>" + (live ? '<span class="music-tag">Live music</span>' : "") + '<span class="busy-tag" hidden></span>' + "<b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
       };
       function render(id, events) {
         var box = document.getElementById(id);
