@@ -2328,7 +2328,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 389;
+    window.BOARD_VER = 390;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4871,7 +4871,7 @@ function currentRotation() {
         }
       }
 
-      var soonFly = (typeof flightsSoon === "function") ? flightsSoon(24, 2) : [];
+      var soonFly = (typeof flightsSoon === "function") ? flightsSoon(36, 3) : [];
       if (soonFly.length) {
         var f0 = soonFly[0];
         var tm0 = typeof flightWhenMs === "function" ? flightWhenMs(f0) : NaN;
@@ -5698,6 +5698,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v390 — Parse Sun Sep 6 10:00a style flight times so Dayna MX 537 shows on Today.",
       "v389 — Greeting uses the same 24-hour flight list as the Today card.",
       "v388 — Today shows a Flight card when a trip is inside 24 hours.",
       "v387 — Ideas: record highs and lows and other climate records for the home pin.",
@@ -6235,18 +6236,35 @@ function currentRotation() {
     function flightWhenMs(f) {
       if (!f) return NaN;
       if (f.whenMs) return Number(f.whenMs);
-      var s = String(f.when || f.depart || f.time || "").replace(/(\d)([ap])$/i, "$1 $2m");
-      var tm = Date.parse(s);
-      if (!isNaN(tm)) return tm;
       if (f.iso) {
-        tm = Date.parse(f.iso);
-        if (!isNaN(tm)) return tm;
+        var iso = Date.parse(f.iso);
+        if (!isNaN(iso)) return iso;
       }
+      var raw = String(f.when || f.depart || f.time || "").trim();
+      if (!raw) return NaN;
+      var m = raw.match(/(?:[A-Za-z]{3,9}\s+)?([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?\s+(\d{1,2}):(\d{2})\s*([ap])m?/i);
+      if (m) {
+        var months = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+        var mo = months[m[1].slice(0, 3).toLowerCase()];
+        if (mo == null) return NaN;
+        var day = parseInt(m[2], 10);
+        var year = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+        var hr = parseInt(m[4], 10);
+        var min = parseInt(m[5], 10);
+        var ap = m[6].toLowerCase();
+        if (ap === "p" && hr < 12) hr += 12;
+        if (ap === "a" && hr === 12) hr = 0;
+        var d = new Date(year, mo, day, hr, min, 0);
+        if (d.getTime() < Date.now() - 14 * 86400000) d.setFullYear(year + 1);
+        return d.getTime();
+      }
+      var tm = Date.parse(raw);
+      if (!isNaN(tm) && new Date(tm).getFullYear() >= 2020) return tm;
       return NaN;
     }
     function flightsSoon(hoursAhead, hoursBack) {
-      var ahead = (hoursAhead != null ? hoursAhead : 24) * 3600000;
-      var back = (hoursBack != null ? hoursBack : 2) * 3600000;
+      var ahead = (hoursAhead != null ? hoursAhead : 36) * 3600000;
+      var back = (hoursBack != null ? hoursBack : 3) * 3600000;
       var now = Date.now();
       return (((window.__flightData || {}).flights) || []).filter(function (f) {
         var tm = flightWhenMs(f);
@@ -6260,7 +6278,7 @@ function currentRotation() {
       var card = document.getElementById("today-fly");
       var body = document.getElementById("today-fly-body");
       if (!card || !body) return;
-      var rows = flightsSoon(24, 2);
+      var rows = flightsSoon(36, 3);
       if (!rows.length) {
         card.hidden = true;
         body.textContent = "";
@@ -6278,7 +6296,7 @@ function currentRotation() {
         var st = f.status ? " · " + f.status : "";
         return [who, num, path, when].filter(Boolean).join(" · ") + st;
       }).join("<br>");
-      if (typeof noteFeed === "function") noteFeed("today-fly", true, rows.length + " in 24h");
+      if (typeof noteFeed === "function") noteFeed("today-fly", true, rows.length + " upcoming");
     }
     function paintToday() {
       var doBox = document.getElementById("today-do");
