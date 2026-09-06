@@ -2364,7 +2364,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 409;
+    window.BOARD_VER = 412;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4143,12 +4143,27 @@ function currentRotation() {
       if (temp) temp.style.display = mode === "temp" ? "block" : "none";
       if (feel) feel.style.display = mode === "temp" ? "none" : "block";
     }
+    function compassFromDeg(d) {
+      if (d == null || d === "" || isNaN(Number(d))) return "";
+      var dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+      return dirs[Math.round(((Number(d) % 360) + 360) % 360 / 22.5) % 16];
+    }
+    function fmtWindLine(dir, mph) {
+      var d = String(dir || "").replace(/mph/ig, "").trim();
+      var n = mph != null && mph !== "" && !isNaN(Number(mph)) ? Math.round(Number(mph)) : null;
+      if (n == null) {
+        var m = String(d).match(/(-?\d+(\.\d+)?)/);
+        if (m) { n = Math.round(Number(m[1])); d = d.replace(m[0], "").trim(); }
+      }
+      if (/^\d+(\.\d+)?$/.test(d)) { n = Math.round(Number(d)); d = ""; }
+      if (n == null) return d || "";
+      return (d ? d + " " : "") + n + " mph";
+    }
     function paintHdrWind() {
       var src = document.getElementById("live-wind");
       var dest = document.getElementById("hdr-wind");
       if (!dest) return;
-      var raw = ((src && src.textContent) || "").replace(/mph/ig, "").replace(/\s+/g, " ").trim();
-      dest.textContent = raw && raw !== "—" ? raw : "";
+      dest.textContent = fmtWindLine((src && src.textContent) || "");
     }
     function paintHdrRadio() {
       var el = document.getElementById("hdr-radio");
@@ -5724,6 +5739,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v412 — Header wind shows direction and mph, same line as the Weather tile.",
+      "v411 — Moon chart is a rise-to-set arc like the sun card, not the old monthly wave.",
+      "v410 — Moon card names the phase (waning crescent, full, and so on) next to rise and set.",
       "v409 — Fixed a broken quote that crashed the board after the plane photo embed.",
       "v408 — Stars twinkle slower. Moon card shows rise/set on the label and chart. Flight cards use the uploaded plane.",
       "v407 — Flight cards use the uploaded takeoff picture, not the SVG stand-in.",
@@ -8402,45 +8420,55 @@ function currentRotation() {
       var box = document.getElementById("moon-chart");
       if (!box) return;
       var ph = moonPhase();
+      var kind = moonPhaseName(ph);
+      function hh(t) {
+        return new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
+      }
+      var now = Date.now();
+      var list = typeof moonWindows === "function" ? moonWindows() : [];
+      var win = typeof moonNowWindow === "function" ? moonNowWindow() : null;
+      if (!win) {
+        for (var i = 0; i < list.length; i++) { if (list[i].rise > now) { win = list[i]; break; } }
+        if (!win && list.length) win = list[list.length - 1];
+      }
+      if (!win) {
+        var sunR = Date.parse((window.__bwCharts && window.__bwCharts.rise) || "") || 0;
+        var sunS = Date.parse((window.__bwCharts && window.__bwCharts.set) || "") || 0;
+        if (sunR && sunS) {
+          var mr = sunR + ph * 24 * 3600000;
+          var ms = sunS + ph * 24 * 3600000;
+          if (ms <= mr) ms += 24 * 3600000;
+          win = { rise: mr, set: ms };
+        }
+      }
       var lab = document.getElementById("live-moon-label");
       if (lab) {
-        function hh(t) {
-          return new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
-        }
-        var now = Date.now();
-        var list = typeof moonWindows === "function" ? moonWindows() : [];
-        var win = typeof moonNowWindow === "function" ? moonNowWindow() : null;
-        if (!win) {
-          for (var i = 0; i < list.length; i++) { if (list[i].rise > now) { win = list[i]; break; } }
-          if (!win && list.length) win = list[list.length - 1];
-        }
-        if (!win) {
-          var sunR = Date.parse((window.__bwCharts && window.__bwCharts.rise) || "") || 0;
-          var sunS = Date.parse((window.__bwCharts && window.__bwCharts.set) || "") || 0;
-          if (sunR && sunS) {
-            var mr = sunR + ph * 24 * 3600000;
-            var ms = sunS + ph * 24 * 3600000;
-            if (ms <= mr) ms += 24 * 3600000;
-            win = { rise: mr, set: ms };
-          }
-        }
-        lab.textContent = win ? hh(win.rise) + " to " + hh(win.set) + " at the house" : moonPhaseName(ph);
-        lab.title = moonPhaseName(ph);
+        var times = win ? hh(win.rise) + " to " + hh(win.set) + " at the house" : "";
+        lab.textContent = times ? kind + " · " + times : kind;
+        lab.title = kind;
       }
-      var x = 10 + ph * 200;
-      var y = 70 - Math.abs(Math.sin(ph * Math.PI * 2)) * 48;
-      var riseTxt = "", setTxt = "";
-      if (lab && / to /.test(lab.textContent)) {
-        var bits = lab.textContent.split(" to ");
-        riseTxt = bits[0] || "";
-        setTxt = (bits[1] || "").replace(" at the house", "");
+      var riseTxt = win ? hh(win.rise) : "";
+      var setTxt = win ? hh(win.set) : "";
+      var nowDot = "";
+      if (win) {
+        var t = (now - win.rise) / Math.max(1, win.set - win.rise);
+        t = Math.max(0, Math.min(1, t));
+        var up = now >= win.rise && now < win.set;
+        var x = 20 + t * 180;
+        var y = 70 - Math.sin(t * Math.PI) * 50;
+        if (up) {
+          nowDot = '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#2a9d8f"/>' +
+            '<text x="' + Math.max(8, x - 12).toFixed(1) + '" y="' + Math.max(12, y - 8).toFixed(1) + '" font-size="9" fill="#1b2a4a">now</text>';
+        }
       }
       box.innerHTML = svgWrap(
         '<line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/>' +
-        '<path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/>' +
-        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#2a9d8f"/>' +
-        '<text x="8" y="84" font-size="8" fill="#5c6b7a">' + (riseTxt || "New") + '</text>' +
-        '<text x="150" y="84" font-size="8" fill="#5c6b7a">' + (setTxt || "Full") + '</text>'
+        '<path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#4a6a8a" stroke-width="3"/>' +
+        '<circle cx="20" cy="70" r="4" fill="#c4a35a"/>' +
+        '<circle cx="200" cy="70" r="4" fill="#1b2a4a"/>' +
+        nowDot +
+        '<text x="8" y="84" font-size="9" fill="#5c6b7a">' + riseTxt + '</text>' +
+        '<text x="150" y="84" font-size="9" fill="#5c6b7a">' + setTxt + '</text>'
       );
     }
     function drawTideChart(preds) {
@@ -9703,7 +9731,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var uvEl = document.getElementById("live-uv");
       if (tempEl && tempF != null) { tempEl.innerHTML = fmtTempN(tempF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(tempEl, tempF); }
       if (feelEl && feelF != null) { feelEl.innerHTML = fmtTempN(feelF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(feelEl, feelF); }
-      if (windEl && wind != null) windEl.textContent = wind + " mph";
+      if (windEl && wind != null) {
+        var dir = typeof compassFromDeg === "function" ? compassFromDeg(om.current.wind_direction_10m) : "";
+        windEl.textContent = typeof fmtWindLine === "function" ? fmtWindLine(dir, wind) : ((dir ? dir + " " : "") + wind + " mph");
+        if (typeof paintHdrWind === "function") paintHdrWind();
+      }
       if (gustEl && gust != null) gustEl.textContent = gust + " mph";
       else if (gustEl && wind != null && /—|light/i.test(gustEl.textContent || "")) gustEl.textContent = wind + " mph";
       if (uvEl && om.current.uv_index != null) {
@@ -9794,7 +9826,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
 
     function refreshWeather() {
       var hdr = { "Accept": "application/geo+json", "User-Agent": "BeachWalkBoard/1.0 (valente.nick@gmail.com)" };
-      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,uv_index&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,uv_index,relative_humidity_2m,dew_point_2m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York")
+      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,uv_index,relative_humidity_2m,dew_point_2m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .catch(function () { return null; });
       fetch("https://api.weather.gov/points/" + homePoint(), { headers: hdr })
@@ -9879,7 +9911,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var presEl = document.getElementById("live-pres");
           var presNote = document.getElementById("live-pres-note");
           var meta = document.getElementById("live-meta");
-          if (windEl) windEl.textContent = (windDir + " " + windTxt).trim() || "—";
+          if (windEl) {
+            var line = (windDir + " " + windTxt).replace(/\s+/g, " ").trim();
+            windEl.textContent = (typeof fmtWindLine === "function" ? fmtWindLine(line) : line) || line || "—";
+            if (typeof paintHdrWind === "function") paintHdrWind();
+          }
           if (gustEl) gustEl.textContent = gust != null ? gust + " mph" : (wind ? wind + " mph" : "light");
           if (rhEl && rh != null) {
             rhEl.textContent = rh + "%";
