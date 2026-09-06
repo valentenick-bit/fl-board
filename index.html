@@ -1876,9 +1876,20 @@ Cart shop:</textarea>
         <h2 data-k="All pages">Menu</h2>
         <p class="pill-key">Pick a page. The main row stays Today, weather, and the house.</p>
         <div class="menu-block">
+          <h3>Daily</h3>
+          <div class="menu-grid">
+            <button type="button" data-p="now">Today</button>
+            <button type="button" data-p="tenday">Weather</button>
+            <button type="button" data-p="radar">Radar</button>
+            <button type="button" data-p="marine">Marine</button>
+            <button type="button" data-p="sky">Sky</button>
+            <button type="button" data-p="ent">Fun</button>
+            <button type="button" data-p="deliver">Delivery</button>
+          </div>
+        </div>
+        <div class="menu-block">
           <h3>Outside</h3>
           <div class="menu-grid">
-            <button type="button" data-p="sky">Sky</button>
             <button type="button" data-p="cam">Views</button>
             <button type="button" data-p="traffic">Roads</button>
             <button type="button" data-p="wink">News</button>
@@ -2370,7 +2381,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 415;
+    window.BOARD_VER = 416;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5231,11 +5242,11 @@ function currentRotation() {
       setInterval(pull, 10 * 60 * 1000);
     })();
     clock(); setInterval(clock, 15000);
-    var pages = ["now","tenday","radar","marine","sky","traffic","cam","ent","house","deliver","radio"], i = 0, rot, idle;
-    var ROT_DEFAULTS = {
+    var ROT_DEFAULTS = window.ROT_DEFAULTS || {
       normal: ["now","tenday","radar","marine","sky","cam","traffic","ent","deliver"],
       storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
     };
+    var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
     function loadRots() {
       try {
@@ -5749,6 +5760,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v416 — Consistency: one rotation list, status tickers use the real IDs, menu page matches the drawer.",
       "v415 — Status auto-scans new live-* tiles, summarizes down/waiting/ok, and keeps a short look-first list.",
       "v414 — Status Look first card turns past board failures into next-step hints in the copied report.",
       "v413 — Header wind is not italic. Moon card shows a live phase drawing.",
@@ -8079,8 +8091,8 @@ function currentRotation() {
           ["header-temp", txt("live-temp") + " " + txt("live-feels")],
           ["header-wind", txt("hdr-wind")],
           ["moon-face", document.querySelector("#sky-moon-face svg") ? "drawn" : ""],
-          ["tick-warn", (document.getElementById("tick-warn") && (document.getElementById("tick-warn").textContent || "").trim()) ? "on" : "off"],
-          ["tick-break", (document.getElementById("tick-break") && (document.getElementById("tick-break").textContent || "").trim()) ? "on" : "off"],
+          ["tick-warn", (document.getElementById("alerttext") && (document.getElementById("alerttext").textContent || "").trim()) ? "on" : "off"],
+          ["tick-break", (document.getElementById("breaktext") && (document.getElementById("breaktext").textContent || "").trim()) ? "on" : "off"],
           ["rotation-on", (typeof rotateList === "function" ? rotateList() : []).join(">") || ""],
           ["js-ready", window.__rotStarted ? "rotation started" : "rotation not started"],
           ["header", (window.__headerPlan && window.__headerPlan.text) || (window.__feeds && window.__feeds.header && window.__feeds.header.detail) || ""],
@@ -8166,6 +8178,13 @@ function currentRotation() {
       var rot = [];
       try { rot = typeof rotateList === "function" ? rotateList() : []; } catch (e) { rot = []; }
       if (!rot.length) hints.push("Rotation list is empty.");
+      rot.forEach(function (id) {
+        if (id && !document.getElementById(id)) hints.push("Rotation names " + id + " but that page is not on the board.");
+      });
+      document.querySelectorAll(".dock button[data-p], .drawer-list button[data-p]").forEach(function (b) {
+        var id = b.getAttribute("data-p");
+        if (id && !document.getElementById(id) && id !== "radio" && id !== "sports") hints.push("Menu button " + id + " has no page.");
+      });
       if (!window.__rotStarted && !window.__paused) hints.push("Rotation has not started. A script error may have stopped startRotate.");
       if (window.__paused) hints.push("Rotation is paused.");
       var crashes = window.__crashes || [];
