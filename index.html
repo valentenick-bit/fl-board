@@ -1665,6 +1665,20 @@ Cart shop:</textarea>
         </div>
 
         <div class="card">
+          <b>Weatherman briefing video</b>
+          <span class="stamp">An on-demand TV-style brief that talks to the household, not a looping clip.</span>
+          <ul class="check-list">
+            <li>Account page stores first names. The brief uses those names. No names baked into the board code.</li>
+            <li>One generated presenter (not a copy of a real meteorologist). Same person each day so the wall feels familiar. Clubhouse mode uses first name only or skips the name.</li>
+            <li>Script is the greeting card, spoken. Text and video stay in lockstep. If the card would skip the boat, the presenter does not sell the boat.</li>
+            <li>Green screen behind them is live Commons frames: radar or satellite, then the 10-day or tide chart, then Fun if there is a pick. They point at the frame the sentence is about.</li>
+            <li>Hazards first: warning, lightning, rip, red tide, bacteria. Then one outdoor call. Then one event pick with a reason. Then flight or package only if it is today.</li>
+            <li>Length 45–90 seconds. Overnight is a short “stay in.” Tap Briefing on Today to play. Do not autoplay on a phone. Kiosk can play once after the morning rotation if Settings allows it.</li>
+            <li>Generate on demand. Do not stream a person 24/7. Keep the file off the public URL. Voice stays clean and hinged, same rules as the card.</li>
+          </ul>
+        </div>
+
+        <div class="card">
           <b>Board</b>
           <ul class="check-list">
             <li>Header type on a small card so it stays readable on any sky</li>
@@ -2211,7 +2225,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 373;
+    window.BOARD_VER = 374;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4525,67 +4539,145 @@ function currentRotation() {
       var hrNow = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}),10);
       if (hrNow === 24) hrNow = 0;
       var hours = window.__hours || [];
-      var maxPop = 0, stormy = false;
+      var maxPop = 0, stormy = false, nearPop = 0, nearStorm = false;
+      var todayKey = new Date().toLocaleDateString("en-CA", { timeZone:"America/New_York" });
       hours.forEach(function (h) {
         if (!h || !h.startTime) return;
-        if (typeof wxDayET === "function" && wxDayET(h.startTime) !== new Date().toLocaleDateString("en-CA", { timeZone:"America/New_York" })) return;
-        if (typeof wxPop === "function" && wxPop(h) > maxPop) maxPop = wxPop(h);
-        if (typeof hourMentionsThunder === "function" && hourMentionsThunder(h)) stormy = true;
-      });
-      var todayP = window.__nwsToday || {};
-      var nowLine = "Right now we're at " + (wx.temp != null ? wx.temp + "°" : "a mild reading");
-      if (wx.feel != null && wx.temp != null && Math.abs(wx.feel - wx.temp) >= 3) nowLine += ", though it feels more like " + wx.feel + "°";
-      nowLine += ", with " + word + ".";
-      if (todayP.temperature != null && /day|afternoon|morning/i.test(todayP.name || "")) {
-        nowLine += " Looking at a high near " + todayP.temperature + "°.";
-      }
-      if (stormy) nowLine += " The forecast has thunderstorms in the mix, so keep an eye on the sky.";
-      else if (maxPop >= 50) nowLine += " Rain looks likely at some point.";
-      else if (maxPop >= 30) nowLine += " There's a passing shower chance, nothing that has to ruin the day.";
-      else nowLine += " It stays mostly dry.";
-      var playLine = "";
-      if (hrNow >= 21 || hrNow < 6) {
-        playLine = " Overnight is for sleeping — beach, pool, cart, and boat can wait until after sunrise.";
-      } else {
-        var beach = dayPlay("beach"), pool = dayPlay("pool"), cart = dayPlay("cart"), boat = dayPlay("boat");
-        function playTalk(k, good, mixed, skip) {
-          if (k === "good" || k === "ok") return good;
-          if (k === "mixed") return mixed;
-          return skip;
+        var same = typeof wxDayET === "function" ? wxDayET(h.startTime) === todayKey : true;
+        if (!same) return;
+        var pop = typeof wxPop === "function" ? wxPop(h) : 0;
+        if (pop > maxPop) maxPop = pop;
+        var thunder = typeof hourMentionsThunder === "function" && hourMentionsThunder(h);
+        if (thunder) stormy = true;
+        var ht = new Date(h.startTime);
+        var hh = parseInt(ht.toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}),10);
+        var ahead = (hh - hrNow + 24) % 24;
+        if (ahead <= 4) {
+          if (pop > nearPop) nearPop = pop;
+          if (thunder) nearStorm = true;
         }
-        playLine = " " + playTalk(beach, "The beach looks worthwhile.", "The beach is a maybe — pick your window.", "I'd skip the beach.");
-        playLine += " " + playTalk(pool, "The pool is a yes.", "Pool is fine if you don't mind a cloud.", "I'd stay out of the pool.");
-        playLine += " " + playTalk(cart, "Take the golf cart if you want it.", "Cart is okay if you watch the sky.", "Leave the cart in.");
-        playLine += " " + playTalk(boat, "If you've been waiting to take the boat, this is your window.", "The boat would be a sporty ride — only if you're comfortable.", "Keep the boat on the lift.");
-      }
-      var kick = [];
-      if (window.__wxRisk && window.__wxRisk.warn) kick.push("We do have a warning in effect, so check Should we leave before you head out.");
-      var storms = window.__namedStorms || [];
-      if (storms.length) kick.push((storms[0].name || "A named storm") + " is on the board if you want the track.");
-      if (typeof lightningNow === "function" && lightningNow().on) kick.push("Lightning is nearby right now — stay inside until it clears.");
-      var flights = ((window.__flightData || {}).flights) || [];
-      var soonFly = flights.filter(function (f) {
-        var s = String(f.when || "").replace(/(\d)([ap])$/i, "$1 $2m");
-        var t = Date.parse(s);
-        if (!isNaN(t)) return t >= Date.now() - 6 * 3600000 && t <= Date.now() + 48 * 3600000;
-        return /today|tomorrow/i.test(s);
       });
-      if (soonFly.length) {
-        var f0 = soonFly[0];
-        kick.push("Travel desk: " + (f0.who || "a flight") + " " + (f0.flight || "") + " " + (f0.from || "") + " to " + (f0.to || "") + ", " + (f0.when || "") + ".");
+      function feedTxt(id) {
+        var n = document.getElementById(id);
+        return n ? String(n.textContent || "").replace(/\s+/g, " ").trim() : "";
       }
-      var inc = ((window.__delivData || {}).incoming || []).length;
-      if (inc === 1) kick.push("One package is still on the way.");
-      else if (inc > 1) kick.push(inc + " packages are still on the way.");
+      var bits = [];
+      var feelBit = "";
+      if (wx.temp != null) {
+        feelBit = "It's " + wx.temp + "°";
+        if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) feelBit += " that feels like " + wx.feel + "°";
+        feelBit += ", " + word + ".";
+      } else {
+        feelBit = "Outside is " + word + ".";
+      }
+      bits.push(feelBit);
+      if (hrNow >= 6 && hrNow < 21) {
+        if (nearStorm) bits.push("Storms are in the next few hours, so don't plan around being outside the whole window.");
+        else if (nearPop >= 50) bits.push("Rain is a real chance in the next few hours.");
+        else if (stormy && hrNow < 17) bits.push("Today still has a storm threat later. Morning is the safer bet.");
+        else if (maxPop >= 50) bits.push("Rain is likely at some point, even if it's quiet right now.");
+        else if (maxPop >= 30) bits.push("A shower could sneak through. Nothing that has to cancel the day.");
+      }
+
+      var hazards = [];
+      if (window.__wxRisk && window.__wxRisk.warn) hazards.push("There's a weather warning up. Read Emergency before you leave.");
+      else if (window.__wxRisk && window.__wxRisk.watch) hazards.push("There's a weather watch on the board. Worth a look before you commit to being out.");
+      if (typeof lightningNow === "function" && lightningNow().on) hazards.push("Lightning is close. Stay in until it moves off.");
+      var rip = window.__ripRisk || "";
+      if (rip === "no") hazards.push("Rip current is high. Don't swim.");
+      else if (rip === "win") hazards.push("Rip current is moderate. Stay near a guarded stretch if you get in.");
+      var red = feedTxt("live-redtide");
+      if (red && !/checking|not observed|none|no k\.?\s*brevis|low/i.test(red) && /tide|bloom|present|observed|high|moderate|k\.?\s*brevis/i.test(red)) {
+        hazards.push("Red tide is in the mix: " + red.replace(/\.$/, "") + ".");
+      }
+      var bac = feedTxt("live-bacteria");
+      if (bac && /advisory|do not swim|no swim|high|enterococcus/i.test(bac) && !/no recent|none|no advisory/i.test(bac)) {
+        hazards.push("There's a water-quality advisory. Skip a swim until that clears.");
+      }
+      var storms = window.__namedStorms || [];
+      if (storms.length && storms[0] && storms[0].name) {
+        hazards.push(storms[0].name + " is on Tropical if you want the track.");
+      }
+      if (hazards.length) bits.push(hazards.slice(0, 3).join(" "));
+
+      if (hrNow >= 21 || hrNow < 6) {
+        bits.push("This hour is for staying in. Beach, pool, cart, and boat can wait for daylight.");
+      } else if (!hazards.length || (hazards.length === 1 && /named|tropical|track/i.test(hazards[0]))) {
+        var picks = [
+          { k:"beach", good:"Beach looks like the move if you want air and water.", ok:"Beach is usable. Don't linger if the sky turns.", skip:"" },
+          { k:"pool", good:"Pool is an easy yes.", ok:"Pool works if you don't mind a cloud.", skip:"" },
+          { k:"boat", good:"If the boat's been sitting, this is a decent window.", ok:"Boat only if you're fine with a bumpier ride.", skip:"" },
+          { k:"cart", good:"Cart is fine for a loop.", ok:"Cart is okay if you watch the sky.", skip:"" },
+          { k:"courts", good:"Courts are in play.", ok:"Courts are a maybe.", skip:"" }
+        ];
+        var order = hrNow < 11 ? ["beach","boat","cart","pool","courts"] : hrNow < 16 ? ["pool","beach","cart","courts","boat"] : ["cart","boat","beach","pool","courts"];
+        var rec = "";
+        for (var i = 0; i < order.length; i++) {
+          var id = order[i];
+          var row = picks.filter(function (p) { return p.k === id; })[0];
+          var kind = dayPlay(id);
+          if (kind === "good" || kind === "ok") { rec = row[kind === "good" ? "good" : "ok"]; break; }
+        }
+        if (!rec && dayPlay("beach") === "skip" && dayPlay("boat") === "skip") rec = "I'd keep it close to home this stretch.";
+        if (rec) bits.push(rec);
+      }
+
       var evs = (window.__entAll || []).filter(function (e) {
         return e && e.when && typeof isTodayET === "function" && isTodayET(e.when);
       });
-      var music = evs.filter(function (e) { return e.music || /live|music|band|duo|dj/i.test(e.sum || ""); });
-      if (music.length) kick.push("If you're looking for a night out, there's live music: " + (music[0].sum || "see Fun") + ".");
-      else if (evs.length) kick.push("A few things are on the calendar today if you want to get out.");
-      var text = (nowLine + playLine + (kick.length ? " " + kick.join(" ") : "")).replace(/\s+/g, " ").trim();
-      el.textContent = text;
-      window.__bestWindow = text;
+      function evHour(e) {
+        var s = String(e.when || "");
+        var m = s.match(/(\d{1,2})(?::(\d{2}))?\s*(a|p)/i);
+        if (!m) return null;
+        var h = parseInt(m[1], 10) % 12;
+        if (/p/i.test(m[3])) h += 12;
+        if (/a/i.test(m[3]) && parseInt(m[1], 10) === 12) h = 0;
+        return h;
+      }
+      var later = evs.filter(function (e) {
+        var h = evHour(e);
+        return h == null || h >= hrNow - 1;
+      });
+      var indoor = /moose|dinner|show|concert|bingo|church|inside|hall|clubhouse/i;
+      var outdoor = /beach|park|boat|golf|market|festival|parade|fair/i;
+      var music = later.filter(function (e) { return e.music || /live|music|band|duo|dj/i.test(e.sum || ""); });
+      var pick = null, why = "";
+      if (hrNow >= 11 && hrNow < 22 && music.length && nearPop < 60 && !nearStorm) {
+        pick = music[0];
+        why = "If you want a reason to go out, live music at ";
+      } else if (later.length) {
+        var ranked = later.slice().sort(function (a, b) {
+          var as = (indoor.test(a.sum || "") ? 2 : 0) + (a.music ? 1 : 0) - (outdoor.test(a.sum || "") && (nearStorm || nearPop >= 50) ? 3 : 0);
+          var bs = (indoor.test(b.sum || "") ? 2 : 0) + (b.music ? 1 : 0) - (outdoor.test(b.sum || "") && (nearStorm || nearPop >= 50) ? 3 : 0);
+          return bs - as;
+        });
+        pick = ranked[0];
+        if (nearStorm && outdoor.test(pick.sum || "")) why = "If you still want to get out, something indoors is safer: ";
+        else why = "On the calendar if you want a plan: ";
+      }
+      if (pick) {
+        var label = (pick.sum || "an event").replace(/\s+/g, " ").trim();
+        var loc = pick.where ? " at " + pick.where : "";
+        bits.push(why + label + loc + ".");
+      }
+
+      var flights = ((window.__flightData || {}).flights) || [];
+      var soonFly = flights.filter(function (f) {
+        var s = String(f.when || "").replace(/(\d)([ap])$/i, "$1 $2m");
+        var tm = Date.parse(s);
+        if (!isNaN(tm)) return tm >= Date.now() - 6 * 3600000 && tm <= Date.now() + 36 * 3600000;
+        return /today|tonight/i.test(s);
+      });
+      if (soonFly.length) {
+        var f0 = soonFly[0];
+        bits.push("Travel: " + [f0.who, f0.flight, f0.from && f0.to ? (f0.from + " to " + f0.to) : "", f0.when].filter(Boolean).join(" · ") + ".");
+      }
+      var inc = ((window.__delivData || {}).incoming || []).length;
+      if (inc === 1) bits.push("One package is still out.");
+      else if (inc > 1) bits.push(inc + " packages are still out.");
+
+      el.textContent = bits.join(" ").replace(/\s+/g, " ").trim();
+      window.__bestWindow = el.textContent;
     }
     function writeBestWindow() { writeGreetingCard(); }
     setInterval(function () { try { writeGreetingCard(); } catch (e) {} }, 60 * 60 * 1000);
@@ -5358,6 +5450,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v374 — Greeting briefs what matters this hour. Weatherman video idea is on Ideas.",
       "v373 — Heat, radio, and watch/warning pills share the same type.",
       "v372 — Watch and warning sit under Heat and Radio.",
       "v371 — Real Feel sits on a dark plate. Heat and radio pills match size.",
