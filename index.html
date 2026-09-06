@@ -1291,6 +1291,10 @@
           <span class="leave-body">Checking warnings…</span>
           <small class="stamp" data-feed="alerts"></small>
         </div>
+        <div class="card fly-card" id="today-fly" hidden>
+          <b>Flight</b>
+          <span id="today-fly-body"></span>
+        </div>
         <div class="today-boards">
           <div>
             <h3 class="ent-h">Out and about</h3>
@@ -1646,6 +1650,17 @@ Cart shop:</textarea>
           </ul>
         </div>
         <div class="card">
+          <b>Weather records</b>
+          <span class="stamp">Context next to today’s number, not a trivia dump.</span>
+          <ul class="check-list">
+            <li>Record high and record low for this date at the home pin (NWS/NCEI climate normal station nearest the address).</li>
+            <li>Show whether today is near, at, or past that record. Same for overnight low.</li>
+            <li>Other useful records on Weather or Today: hottest/coldest so far this month and this year, wettest day this month, all-time site high/low, last freeze, last 90°, last 100° if the climate supports it.</li>
+            <li>Rain records: wettest this date, month-to-date vs normal, driest stretch.</li>
+            <li>Keep it to a short card plus one greeting line when a record is close. Do not crowd the 10-day.</li>
+          </ul>
+        </div>
+        <div class="card">
           <b>Address and events</b>
           <span class="stamp">How calendars attach so a second HOA does not inherit BeachWalk’s mixer.</span>
           <ul class="check-list">
@@ -1680,7 +1695,6 @@ Cart shop:</textarea>
             <li>Keep the Welcome letter current whenever a feature ships</li>
             <li>Shared occupancy, vendors, and villa checks across every device</li>
             <li>Delivery “delivered” checkbox that other screens see</li>
-            <li>Today card for an upcoming flight in the next 24 hours. Hide when nobody is flying.</li>
           </ul>
         </div>
 
@@ -2314,7 +2328,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 386;
+    window.BOARD_VER = 389;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4857,16 +4871,15 @@ function currentRotation() {
         }
       }
 
-      var flights = ((window.__flightData || {}).flights) || [];
-      var soonFly = flights.filter(function (f) {
-        var s = String(f.when || "").replace(/(\d)([ap])$/i, "$1 $2m");
-        var tm = Date.parse(s);
-        if (!isNaN(tm)) return tm >= Date.now() - 6 * 3600000 && tm <= Date.now() + 36 * 3600000;
-        return /today|tonight/i.test(s);
-      });
+      var soonFly = (typeof flightsSoon === "function") ? flightsSoon(24, 2) : [];
       if (soonFly.length) {
         var f0 = soonFly[0];
-        bits.push("Travel tonight or tomorrow: " + [f0.who, f0.flight, f0.from && f0.to ? (f0.from + " to " + f0.to) : "", f0.when].filter(Boolean).join(" · ") + ".");
+        var tm0 = typeof flightWhenMs === "function" ? flightWhenMs(f0) : NaN;
+        var when0 = !isNaN(tm0) ? fmtClockTime(tm0) : (f0.when || "");
+        var path0 = (f0.from && f0.to) ? (f0.from + " to " + f0.to) : "";
+        var flyBits = [f0.who, f0.flight, path0, when0].filter(Boolean).join(" ");
+        if (soonFly.length === 1) bits.push("Flight in the next day: " + flyBits + ".");
+        else bits.push("Flights in the next day: " + flyBits + ", plus " + (soonFly.length - 1) + " more.");
       }
       var inc = ((window.__delivData || {}).incoming || []).length;
       if (inc === 1) bits.push("One package is still out.");
@@ -4876,10 +4889,12 @@ function currentRotation() {
       else if (hrNow < 8) bits.push("Give it another hour after sunrise before you decide the whole day.");
 
       var tone = (typeof getSet === "function" ? getSet().greetTone : "full") || "full";
+      var flyLine = bits.filter(function (b) { return /^Flights? in the next day/.test(b); })[0];
       if (tone === "off") {
         bits = [bits[0] || ("Good evening in " + place + ".")];
       } else if (tone === "short") {
         bits = bits.slice(0, 2);
+        if (flyLine && bits.indexOf(flyLine) < 0) bits.push(flyLine);
       }
       var plain = bits.join(" ").replace(/\s+/g, " ").trim();
       window.__bestWindow = plain;
@@ -4892,7 +4907,7 @@ function currentRotation() {
         "Water-quality advisory","Tropical","Live music","On the calendar","I wouldn't plan","Worth it",
         "Don't swim","Stay in","High near","Overnight","UV is","Tides:",
         "Thunder","thunderstorms","Rain is","mostly dry","golf-cart","golf cart",
-        "the beach","The beach","The pool","The boat","Courts","packages","package","Travel"
+        "the beach","The beach","The pool","The boat","Courts","packages","package","Travel","Flight","Flights"
       ];
       keys.sort(function (a,b) { return b.length - a.length; });
       keys.forEach(function (k) {
@@ -5683,6 +5698,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v389 — Greeting uses the same 24-hour flight list as the Today card.",
+      "v388 — Today shows a Flight card when a trip is inside 24 hours.",
+      "v387 — Ideas: record highs and lows and other climate records for the home pin.",
       "v386 — Units hit more temps. Event and sports radius actually rebuild. Leftover settings parked on Ideas.",
       "v385 — Quiet hours sits in Sound, options on the right.",
       "v384 — Settings: units, greeting length, ticker speed, date format, language, event and sports radius. Event times follow the clock setting.",
@@ -6214,6 +6232,54 @@ function currentRotation() {
       var today = dayKeyET(new Date());
       return start <= today && end >= today;
     }
+    function flightWhenMs(f) {
+      if (!f) return NaN;
+      if (f.whenMs) return Number(f.whenMs);
+      var s = String(f.when || f.depart || f.time || "").replace(/(\d)([ap])$/i, "$1 $2m");
+      var tm = Date.parse(s);
+      if (!isNaN(tm)) return tm;
+      if (f.iso) {
+        tm = Date.parse(f.iso);
+        if (!isNaN(tm)) return tm;
+      }
+      return NaN;
+    }
+    function flightsSoon(hoursAhead, hoursBack) {
+      var ahead = (hoursAhead != null ? hoursAhead : 24) * 3600000;
+      var back = (hoursBack != null ? hoursBack : 2) * 3600000;
+      var now = Date.now();
+      return (((window.__flightData || {}).flights) || []).filter(function (f) {
+        var tm = flightWhenMs(f);
+        if (!isNaN(tm)) return tm >= now - back && tm <= now + ahead;
+        return /today|tonight/i.test(String(f.when || ""));
+      }).sort(function (a, b) {
+        return (flightWhenMs(a) || 0) - (flightWhenMs(b) || 0);
+      });
+    }
+    function paintTodayFly() {
+      var card = document.getElementById("today-fly");
+      var body = document.getElementById("today-fly-body");
+      if (!card || !body) return;
+      var rows = flightsSoon(24, 2);
+      if (!rows.length) {
+        card.hidden = true;
+        body.textContent = "";
+        if (typeof noteFeed === "function") noteFeed("today-fly", true, "hidden");
+        return;
+      }
+      card.hidden = false;
+      body.innerHTML = rows.slice(0, 2).map(function (f) {
+        var who = f.who || "";
+        var num = f.flight || "";
+        var path = (f.from && f.to) ? (f.from + " → " + f.to) : (f.from || f.to || "");
+        var when = f.when || "";
+        var tm = flightWhenMs(f);
+        if (!isNaN(tm)) when = fmtClockDate(tm) + " · " + fmtClockTime(tm);
+        var st = f.status ? " · " + f.status : "";
+        return [who, num, path, when].filter(Boolean).join(" · ") + st;
+      }).join("<br>");
+      if (typeof noteFeed === "function") noteFeed("today-fly", true, rows.length + " in 24h");
+    }
     function paintToday() {
       var doBox = document.getElementById("today-do");
       var delBox = document.getElementById("today-deliv");
@@ -6249,6 +6315,7 @@ function currentRotation() {
           });
         }
       }
+      if (typeof paintTodayFly === "function") paintTodayFly();
     }
     (function liveCals() {
       var BW = "605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947@group.calendar.google.com";
@@ -6568,6 +6635,7 @@ function currentRotation() {
       function paint(d) {
         window.__flightData = d || { flights: [] };
         var rows = (d && d.flights) || [];
+        if (typeof paintTodayFly === "function") try { paintTodayFly(); } catch (eF) {}
         if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (e) {}
         if (!rows.length) {
           el.textContent = "No upcoming flights in the Gmail scan.";
@@ -6583,6 +6651,7 @@ function currentRotation() {
         if (i >= urls.length) {
           el.textContent = "No flight scan yet. The 6 AM / 6 PM Commons refresh writes flights.json.";
           if (typeof touchFeed === "function") touchFeed("flights", false, "flights.json failed");
+          if (typeof paintTodayFly === "function") paintTodayFly();
           return;
         }
         fetch(urls[i]).then(function (r) { return r.text(); }).then(function (txt) {
