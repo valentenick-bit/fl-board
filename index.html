@@ -722,7 +722,8 @@
     .card.today-card > .pulse-art svg { width:48px; height:48px; }
     .card.today-card > .today-body { flex:1; min-width:0; }
     .card.today-card.fly > .pulse-art { background:rgba(42,157,143,.16); }
-    .card.today-card.fly > .pulse-art img { width:56px; height:56px; object-fit:contain; display:block; }
+    .card.today-card.bolt > .pulse-art { background:rgba(232,120,96,.16); }
+    #today-bolt-body { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:stretch; }
     .card.today-card.fun > .pulse-art { background:rgba(42,157,143,.14); }
     .card.today-card.music > .pulse-art { background:rgba(196,90,106,.12); }
     .card.today-card.box > .pulse-art { background:rgba(74,144,164,.14); }
@@ -736,9 +737,9 @@
     @media (max-width:720px) {
       .today-boards { grid-template-columns:1fr; }
       .pulse-grid { grid-template-columns:1fr; }
-      #today-do, #today-deliv, #today-fly-body { grid-template-columns:1fr; }
+      #today-do, #today-deliv, #today-fly-body, #today-bolt-body { grid-template-columns:1fr; }
     }
-    html.phone #today-do, html.phone #today-deliv, html.phone #today-fly-body { grid-template-columns:1fr; }
+    html.phone #today-do, html.phone #today-deliv, html.phone #today-fly-body, html.phone #today-bolt-body { grid-template-columns:1fr; }
     #ent-list .card { padding:8px 10px; margin-bottom:6px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
@@ -1314,11 +1315,12 @@
             <span><i class="off"></i>empty = skip</span>
           </div>
         </div>
+        <div id="today-bolt" hidden>
+          <h3 class="ent-h">Lightning</h3>
+          <div id="today-bolt-body"></div>
+        </div>
         <div class="pulse-grid" id="today-pulse">
-          <article class="pulse today-chip bolt" id="chip-bolt">
-            <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><ellipse cx="20" cy="16" rx="13" ry="7" fill="#8aa0b5"/><ellipse cx="28" cy="18" rx="9" ry="6" fill="#a8b8c6"/><path d="M24 15l-8 13h6l-4 11 13-16h-7z" fill="#e87860"/></svg></div>
-            <div class="pulse-copy"><b>Lightning</b><span></span></div>
-          </article>
+          <article class="pulse today-chip bolt" id="chip-bolt" hidden></article>
           <article class="pulse today-chip cane" id="chip-cane">
             <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="15" fill="none" stroke="#1b2a4a" stroke-width="2"/><path d="M22 8c8 4 12 10 12 16 0 8-6 14-14 14" fill="none" stroke="#c4a35a" stroke-width="2.4" stroke-linecap="round"/><circle cx="22" cy="22" r="3" fill="#c4a35a"/></svg></div>
             <div class="pulse-copy"><b>Named storm</b><span></span></div>
@@ -1524,8 +1526,8 @@
         <div class="card"><b>Fly</b><span id="cal-fly">Drop a flight number on the Fly calendar.</span></div>
         <div class="card"><b>Arrive FL</b><span id="cal-arrive">No Arrive FL event in range.</span></div>
         <div class="card"><b>Leave FL</b><span id="cal-leave">No Leave FL event in range.</span></div>
-        <div class="card"><b>Flights</b><span id="live-flights">Loading Gmail flight scan…</span></div>
-        <div class="card"><b>Next flight</b><span id="cal-flight">None stored. Type a flight on House if you want it pinned.</span></div>
+        <div class="card"><b>Flights</b><div id="live-flights">Loading Gmail flight scan…</div></div>
+        <div class="card"><b>Next flight</b><div id="cal-flight">None stored.</div></div>
         <div class="card"><b>Vendors</b>
           <span>Castle after-hours 800-337-5850. Shared with every board when house.json is on GitHub/Drive.</span>
           <p id="house-sync" class="pill-key">House list is loading…</p>
@@ -2389,7 +2391,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 422;
+    window.BOARD_VER = 424;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3502,6 +3504,7 @@ function currentRotation() {
       if (id === "traffic" && typeof applyLocalMaps === "function") applyLocalMaps();
       if (id === "guide" && typeof paintGuide === "function") paintGuide();
       if (id === "sources" && typeof paintSources === "function") paintSources();
+      if (id === "house" && typeof paintHouseFlights === "function") paintHouseFlights();
       if ((id === "settings" || id === "account") && typeof window.paintSettings === "function") window.paintSettings();
       if (id === "settings") { if (typeof paintSportsPage === "function") paintSportsPage(); if (typeof bindSportsPage === "function") bindSportsPage(); }
       if (id === "radar") {
@@ -4510,10 +4513,20 @@ function currentRotation() {
         var prep = typeof lightningPrep === "function" ? lightningPrep() : { on: !!(nowx.lightning || alertBolt || soon), why: "" };
         var on = getSet().chipBolt !== "0" && prep.on;
         bolt.classList.toggle("on", on);
+        var boltBox = document.getElementById("today-bolt");
+        var boltBody = document.getElementById("today-bolt-body");
+        if (boltBox) boltBox.hidden = !on;
         if (on) {
           var line = prep.why || (alertBolt ? "Warning up for this address." : nowx.lightning ? "Thunder in the current hour." : ("Thunder possible " + when + "."));
-          bolt.querySelector("span").textContent = line;
-        }
+          var span = bolt.querySelector("span");
+          if (span) span.textContent = line;
+          if (boltBody && typeof stampTodayArt === "function") {
+            boltBody.innerHTML = stampTodayArt(
+              '<div class="card"><span class="place-tag place-out">Now</span><span class="music-tag">Lightning</span><b>' + line + "</b><span>Stay inside until it moves off.</span></div>",
+              "bolt"
+            );
+          }
+        } else if (boltBody) boltBody.innerHTML = "";
       }
       if (cane) {
         var storms = window.__namedStorms || [];
@@ -5770,6 +5783,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v424 — Flight art is an SVG tile like the other Today cards. Lightning has a section title and the same card format.",
+      "v423 — House flights use the same On time / Delayed / Departed / Arrived pills.",
       "v422 — Flight pill is On time, Delayed, Departed, or Arrived from live status or the clock.",
       "v421 — Ideas: review mobile header and type, and Chromebook text size.",
       "v420 — Sources is a grouped catalog. New feeds that are not listed show under Also reporting.",
@@ -6477,11 +6492,38 @@ function currentRotation() {
           var wrap = body.children[i];
           if (wrap) wrap.outerHTML = paintOneFlight(f, live);
           if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (e) {}
+          if (typeof paintHouseFlights === "function") try { paintHouseFlights(); } catch (eH) {}
         });
       });
     }
+    function paintHouseFlights() {
+      var el = document.getElementById("live-flights");
+      var nextEl = document.getElementById("cal-flight");
+      var flyEl = document.getElementById("cal-fly");
+      var rows = ((window.__flightData || {}).flights) || [];
+      var soon = typeof flightsSoon === "function" ? flightsSoon(14 * 24, 6) : [];
+      var list = (soon.length ? soon : rows).slice(0, 4);
+      function line(f) {
+        return typeof paintOneFlight === "function" ? paintOneFlight(f) : (f.flight || "Flight");
+      }
+      if (el) {
+        if (!list.length) {
+          el.textContent = window.__flightData ? "No upcoming flights in the Gmail scan." : "Loading Gmail flight scan…";
+        } else {
+          el.innerHTML = list.map(line).join("");
+        }
+      }
+      var first = list[0];
+      if (nextEl) {
+        nextEl.innerHTML = first ? line(first) : "None stored.";
+      }
+      if (flyEl) {
+        flyEl.innerHTML = first ? inferFlyStatus(first, first.liveStatus || first.status) + " · " + [first.who, first.flight].filter(Boolean).join(" · ") : "Drop a flight number on the Fly calendar.";
+      }
+    }
     var TODAY_ART = {
-      fly: '<img src="data:image/jpeg;base64,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" alt="">',
+      fly: '<svg viewBox="0 0 44 44"><path d="M7 26l5-4 18-7c4-1.2 6.2.2 5.2 3.2L32 29l-16 2z" fill="#2aa8b0"/><path d="M11 23L6 14l7 5z" fill="#e87860"/><path d="M8 27l-2 6 7-5z" fill="#e87860"/><path d="M21 22l5 10 5-11z" fill="#e0b03a"/><rect x="21.2" y="19.2" width="3.1" height="2.3" rx=".7" fill="#f4efe4"/><rect x="25.4" y="18.3" width="3.1" height="2.3" rx=".7" fill="#f4efe4"/><rect x="29.6" y="17.4" width="3.1" height="2.3" rx=".7" fill="#f4efe4"/><rect x="10" y="34.2" width="22" height="2" rx="1" fill="#1b2a4a"/></svg>',
+      bolt: '<svg viewBox="0 0 44 44"><ellipse cx="18" cy="16" rx="12" ry="7" fill="#8aa0b5"/><ellipse cx="27" cy="18" rx="9" ry="6" fill="#a8b8c6"/><path d="M24 14l-8 13h6l-4 12 14-16h-7z" fill="#e87860"/></svg>',
       fun: '<svg viewBox="0 0 44 44"><rect x="10" y="12" width="24" height="24" rx="5" fill="#2a9d8f"/><rect x="10" y="12" width="24" height="8" rx="5" fill="#f4efe4"/><rect x="10" y="16" width="24" height="4" fill="#f4efe4"/><circle cx="16" cy="14" r="1.6" fill="#c4a35a"/><circle cx="28" cy="14" r="1.6" fill="#c4a35a"/><path d="M22 22.2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L22 33l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z" fill="#e87860"/></svg>',
       music: '<svg viewBox="0 0 44 44"><rect x="20.4" y="5" width="3.2" height="16" rx="1" fill="#1b2a4a"/><rect x="18" y="4" width="8" height="5" rx="1.2" fill="#1b2a4a"/><circle cx="19" cy="6.4" r="0.7" fill="#c4a35a"/><circle cx="25" cy="6.4" r="0.7" fill="#c4a35a"/><ellipse cx="22" cy="30" rx="10" ry="11" fill="#1b2a4a"/><path d="M13.6 32c2.2 6.2 14.6 6.2 16.8 0" fill="#2a9d8f"/><circle cx="22" cy="28" r="3.4" fill="none" stroke="#c4a35a" stroke-width="1.8"/></svg>',
       box: '<svg viewBox="0 0 44 44"><path d="M8 18l14-6 14 6v16l-14 6-14-6z" fill="#4a90a4"/><path d="M22 12v28M8 18l14 6 14-6" fill="none" stroke="#f4efe4" stroke-width="1.6"/><path d="M16 8h12v4H16z" fill="#c4a35a"/></svg>'
@@ -6864,15 +6906,21 @@ function currentRotation() {
         window.__flightData = d || { flights: [] };
         var rows = (d && d.flights) || [];
         if (typeof paintTodayFly === "function") try { paintTodayFly(); } catch (eF) {}
+        if (typeof paintHouseFlights === "function") try { paintHouseFlights(); } catch (eH) {}
         if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (e) {}
         if (!rows.length) {
-          el.textContent = "No upcoming flights in the Gmail scan.";
           if (typeof touchFeed === "function") touchFeed("flights", true, "none upcoming");
           return;
         }
-        el.innerHTML = rows.slice(0, 4).map(function (f) {
-          return (f.who || "") + " · " + (f.flight || "") + " " + (f.from || "") + "→" + (f.to || "") + " " + (f.when || "") + (f.status ? " · " + f.status : "");
-        }).join("<br>");
+        rows.slice(0, 4).forEach(function (f) {
+          if (typeof lookupFlightStatus !== "function") return;
+          lookupFlightStatus(f, function (live) {
+            if (!live) return;
+            f.liveStatus = live;
+            if (typeof paintHouseFlights === "function") paintHouseFlights();
+            if (typeof paintTodayFly === "function") try { paintTodayFly(); } catch (e2) {}
+          });
+        });
         if (typeof touchFeed === "function") touchFeed("flights", true, rows.length + " flights");
       }
       function next(i) {
