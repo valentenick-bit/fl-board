@@ -460,8 +460,8 @@
       header .temp, header .feels strong { font-size:26px; line-height:26px; height:26px; }
       header .wxicon { width:20px; height:20px; }
       #when { font-size:11px; font-weight:600; }
-      #when-date { font-size:9px; }
-      #when-time { font-size:12px; }
+      #when-date { font-size:11px; }
+      #when-time { font-size:14px; }
       .flag { font-size:8px; }
       .hdr-ver, .hdr-updated { font-size:8px; }
       header .temprow { gap:4px; }
@@ -475,8 +475,8 @@
     .brand b { display:block; font-family:Fraunces,Georgia,serif; letter-spacing:.1em; font-size:20px; }
     .brand small { display:block; letter-spacing:.16em; text-transform:uppercase; font-size:11px; opacity:.75; line-height:1.25; max-width:28vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     #when { display:flex; flex-direction:column; align-items:flex-end; gap:1px; font-weight:700; line-height:1.15; }
-    #when-date { font-size:10px; font-weight:650; letter-spacing:.03em; opacity:.86; }
-    #when-time { font-size:13px; font-weight:700; }
+    #when-date { font-size:12px; font-weight:650; letter-spacing:.03em; opacity:.86; }
+    #when-time { font-size:15px; font-weight:700; }
     .flag { display:none; font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
     .flag.on { display:block; }
     .hdr-meta { display:none; }
@@ -2251,7 +2251,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 381;
+    window.BOARD_VER = 383;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4704,56 +4704,55 @@ function currentRotation() {
         if (/a/i.test(m[3]) && parseInt(m[1], 10) === 12) h = 0;
         return h;
       }
+      function evLabel(e) {
+        var name = String((e && e.sum) || "an event").replace(/\s+/g, " ").trim();
+        var loc = e && e.where ? " at " + e.where : "";
+        var when = e && e.when ? ", " + e.when : "";
+        return name + loc + when;
+      }
       var later = evs.filter(function (e) {
         var h = evHour(e);
         return h == null || h >= hrNow - 1;
       });
-      var indoor = /moose|dinner|show|concert|bingo|church|inside|hall|clubhouse/i;
-      var outdoor = /beach|park|boat|golf|market|festival|parade|fair/i;
-      function isMusic(e) { return !!(e && (e.music || /live|music|band|duo|dj/i.test(e.sum || ""))); }
-      function whyEvent(e, kind) {
-        var reasons = [];
-        if (kind === "music") {
-          reasons.push("it's live music and the next few hours look dry enough");
-          if (hrNow >= 16) reasons.push("it fits tonight");
-        } else if (kind === "indoor-storm") {
-          reasons.push("storms are close and this one is indoors");
-        } else if (kind === "indoor") {
-          reasons.push("it's indoors so a shower doesn't kill it");
-        } else if (kind === "soon") {
-          reasons.push("it's the next thing still ahead on today's list");
-        } else if (kind === "backup") {
-          reasons.push("it's a dry backup if the sky turns");
-        } else {
-          if (isMusic(e)) reasons.push("it has live music");
-          if (indoor.test(e.sum || "") || indoor.test(e.where || "")) reasons.push("it's inside");
-          if (outdoor.test(e.sum || "") && nearPop < 40 && !nearStorm) reasons.push("the outdoor window still looks usable");
-          if (!reasons.length) reasons.push("it's the strongest leftover on today's calendar");
-        }
-        var locTag = e.where ? " at " + e.where : "";
-        var when = e.when ? " (" + e.when + ")" : "";
-        var label = (e.sum || "an event").replace(/\s+/g, " ").trim();
-        return "I'd pick " + label + locTag + when + " because " + reasons.join(", and ") + ".";
+      var indoor = /moose|dinner|show|concert|bingo|church|inside|hall|clubhouse|lodge/i;
+      var outdoor = /beach|park|boat|golf|market|festival|parade|fair|tiki|sandbar/i;
+      function isMusic(e) { return !!(e && (e.music || /live|music|band|duo|dj|steel drum|acoustic|karaoke|open mic/i.test((e.sum || "") + " " + (e.where || "")))); }
+      function isIndoor(e) { return !!(e && (indoor.test(e.sum || "") || indoor.test(e.where || ""))); }
+      function isOutdoor(e) { return !!(e && (outdoor.test(e.sum || "") || outdoor.test(e.where || ""))); }
+      var music = later.filter(isMusic).slice().sort(function (a, b) {
+        var ah = evHour(a), bh = evHour(b);
+        if (ah == null && bh == null) return 0;
+        if (ah == null) return 1;
+        if (bh == null) return -1;
+        return ah - bh;
+      });
+      var showMusic = music.length && hrNow >= 14 && hrNow < 22;
+      if (showMusic) {
+        var gig = music[0];
+        var line = "Live music: " + evLabel(gig) + ".";
+        if (nearStorm) line += " I wouldn't plan the night around it with storms this close.";
+        else if (nearPop >= 50) line += " Worth it if you don't mind a shower. Sit covered if you go.";
+        else if (isOutdoor(gig) && maxPop >= 40) line += " Outdoor set, so keep an eye on the sky.";
+        else line += " That's the one I'd actually go hear.";
+        bits.push(line);
+      } else if (music.length && hrNow >= 11 && hrNow < 14) {
+        bits.push("Live music is later, not this hour: " + evLabel(music[0]) + ".");
+      } else if (music.length && hrNow >= 22) {
+        bits.push("Live music on the list already started. Don't start a night out for it now.");
       }
-      var music = later.filter(isMusic);
-      if (hrNow >= 11 && hrNow < 22 && music.length && nearPop < 60 && !nearStorm) {
-        bits.push(whyEvent(music[0], "music"));
-        var backup = later.filter(function (e) { return e !== music[0] && (indoor.test(e.sum || "") || indoor.test(e.where || "")); })[0];
-        if (backup) bits.push(whyEvent(backup, "backup"));
-      } else if (later.length) {
-        var ranked = later.slice().sort(function (a, b) {
-          var as = (indoor.test(a.sum || "") || indoor.test(a.where || "") ? 2 : 0) + (isMusic(a) ? 1 : 0) - (outdoor.test(a.sum || "") && (nearStorm || nearPop >= 50) ? 3 : 0);
-          var bs = (indoor.test(b.sum || "") || indoor.test(b.where || "") ? 2 : 0) + (isMusic(b) ? 1 : 0) - (outdoor.test(b.sum || "") && (nearStorm || nearPop >= 50) ? 3 : 0);
-          return bs - as;
-        });
-        var top = ranked[0];
-        var kind = "soon";
-        if (nearStorm && (outdoor.test(top.sum || "") || outdoor.test(top.where || ""))) kind = "indoor-storm";
-        else if (indoor.test(top.sum || "") || indoor.test(top.where || "")) kind = "indoor";
-        else if (isMusic(top)) kind = "music";
-        bits.push(whyEvent(top, kind));
-      } else if (evs.length) {
-        bits.push("Today's Fun list already ran its course. Tomorrow's on the Entertainment page.");
+
+      if (!showMusic || nearStorm || nearPop >= 50) {
+        var other = later.filter(function (e) { return !isMusic(e); });
+        if (nearStorm || nearPop >= 50) {
+          other = other.filter(isIndoor);
+        }
+        if (other.length) {
+          var next = other[0];
+          if (nearStorm) bits.push("If you still want a plan, keep it inside: " + evLabel(next) + ".");
+          else if (!showMusic) bits.push("On the calendar: " + evLabel(next) + ".");
+        } else if (!showMusic && evs.length && !later.length) {
+          bits.push("Today's Fun list already ran its course. Tomorrow's on the Entertainment page.");
+        }
       }
 
       var flights = ((window.__flightData || {}).flights) || [];
@@ -4782,7 +4781,7 @@ function currentRotation() {
       var html = String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
       var keys = [
         "weather warning","weather watch","Emergency","Lightning","Rip current","Red tide",
-        "Water-quality advisory","Tropical","live music","Best night-out pick","On the calendar","because","I'd pick",
+        "Water-quality advisory","Tropical","Live music","On the calendar","I wouldn't plan","Worth it",
         "Don't swim","Stay in","High near","Overnight","UV is","Tides:",
         "Thunder","thunderstorms","Rain is","mostly dry","golf-cart","golf cart",
         "the beach","The beach","The pool","The boat","Courts","packages","package","Travel"
@@ -5576,6 +5575,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v383 — Header date and time are a step larger.",
+      "v382 — Greeting treats live music as its own call, with weather honesty.",
       "v381 — Heat, radio, and alert chips use a larger type.",
       "v380 — Header clock shows the date above the time.",
       "v379 — Temperature display highlights the choice. Clock can be 12 or 24 hour.",
