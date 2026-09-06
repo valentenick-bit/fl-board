@@ -585,12 +585,16 @@
     }
     header.sky-sun .pausebtn, header.sky-partly .pausebtn, header.sky-cloud .pausebtn { background:rgba(6,16,24,.18); color:#061018; }
     .hdr-wind { display:block; font-size:11px; font-weight:700; letter-spacing:.04em; line-height:1.1; margin-top:2px; opacity:.9; }
-    .clock-bits, .hdr-pills { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:4px; margin-top:4px; }
+    .clock-bits, .hdr-pills { display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin-top:4px; }
+    .clock-pills { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:4px; }
+    .hdr-chip.hdr-alert { align-self:flex-end; }
     .hdr-chip {
       display:none; align-items:center; justify-content:center; border:0; cursor:pointer;
-      box-sizing:border-box; height:22px;
-      font:700 10px/22px inherit; letter-spacing:.08em; text-transform:uppercase;
+      box-sizing:border-box; height:22px; margin:0;
+      font-family:inherit; font-size:10px; font-weight:700; line-height:22px;
+      letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
       padding:0 8px; border-radius:999px; background:rgba(8,16,28,.5); color:#f7f1e6;
+      -webkit-appearance:none; appearance:none;
     }
     .hdr-chip.on { display:inline-flex; }
     .hdr-chip.watch { background:#c4a35a; color:#1b2a4a; }
@@ -598,7 +602,7 @@
     .hdr-chip.radio { display:inline-flex; background:rgba(42,157,143,.9); color:#fff; }
     .hdr-chip.heat { display:none; background:rgba(224,122,95,.92); color:#fff; }
     .hdr-chip.heat.on { display:inline-flex; }
-    #live-heat { font:700 10px/22px inherit; padding:0 8px; height:22px; margin:0; }
+    .hdr-chip.hdr-alert.on { display:inline-flex; }
     .temprow { cursor:pointer; }
     .pausebtn.on { background:#e07a5f; color:#fff; }
     html.dark .pausebtn { background:rgba(34,30,54,.94); color:#f7f1e6; }
@@ -1144,8 +1148,7 @@
     html.dark #radio-status, html.dark #deliv-note, html.dark #ent-count { color:#efe4c8; }
     html.dark .card.music { background:#3a2430; }
     html.dark textarea, html.dark input, html.dark .check label { background:#2a2444; color:#f7f1e6; border-color:#c4a35a; }
-    #live-heat { display:none; }
-    #live-heat.on { display:inline-flex; }
+
     .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
     iframe.lite { width:100%; height:40vh; border:0; border-radius:12px; background:#111; }
 
@@ -1207,9 +1210,11 @@
           <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
         </div>
         <div class="clock-bits" id="hdr-pills">
-          <span class="hdr-chip heat" id="live-heat">Heat</span>
-          <button type="button" class="hdr-chip" id="hdr-alert" hidden></button>
-          <button type="button" class="hdr-chip radio on" id="hdr-radio">Mute</button>
+          <div class="clock-pills">
+            <button type="button" class="hdr-chip heat" id="live-heat">Heat</button>
+            <button type="button" class="hdr-chip radio on" id="hdr-radio">Mute</button>
+          </div>
+          <button type="button" class="hdr-chip hdr-alert" id="hdr-alert" hidden></button>
         </div>
       </div>
     </header>
@@ -2206,7 +2211,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 371;
+    window.BOARD_VER = 373;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3975,7 +3980,7 @@ function currentRotation() {
       if (!el) return;
       if (!keep || !keep.length) { el.hidden = true; el.classList.remove("on","watch","warn"); el.textContent = ""; return; }
       el.hidden = false;
-      el.className = "hdr-chip on " + (isWarn ? "warn" : "watch");
+      el.className = "hdr-chip hdr-alert on " + (isWarn ? "warn" : "watch");
       el.textContent = isWarn ? "Warning" : "Watch";
     }
     function paintSkyHeader() {
@@ -5353,6 +5358,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v373 — Heat, radio, and watch/warning pills share the same type.",
+      "v372 — Watch and warning sit under Heat and Radio.",
       "v371 — Real Feel sits on a dark plate. Heat and radio pills match size.",
       "v370 — Pause sits on the right side of the header next to the clock.",
       "v369 — Heat and radio pills sit under the clock again. Real Feel matches the old header type.",
