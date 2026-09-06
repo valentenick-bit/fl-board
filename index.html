@@ -2403,7 +2403,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 441;
+    window.BOARD_VER = 442;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5884,6 +5884,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v442 — Live flight card: status, ETA, miles left, altitude, speed, heading, tail, map.",
       "v441 — Flights and deliveries keep a fallback when Drive is private.",
       "v440 — Flight card always shows route, map, and tracker links. House page lists the flight.",
       "v439 — Same URL always loads the latest GitHub copy. No more ?v= in the address bar.",
@@ -6601,19 +6602,23 @@ function currentRotation() {
       var st = inferFlyStatus(f, live);
       var tagClass = /delay|cancel|divert/i.test(st) ? "music-tag" : "place-tag place-out";
       if (/on time|arriv|depart|board|in flight|taxi|gate/i.test(st)) tagClass = "place-tag place-bw";
-      var eta = "";
-      if (f.etaMs) eta = "ETA " + fmtClockTime(f.etaMs);
-      var extra = f.liveDetail || "";
-      var book = String(f.status || "");
-      if (/confirm|schedul|booked/i.test(book)) book = "";
+      var eta = f.etaMs ? "ETA " + fmtClockTime(f.etaMs) : "";
+      var bits = [];
+      if (f.liveAlt) bits.push(Math.round(f.liveAlt).toLocaleString() + " ft");
+      if (f.liveGs) bits.push(Math.round(f.liveGs) + " kt");
+      if (f.liveTrack) bits.push(f.liveTrack + "°");
+      if (f.liveReg) bits.push(f.liveReg);
+      if (f.liveType) bits.push(f.liveType);
+      if (!isNaN(f.nmLeft)) bits.push(Math.round(f.nmLeft) + " nm left");
+      if (!isNaN(f.routePct)) bits.push(f.routePct + "% of route");
+      if (!bits.length) bits.push(f.liveKind ? "Live position updating…" : "Looking up live position…");
       var tags = '<span class="place-tag place-out">' + (path || "Flight") + "</span>" +
-        '<span class="' + tagClass + '">' + st + "</span>";
+        '<span class="' + tagClass + '">' + (st || "Live") + "</span>";
       if (eta) tags += '<span class="place-tag place-bw">' + eta + "</span>";
-      if (!isNaN(f.routePct)) tags += '<span class="place-tag place-out">' + f.routePct + "% of route</span>";
       return stampTodayArt(
         '<div class="card">' + tags +
         "<b>" + [who, num, when].filter(Boolean).join(" · ") + "</b>" +
-        "<span>" + [extra, !isNaN(f.nmLeft) ? Math.round(f.nmLeft) + " nm to go" : "", f.detail, f.gate ? "Gate " + f.gate : "", book && book !== st ? book : ""].filter(Boolean).join(" · ") + "</span></div>",
+        "<span>" + bits.join(" · ") + "</span></div>",
         "fly"
       );
     }
@@ -6686,13 +6691,14 @@ function currentRotation() {
       var parsed = parseFlightCode(f);
       var codes = parsed.codes;
       if (!codes.length) return done("");
+      var knownHex = { MXY537: "a25b66", MX537: "a25b66" };
+      var hex = f.liveHex || knownHex[codes[0]] || knownHex[codes[1]] || "";
       var endpoints = [];
       codes.forEach(function (c) {
         var src = "https://api.adsb.lol/v2/callsign/" + c;
-        endpoints.push("/adsb?c=" + encodeURIComponent(c));
-        endpoints.push(src);
+        endpoints.push("/adsb?c=" + encodeURIComponent(c) + (hex ? "&hex=" + hex : ""));
         endpoints.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(src));
-        endpoints.push("https://opendata.adsb.fi/v2/callsign/" + c);
+        if (hex) endpoints.push("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://api.adsb.lol/v2/hex/" + hex));
       });
       function next(i) {
         if (i >= endpoints.length) {
@@ -6744,7 +6750,7 @@ function currentRotation() {
       if (!window.__flyLiveT) {
         window.__flyLiveT = setInterval(function () {
           if (typeof paintTodayFly === "function") paintTodayFly();
-        }, 2 * 60 * 1000);
+        }, 30 * 1000);
       }
     }
     function paintHouseFlights() {
