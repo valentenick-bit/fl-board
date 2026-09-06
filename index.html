@@ -2402,7 +2402,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 434;
+    window.BOARD_VER = 435;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5194,6 +5194,11 @@ function currentRotation() {
     function applySunDark() {
       var mode = getSet().dark || "auto";
       var on = mode === "night" ? true : mode === "day" ? false : sunShouldDark();
+      if (document.documentElement.classList.contains("dark") === on) {
+        var btnSame = document.getElementById("darkbtn");
+        if (btnSame) { btnSame.classList.toggle("on", on); btnSame.textContent = "Dark mode"; }
+        return;
+      }
       document.documentElement.classList.toggle("dark", on);
       try {
         localStorage.setItem("bw-dark", on ? "1" : "0");
@@ -5866,6 +5871,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v435 — Dark mode no longer flips: use today's sunrise, not yesterday's.",
       "v434 — Flight card adds live ETA, route progress, map, and FlightRadar24 link.",
       "v433 — Flight card reads live ADS-B status instead of the booking line.",
       "v432 — Today tile pictures are the same size.",
@@ -9265,8 +9271,16 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&daily=sunrise,sunset,moonrise,moonset&forecast_days=3&past_days=1&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .then(function (d) {
-          var rise = d.daily && d.daily.sunrise && d.daily.sunrise[0];
-          var set = d.daily && d.daily.sunset && d.daily.sunset[0];
+          function todayIdx(daily) {
+            var times = (daily && daily.time) || [];
+            var today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+            var i = times.indexOf(today);
+            if (i >= 0) return i;
+            return times.length > 1 ? 1 : 0;
+          }
+          var idx = todayIdx(d.daily);
+          var rise = d.daily && d.daily.sunrise && d.daily.sunrise[idx];
+          var set = d.daily && d.daily.sunset && d.daily.sunset[idx];
           window.__bwCharts = window.__bwCharts || {};
           window.__bwCharts.moonRises = (d.daily && d.daily.moonrise) || [];
           window.__bwCharts.moonSets = (d.daily && d.daily.moonset) || [];
@@ -9294,7 +9308,14 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var lab = document.getElementById("live-sun-label");
           var watch = document.getElementById("live-sky-watch");
           if (lab && r.sunrise && r.sunset) lab.textContent = hh(r.sunrise) + " to " + hh(r.sunset) + " at the house";
-          window.__bwCharts.rise = r.sunrise; window.__bwCharts.set = r.sunset; window.__bwCharts.dawn = r.civil_twilight_begin; window.__bwCharts.dusk = r.civil_twilight_end;
+          var riseDay = r.sunrise ? new Date(r.sunrise).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : "";
+          var todayEt = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+          if (r.sunrise && r.sunset && riseDay === todayEt) {
+            window.__bwCharts.rise = r.sunrise;
+            window.__bwCharts.set = r.sunset;
+            window.__bwCharts.dawn = r.civil_twilight_begin;
+            window.__bwCharts.dusk = r.civil_twilight_end;
+          }
           applySunDark();
           drawSunChart(r.sunrise, r.sunset);
           drawMoonChart();
