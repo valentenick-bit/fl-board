@@ -1771,12 +1771,22 @@ Cart shop:</textarea>
           </ul>
         </div>
 
+        <div class="card">
+          <b>Layout and type</b>
+          <span class="stamp">Read it on the real glass, not only in the editor.</span>
+          <ul class="check-list">
+            <li>Review the whole board on a phone. Header layout first: title, temps, clock, and palms should not crowd or wrap badly in portrait.</li>
+            <li>Review text size on a phone for menus, cards, tickers, and Settings. Nothing should need a pinch to read at arm’s length.</li>
+            <li>Review text size on the Chromebook. Body, header, dock, and Settings should look settled on that screen, not blown up or tiny.</li>
+          </ul>
+        </div>
+
         </div>
       </section>
 
       <section id="sources" class="page">
         <h2 data-k="Developer">Sources</h2>
-        <p class="pill-key">Where each number is collected. Model points follow the home address. Tide and radar stations are the nearest NOAA / NWS sites.</p>
+        <p class="pill-key">Where each number is collected, grouped. New external feeds belong in this catalog — if Status sees a feed that is missing here, it lands under Also reporting.</p>
         <div id="source-list"></div>
       </section>
       <section id="business" class="page">
@@ -2379,7 +2389,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 419;
+    window.BOARD_VER = 422;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2896,102 +2906,104 @@ Cart shop:</textarea>
     }
     function homeTide() { return getSet().tide || "8725809"; }
     function homeRadar() { return getSet().radar || "KTBW"; }
-    function paintSources() {
-      var box = document.getElementById("source-list");
-      if (!box) return;
-      var s = getSet();
+    window.watchSource = function (row) {
+      if (!row || !row.id) return;
+      window.BOARD_SOURCES = window.BOARD_SOURCES || [];
+      var i = window.BOARD_SOURCES.findIndex(function (s) { return s.id === row.id; });
+      if (i >= 0) window.BOARD_SOURCES[i] = Object.assign({}, window.BOARD_SOURCES[i], row);
+      else window.BOARD_SOURCES.push(row);
+    };
+    function defaultBoardSources() {
+      var s = typeof getSet === "function" ? getSet() : {};
       var lat = (typeof homeLat === "function" ? homeLat() : 26.96).toFixed(4);
       var lon = (typeof homeLon === "function" ? homeLon() : -82.36).toFixed(4);
       var place = typeof homePlace === "function" ? homePlace() : "home";
-      var tide = homeTide();
+      var pin = place + " · " + lat + ", " + lon;
+      var tide = typeof homeTide === "function" ? homeTide() : "8725809";
       var tideName = s.tideName || ({ "8725809": "Englewood, Lemon Bay, FL", "8725520": "Fort Myers, FL", "8725110": "Naples, Gordon River, FL" }[tide] || tide);
-      var radar = homeRadar();
+      var radar = typeof homeRadar === "function" ? homeRadar() : "KTBW";
       var radarName = ({ KTBW: "Tampa NWS, Ruskin, FL", KAMX: "Miami NWS", KMLB: "Melbourne NWS", KJAX: "Jacksonville NWS", KEVX: "Eglin AFB", KTLH: "Tallahassee NWS" }[radar] || radar);
       var wl = s.wlStation || "8725520";
       var wlName = s.wlName || ({ "8725520": "Fort Myers, Caloosahatchee River, FL", "8725809": "Englewood, Lemon Bay, FL" }[wl] || wl);
-      function card(title, source, site) {
-        return '<div class="card"><b>' + title + "</b><span>" + source + "</span><span class=\"stamp\">Collected at: " + site + "</span></div>";
+      var rows = [
+        { id: "wx", group: "Weather", title: "Air, wind, humidity, pressure, UV, rain, hourly, 10-day", source: "Open-Meteo forecast (ECMWF / GFS blend). Not a thermometer on the property.", site: pin, feeds: ["wx", "now-line", "greeting", "wind", "gusts", "humidity", "dew", "pressure", "uv", "hourly", "10-day", "rain-month", "humid-chart", "rain-chart", "pres-chart"] },
+        { id: "aqi", group: "Weather", title: "Air quality", source: "Open-Meteo air-quality API (CAMS / satellite + ground blend).", site: pin, feeds: ["aqi"] },
+        { id: "nws", group: "Weather", title: "NWS forecast text and alerts", source: "api.weather.gov /points, then the local forecast office.", site: "Office " + (s.wfo || "TBW") + " · " + pin, feeds: ["alerts"] },
+        { id: "radar", group: "Weather", title: "Radar loop", source: "NWS RIDGE GIF from radar.weather.gov.", site: radar + " — " + radarName, feeds: ["radar"] },
+        { id: "strikes", group: "Weather", title: "Lightning now", source: "Iowa State IEM local storm reports (last 2 hours), plus NWS forecast thunder.", site: "Within 10 and 25 miles of " + pin, feeds: ["strikes", "lightning", "lightning-prep"] },
+        { id: "bolt-map", group: "Weather", title: "Lightning map", source: "Blitzortung.org live map.", site: "Centered on " + pin, feeds: ["bolt-map"] },
+        { id: "tide", group: "Marine", title: "Tide highs and lows", source: "NOAA CO-OPS tide predictions.", site: "Station " + tide + " — " + tideName, feeds: ["tide", "tide-chart"] },
+        { id: "surge", group: "Marine", title: "Surge / water level vs predicted tide", source: "NOAA CO-OPS observed water level minus the predicted tide.", site: "Station " + wl + " — " + wlName, feeds: ["surge"] },
+        { id: "sst", group: "Marine", title: "Gulf sea-surface temperature", source: "Open-Meteo marine model. Not a single buoy reading.", site: "Marine grid at " + pin, feeds: ["gulf-sst", "sst-chart"] },
+        { id: "inlet", group: "Marine", title: "Inlet / station water temperature", source: "NOAA CO-OPS water_temperature. Home tide gauge, then Naples 8725110, Fort Myers 8725520.", site: "First station that answers near " + place, feeds: ["inlet-temp"] },
+        { id: "venf1", group: "Marine", title: "Venice wind / pressure reference", source: "NDBC C-MAN station VENF1.", site: "VENF1 — Venice, FL coast", feeds: ["venf"], show: /^342/.test(String(s.zip || "")) },
+        { id: "coastal", group: "Marine", title: "Rip current and coastal waters", source: "NWS coastal waters forecast (CWF) from the local WFO.", site: (s.wfo || "TBW") + " coastal waters near " + place, feeds: ["rip", "seas", "small-craft", "coastal"] },
+        { id: "red-tide", group: "Marine", title: "Red tide", source: "Florida FWC statewide Karenia brevis page.", site: "FWC samples along the SW Florida coast, not one dock", feeds: ["red-tide"] },
+        { id: "bacteria", group: "Marine", title: "Beach bacteria", source: "Florida Healthy Beaches / county advisories when the feed answers.", site: "Beaches near " + place, feeds: ["bacteria"] },
+        { id: "fishing", group: "Marine", title: "Fishing bite", source: "Google News RSS for a local fishing report, then Fishin Franks / Florida Sportsman.", site: "SW Florida shops and writers, not a sensor", feeds: ["fishing"] },
+        { id: "sun", group: "Sky", title: "Sun and moon times", source: "Open-Meteo daily sunrise, sunset, moonrise, moonset at the home point.", site: pin, feeds: ["sun-path", "moon-path", "sun-chart", "moon-chart"] },
+        { id: "planets", group: "Sky", title: "Planets / night sky", source: "visibleplanets.dev for the home coordinates.", site: place + " sky at " + pin, feeds: ["tonight", "overnight", "dawn", "stars", "planets"] },
+        { id: "iss", group: "Sky", title: "ISS", source: "wheretheiss.at satellite 25544.", site: "Station overhead relative to " + place, feeds: ["iss"] },
+        { id: "horoscope", group: "Sky", title: "Horoscope", source: "Ohmanda / free horoscope APIs for signs chosen in Settings.", site: "Not local. Entertainment only", feeds: ["horoscope"] },
+        { id: "nhc", group: "Storms", title: "Named storms and NHC discussion", source: "NHC CurrentStorms.json and NHC text products.", site: "National Hurricane Center, Miami, FL", feeds: ["named-storms", "nhc-disc", "storms"] },
+        { id: "goes", group: "Storms", title: "Gulf / Atlantic satellite", source: "NOAA GOES East imagery.", site: "GOES-16, aimed at the Atlantic and Gulf", feeds: ["sat"] },
+        { id: "events", group: "Local", title: "Events", source: "Public Google calendars (BeachWalk, Englewood, Moose) through the Worker /ics route.", site: "Calendar owners, not a venue door", feeds: ["events"] },
+        { id: "deliveries", group: "Local", title: "Deliveries", source: "Gmail scan automation written to deliveries.json on Drive.", site: "Inbox of the account that runs the automation", feeds: ["deliveries"] },
+        { id: "flights", group: "Local", title: "Flights", source: "flights.json from the Fly calendar automation. Live pill from FlightAware / Airportia when those pages answer, else inferred from the scheduled time.", site: "Calendar plus public flight-status pages", feeds: ["flights"] },
+        { id: "power", group: "Local", title: "Power outages", source: "FPL Power Tracker / county totals when the map feed answers.", site: "FPL territory near " + place, feeds: ["power"] },
+        { id: "news", group: "Local", title: "News ticker", source: "National breaking from Fox; local from Google News / WINK for the home place.", site: "Newsrooms, not a sensor at " + place, feeds: ["news"] },
+        { id: "sports", group: "Local", title: "Sports scores", source: "ESPN scoreboard APIs for leagues checked on the Sports page.", site: "League venues that night", feeds: ["sports"] },
+        { id: "traffic", group: "Local", title: "Traffic map", source: "Google Maps embed pinned on the home address.", site: s.address || (place + " pin"), feeds: ["traffic"] },
+        { id: "gator", group: "Local", title: "Alligator headlines", source: "Google News search when the zip is in alligator range.", site: "Regional headlines near " + place, feeds: ["gator"] },
+        { id: "house", group: "House", title: "Occupancy, vendors, villa checks", source: "house.json on Drive / GitHub when shared. Otherwise this browser only.", site: "Household file, not an HOA feed", feeds: ["house"] },
+        { id: "radio", group: "House", title: "Radio and scanners", source: "Station streams and Broadcastify / NOAA weather radio for the home WFO.", site: "Towers that serve " + place, feeds: ["radio"] }
+      ];
+      return rows;
+    }
+    function paintSources() {
+      var box = document.getElementById("source-list");
+      if (!box) return;
+      var catalog = defaultBoardSources();
+      (window.BOARD_SOURCES || []).forEach(function (row) {
+        if (!row || !row.id) return;
+        var i = catalog.findIndex(function (s) { return s.id === row.id; });
+        if (i >= 0) catalog[i] = Object.assign({}, catalog[i], row);
+        else catalog.push(row);
+      });
+      var knownFeeds = {};
+      catalog.forEach(function (row) {
+        (row.feeds || [row.id]).forEach(function (k) { knownFeeds[k] = 1; });
+      });
+      var extra = [];
+      Object.keys(window.__feeds || {}).sort().forEach(function (k) {
+        if (knownFeeds[k]) return;
+        if (/^wx \/|^marine \/|^sky \/|refresh|settle|sources|guide|ideas|dev-dock|chip-|bolt-rot|cane-rot|pills|welcome|settings|header|js-ready|rotation|tick-/.test(k)) return;
+        extra.push(k);
+      });
+      if (extra.length) {
+        catalog.push({
+          id: "unlisted",
+          group: "Also reporting",
+          title: "Feeds not in the catalog yet",
+          source: "A new tile called noteFeed but nobody added watchSource. Add it to defaultBoardSources or call watchSource({id, group, title, source, site}).",
+          site: extra.join(" · ")
+        });
       }
-      box.innerHTML =
-        card("Air temperature, feels like, humidity, dew, pressure, wind, gusts, UV, hourly, 10-day, rain",
-          "Open-Meteo forecast model (ECMWF / GFS blend). Not a thermometer on the property.",
-          place + " grid point " + lat + ", " + lon) +
-        card("Air quality",
-          "Open-Meteo air-quality API (CAMS / satellite + ground blend).",
-          place + " grid point " + lat + ", " + lon) +
-        card("NWS forecast text and alerts",
-          "api.weather.gov /points then the local forecast office.",
-          "Office " + (s.wfo || "TBW") + " · point " + lat + ", " + lon) +
-        card("Radar loop",
-          "NWS RIDGE GIF from radar.weather.gov.",
-          radar + " — " + radarName) +
-        card("Tide highs and lows",
-          "NOAA CO-OPS tide predictions.",
-          "Station " + tide + " — " + tideName) +
-        card("Surge / water level vs predicted tide",
-          "NOAA CO-OPS observed water level minus the predicted tide.",
-          "Station " + wl + " — " + wlName) +
-        card("Gulf sea-surface temperature",
-          "Open-Meteo marine model. Not a single buoy reading.",
-          "Marine grid at " + lat + ", " + lon + " (Gulf side of " + place + ")") +
-        card("Inlet / station water temperature",
-          "NOAA CO-OPS water_temperature. Tries the home tide gauge, then Naples 8725110, Fort Myers 8725520.",
-          "First station that answers near " + place) +
-        (/^342/.test(String(s.zip || "")) ? card("Venice wind / pressure reference",
-          "NDBC C-MAN station VENF1, linked on Marine when the home zip is 342xx.",
-          "VENF1 — Venice, FL coast") : "") +
-        card("Rip current and coastal waters",
-          "NWS coastal waters forecast (CWF) from the local WFO.",
-          (s.wfo || "TBW") + " coastal waters near " + place) +
-        card("Red tide",
-          "Florida FWC statewide Karenia brevis page.",
-          "FWC samples along the SW Florida coast, not one dock") +
-        card("Lightning now",
-          "Iowa State IEM local storm reports (last 2 hours), plus NWS forecast thunder.",
-          "Reports within 10 and 25 miles of " + lat + ", " + lon) +
-        card("Lightning map",
-          "Blitzortung.org live map.",
-          "Centered on " + lat + ", " + lon) +
-        card("Named storms and NHC discussion",
-          "NHC CurrentStorms.json and NHC text products.",
-          "National Hurricane Center, Miami, FL") +
-        card("Gulf / Atlantic satellite",
-          "NOAA GOES East imagery.",
-          "GOES-16, 22,300 miles above the equator, aimed at the Atlantic and Gulf") +
-        card("Sun and moon times",
-          "Open-Meteo daily sunrise/sunset at the home point.",
-          place + " " + lat + ", " + lon) +
-        card("Planets / night sky",
-          "visibleplanets.dev for the home coordinates.",
-          place + " sky at " + lat + ", " + lon) +
-        card("ISS",
-          "wheretheiss.at satellite 25544.",
-          "International Space Station overhead relative to " + place) +
-        card("Horoscope",
-          "Ohmanda / free horoscope APIs for signs chosen in Settings.",
-          "Not local. Entertainment only") +
-        card("Fishing bite",
-          "Google News RSS for a local fishing report, then Fishin Franks / Florida Sportsman links.",
-          "SW Florida shops and writers, not a sensor") +
-        card("Events",
-          "Public Google calendars (BeachWalk, Englewood, Moose).",
-          "Calendar owners. Not scraped from a venue door") +
-        card("Deliveries",
-          "Gmail scan automation written to deliveries.json on Drive.",
-          "Inbox of the account that runs the automation") +
-        card("Power outages",
-          "FPL Power Tracker / county totals when the map feed answers.",
-          "FPL service territory — Charlotte and Sarasota counties for this pilot") +
-        card("News ticker",
-          "National breaking from Fox; local from Google News / WINK search for the home place.",
-          "Newsrooms, not a sensor at " + place) +
-        card("Sports scores",
-          "ESPN scoreboard APIs for leagues checked on the Sports page.",
-          "League venues that night") +
-        card("Traffic map",
-          "Google Maps embed pinned on the home address.",
-          s.address || (place + " pin"));
-      if (typeof noteFeed === "function") noteFeed("sources", true, "source list");
+      var order = ["Weather", "Marine", "Sky", "Storms", "Local", "House", "Also reporting"];
+      function card(row) {
+        return '<div class="card" data-src="' + row.id + '"><b>' + row.title + "</b><span>" + row.source + "</span><span class=\"stamp\">Collected at: " + row.site + "</span></div>";
+      }
+      var html = "";
+      order.forEach(function (g) {
+        var rows = catalog.filter(function (r) { return r.group === g && r.show !== false; });
+        if (!rows.length) return;
+        html += "<h3 class=\"ent-h\">" + g + "</h3>" + rows.map(card).join("");
+      });
+      catalog.filter(function (r) { return order.indexOf(r.group) < 0 && r.show !== false; }).forEach(function (r) {
+        html += card(r);
+      });
+      box.innerHTML = html;
+      if (typeof noteFeed === "function") noteFeed("sources", true, catalog.filter(function (r) { return r.show !== false; }).length + " sources");
       if (typeof paintPageRefs === "function") paintPageRefs();
     }
     function paintPageRefs() {
@@ -4937,7 +4949,7 @@ function currentRotation() {
         var tm0 = typeof flightWhenMs === "function" ? flightWhenMs(f0) : NaN;
         var when0 = !isNaN(tm0) ? fmtClockTime(tm0) : (f0.when || "");
         var path0 = (f0.from && f0.to) ? (f0.from + " to " + f0.to) : "";
-        var st0 = flyStatusLabel(f0.liveStatus || f0.status);
+        var st0 = inferFlyStatus(f0, f0.liveStatus || f0.status);
         var flyBits = [f0.who, f0.flight, path0, when0, st0 !== "Checking status" ? st0 : ""].filter(Boolean).join(" ");
         if (soonFly.length === 1) bits.push("Flight in the next day: " + flyBits + ".");
         else bits.push("Flights in the next day: " + flyBits + ", plus " + (soonFly.length - 1) + " more.");
@@ -5758,6 +5770,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v422 — Flight pill is On time, Delayed, Departed, or Arrived from live status or the clock.",
+      "v421 — Ideas: review mobile header and type, and Chromebook text size.",
+      "v420 — Sources is a grouped catalog. New feeds that are not listed show under Also reporting.",
       "v419 — Ideas page dropped work that already shipped.",
       "v418 — Quiet-hour start and end times sit on the right of the Settings row.",
       "v417 — Flight tile background is sand and teal wash so it matches the other Today pictures.",
@@ -6375,13 +6390,28 @@ function currentRotation() {
       var s = String(raw || "").toLowerCase();
       if (/cancel/.test(s)) return "Cancelled";
       if (/divert/.test(s)) return "Diverted";
-      if (/landed late|delayed|delay|late/.test(s) && !/landed on time/.test(s)) return "Delayed";
-      if (/landed/.test(s)) return "Landed";
-      if (/en ?route|airborne|in flight|departed/.test(s)) return "In the air";
-      if (/on[- ]time/.test(s)) return "On time";
-      if (/scheduled|confirmed|booked/.test(s)) return "Scheduled";
-      if (s) return String(raw).replace(/\s+/g, " ").trim();
-      return "Checking status";
+      if (/landed late|delayed|delay|\blate\b/.test(s) && !/on[- ]time/.test(s)) return "Delayed";
+      if (/arriv|landed/.test(s)) return "Arrived";
+      if (/taxi|gate closed|boarding/.test(s)) return "Boarding";
+      if (/depart|took off|en ?route|airborne|in flight|in the air|in-air/.test(s)) return "Departed";
+      if (/on[- ]time|early/.test(s)) return "On time";
+      return "";
+    }
+    function inferFlyStatus(f, live) {
+      var labeled = flyStatusLabel(live || (f && (f.liveStatus || f.status)));
+      if (labeled) return labeled;
+      var dep = typeof flightWhenMs === "function" ? flightWhenMs(f) : NaN;
+      var arr = NaN;
+      if (f && f.arriveMs) arr = Number(f.arriveMs);
+      else if (f && f.arriveIso) arr = Date.parse(f.arriveIso);
+      var now = Date.now();
+      if (!isNaN(arr) && now >= arr + 8 * 60000) return "Arrived";
+      if (isNaN(dep)) return "On time";
+      if (now < dep - 2 * 60000) return "On time";
+      if (!isNaN(arr) && now >= dep && now < arr) return "Departed";
+      if (now < dep + 20 * 60000) return "On time";
+      if (now < dep + 4.5 * 3600000) return "Departed";
+      return "Arrived";
     }
     function paintOneFlight(f, live) {
       var who = f.who || "";
@@ -6390,9 +6420,9 @@ function currentRotation() {
       var when = f.when || "";
       var tm = flightWhenMs(f);
       if (!isNaN(tm)) when = fmtClockDate(tm) + " · " + fmtClockTime(tm);
-      var st = flyStatusLabel(live || f.status || f.liveStatus);
+      var st = inferFlyStatus(f, live);
       var tagClass = /delay|cancel|divert/i.test(st) ? "music-tag" : "place-tag place-out";
-      if (/on time|landed|in the air/i.test(st)) tagClass = "place-tag place-bw";
+      if (/on time|arriv|depart|board/i.test(st)) tagClass = "place-tag place-bw";
       return stampTodayArt(
         '<div class="card"><span class="place-tag place-out">' + (path || "Flight") + "</span>" +
         '<span class="' + tagClass + '">' + st + "</span>" +
@@ -6405,15 +6435,16 @@ function currentRotation() {
       var code = String(f.flight || "").replace(/\s+/g, "").toLowerCase();
       if (!code) return done("");
       var pages = [
+        "https://flightaware.com/live/flight/" + code.toUpperCase(),
         "https://www.airportia.com/flights/" + code + "/",
-        "https://www.flightradar24.com/data/flights/" + code
+        "https://www.google.com/search?q=" + encodeURIComponent((f.flight || code) + " flight status")
       ];
       function next(i) {
         if (i >= pages.length) return done("");
         var url = "https://api.allorigins.win/raw?url=" + encodeURIComponent(pages[i]);
         fetch(url).then(function (r) { return r.text(); }).then(function (html) {
-          var m = String(html || "").match(/Landed On Time|Landed Late|On Time|Delayed|Cancelled|Diverted|Scheduled|In Air|En Route|Landed/i);
-          if (m) done(m[0]);
+          var m = String(html || "").match(/Landed On Time|Landed Late|Arrived|Departed|Took Off|On Time|Delayed|Cancelled|Diverted|In Air|En Route|Landed|Taxiing|Boarding/i);
+          if (m && !/^scheduled$/i.test(m[0])) done(m[0]);
           else next(i + 1);
         }).catch(function () { next(i + 1); });
       }
