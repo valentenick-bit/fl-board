@@ -2402,7 +2402,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 436;
+    window.BOARD_VER = 437;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2496,7 +2496,7 @@ Cart shop:</textarea>
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|\/adsb\?|adsb\.lol|adsb\.fi|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
           return r;
@@ -5883,6 +5883,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v437 — Flight live track goes through the worker. House flights page paints again.",
       "v436 — Status report flags dark-mode vs daylight mismatches.",
       "v435 — Dark mode no longer flips: use today's sunrise, not yesterday's.",
       "v434 — Flight card adds live ETA, route progress, map, and FlightRadar24 link.",
@@ -6674,14 +6675,19 @@ function currentRotation() {
       if (!codes.length) return done("");
       var endpoints = [];
       codes.forEach(function (c) {
+        endpoints.push("/adsb?c=" + encodeURIComponent(c));
         endpoints.push("https://api.adsb.lol/v2/callsign/" + c);
         endpoints.push("https://opendata.adsb.fi/v2/callsign/" + c);
       });
       function next(i) {
-        if (i >= endpoints.length) return done(f.liveKind || "");
+        if (i >= endpoints.length) {
+          if (typeof noteFeed === "function") noteFeed("fly-live", false, "ADS-B blocked for " + codes[0]);
+          return done(f.liveKind || "");
+        }
         fetch(endpoints[i]).then(function (r) { return r.json(); }).then(function (d) {
           var ac = d && (d.ac && d.ac[0] || (Array.isArray(d) && d[0]));
           if (ac && (ac.hex || ac.flight || ac.lat)) {
+            if (typeof noteFeed === "function") noteFeed("fly-live", true, (ac.flight || codes[0]) + " · live");
             done(applyLivePlane(f, ac));
           } else next(i + 1);
         }).catch(function () { next(i + 1); });
@@ -6727,7 +6733,6 @@ function currentRotation() {
       }
     }
     function paintHouseFlights() {
-      return;
       var el = document.getElementById("live-flights");
       var nextEl = document.getElementById("cal-flight");
       var flyEl = document.getElementById("cal-fly");
