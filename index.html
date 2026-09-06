@@ -1537,6 +1537,7 @@
           </div>
         </div>
         <div class="card"><b id="house-occ">Occupied</b><span id="house-seen">Last seen —</span></div>
+        <div class="card"><b>Flights</b><div id="live-flights">Loading the flight scan…</div></div>
         <div class="card"><b>AC filter</b><span id="ac-filter-note">Set the date you last changed it. Reminder is 90 days.</span><input type="date" id="ac-filter-date" /></div>
         <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
         <div class="card"><b>Vendors</b>
@@ -2402,7 +2403,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 439;
+    window.BOARD_VER = 440;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5883,6 +5884,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v440 — Flight card always shows route, map, and tracker links. House page lists the flight.",
       "v439 — Same URL always loads the latest GitHub copy. No more ?v= in the address bar.",
       "v438 — Deliveries reads the current Drive file and includes today's Amazon Pharmacy drop.",
       "v437 — Flight live track goes through the worker. House flights page paints again.",
@@ -6649,24 +6651,32 @@ function currentRotation() {
       f.liveDetail = bits.slice(3).join(" · ") || "Seen on the ground";
       return "At gate";
     }
+    var APT_NAME = { RSW:"Southwest Florida", BDL:"Bradley", BOS:"Boston", MCO:"Orlando", TPA:"Tampa", SRQ:"Sarasota", PGD:"Punta Gorda", MIA:"Miami", FLL:"Fort Lauderdale", ATL:"Atlanta", JFK:"JFK", LGA:"LaGuardia", EWR:"Newark" };
     function paintFlyTrack(f) {
       var box = document.getElementById("today-fly-track");
       if (!box) return;
-      if (!f || !f.liveLat) { box.hidden = true; box.innerHTML = ""; return; }
-      var lat = f.liveLat, lon = f.liveLon;
-      var pad = 2.4;
+      if (!f) { box.hidden = true; box.innerHTML = ""; return; }
+      var dest = aptLL(f.to);
+      var orig = aptLL(f.from);
+      var lat = f.liveLat || (dest && dest[0]) || (orig && orig[0]);
+      var lon = f.liveLon || (dest && dest[1]) || (orig && orig[1]);
+      if (!lat || !lon) { box.hidden = true; box.innerHTML = ""; return; }
+      var pad = f.liveLat ? 2.4 : 4.2;
       var bbox = [lon - pad, lat - pad, lon + pad, lat + pad].join("%2C");
       var osm = "https://www.openstreetmap.org/export/embed.html?bbox=" + bbox + "&layer=mapnik&marker=" + lat + "%2C" + lon;
       var code = (parseFlightCode(f).codes[0] || String(f.flight || "").replace(/\s+/g, "")).toUpperCase();
       var fr = "https://www.flightradar24.com/" + code;
       var fa = "https://www.flightaware.com/live/flight/" + code;
+      var fromName = APT_NAME[String(f.from || "").toUpperCase()] || f.from || "";
+      var toName = APT_NAME[String(f.to || "").toUpperCase()] || f.to || "";
       box.hidden = false;
       box.innerHTML =
-        '<iframe title="Live flight map" src="' + osm + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>' +
+        '<iframe title="Flight map" src="' + osm + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>' +
         '<div class="fly-meta">' +
+          (fromName && toName ? "<span>" + fromName + " → " + toName + "</span>" : "") +
           (f.etaMs ? "<span>ETA " + fmtClockTime(f.etaMs) + "</span>" : "") +
           (!isNaN(f.nmLeft) ? "<span>" + Math.round(f.nmLeft) + " nm remaining</span>" : "") +
-          (f.liveReg ? "<span>" + f.liveReg + (f.liveType ? " · " + f.liveType : "") + "</span>" : "") +
+          (f.liveReg ? "<span>" + f.liveReg + (f.liveType ? " · " + f.liveType : "") + "</span>" : "<span>" + (f.liveKind || inferFlyStatus(f) || "Scheduled") + "</span>") +
           '<a href="' + fr + '" target="_blank" rel="noopener">FlightRadar24</a>' +
           '<a href="' + fa + '" target="_blank" rel="noopener">FlightAware</a>' +
         "</div>";
@@ -6677,8 +6687,10 @@ function currentRotation() {
       if (!codes.length) return done("");
       var endpoints = [];
       codes.forEach(function (c) {
+        var src = "https://api.adsb.lol/v2/callsign/" + c;
         endpoints.push("/adsb?c=" + encodeURIComponent(c));
-        endpoints.push("https://api.adsb.lol/v2/callsign/" + c);
+        endpoints.push(src);
+        endpoints.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(src));
         endpoints.push("https://opendata.adsb.fi/v2/callsign/" + c);
       });
       function next(i) {
@@ -7132,7 +7144,7 @@ function currentRotation() {
     })();
     (function loadFlights() {
       var el = document.getElementById("live-flights");
-      var FLIGHT_ID = "11n-b4ZRelqtGhqsswBuNDOqVQlNgZ2_R";
+      var FLIGHT_ID = "19TGlPZR7yD9uiuWu-foeulHGoRZpp1qr";
       var driveF = "https://drive.usercontent.google.com/download?id=" + FLIGHT_ID + "&export=download&confirm=t";
       var urls = [
         "/flights.json",
