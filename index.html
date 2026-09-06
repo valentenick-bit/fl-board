@@ -36,7 +36,7 @@
         });
         ["ticktext","alerttext","breaktext"].forEach(function (id) {
           var el = document.getElementById(id);
-          if (el && typeof spinEl === "function") spinEl(el, 112, true);
+          if (el && typeof spinEl === "function") spinEl(el, tickSpeedPx(), true);
         });
         if (typeof writeBriefing === "function") writeBriefing();
       } catch (e) {}
@@ -1893,6 +1893,57 @@ Cart shop:</textarea>
             <button type="button" data-v="24">24 hour</button>
           </div>
         </div>
+        <div class="set-line"><label>Date format</label>
+          <div class="set-row" id="set-datefmt">
+            <button type="button" data-v="us">Sat, Sep 5</button>
+            <button type="button" data-v="intl">Sat 5 Sep</button>
+            <button type="button" data-v="long">5 September 2026</button>
+            <button type="button" data-v="iso">2026-09-05</button>
+            <button type="button" data-v="num-us">9/5/2026</button>
+            <button type="button" data-v="num-intl">5/9/2026</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Units</label>
+          <div class="set-row" id="set-units">
+            <button type="button" data-v="F">°F</button>
+            <button type="button" data-v="C">°C</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Greeting</label>
+          <div class="set-row" id="set-greettone">
+            <button type="button" data-v="full">Full</button>
+            <button type="button" data-v="short">Short</button>
+            <button type="button" data-v="off">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Ticker speed</label>
+          <div class="set-row" id="set-tickspeed">
+            <button type="button" data-v="slow">Slow</button>
+            <button type="button" data-v="normal">Normal</button>
+            <button type="button" data-v="fast">Fast</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Language</label>
+          <select id="set-lang" style="max-width:220px"></select>
+        </div>
+        <p class="hint">Dates, times, and numbers follow the language. Board wording stays English for now. Time zone follows this device.</p>
+        <div class="set-line"><label>Event radius</label>
+          <div class="set-row" id="set-eventmiles">
+            <button type="button" data-v="5">5 mi</button>
+            <button type="button" data-v="15">15 mi</button>
+            <button type="button" data-v="30">30 mi</button>
+            <button type="button" data-v="50">50 mi</button>
+          </div>
+        </div>
+        <p class="hint">5 miles is BeachWalk only. 15 and up include Englewood listings.</p>
+        <div class="set-line"><label>Sports radius</label>
+          <div class="set-row" id="set-sportmiles">
+            <button type="button" data-v="50">50 mi</button>
+            <button type="button" data-v="150">150 mi</button>
+            <button type="button" data-v="300">300 mi</button>
+          </div>
+        </div>
+        <p class="hint">Used when picking nearby teams. Already-checked teams stay until you change them.</p>
         <p class="hint">Today and Cam stay a little longer than the other pages.</p>
       </div>
       <div class="set-card">
@@ -2251,7 +2302,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 383;
+    window.BOARD_VER = 384;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2457,7 +2508,7 @@ Cart shop:</textarea>
       brief: "1", briefWx: "1", briefSports: "1", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
-      horo: "gemini,aquarius", hdrWx: "feels", clock: "12"
+      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "15", sportMiles: "150", lang: "device"
     };
     function getSet() {
       var s = {};
@@ -2470,6 +2521,46 @@ Cart shop:</textarea>
         else s[k] = String(v == null ? SET_DEFAULTS[k] : v);
       });
       return s;
+    }
+    function boardLocale() {
+      var lang = (typeof getSet === "function" ? getSet().lang : "device") || "device";
+      if (lang && lang !== "device") return lang;
+      return (navigator.language || "en-US");
+    }
+    function boardTZ() {
+      try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York"; } catch (e) { return "America/New_York"; }
+    }
+    function use12h() { return String((typeof getSet === "function" ? getSet().clock : "12") || "12") !== "24"; }
+    function useC() { return String((typeof getSet === "function" ? getSet().units : "F") || "F") === "C"; }
+    function fmtTempN(f) {
+      if (f == null || isNaN(Number(f))) return null;
+      return useC() ? Math.round((Number(f) - 32) * 5 / 9) : Math.round(Number(f));
+    }
+    function fmtTemp(f) {
+      var n = fmtTempN(f);
+      return n == null ? "—" : n + "°";
+    }
+    function tickSpeedPx() {
+      var v = (typeof getSet === "function" ? getSet().tickSpeed : "normal") || "normal";
+      return v === "slow" ? 70 : v === "fast" ? 168 : 112;
+    }
+    function fmtClockTime(d) {
+      return new Date(d).toLocaleTimeString(boardLocale(), { hour: use12h() ? "numeric" : "2-digit", minute: "2-digit", hour12: use12h(), timeZone: boardTZ() });
+    }
+    function fmtClockDate(d) {
+      var kind = (typeof getSet === "function" ? getSet().dateFmt : "us") || "us";
+      var x = new Date(d);
+      var loc = boardLocale();
+      var tz = boardTZ();
+      if (kind === "iso") return x.toLocaleDateString("en-CA", { timeZone: tz });
+      if (kind === "num-us") return x.toLocaleDateString("en-US", { timeZone: tz });
+      if (kind === "num-intl") return x.toLocaleDateString("en-GB", { timeZone: tz });
+      if (kind === "long") return x.toLocaleDateString(loc, { day: "numeric", month: "long", year: "numeric", timeZone: tz });
+      if (kind === "intl") return x.toLocaleDateString(loc, { weekday: "short", day: "numeric", month: "short", timeZone: tz });
+      return x.toLocaleDateString(loc, { weekday: "short", month: "short", day: "numeric", timeZone: tz });
+    }
+    function hourNowBoard() {
+      return parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: boardTZ() }), 10);
     }
     var ZODIAC = ["aries","taurus","gemini","cancer","leo","virgo","libra","scorpio","sagittarius","capricorn","aquarius","pisces"];
     function horoSigns() {
@@ -4149,8 +4240,8 @@ function currentRotation() {
       var now = new Date();
       var dateEl = document.getElementById("when-date");
       var timeEl = document.getElementById("when-time");
-      var dateTxt = now.toLocaleString("en-US", { weekday:"short", month:"short", day:"numeric", timeZone:"America/New_York" });
-      var timeTxt = now.toLocaleString("en-US", { hour:twelve?"numeric":"2-digit", minute:"2-digit", hour12:twelve, timeZone:"America/New_York" });
+      var dateTxt = fmtClockDate(now);
+      var timeTxt = fmtClockTime(now);
       if (dateEl && timeEl) {
         dateEl.textContent = dateTxt;
         timeEl.textContent = timeTxt;
@@ -4492,6 +4583,7 @@ function currentRotation() {
       return null;
     }
     function clockLabel(hr) {
+      if (!use12h()) return (hr < 10 ? "0" : "") + hr + ":00";
       var am = hr >= 12 ? "p.m." : "a.m.";
       var h12 = hr % 12; if (!h12) h12 = 12;
       return h12 + " " + am;
@@ -4603,8 +4695,8 @@ function currentRotation() {
       var bits = [];
       var now = "";
       if (wx.temp != null) {
-        now = "It's " + wx.temp + "°";
-        if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) now += " that feels like " + wx.feel + "°";
+        now = "It's " + fmtTemp(wx.temp);
+        if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) now += " that feels like " + fmtTemp(wx.feel);
         now += " under " + word;
       } else now = "It's " + word + " out";
       var windTxt = feedTxt("live-wind");
@@ -4696,18 +4788,16 @@ function currentRotation() {
         return e && e.when && typeof isTodayET === "function" && isTodayET(e.when);
       });
       function evHour(e) {
-        var s = String(e.when || "");
-        var m = s.match(/(\d{1,2})(?::(\d{2}))?\s*(a|p)/i);
-        if (!m) return null;
-        var h = parseInt(m[1], 10) % 12;
-        if (/p/i.test(m[3])) h += 12;
-        if (/a/i.test(m[3]) && parseInt(m[1], 10) === 12) h = 0;
-        return h;
+        var raw = e && e.when;
+        var d = raw instanceof Date ? raw : new Date(raw);
+        if (!raw || isNaN(d.getTime())) return null;
+        return parseInt(d.toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: boardTZ() }), 10);
       }
       function evLabel(e) {
         var name = String((e && e.sum) || "an event").replace(/\s+/g, " ").trim();
-        var loc = e && e.where ? " at " + e.where : "";
-        var when = e && e.when ? ", " + e.when : "";
+        var loc = e && (e.where || e.loc) ? " at " + String(e.where || e.loc).split(",")[0].trim() : "";
+        var when = "";
+        if (e && e.when && !e.allDay) when = " at " + fmtClockTime(e.when);
         return name + loc + when;
       }
       var later = evs.filter(function (e) {
@@ -4773,6 +4863,12 @@ function currentRotation() {
       if (hrNow >= 19) bits.push("That's the useful part of tonight. Radar is there if the sky changes.");
       else if (hrNow < 8) bits.push("Give it another hour after sunrise before you decide the whole day.");
 
+      var tone = (typeof getSet === "function" ? getSet().greetTone : "full") || "full";
+      if (tone === "off") {
+        bits = [bits[0] || ("Good evening in " + place + ".")];
+      } else if (tone === "short") {
+        bits = bits.slice(0, 2);
+      }
       var plain = bits.join(" ").replace(/\s+/g, " ").trim();
       window.__bestWindow = plain;
       el.innerHTML = boldGreeting(plain);
@@ -5575,6 +5671,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v384 — Settings: units, greeting length, ticker speed, date format, language, event and sports radius. Event times follow the clock setting.",
       "v383 — Header date and time are a step larger.",
       "v382 — Greeting treats live music as its own call, with weather honesty.",
       "v381 — Heat, radio, and alert chips use a larger type.",
@@ -6227,9 +6324,7 @@ function currentRotation() {
       }
       window.entCardHtml = function (e) {
         var allDay = !!e.allDay || (e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
-        var d = e.when.toLocaleString("en-US", allDay
-          ? { weekday:"short", month:"short", day:"numeric", timeZone:"America/New_York" }
-          : { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" });
+        var d = allDay ? fmtClockDate(e.when) : (fmtClockDate(e.when) + " · " + fmtClockTime(e.when));
         var live = e.live || isLiveMusic(e.sum, e.loc, e.desc);
         var place = e.inside ? "BeachWalk" : "Englewood";
         if (!e.inside) {
@@ -6253,7 +6348,9 @@ function currentRotation() {
         if (cached.eng) bag.eng = cached.eng.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = false; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
       } catch (e) {}
       function paint() {
-        var merged = bag.bw.concat(bag.eng).filter(function (e) {
+        var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 15);
+        var area = miles >= 15 ? bag.eng : [];
+        var merged = bag.bw.concat(area).filter(function (e) {
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
@@ -6890,6 +6987,33 @@ function currentRotation() {
         mark("set-rot", String(s.rotate));
         mark("set-hdrwx", s.hdrWx || "feels");
         mark("set-clock", s.clock || "12");
+        mark("set-datefmt", s.dateFmt || "us");
+        mark("set-units", s.units || "F");
+        mark("set-greettone", s.greetTone || "full");
+        mark("set-tickspeed", s.tickSpeed || "normal");
+        mark("set-eventmiles", String(s.eventMiles || "15"));
+        mark("set-sportmiles", String(s.sportMiles || "150"));
+        (function fillLang() {
+          var sel = document.getElementById("set-lang");
+          if (!sel) return;
+          if (!sel.options.length) {
+            var op0 = document.createElement("option");
+            op0.value = "device"; op0.textContent = "Device language";
+            sel.appendChild(op0);
+            var codes = [];
+            try { if (Intl.supportedValuesOf) codes = Intl.supportedValuesOf("language"); } catch (eL) {}
+            if (!codes.length) codes = ["en","es","fr","de","it","pt","nl","pl","sv","da","fi","no","cs","hu","ro","el","tr","ru","uk","ar","he","hi","th","vi","id","ms","ja","ko","zh","zh-Hant"];
+            var dn;
+            try { dn = new Intl.DisplayNames(["en"], { type: "language" }); } catch (eD) { dn = null; }
+            codes.forEach(function (c) {
+              var op = document.createElement("option");
+              op.value = c;
+              op.textContent = (dn && dn.of(c)) ? (dn.of(c) + " (" + c + ")") : c;
+              sel.appendChild(op);
+            });
+          }
+          sel.value = s.lang || "device";
+        })();
         mark("set-vol", s.vol);
         mark("set-noaa", s.noaa);
         mark("set-radioauto", s.radioauto);
@@ -6924,6 +7048,7 @@ function currentRotation() {
       }
       function applySkin() {
         var s = getSet();
+        document.documentElement.lang = (s.lang && s.lang !== "device") ? s.lang : (navigator.language || "en");
         document.documentElement.classList.toggle("text-lg", s.text === "large");
         var brief = document.querySelector(".ticker");
         if (brief) brief.style.display = s.brief === "0" ? "none" : "";
@@ -6997,6 +7122,14 @@ function currentRotation() {
         if (typeof window.loadHoros === "function") window.loadHoros();
         else paintHoroCards();
       });
+      var langSel = document.getElementById("set-lang");
+      if (langSel) langSel.addEventListener("change", function () {
+        putSet({ lang: langSel.value || "device" });
+        document.documentElement.lang = (langSel.value && langSel.value !== "device") ? langSel.value : (navigator.language || "en");
+        if (typeof clock === "function") clock();
+        if (typeof writeGreetingCard === "function") writeGreetingCard();
+        if (typeof paintToday === "function") paintToday();
+      });
       tap("set-dark", "dark");
       var linksTog = document.getElementById("kiosk-links");
       if (linksTog) linksTog.addEventListener("change", function () {
@@ -7034,7 +7167,18 @@ function currentRotation() {
       tap("set-tap", "tap", function () { if (typeof applyA11y === "function") applyA11y(); });
       tap("set-rot", "rotate");
       tap("set-hdrwx", "hdrWx", function () { if (typeof applyHdrWx === "function") applyHdrWx(); });
-      tap("set-clock", "clock", function () { if (typeof clock === "function") clock(); });
+      tap("set-clock", "clock", function () { if (typeof clock === "function") clock(); if (typeof writeGreetingCard === "function") writeGreetingCard(); if (typeof paintToday === "function") paintToday(); });
+      tap("set-datefmt", "dateFmt", function () { if (typeof clock === "function") clock(); if (typeof paintToday === "function") paintToday(); });
+      tap("set-units", "units", function () { if (typeof loadWx === "function") loadWx(); else location.reload(); });
+      tap("set-greettone", "greetTone", function () { if (typeof writeGreetingCard === "function") writeGreetingCard(); });
+      tap("set-tickspeed", "tickSpeed", function () {
+        ["ticktext","alerttext","breaktext"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && typeof spinEl === "function") spinEl(el, tickSpeedPx(), true);
+        });
+      });
+      tap("set-eventmiles", "eventMiles", function () { if (typeof paintToday === "function") paintToday(); });
+      tap("set-sportmiles", "sportMiles", function () { if (typeof paintSportsPage === "function") paintSportsPage(); });
       tap("set-vol", "vol");
       tap("set-noaa", "noaa");
       tap("set-radioauto", "radioauto");
@@ -9264,8 +9408,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var windEl = document.getElementById("live-wind");
       var gustEl = document.getElementById("live-gusts");
       var uvEl = document.getElementById("live-uv");
-      if (tempEl && tempF != null) { tempEl.innerHTML = tempF + "&deg;"; if (typeof paintTemp === "function") paintTemp(tempEl, tempF); }
-      if (feelEl && feelF != null) { feelEl.innerHTML = feelF + "&deg;"; if (typeof paintTemp === "function") paintTemp(feelEl, feelF); }
+      if (tempEl && tempF != null) { tempEl.innerHTML = fmtTempN(tempF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(tempEl, tempF); }
+      if (feelEl && feelF != null) { feelEl.innerHTML = fmtTempN(feelF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(feelEl, feelF); }
       if (windEl && wind != null) windEl.textContent = wind + " mph";
       if (gustEl && gust != null) gustEl.textContent = gust + " mph";
       else if (gustEl && wind != null && /—|light/i.test(gustEl.textContent || "")) gustEl.textContent = wind + " mph";
@@ -9279,7 +9423,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         if (mark) mark.textContent = Math.round(uv);
       }
       var line = document.getElementById("wx-nowline");
-      if (line && tempF != null) line.textContent = homePlace() + " · " + omWord(om.current.weather_code) + " · " + tempF + "°";
+      if (line && tempF != null) line.textContent = homePlace() + " · " + omWord(om.current.weather_code) + " · " + fmtTemp(tempF);
       if (typeof writeGreetingCard === "function") writeGreetingCard();
       return true;
     }
@@ -9421,7 +9565,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var tempEl = document.getElementById("live-temp");
           var feelEl = document.getElementById("live-feels");
           var skyEl = document.getElementById("live-sky");
-          if (tempEl && tempF != null) { tempEl.innerHTML = tempF + "&deg;"; paintTemp(tempEl, tempF); }
+          if (tempEl && tempF != null) { tempEl.innerHTML = fmtTempN(tempF) + "&deg;"; paintTemp(tempEl, tempF); }
           var feelF = null;
           if (om.current && om.current.apparent_temperature != null) feelF = Math.round(om.current.apparent_temperature);
           else if (obs.heatIndex && obs.heatIndex.value != null) {
@@ -9675,7 +9819,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       el.setAttribute("data-html", html);
       el.innerHTML = "<span class='tseg'>" + html + "</span>";
       el.style.display = "inline-flex";
-      requestAnimationFrame(function () { spinEl(el, speed || 112, true); });
+      requestAnimationFrame(function () { spinEl(el, speed || tickSpeedPx(), true); });
     }
     function pollBreaking() {
       var bar = document.getElementById("breakbar");
@@ -9758,7 +9902,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         }).join("\u00a0".repeat(160));
         bar.classList.add("on");
         stackTickers();
-        setTicker(txt, body, 112);
+        setTicker(txt, body, tickSpeedPx());
       }).catch(function () { bar.classList.remove("on"); stackTickers(); });
     }
     pollBreaking();
@@ -9956,7 +10100,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     function teamId(tm){ return (tm.sport + "-" + tm.abbr + "-" + tm.name).toLowerCase(); }
     function nearbyTeams(){
       var lat=homeLat(), lon=homeLon();
-      return SPORT_TEAMS.filter(function(tm){ return milesApart(lat,lon,tm.lat,tm.lon) <= 150; });
+      var miles = Number((typeof getSet === "function" && getSet().sportMiles) || 150) || 150;
+      return SPORT_TEAMS.filter(function(tm){ return milesApart(lat,lon,tm.lat,tm.lon) <= miles; });
     }
     function selectedTeams(){
       var raw = String((getSet().sportsOn != null ? getSet().sportsOn : ""));
@@ -10048,12 +10193,12 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     }
     function loadSportsScores(done){
       function finish(lines) {
-        window.__sportsLines = lines && lines.length ? lines : ["No games posted for teams within 150 miles of " + homePlace() + "."];
+        window.__sportsLines = lines && lines.length ? lines : ["No games posted for teams in range of " + homePlace() + "."];
         try { if (done) done(); } catch (e) {}
       }
       try {
         var near = selectedTeams();
-        if (!near.length) { finish(["No major teams within 150 miles of " + homePlace() + "."]); return; }
+        if (!near.length) { finish(["No major teams in range of " + homePlace() + "."]); return; }
         var bySport = {};
         near.forEach(function (t) { (bySport[t.sport] = bySport[t.sport] || []).push(t); });
         var urls = {
@@ -10103,7 +10248,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         if (!tick) return;
         var s = getSet();
         if (s.brief === "0") {
-          if (typeof spinEl === "function") spinEl(tick, 112, true);
+          if (typeof spinEl === "function") spinEl(tick, tickSpeedPx(), true);
           return;
         }
         var GAP = "\u00a0".repeat(160);
@@ -10137,7 +10282,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           }
         }
         if (!bits.length) bits.push(spaceSentences("Briefing is on. Pick Weather or Sports in Settings."));
-        if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), 112);
+        if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), tickSpeedPx());
       } catch (e) {}
     }
 
@@ -10154,7 +10299,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var bar = el.parentElement;
       var from = (bar && bar.clientWidth) ? bar.clientWidth : 360;
       var one = first.getBoundingClientRect().width || first.scrollWidth || 800;
-      var dur = Math.max(18, (from + one) / (speed || 112));
+      var dur = Math.max(18, (from + one) / (speed || tickSpeedPx()));
       el.style.setProperty("--tick-from", from + "px");
       el.style.setProperty("--tick-w", one + "px");
       el.style.animation = "none";
@@ -10297,7 +10442,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var lab = document.getElementById("alertlab");
         if (lab) lab.textContent = isWarn ? "WARNING" : "WATCH";
         frame.classList.add("has-alert"); stackTickers();
-        setTicker(txt, body, 112);
+        setTicker(txt, body, tickSpeedPx());
         writeBriefing();
       }).catch(function () {
         if (typeof touchFeed === "function") touchFeed("alerts", false, "NWS alerts fetch failed");
