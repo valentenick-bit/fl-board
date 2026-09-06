@@ -576,14 +576,24 @@
     .go-saxis { display:grid; grid-template-columns:repeat(12,1fr); font-size:9px; letter-spacing:.04em; text-transform:uppercase; opacity:.7; margin:0 0 8px 5.6em; }
     main { position:relative; }
     .hdr-tools { display:flex; align-items:center; gap:6px; }
-    .pausebtn {
+    .hdr-act {
+      display:flex; align-items:center; gap:0;
+      background:rgba(8,16,28,.62);
+      border-radius:12px;
+      padding:2px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
+      z-index:12;
+    }
+    .pausebtn, .setgear {
       z-index:12; width:36px; height:36px; margin:0; padding:0; flex:none;
       border:0; border-radius:10px; cursor:pointer;
-      background:rgba(247,241,230,.22); color:#f7f1e6;
+      background:transparent; color:#f7f1e6;
       font-size:15px; line-height:36px; letter-spacing:0;
-      box-shadow:inset 0 0 0 1px rgba(247,241,230,.35);
     }
-    header.sky-sun .pausebtn, header.sky-partly .pausebtn, header.sky-cloud .pausebtn { background:rgba(6,16,24,.18); color:#061018; }
+    .setgear { display:inline-flex; align-items:center; justify-content:center; }
+    .setgear svg { width:18px; height:18px; fill:currentColor; display:block; }
+    header.sky-sun .pausebtn, header.sky-partly .pausebtn, header.sky-cloud .pausebtn,
+    header.sky-sun .setgear, header.sky-partly .setgear, header.sky-cloud .setgear { color:#f7f1e6; }
     .hdr-wind { display:block; font-size:11px; font-weight:700; letter-spacing:.04em; line-height:1.1; margin-top:2px; opacity:.9; }
     .clock-bits, .hdr-pills { display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin-top:4px; }
     .clock-pills { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:4px; }
@@ -605,7 +615,8 @@
     .hdr-chip.hdr-alert.on { display:inline-flex; }
     .temprow { cursor:pointer; }
     .pausebtn.on { background:#e07a5f; color:#fff; }
-    html.dark .pausebtn { background:rgba(34,30,54,.94); color:#f7f1e6; }
+    html.dark .hdr-act { background:rgba(8,12,22,.72); }
+    html.dark .pausebtn, html.dark .setgear { color:#f7f1e6; }
     html.dark .pausebtn.on { background:#e07a5f; color:#fff; }
     html.dark .go-sbar { background:rgba(247,241,230,.08); background-image:repeating-linear-gradient(to right, rgba(247,241,230,.2) 0, rgba(247,241,230,.2) 1px, transparent 1px, transparent 8.333%); }
     html.dark .go-strip { background:#221e36; }
@@ -1207,7 +1218,12 @@
       <div class="clock">
         <div class="clock-top">
           <div id="when"></div>
-          <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
+          <div class="hdr-act">
+            <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
+            <button type="button" class="setgear" id="hdr-setbtn" title="Settings" aria-label="Settings">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.81 8.48a.5.5 0 0 0 .12.64L4.96 10.7c-.04.31-.06.63-.06.94s.02.63.06.94L2.93 14.16a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.4.31.64.22l2.39-.96c.5.39 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.55 1.63-.94l2.39.96c.24.09.51 0 .64-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+            </button>
+          </div>
         </div>
         <div class="clock-bits" id="hdr-pills">
           <div class="clock-pills">
@@ -2225,7 +2241,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 374;
+    window.BOARD_VER = 378;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4539,7 +4555,7 @@ function currentRotation() {
       var hrNow = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}),10);
       if (hrNow === 24) hrNow = 0;
       var hours = window.__hours || [];
-      var maxPop = 0, stormy = false, nearPop = 0, nearStorm = false;
+      var maxPop = 0, stormy = false, nearPop = 0, nearStorm = false, laterWord = "";
       var todayKey = new Date().toLocaleDateString("en-CA", { timeZone:"America/New_York" });
       hours.forEach(function (h) {
         if (!h || !h.startTime) return;
@@ -4556,70 +4572,102 @@ function currentRotation() {
           if (pop > nearPop) nearPop = pop;
           if (thunder) nearStorm = true;
         }
+        if (ahead >= 2 && ahead <= 6 && !laterWord && h.shortForecast) laterWord = String(h.shortForecast).toLowerCase();
       });
       function feedTxt(id) {
         var n = document.getElementById(id);
         return n ? String(n.textContent || "").replace(/\s+/g, " ").trim() : "";
       }
       var bits = [];
-      var feelBit = "";
+      var now = "";
       if (wx.temp != null) {
-        feelBit = "It's " + wx.temp + "°";
-        if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) feelBit += " that feels like " + wx.feel + "°";
-        feelBit += ", " + word + ".";
-      } else {
-        feelBit = "Outside is " + word + ".";
+        now = "It's " + wx.temp + "°";
+        if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) now += " that feels like " + wx.feel + "°";
+        now += " under " + word;
+      } else now = "It's " + word + " out";
+      var windTxt = feedTxt("live-wind");
+      var gustTxt = feedTxt("live-gusts");
+      var windMph = parseInt(windTxt.replace(/[^\d]/g, ""), 10);
+      var gustMph = parseInt(gustTxt.replace(/[^\d]/g, ""), 10);
+      if (windTxt && windTxt !== "—" && windMph) {
+        now += ", wind " + windTxt.replace(/\s+/g, " ");
+        if (gustMph && gustMph >= windMph + 7) now += ", gusts " + gustTxt;
       }
-      bits.push(feelBit);
-      if (hrNow >= 6 && hrNow < 21) {
-        if (nearStorm) bits.push("Storms are in the next few hours, so don't plan around being outside the whole window.");
-        else if (nearPop >= 50) bits.push("Rain is a real chance in the next few hours.");
-        else if (stormy && hrNow < 17) bits.push("Today still has a storm threat later. Morning is the safer bet.");
-        else if (maxPop >= 50) bits.push("Rain is likely at some point, even if it's quiet right now.");
+      now += ".";
+      bits.push(now);
+
+      var todayP = window.__nwsToday || {};
+      var days = window.__nwsDays || [];
+      if (todayP.temperature != null && /day|afternoon|morning/i.test(todayP.name || "")) {
+        bits.push("High near " + todayP.temperature + "°.");
+      }
+      var tonight = days.filter(function (d) { return /tonight|overnight|evening/i.test(d.name || ""); })[0];
+      if (tonight && tonight.temperature != null && hrNow >= 16) {
+        bits.push("Overnight bottoms out around " + tonight.temperature + "°" + (tonight.shortForecast ? " with " + String(tonight.shortForecast).toLowerCase() : "") + ".");
+      }
+
+      var uv = feedTxt("live-uv");
+      var uvN = parseInt(uv.replace(/[^\d]/g, ""), 10);
+      if (hrNow >= 10 && hrNow <= 16 && uvN >= 6) bits.push("UV is " + uv + " — shade or a shirt if you're out long.");
+
+      if (hrNow >= 6 && hrNow < 22) {
+        if (nearStorm) bits.push("Thunder is in the next few hours. Don't plan a long sit outside.");
+        else if (nearPop >= 50) bits.push("Rain is a real chance over the next few hours.");
+        else if (laterWord && laterWord !== word) bits.push("Later this stretch trends " + laterWord + ".");
+        else if (stormy && hrNow < 17) bits.push("The storm threat is more of an afternoon problem. Earlier is cleaner.");
+        else if (maxPop >= 50) bits.push("Rain still looks likely at some point even if it's quiet now.");
         else if (maxPop >= 30) bits.push("A shower could sneak through. Nothing that has to cancel the day.");
+        else bits.push("The next few hours look mostly dry.");
       }
 
       var hazards = [];
       if (window.__wxRisk && window.__wxRisk.warn) hazards.push("There's a weather warning up. Read Emergency before you leave.");
-      else if (window.__wxRisk && window.__wxRisk.watch) hazards.push("There's a weather watch on the board. Worth a look before you commit to being out.");
+      else if (window.__wxRisk && window.__wxRisk.watch) hazards.push("There's a weather watch on the board. Check it before you commit to being out.");
       if (typeof lightningNow === "function" && lightningNow().on) hazards.push("Lightning is close. Stay in until it moves off.");
       var rip = window.__ripRisk || "";
       if (rip === "no") hazards.push("Rip current is high. Don't swim.");
       else if (rip === "win") hazards.push("Rip current is moderate. Stay near a guarded stretch if you get in.");
       var red = feedTxt("live-redtide");
       if (red && !/checking|not observed|none|no k\.?\s*brevis|low/i.test(red) && /tide|bloom|present|observed|high|moderate|k\.?\s*brevis/i.test(red)) {
-        hazards.push("Red tide is in the mix: " + red.replace(/\.$/, "") + ".");
+        hazards.push("Red tide is on the board: " + red.replace(/\.$/, "") + ".");
       }
       var bac = feedTxt("live-bacteria");
       if (bac && /advisory|do not swim|no swim|high|enterococcus/i.test(bac) && !/no recent|none|no advisory/i.test(bac)) {
-        hazards.push("There's a water-quality advisory. Skip a swim until that clears.");
+        hazards.push("Water-quality advisory is up. Skip a swim until that clears.");
       }
-      var storms = window.__namedStorms || [];
-      if (storms.length && storms[0] && storms[0].name) {
-        hazards.push(storms[0].name + " is on Tropical if you want the track.");
+      var named = window.__namedStorms || [];
+      if (named.length && named[0] && named[0].name) {
+        hazards.push(named[0].name + " is on Tropical if you want the track.");
       }
-      if (hazards.length) bits.push(hazards.slice(0, 3).join(" "));
+      if (hazards.length) bits.push(hazards.join(" "));
+
+      var tide = feedTxt("live-tide-today");
+      if (tide && !/loading|quiet|—/i.test(tide) && hrNow >= 6 && hrNow < 20 && (dayPlay("beach") !== "skip" || dayPlay("boat") !== "skip")) {
+        bits.push("Tides: " + tide.replace(/\s+/g, " ") + ".");
+      }
 
       if (hrNow >= 21 || hrNow < 6) {
         bits.push("This hour is for staying in. Beach, pool, cart, and boat can wait for daylight.");
-      } else if (!hazards.length || (hazards.length === 1 && /named|tropical|track/i.test(hazards[0]))) {
+      } else {
         var picks = [
-          { k:"beach", good:"Beach looks like the move if you want air and water.", ok:"Beach is usable. Don't linger if the sky turns.", skip:"" },
-          { k:"pool", good:"Pool is an easy yes.", ok:"Pool works if you don't mind a cloud.", skip:"" },
-          { k:"boat", good:"If the boat's been sitting, this is a decent window.", ok:"Boat only if you're fine with a bumpier ride.", skip:"" },
-          { k:"cart", good:"Cart is fine for a loop.", ok:"Cart is okay if you watch the sky.", skip:"" },
-          { k:"courts", good:"Courts are in play.", ok:"Courts are a maybe.", skip:"" }
+          { k:"beach", good:"If you want air and water, the beach is the strongest call.", ok:"The beach is usable. Don't linger if the sky turns." },
+          { k:"pool", good:"The pool is an easy yes this stretch.", ok:"The pool works if you don't mind a passing cloud." },
+          { k:"boat", good:"If the boat's been sitting, this is a decent window.", ok:"The boat would be a sportier ride — only if you're comfortable." },
+          { k:"cart", good:"A golf-cart loop is fine.", ok:"Cart is okay if you keep an eye on the sky." },
+          { k:"courts", good:"Courts are in play.", ok:"Courts are a maybe." }
         ];
         var order = hrNow < 11 ? ["beach","boat","cart","pool","courts"] : hrNow < 16 ? ["pool","beach","cart","courts","boat"] : ["cart","boat","beach","pool","courts"];
         var rec = "";
+        var chosen = "";
         for (var i = 0; i < order.length; i++) {
           var id = order[i];
           var row = picks.filter(function (p) { return p.k === id; })[0];
           var kind = dayPlay(id);
-          if (kind === "good" || kind === "ok") { rec = row[kind === "good" ? "good" : "ok"]; break; }
+          if (kind === "good" || kind === "ok") { rec = row[kind === "good" ? "good" : "ok"]; chosen = id; break; }
         }
-        if (!rec && dayPlay("beach") === "skip" && dayPlay("boat") === "skip") rec = "I'd keep it close to home this stretch.";
-        if (rec) bits.push(rec);
+        if (!rec) rec = "I'd keep it close to home this stretch.";
+        bits.push(rec);
+        if (chosen && chosen !== "boat" && dayPlay("boat") === "good" && hrNow < 17) bits.push("Boat still looks workable if that's the mood.");
       }
 
       var evs = (window.__entAll || []).filter(function (e) {
@@ -4640,25 +4688,50 @@ function currentRotation() {
       });
       var indoor = /moose|dinner|show|concert|bingo|church|inside|hall|clubhouse/i;
       var outdoor = /beach|park|boat|golf|market|festival|parade|fair/i;
-      var music = later.filter(function (e) { return e.music || /live|music|band|duo|dj/i.test(e.sum || ""); });
-      var pick = null, why = "";
+      function isMusic(e) { return !!(e && (e.music || /live|music|band|duo|dj/i.test(e.sum || ""))); }
+      function whyEvent(e, kind) {
+        var reasons = [];
+        if (kind === "music") {
+          reasons.push("it's live music and the next few hours look dry enough");
+          if (hrNow >= 16) reasons.push("it fits tonight");
+        } else if (kind === "indoor-storm") {
+          reasons.push("storms are close and this one is indoors");
+        } else if (kind === "indoor") {
+          reasons.push("it's indoors so a shower doesn't kill it");
+        } else if (kind === "soon") {
+          reasons.push("it's the next thing still ahead on today's list");
+        } else if (kind === "backup") {
+          reasons.push("it's a dry backup if the sky turns");
+        } else {
+          if (isMusic(e)) reasons.push("it has live music");
+          if (indoor.test(e.sum || "") || indoor.test(e.where || "")) reasons.push("it's inside");
+          if (outdoor.test(e.sum || "") && nearPop < 40 && !nearStorm) reasons.push("the outdoor window still looks usable");
+          if (!reasons.length) reasons.push("it's the strongest leftover on today's calendar");
+        }
+        var locTag = e.where ? " at " + e.where : "";
+        var when = e.when ? " (" + e.when + ")" : "";
+        var label = (e.sum || "an event").replace(/\s+/g, " ").trim();
+        return "I'd pick " + label + locTag + when + " because " + reasons.join(", and ") + ".";
+      }
+      var music = later.filter(isMusic);
       if (hrNow >= 11 && hrNow < 22 && music.length && nearPop < 60 && !nearStorm) {
-        pick = music[0];
-        why = "If you want a reason to go out, live music at ";
+        bits.push(whyEvent(music[0], "music"));
+        var backup = later.filter(function (e) { return e !== music[0] && (indoor.test(e.sum || "") || indoor.test(e.where || "")); })[0];
+        if (backup) bits.push(whyEvent(backup, "backup"));
       } else if (later.length) {
         var ranked = later.slice().sort(function (a, b) {
-          var as = (indoor.test(a.sum || "") ? 2 : 0) + (a.music ? 1 : 0) - (outdoor.test(a.sum || "") && (nearStorm || nearPop >= 50) ? 3 : 0);
-          var bs = (indoor.test(b.sum || "") ? 2 : 0) + (b.music ? 1 : 0) - (outdoor.test(b.sum || "") && (nearStorm || nearPop >= 50) ? 3 : 0);
+          var as = (indoor.test(a.sum || "") || indoor.test(a.where || "") ? 2 : 0) + (isMusic(a) ? 1 : 0) - (outdoor.test(a.sum || "") && (nearStorm || nearPop >= 50) ? 3 : 0);
+          var bs = (indoor.test(b.sum || "") || indoor.test(b.where || "") ? 2 : 0) + (isMusic(b) ? 1 : 0) - (outdoor.test(b.sum || "") && (nearStorm || nearPop >= 50) ? 3 : 0);
           return bs - as;
         });
-        pick = ranked[0];
-        if (nearStorm && outdoor.test(pick.sum || "")) why = "If you still want to get out, something indoors is safer: ";
-        else why = "On the calendar if you want a plan: ";
-      }
-      if (pick) {
-        var label = (pick.sum || "an event").replace(/\s+/g, " ").trim();
-        var loc = pick.where ? " at " + pick.where : "";
-        bits.push(why + label + loc + ".");
+        var top = ranked[0];
+        var kind = "soon";
+        if (nearStorm && (outdoor.test(top.sum || "") || outdoor.test(top.where || ""))) kind = "indoor-storm";
+        else if (indoor.test(top.sum || "") || indoor.test(top.where || "")) kind = "indoor";
+        else if (isMusic(top)) kind = "music";
+        bits.push(whyEvent(top, kind));
+      } else if (evs.length) {
+        bits.push("Today's Fun list already ran its course. Tomorrow's on the Entertainment page.");
       }
 
       var flights = ((window.__flightData || {}).flights) || [];
@@ -4670,14 +4743,36 @@ function currentRotation() {
       });
       if (soonFly.length) {
         var f0 = soonFly[0];
-        bits.push("Travel: " + [f0.who, f0.flight, f0.from && f0.to ? (f0.from + " to " + f0.to) : "", f0.when].filter(Boolean).join(" · ") + ".");
+        bits.push("Travel tonight or tomorrow: " + [f0.who, f0.flight, f0.from && f0.to ? (f0.from + " to " + f0.to) : "", f0.when].filter(Boolean).join(" · ") + ".");
       }
       var inc = ((window.__delivData || {}).incoming || []).length;
       if (inc === 1) bits.push("One package is still out.");
       else if (inc > 1) bits.push(inc + " packages are still out.");
 
-      el.textContent = bits.join(" ").replace(/\s+/g, " ").trim();
-      window.__bestWindow = el.textContent;
+      if (hrNow >= 19) bits.push("That's the useful part of tonight. Radar is there if the sky changes.");
+      else if (hrNow < 8) bits.push("Give it another hour after sunrise before you decide the whole day.");
+
+      var plain = bits.join(" ").replace(/\s+/g, " ").trim();
+      window.__bestWindow = plain;
+      el.innerHTML = boldGreeting(plain);
+    }
+    function boldGreeting(s) {
+      var html = String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      var keys = [
+        "weather warning","weather watch","Emergency","Lightning","Rip current","Red tide",
+        "Water-quality advisory","Tropical","live music","Best night-out pick","On the calendar","because","I'd pick",
+        "Don't swim","Stay in","High near","Overnight","UV is","Tides:",
+        "Thunder","thunderstorms","Rain is","mostly dry","golf-cart","golf cart",
+        "the beach","The beach","The pool","The boat","Courts","packages","package","Travel"
+      ];
+      keys.sort(function (a,b) { return b.length - a.length; });
+      keys.forEach(function (k) {
+        var re = new RegExp("\\b" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+") + "\\b", "gi");
+        html = html.replace(re, function (m) { return "<strong>" + m + "</strong>"; });
+      });
+      html = html.replace(/(\d+°)/g, "<strong>$1</strong>");
+      html = html.replace(/\b(\d+\s*mph)\b/gi, "<strong>$1</strong>");
+      return html;
     }
     function writeBestWindow() { writeGreetingCard(); }
     setInterval(function () { try { writeGreetingCard(); } catch (e) {} }, 60 * 60 * 1000);
@@ -5035,6 +5130,15 @@ function currentRotation() {
       if (e.target && (e.target.id === "pausebtn" || e.target.id === "pausemenu")) {
         e.preventDefault();
         window.togglePause();
+        return;
+      }
+      if (e.target && e.target.closest && e.target.closest("#hdr-setbtn")) {
+        e.preventDefault();
+        e.stopPropagation();
+        var panel = document.getElementById("settings");
+        if (panel && panel.classList.contains("on") && typeof window.closeSet === "function") window.closeSet();
+        else if (typeof window.openSet === "function") window.openSet();
+        return;
       }
     });
     window.STICKY_PAGES = { health:1, settings:1, account:1, guide:1, ideas:1, business:1, kioskpage:1, triggers:1, welcome:1, markets:1 };
@@ -5450,6 +5554,10 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v378 — Greeting says why it picked a calendar event.",
+      "v377 — Settings gear sits with pause in one dark header card.",
+      "v376 — Greeting bolds temps, hazards, and the plan words.",
+      "v375 — Greeting brief is longer: wind, high, UV, tide, one plan, calendar pick.",
       "v374 — Greeting briefs what matters this hour. Weatherman video idea is on Ideas.",
       "v373 — Heat, radio, and watch/warning pills share the same type.",
       "v372 — Watch and warning sit under Heat and Radio.",
@@ -7012,10 +7120,22 @@ function currentRotation() {
         window.__holdPage = false;
         if (typeof startRotate === "function") startRotate();
       }
+      window.openSet = openSet;
+      window.closeSet = closeSet;
+      function toggleSet() {
+        if (panel.classList.contains("on")) closeSet();
+        else openSet();
+      }
       gear.addEventListener("click", function (e) {
         e.preventDefault();
         e.stopPropagation();
         openSet();
+      });
+      var hdrGear = document.getElementById("hdr-setbtn");
+      if (hdrGear) hdrGear.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSet();
       });
       var done = document.getElementById("set-done");
       if (done) done.addEventListener("click", closeSet);
