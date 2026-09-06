@@ -2352,7 +2352,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 394;
+    window.BOARD_VER = 395;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4450,7 +4450,7 @@ function currentRotation() {
         bolt.classList.toggle("on", on);
         if (on) {
           var line = prep.why || (alertBolt ? "Warning up for this address." : nowx.lightning ? "Thunder in the current hour." : ("Thunder possible " + when + "."));
-          bolt.querySelector("span").textContent = line + ". Stay off the beach, the pool, the boat, and the courts.";
+          bolt.querySelector("span").textContent = line;
         }
       }
       if (cane) {
@@ -4811,27 +4811,13 @@ function currentRotation() {
       }
 
       if (hrNow >= 21 || hrNow < 6) {
-        bits.push("This hour is for staying in. Beach, pool, cart, and boat can wait for daylight.");
-      } else {
-        var picks = [
-          { k:"beach", good:"If you want air and water, the beach is the strongest call.", ok:"The beach is usable. Don't linger if the sky turns." },
-          { k:"pool", good:"The pool is an easy yes this stretch.", ok:"The pool works if you don't mind a passing cloud." },
-          { k:"boat", good:"If the boat's been sitting, this is a decent window.", ok:"The boat would be a sportier ride — only if you're comfortable." },
-          { k:"cart", good:"A golf-cart loop is fine.", ok:"Cart is okay if you keep an eye on the sky." },
-          { k:"courts", good:"Courts are in play.", ok:"Courts are a maybe." }
-        ];
-        var order = hrNow < 11 ? ["beach","boat","cart","pool","courts"] : hrNow < 16 ? ["pool","beach","cart","courts","boat"] : ["cart","boat","beach","pool","courts"];
-        var rec = "";
-        var chosen = "";
-        for (var i = 0; i < order.length; i++) {
-          var id = order[i];
-          var row = picks.filter(function (p) { return p.k === id; })[0];
-          var kind = dayPlay(id);
-          if (kind === "good" || kind === "ok") { rec = row[kind === "good" ? "good" : "ok"]; chosen = id; break; }
-        }
-        if (!rec) rec = "I'd keep it close to home this stretch.";
-        bits.push(rec);
-        if (chosen && chosen !== "boat" && dayPlay("boat") === "good" && hrNow < 17) bits.push("Boat still looks workable if that's the mood.");
+        bits.push("Quiet hours. The useful weather is tomorrow.");
+      } else if (nearStorm) {
+        bits.push("I'd treat the next couple of hours as indoor time until that batch moves off.");
+      } else if (nearPop >= 50) {
+        bits.push("Keep an eye on the radar. A shower can still sneak through.");
+      } else if (hi >= 92 && hrNow >= 11 && hrNow < 17) {
+        bits.push("Hottest stretch of the day. Shade and water matter more than the clock.");
       }
 
       var evs = (window.__entAll || []).filter(function (e) {
@@ -4931,8 +4917,7 @@ function currentRotation() {
         "weather warning","weather watch","Emergency","Lightning","Rip current","Red tide",
         "Water-quality advisory","Tropical","Live music","On the calendar","I wouldn't plan","Worth it",
         "Don't swim","Stay in","High near","Overnight","UV is","Tides:",
-        "Thunder","thunderstorms","Rain is","mostly dry","golf-cart","golf cart",
-        "the beach","The beach","The pool","The boat","Courts","packages","package","Travel","Flight","Flights"
+        "Thunder","thunderstorms","Rain is","mostly dry","packages","package","Flight","Flights"
       ];
       keys.sort(function (a,b) { return b.length - a.length; });
       keys.forEach(function (k) {
@@ -5723,6 +5708,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v395 — Greeting drops beach/pool/cart/boat recs. Weather voice only. Activities stay on the go chart.",
       "v394 — Today uses Fun/Delivery cards. All of today's events, no cap, drop when the event ends. Same calendar list on every device.",
       "v393 — Today Out and about includes the next 48 hours so weekend festivals stay on both devices.",
       "v392 — Today flight tile matches event/delivery cards and shows on-time or delayed. Icons larger.",
