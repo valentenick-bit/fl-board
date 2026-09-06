@@ -1309,18 +1309,20 @@
             <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><rect x="14" y="16" width="16" height="20" rx="2" fill="#c4a35a"/><rect x="12" y="13" width="20" height="4" rx="1.5" fill="#1b2a4a"/><rect x="20" y="10" width="4" height="4" rx="1" fill="#1b2a4a"/><path d="M18 20v12M22 20v12M26 20v12" stroke="#1b2a4a" stroke-width="1.6" stroke-linecap="round" opacity=".45"/></svg></div>
             <div class="pulse-copy"><b>Trash</b><span></span></div>
           </article>
-          <article class="pulse fly" id="today-fly">
-            <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><path d="M4 26l28-10-8 6 4 8-5-2-6-8-13 6z" fill="#2a9d8f"/><path d="M16 18l8-12 4 2-6 12" fill="#c4a35a"/><path d="M6 28c8 3 24 3 32 0" fill="none" stroke="#c4a35a" stroke-width="2"/></svg></div>
-            <div class="pulse-copy" id="today-fly-body"></div>
-          </article>
-          <article class="pulse fun" id="pulse-fun">
-            <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><path d="M22 36V16" stroke="#1b2a4a" stroke-width="2"/><path d="M22 18c-6-2-9 2-10 6 4-1 8 1 10 4 2-3 6-5 10-4-1-4-4-8-10-6z" fill="#2a9d8f"/><path d="M22 22c-5-1-8 2-8 5 3 0 6 1 8 3 2-2 5-3 8-3-1-3-3-6-8-5z" fill="#c4a35a"/><circle cx="32" cy="12" r="3" fill="#c45a6a"/><path d="M32 15v8" stroke="#c45a6a" stroke-width="1.6"/></svg></div>
-            <div class="pulse-copy"><b>Out and about</b><span id="today-do"></span></div>
-          </article>
-          <article class="pulse box" id="pulse-box">
-            <div class="pulse-art" aria-hidden="true"><svg viewBox="0 0 44 44"><path d="M8 18l14-6 14 6v16l-14 6-14-6z" fill="#4a90a4"/><path d="M22 12v28M8 18l14 6 14-6" fill="none" stroke="#f4efe4" stroke-width="1.6"/><path d="M16 8h12v4H16z" fill="#c4a35a"/></svg></div>
-            <div class="pulse-copy"><b>Boxes</b><span id="today-deliv"></span></div>
-          </article>
+        </div>
+        <div id="today-fly" hidden>
+          <h3 class="ent-h">Flight</h3>
+          <div id="today-fly-body"></div>
+        </div>
+        <div class="today-boards">
+          <div>
+            <h3 class="ent-h">Out and about</h3>
+            <div id="today-do"></div>
+          </div>
+          <div>
+            <h3 class="ent-h">Boxes on the way</h3>
+            <div id="today-deliv"></div>
+          </div>
         </div>
         <div class="card leave-card" id="leave-card" hidden>
           <b>Should we leave?</b>
@@ -2350,7 +2352,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 392;
+    window.BOARD_VER = 394;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5721,6 +5723,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v394 — Today uses Fun/Delivery cards. All of today's events, no cap, drop when the event ends. Same calendar list on every device.",
+      "v393 — Today Out and about includes the next 48 hours so weekend festivals stay on both devices.",
       "v392 — Today flight tile matches event/delivery cards and shows on-time or delayed. Icons larger.",
       "v391 — Today pulse tiles: same card for lightning, storm, trash, flight, fun, boxes. Trash only 24 hours before pickup.",
       "v390 — Parse Sun Sep 6 10:00a style flight times so Dayna MX 537 shows on Today.",
@@ -6258,6 +6262,14 @@ function currentRotation() {
       var today = dayKeyET(new Date());
       return start <= today && end >= today;
     }
+    function onTodayBoard(e) {
+      if (!e || !e.when) return false;
+      var end = e.end ? new Date(e.end).getTime() : new Date(e.when).getTime();
+      if (end < Date.now() - 30 * 60000) return false;
+      if (coversTodayET(e)) return true;
+      var start = new Date(e.when).getTime();
+      return start <= Date.now() + 48 * 3600000;
+    }
     function flightWhenMs(f) {
       if (!f) return NaN;
       if (f.whenMs) return Number(f.whenMs);
@@ -6379,40 +6391,28 @@ function currentRotation() {
           var end = e.end ? new Date(e.end).getTime() : 0;
           return !end || end >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
-        var fun = document.getElementById("pulse-fun");
-        if (!evs.length) {
-          if (fun) fun.classList.remove("on");
-          doBox.innerHTML = "";
-        } else {
-          if (fun) fun.classList.add("on");
-          if (window.entCardHtml) doBox.innerHTML = evs.slice(0, 2).map(window.entCardHtml).join("");
-          else doBox.textContent = evs[0].sum || "Event";
-        }
+        if (!evs.length) doBox.innerHTML = "";
+        else if (window.entCardHtml) doBox.innerHTML = evs.map(window.entCardHtml).join("");
+        else doBox.innerHTML = evs.map(function (e) { return '<div class="card"><b>' + (e.sum || "") + "</b></div>"; }).join("");
       }
       if (delBox) {
-        var box = document.getElementById("pulse-box");
         var marks = window.__deliveredMarks || {};
         function key(item) { return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim(); }
         var inc = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks[key(x)]; });
-        if (!inc.length) {
-          if (box) box.classList.remove("on");
-          delBox.innerHTML = "";
-        } else {
-          if (box) box.classList.add("on");
-          if (window.delivCardHtml) {
-            delBox.innerHTML = inc.slice(0, 2).map(function (x) { return window.delivCardHtml(x, true); }).join("");
-            delBox.querySelectorAll("input[data-deliv]").forEach(function (cb) {
-              cb.addEventListener("change", function () {
-                if (!cb.checked) return;
-                window.__deliveredMarks = window.__deliveredMarks || {};
-                window.__deliveredMarks[cb.getAttribute("data-deliv")] = { at: new Date().toISOString() };
-                try { localStorage.setItem("bw-deliv-marks", JSON.stringify(window.__deliveredMarks)); } catch (e2) {}
-                if (typeof window.__paintDeliveries === "function") window.__paintDeliveries();
-                else paintToday();
-                if (typeof saveHouse === "function") saveHouse();
-              });
+        if (!inc.length) delBox.innerHTML = "";
+        else if (window.delivCardHtml) {
+          delBox.innerHTML = inc.map(function (x) { return window.delivCardHtml(x, true); }).join("");
+          delBox.querySelectorAll("input[data-deliv]").forEach(function (cb) {
+            cb.addEventListener("change", function () {
+              if (!cb.checked) return;
+              window.__deliveredMarks = window.__deliveredMarks || {};
+              window.__deliveredMarks[cb.getAttribute("data-deliv")] = { at: new Date().toISOString() };
+              try { localStorage.setItem("bw-deliv-marks", JSON.stringify(window.__deliveredMarks)); } catch (e2) {}
+              if (typeof window.__paintDeliveries === "function") window.__paintDeliveries();
+              else paintToday();
+              if (typeof saveHouse === "function") saveHouse();
             });
-          } else delBox.textContent = inc[0].title || "Package";
+          });
         }
       }
       if (typeof paintTodayFly === "function") paintTodayFly();
@@ -6531,13 +6531,18 @@ function currentRotation() {
       function paint() {
         window.paintEnt = paint;
         var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 15);
-        var area = miles >= 15 ? bag.eng : [];
+        var all = bag.bw.concat(bag.eng).filter(function (e) {
+          var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
+          return end.getTime() >= Date.now();
+        }).sort(function (a, b) { return a.when - b.when; });
+        all.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
+        window.__entAll = all;
+        var area = miles >= 10 ? bag.eng : [];
         var merged = bag.bw.concat(area).filter(function (e) {
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
         merged.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
-        window.__entAll = merged;
         paintToday();
         if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (eG) {}
         if (!merged.length) {
