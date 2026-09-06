@@ -2431,7 +2431,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 444;
+    window.BOARD_VER = 446;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5912,6 +5912,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v446 — Hide the Today flight card when nothing is current.",
+      "v445 — Flight card flips to Arrived from route time when the plane drops off ADS-B.",
       "v444 — Today venue cards can show a Busy / Quiet / wait pill when Google publishes it.",
       "v443 — Tap flight, lightning, or an event card for a map popup.",
       "v442 — Live flight card: status, ETA, miles left, altitude, speed, heading, tail, map.",
@@ -6578,20 +6580,25 @@ function currentRotation() {
       return "";
     }
     function inferFlyStatus(f, live) {
-      if (f && f.liveKind) return f.liveKind;
-      var labeled = flyStatusLabel(live || (f && (f.liveStatus || "")));
-      if (labeled && labeled !== "On time") return labeled;
-      var dep = typeof flightWhenMs === "function" ? flightWhenMs(f) : NaN;
-      var arr = NaN;
-      if (f && f.arriveMs) arr = Number(f.arriveMs);
-      else if (f && f.arriveIso) arr = Date.parse(f.arriveIso);
       var now = Date.now();
-      if (!isNaN(arr) && now >= arr + 8 * 60000) return "Arrived";
+      if (f && f.liveLat && f.liveKind && /in flight|taxi/i.test(f.liveKind)) return f.liveKind;
+      var labeled = flyStatusLabel(live || (f && (f.liveStatus || "")));
+      var dep = typeof flightWhenMs === "function" ? flightWhenMs(f) : NaN;
+      var arr = typeof typicalArriveMs === "function" ? typicalArriveMs(f) : NaN;
+      if (f && f.arriveMs) arr = Number(f.arriveMs);
+      else if (f && f.arriveIso) {
+        var iso = Date.parse(f.arriveIso);
+        if (!isNaN(iso)) arr = iso;
+      }
+      if (isNaN(arr) && !isNaN(dep)) arr = dep + 2.55 * 3600000;
+      if (!isNaN(arr) && now >= arr) return "Arrived";
+      if (labeled === "Arrived") return "Arrived";
+      if (labeled && labeled !== "On time" && labeled !== "Departed") return labeled;
       if (isNaN(dep)) return labeled || "On time";
       if (now < dep - 2 * 60000) return labeled || "On time";
-      if (!isNaN(arr) && now >= dep && now < arr) return "Departed";
+      if (!isNaN(arr) && now >= arr - 25 * 60000 && now < arr) return "Arriving";
       if (now < dep + 20 * 60000) return labeled || "On time";
-      if (now < dep + 4.5 * 3600000) return "Departed";
+      if (!isNaN(arr) && now < arr) return "Departed";
       return "Arrived";
     }
     var APT = { RSW:[26.5362,-81.7552], BDL:[41.9389,-72.6832], BOS:[42.3656,-71.0096], MCO:[28.4312,-81.3081], TPA:[27.9755,-82.5332], SRQ:[27.3954,-82.5544], PGD:[26.9202,-81.9905], FMY:[26.5866,-81.8633], EYW:[24.5561,-81.7596], JAX:[30.4941,-81.6879], MIA:[25.7959,-80.2870], FLL:[26.0726,-80.1527], PBI:[26.6832,-80.0956], ATL:[33.6407,-84.4277], JFK:[40.6413,-73.7781], LGA:[40.7769,-73.8740], EWR:[40.6895,-74.1745], PHL:[39.8720,-75.2411], CLT:[35.2140,-80.9431], ORD:[41.9742,-87.9073], DFW:[32.8998,-97.0403] };
@@ -6606,6 +6613,21 @@ function currentRotation() {
       var dP = (b[0] - a[0]) * Math.PI / 180, dL = (b[1] - a[1]) * Math.PI / 180;
       var h = Math.sin(dP / 2) * Math.sin(dP / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dL / 2) * Math.sin(dL / 2);
       return 2 * r * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    }
+    function typicalArriveMs(f) {
+      if (!f) return NaN;
+      if (f.arriveMs) return Number(f.arriveMs);
+      if (f.arriveIso) {
+        var a = Date.parse(f.arriveIso);
+        if (!isNaN(a)) return a;
+      }
+      var dep = flightWhenMs(f);
+      if (isNaN(dep)) return NaN;
+      var orig = aptLL(f.from), dest = aptLL(f.to);
+      var nm = (orig && dest) ? nmBetween(orig, dest) : 1050;
+      var hours = nm / 500 + 0.4;
+      if (nm < 1300) hours = Math.min(Math.max(hours, 2.45), 2.6);
+      return dep + hours * 3600000;
     }
     function fillFlightEta(f) {
       var dest = aptLL(f.to);
@@ -6733,7 +6755,12 @@ function currentRotation() {
       function next(i) {
         if (i >= endpoints.length) {
           if (typeof noteFeed === "function") noteFeed("fly-live", false, "ADS-B blocked for " + codes[0]);
-          return done(f.liveKind || "");
+          if (f) {
+            var arr = typeof typicalArriveMs === "function" ? typicalArriveMs(f) : NaN;
+            if (!isNaN(arr) && Date.now() >= arr) f.liveKind = "Arrived";
+            else if (f.liveKind && /in flight/i.test(f.liveKind) && !f.liveLat) f.liveKind = "";
+          }
+          return done((f && f.liveKind) || "");
         }
         fetch(endpoints[i]).then(function (r) { return r.json(); }).then(function (d) {
           var ac = d && (d.ac && d.ac[0] || (Array.isArray(d) && d[0]));
@@ -6822,21 +6849,25 @@ function currentRotation() {
       }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMapPop(); });
+    function flightIsCurrent(f) {
+      var st = typeof inferFlyStatus === "function" ? inferFlyStatus(f) : "";
+      if (/arriv|cancel/i.test(st)) return false;
+      var dep = flightWhenMs(f);
+      if (isNaN(dep)) return /today|tonight/i.test(String(f && f.when || ""));
+      var now = Date.now();
+      return now >= dep - 36 * 3600000 && now <= dep + 5 * 3600000;
+    }
     function paintTodayFly() {
       var card = document.getElementById("today-fly");
       var body = document.getElementById("today-fly-body");
       if (!card || !body) return;
-      var rows = flightsSoon(36, 3);
-      card.hidden = false;
-      card.classList.add("on");
+      var rows = flightsSoon(36, 5).filter(flightIsCurrent);
       if (!rows.length) {
-        var waiting = !window.__flightData;
-        body.innerHTML = todayEmpty("fly",
-          waiting ? "Checking flights" : "No flights in the next day",
-          waiting ? "Waiting on the Gmail flight scan." : "Nothing booked in the next 36 hours."
-        );
+        card.hidden = true;
+        card.classList.remove("on");
+        body.innerHTML = "";
         if (typeof paintFlyTrack === "function") paintFlyTrack(null);
-        if (typeof noteFeed === "function") noteFeed("today-fly", true, waiting ? "loading" : "none");
+        if (typeof noteFeed === "function") noteFeed("today-fly", true, window.__flightData ? "hidden · none current" : "loading");
         return;
       }
       card.hidden = false;
