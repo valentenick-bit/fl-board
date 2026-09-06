@@ -163,7 +163,7 @@
     .sky-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2; background:transparent; }
     .hdr-sun, .hdr-moon { position:absolute; border-radius:50%; opacity:0; }
     .hdr-sun { transition:left 120s linear, bottom 120s linear, opacity 60s linear, background 60s linear; }
-    .hdr-moon { transition:opacity 8s linear, left 20s linear, bottom 20s linear; }
+    .hdr-moon { transition:opacity 2.4s linear; will-change:transform,opacity; }
     .hdr-sun { width:26px; height:26px; z-index:4; background:#f6d56b; box-shadow:0 0 22px 10px rgba(246,213,107,.55); }
     header.sky-sun .hdr-sun.up, header.sky-partly .hdr-sun.up, header.sky-dawn .hdr-sun.up, header.sky-dusk .hdr-sun.up, header.sky-cloud .hdr-sun.up { opacity:1; }
     header.sky-cloud .hdr-sun { opacity:.55; }
@@ -2392,7 +2392,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 425;
+    window.BOARD_VER = 426;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4024,21 +4024,14 @@ function currentRotation() {
         }
       }
       if (moon) {
-        paintMoonFace(moon);
+        if (moon.getAttribute("data-ph") !== String(Math.round((typeof moonPhase === "function" ? moonPhase() : 0) * 100))) {
+          paintMoonFace(moon);
+          moon.setAttribute("data-ph", String(Math.round((typeof moonPhase === "function" ? moonPhase() : 0) * 100)));
+        }
         var win = typeof moonNowWindow === "function" ? moonNowWindow() : null;
         window.__moonNight = !!win;
-        if (!win) {
-          moon.style.opacity = "0";
-        } else {
-          var p = Math.max(0, Math.min(1, (now - win.rise) / Math.max(1, win.set - win.rise)));
-          var fade = Math.min(1, p * 10, (1 - p) * 10);
-          moon.style.left = "calc(" + skySafePct(8 + p * 80) + "% - 14px)";
-          moon.style.bottom = (10 + Math.sin(p * Math.PI) * 36) + "%";
-          moon.style.top = "auto";
-          moon.style.right = "auto";
-          moon.style.transform = "none";
-          moon.style.opacity = String(Math.max(0.2, fade));
-        }
+        window.__moonWin = win;
+        if (!win) moon.style.opacity = "0";
       }
     }
     setInterval(function () { if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 15000);
@@ -4122,6 +4115,24 @@ function currentRotation() {
           place(job.el, x, y);
           job.el.style.opacity = String(max * fadeIn * fadeOut);
         });
+        var moon = document.getElementById("hdr-moon");
+        var win = window.__moonWin || (typeof moonNowWindow === "function" ? moonNowWindow() : null);
+        if (win) window.__moonWin = win;
+        if (moon && win) {
+          var mp = Math.max(0, Math.min(1, (Date.now() - win.rise) / Math.max(1, win.set - win.rise)));
+          var bob = Math.sin(now / 14000) * 4;
+          var drift = Math.sin(now / 22000) * 2.2;
+          var xPct = skySafePct(8 + mp * 80 + drift);
+          var yPct = 12 + Math.sin(mp * Math.PI) * 34;
+          var yPx = (1 - yPct / 100) * hh - 16 + bob;
+          moon.style.left = "0";
+          moon.style.top = "0";
+          moon.style.right = "auto";
+          moon.style.bottom = "auto";
+          moon.style.transform = "translate3d(" + ((xPct / 100) * (head ? head.offsetWidth : 360) - 14) + "px," + yPx + "px,0)";
+          var fade = Math.min(1, mp * 12, (1 - mp) * 12);
+          moon.style.opacity = String(Math.max(0.35, fade));
+        }
         requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);
@@ -5784,6 +5795,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v426 — Header moon is a real phase, not two circles, and drifts along the rise-to-set arc.",
       "v425 — Flight tile uses the original teal plane drawing on the same card frame as the other pictures.",
       "v424 — Flight art is an SVG tile like the other Today cards. Lightning has a section title and the same card format.",
       "v423 — House flights use the same On time / Delayed / Departed / Arrived pills.",
@@ -8588,18 +8600,22 @@ function currentRotation() {
       el.title = moonPhaseName(ph) + " · " + Math.round(illum * 100) + "% lit";
       el.style.background = "transparent";
       el.style.boxShadow = "none";
-      var sky = el.id === "sky-moon-face"
-        ? (document.documentElement.classList.contains("dark") ? "#1b1730" : "#c9bba6")
-        : "#05070d";
+      var uid = "moonmask-" + (el.id || "x") + "-" + Math.round(ph * 1000);
       if (illum < 0.08) {
-        el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="none" stroke="#f4efe2" stroke-width="1.5" opacity=".7"/></svg>';
+        el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="none" stroke="#f7f1e4" stroke-width="1.4" opacity=".75"/></svg>';
         el.setAttribute("data-moon", "new");
         return;
       }
-      var shift = (waxing ? -1 : 1) * (18 - illum * 16);
-      el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true">' +
-        '<circle cx="11" cy="11" r="10" fill="#f4efe2"/>' +
-        '<circle cx="' + (11 + shift).toFixed(2) + '" cy="10.4" r="10" fill="' + sky + '"/>' +
+      var ox = (waxing ? -1 : 1) * (20 - illum * 20);
+      var shadow = illum > 0.96 ? "" : '<circle cx="' + (11 + ox).toFixed(2) + '" cy="11" r="10" fill="#000"/>';
+      el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><defs><mask id="' + uid + '">' +
+        '<rect width="22" height="22" fill="#000"/>' +
+        '<circle cx="11" cy="11" r="10" fill="#fff"/>' +
+        shadow +
+        '</mask></defs>' +
+        '<circle cx="11" cy="11" r="10" fill="#f7f1e4" mask="url(#' + uid + ')"/>' +
+        '<circle cx="8.2" cy="9.2" r="1.1" fill="#e4d8c4" opacity=".35" mask="url(#' + uid + ')"/>' +
+        '<circle cx="13.4" cy="12.6" r="1.6" fill="#e4d8c4" opacity=".28" mask="url(#' + uid + ')"/>' +
         '</svg>';
       el.setAttribute("data-moon", moonPhaseName(ph));
     }
