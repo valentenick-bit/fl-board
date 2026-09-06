@@ -2431,7 +2431,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 446;
+    window.BOARD_VER = 448;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2525,7 +2525,7 @@ Cart shop:</textarea>
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|\/adsb\?|adsb\.lol|adsb\.fi|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
           return r;
@@ -5912,6 +5912,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v448 — Stop live-flight pings after arrival. Ignore /busy and NWS misses in crash log.",
+      "v447 — Lightning map popup only opens from the lightning card.",
       "v446 — Hide the Today flight card when nothing is current.",
       "v445 — Flight card flips to Arrived from route time when the plane drops off ADS-B.",
       "v444 — Today venue cards can show a Busy / Quiet / wait pill when Google publishes it.",
@@ -6740,6 +6742,11 @@ function currentRotation() {
         "</div>";
     }
     function lookupFlightStatus(f, done) {
+      var st = typeof inferFlyStatus === "function" ? inferFlyStatus(f) : "";
+      if (/arriv|cancel/i.test(st) || (typeof flightIsCurrent === "function" && !flightIsCurrent(f))) {
+        if (typeof noteFeed === "function") noteFeed("fly-live", true, "idle · " + (st || "none"));
+        return done(st || "");
+      }
       var parsed = parseFlightCode(f);
       var codes = parsed.codes;
       if (!codes.length) return done("");
@@ -6828,14 +6835,14 @@ function currentRotation() {
     document.addEventListener("click", function (e) {
       if (e.target && (e.target.id === "map-pop" || e.target.id === "map-pop-x")) { closeMapPop(); return; }
       if (e.target.closest && e.target.closest("input, textarea, a, button, label, .switch")) return;
-      var fly = e.target.closest && e.target.closest("#today-fly-body .card, #live-flights .card, #today-fly .card");
+      var fly = e.target.closest && e.target.closest("#today-fly-body .card, #live-flights .card");
       if (fly) {
         var f = (window.__flightData && window.__flightData.flights && window.__flightData.flights[0]) || window.__lastFly;
         var src = flyMapSrc(f);
         if (src) openMapPop((f && f.flight) || "Flight", src, flyMapLinks(f));
         return;
       }
-      var bolt = e.target.closest && e.target.closest("#today-bolt, #today-bolt-body .card, #chip-bolt, #chip-bolt .card");
+      var bolt = e.target.closest && e.target.closest("#today-bolt-body .card, #chip-bolt.pulse, #chip-bolt .card");
       if (bolt) {
         openMapPop("Lightning", boltMapSrc(), '<a href="' + boltMapSrc() + '" target="_blank" rel="noopener">Open live lightning map</a>');
         return;
