@@ -1297,6 +1297,7 @@
 
     .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
     iframe.lite { width:100%; height:40vh; border:0; border-radius:12px; background:#111; }
+    #traffic-map, #traffic-gmap { height:56vh; background:#d7e3ea; }
 
   
     html.dark .card,
@@ -1704,9 +1705,9 @@ Cart shop:</textarea>
         <p class="pill-key" id="bolt-note">Strikes near the home address.</p>
       </section>
       <section id="traffic" class="page">
-        <h2 data-k="The drive">Roads</h2>
+        <h2 data-k="The drive">Traffic</h2>
         <div id="traffic-gmap" class="lite gmap-box" hidden></div>
-        <iframe class="lite" id="traffic-map" title="Roads" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
+        <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
         <p class="pill-key" id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></p>
       </section>
       <section id="villa" class="page">
@@ -2032,7 +2033,7 @@ Cart shop:</textarea>
           <h3>Outside</h3>
           <div class="menu-grid">
             <button type="button" data-p="cam">Views</button>
-            <button type="button" data-p="traffic">Roads</button>
+            <button type="button" data-p="traffic">Traffic</button>
             <button type="button" data-p="wink">News</button>
             <button type="button" data-p="gulfsat">Gulf</button>
             <button type="button" data-p="tropics">Tropics</button>
@@ -2421,6 +2422,8 @@ Cart shop:</textarea>
         <input id="set-address" type="text" placeholder="Number, street, city, state" autocomplete="off" />
         <ul id="addr-suggest" class="addr-suggest" hidden></ul>
         <button type="button" id="set-address-go" class="done" style="margin:8px 0 10px">Use this address</button>
+        <label>Google Maps key <small>(optional — live traffic colors on Traffic)</small></label>
+        <input id="set-gmaps" type="text" placeholder="AIza…" autocomplete="off" />
         <p class="hint" id="set-zip-hint">Weather, radar, tides, scanners, and maps pin here. Saved on this device.</p>
       </div>
       <div class="set-card">
@@ -2474,7 +2477,7 @@ Cart shop:</textarea>
         <button type="button" data-p="deliver">Delivery</button>
         <p class="drawer-lab">Out</p>
         <button type="button" data-p="cam">Views</button>
-        <button type="button" data-p="traffic">Roads</button>
+        <button type="button" data-p="traffic">Traffic</button>
         <button type="button" data-p="wink">News</button>
         <p class="drawer-lab">Storms</p>
         <button type="button" data-p="bolt">Lightning</button>
@@ -2531,7 +2534,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 465;
+    window.BOARD_VER = 467;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2990,7 +2993,7 @@ Cart shop:</textarea>
         if (frame) frame.style.display = "none";
         box.hidden = false;
         var center = { lat: homeLat(), lng: homeLon() };
-        var map = new google.maps.Map(box, { center: center, zoom: 14, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
+        var map = new google.maps.Map(box, { center: center, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: 'greedy' });
         new google.maps.TrafficLayer().setMap(map);
         new google.maps.Marker({ position: center, map: map, title: homeAddress() });
         if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps " + center.lat.toFixed(3) + "," + center.lng.toFixed(3));
@@ -3272,12 +3275,14 @@ Cart shop:</textarea>
       var traf = document.getElementById("traffic-map");
       var pinTxt = homeAddress() || place || "";
       var pin = encodeURIComponent(pinTxt);
-      if (traf) traf.src = "https://maps.google.com/maps?ll=" + lat + "," + lon + "&q=" + pin + "&z=11&hl=en&t=m&layer=t&output=embed";
-      if (typeof noteFeed === "function") noteFeed("traffic", true, "pinned " + lat.toFixed(3) + "," + lon.toFixed(3));
+      var trafficUrl = "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d48000!2d" + lon + "!3d" + lat + "!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!5m1!1e1";
+      if (traf) traf.src = trafficUrl;
+      if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps traffic " + lat.toFixed(3) + "," + lon.toFixed(3));
       var drives = document.getElementById("traffic-drives");
-      if (drives) drives.textContent = "Google Map at " + pinTxt + ". Tap Google Maps for live traffic.";
+      if (drives) drives.textContent = "Live Google traffic near " + pinTxt + ".";
       var gl = document.getElementById("gmaps-link");
-      if (gl) gl.href = "https://www.google.com/maps/search/?api=1&query=" + pin;
+      if (gl) gl.href = "https://www.google.com/maps/@" + lat + "," + lon + ",11z/data=!5m1!1e1";
+      if (typeof paintGoogleTraffic === "function") paintGoogleTraffic();
       var links = document.getElementById("traffic-links");
       if (links) {
         var maps = "https://www.google.com/maps/@?api=1&map_action=map&center=" + lat + "," + lon + "&zoom=12";
@@ -3447,7 +3452,7 @@ Cart shop:</textarea>
         dial(pack.redcross[0], pack.redcross[1]) +
         dial(pack.two11[0], pack.two11[1]) +
         (pack.animal[1] ? dial(pack.animal[0], pack.animal[1]) : "") +
-        dial("Roads", "511");
+        dial("Traffic", "511");
     }
     function resolveHomeGeo() {
       paintHomeChrome();
@@ -3597,7 +3602,7 @@ function currentRotation() {
       if (!id || id === "settings" || id === "account" || pageOnRotation(id)) return;
       var page = document.getElementById(id);
       if (!page) return;
-      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", radar:"Radar", marine:"Marine", sky:"Sky", traffic:"Roads", ent:"Fun", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", radar:"Radar", marine:"Marine", sky:"Sky", traffic:"Traffic", ent:"Fun", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
       var subs = { health:"What is live, stale, or down", guide:"How Commons works", ideas:"Queued work", sources:"Where the numbers come from", triggers:"Test rotations and alerts", kioskpage:"Wall setup", villa:"Open and close the house", contacts:"Numbers and what to do", prep:"Kit and steps for this warning", power:"Outages near the house", business:"Clubhouse and HOA", wink:"Local headlines", menu:"All pages", welcome:"Start here" };
       var head = document.createElement("div");
       head.className = "settings-head page-off-head";
@@ -5991,6 +5996,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v467 — Roads page is labeled Traffic.",
+      "v466 — Roads is Google traffic pinned on the home point (~10 mile view). Optional Maps key turns on the live color layer.",
       "v465 — Humidity, pressure, rain, surge, and SST charts sit on the same card as tide — no inner cream panel.",
       "v464 — Welcome in Developer. No PIN. Header chip smaller. Address not stored in the file. Delivered label. Empty states.",
       "v454 — Collapse near-duplicate event titles (Band / Duo / New).",
@@ -6259,7 +6266,7 @@ function currentRotation() {
       var place = typeof homePlace === "function" ? homePlace() : "Englewood";
       var rot = [];
       try { rot = (typeof rotateList === "function" ? rotateList() : []).slice(); } catch (e) { rot = []; }
-      var names = { now:"Today", menu:"Menu", tenday:"Weather", radar:"Radar", gulfsat:"Gulf", tropics:"Tropics", marine:"Marine", sky:"Sky", traffic:"Roads", cam:"Views", ent:"Fun", house:"House", deliver:"Delivery", radio:"Radio", sports:"Sports", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", prep:"Prep", power:"Power" };
+      var names = { now:"Today", menu:"Menu", tenday:"Weather", radar:"Radar", gulfsat:"Gulf", tropics:"Tropics", marine:"Marine", sky:"Sky", traffic:"Traffic", cam:"Views", ent:"Fun", house:"House", deliver:"Delivery", radio:"Radio", sports:"Sports", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", prep:"Prep", power:"Power" };
       var rotLine = rot.map(function (id) { return names[id] || id; }).join(" → ") || "Today → Weather → Radar → …";
       var prep = typeof lightningPrep === "function" ? lightningPrep() : { on:false, why:"" };
       var nowL = typeof lightningNow === "function" ? lightningNow() : { on:false, why:"" };
@@ -6417,7 +6424,7 @@ function currentRotation() {
     }
 
     function pageLabel(id) {
-      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", radar:"Radar", marine:"Marine", sky:"Sky", traffic:"Roads", ent:"Fun", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", radar:"Radar", marine:"Marine", sky:"Sky", traffic:"Traffic", ent:"Fun", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
       return names[id] || id;
     }
     function rebuildDock() {
@@ -7986,7 +7993,9 @@ function currentRotation() {
           });
         })();
         var addr = document.getElementById("set-address");
-        if (addr) addr.value = s.address || addr.value || "";
+        if (addr) addr.value = s.address || addr.value;
+        var gm = document.getElementById("set-gmaps");
+        if (gm) gm.value = s.gmapsKey || "";
         var comm = document.getElementById("set-community");
         if (comm && document.activeElement !== comm) comm.value = s.community || "BeachWalk by Manasota Key";
         if (typeof paintCommunity === "function") paintCommunity();
@@ -8219,6 +8228,14 @@ function currentRotation() {
           if (e.key === "Escape") hideAddrSuggest();
         });
         if (String(getSet().gmapsKey || "").trim()) loadGmaps(function () {});
+        var gmIn = document.getElementById("set-gmaps");
+        if (gmIn && !gmIn.dataset.bound) {
+          gmIn.dataset.bound = "1";
+          gmIn.addEventListener("change", function () {
+            putSet({ gmapsKey: String(gmIn.value || "").trim() });
+            if (typeof applyLocalMaps === "function") applyLocalMaps();
+          });
+        }
       }
       var reset = document.getElementById("set-dockreset");
       if (reset) reset.addEventListener("click", function () {
