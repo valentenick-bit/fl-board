@@ -859,7 +859,13 @@
     .empty { color:var(--muted); font-size:14px; line-height:1.45; }
     .card.music { background:#f7ebe6; box-shadow:inset 4px 0 0 var(--coral); }
     .music-tag, .place-tag { display:inline-block; margin:0 6px 4px 0; padding:2px 8px; border-radius:999px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; }
-    .card span.music-tag { background:var(--coral); color:#fff; }
+    .card span.music-tag, .card span.kind-tag { background:var(--coral); color:#fff; }
+    .card span.kind-tag.bingo { background:#c4a35a; }
+    .card span.kind-tag.market { background:#2a9d8f; }
+    .card span.kind-tag.cars { background:#4a90a4; }
+    .card span.kind-tag.trivia { background:#1b6b62; }
+    .card span.kind-tag.fest { background:#c45a6a; }
+    .card span.kind-tag.lodge { background:#7a5a12; }
     .card span.place-tag { background:var(--teal); color:#fff; }
     .card span.place-tag.place-bw { background:var(--teal); }
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
@@ -2431,7 +2437,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 448;
+    window.BOARD_VER = 449;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5912,6 +5918,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v449 — Event cards get a type pill (Bingo, farmers market, car show, live music).",
       "v448 — Stop live-flight pings after arrival. Ignore /busy and NWS misses in crash log.",
       "v447 — Lightning map popup only opens from the lightning card.",
       "v446 — Hide the Today flight card when nothing is current.",
@@ -7098,10 +7105,25 @@ function currentRotation() {
         out.sort(function (a,b) { return a.when - b.when; });
         return out.slice(0, 80);
       }
-      function isLiveMusic(sum, loc, desc) {
+  
+    function eventKind(sum, loc, desc) {
+      var s = [sum, loc, desc].join(" ").toLowerCase();
+      if (/bingo/.test(s)) return { label: "Bingo", cls: "bingo" };
+      if (/farmer.?s?\s*market|farmers market|flea market/.test(s)) return { label: "Farmers market", cls: "market" };
+      if (/car show|cruise.?in|truck show|cars and coffee|auto show/.test(s)) return { label: "Car show", cls: "cars" };
+      if (/karaoke/.test(s)) return { label: "Karaoke", cls: "music" };
+      if (/\btrivia\b/.test(s)) return { label: "Trivia", cls: "trivia" };
+      if (/meat raffle|\braffle\b/.test(s)) return { label: "Raffle", cls: "bingo" };
+      if (/craft fair|art walk|makers market/.test(s)) return { label: "Craft fair", cls: "market" };
+      if (/festival|parade|firework/.test(s)) return { label: "Festival", cls: "fest" };
+      if (/moose/.test(s) && /dinner|lodge dinner|queen of hearts/.test(s)) return { label: "Moose", cls: "lodge" };
+      if (typeof isLiveMusic === "function" && isLiveMusic(sum, loc, desc)) return { label: "Live music", cls: "music" };
+      return null;
+    }
+    function isLiveMusic(sum, loc, desc) {
         var s = [sum, loc, desc].join(" ").toLowerCase();
         if (/food truck|zumba|bakery|yoga|boat race|parade|craft festival|hoa|board meeting|committee/.test(s) && !/\b(music|band|dj|piano|concert)\b/.test(s)) return false;
-        if (/troll music|sandbar tiki|sand bar tiki|artur|englewood moose|gulf cove moose|moose lodge/.test(s)) return true;
+        if (/troll music|sandbar tiki|sand bar tiki|artur/.test(s) && /music|band|dj|piano|concert|live/.test(s)) return true;
         if (/@/.test(sum) && !/http|zoom|meet\.google/.test(s)) return true;
         if (/labor day/.test(s) && /celebrat|party|pool|high tide|\bdj\b/.test(s)) return true;
         return /live\s*music|\bmusic\b|\bband\b|\bdjs?\b|concert|tribute|pian|\bcabana dogs\b|johnny d|jentgens|storm riders|floyd|oldies|rocket 88|generation gap|\b22n\b|open mic|karaoke|steel drum|reggae|acoustic|jazz|blues|\bduo\b|\btrio\b|singer|vocal|guitar|covers?\b|performing/.test(s);
@@ -7109,7 +7131,8 @@ function currentRotation() {
       window.entCardHtml = function (e) {
         var allDay = !!e.allDay || (e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
         var d = allDay ? fmtClockDate(e.when) : (fmtClockDate(e.when) + " · " + fmtClockTime(e.when));
-        var live = e.live || isLiveMusic(e.sum, e.loc, e.desc);
+        var kind = typeof eventKind === "function" ? eventKind(e.sum, e.loc, e.desc) : null;
+        var live = !!(kind && kind.cls === "music") || e.live || isLiveMusic(e.sum, e.loc, e.desc);
         var place = e.inside ? "BeachWalk" : "Englewood";
         if (!e.inside) {
           var at = (e.sum.match(/@\s*(.+)$/) || [])[1];
@@ -7119,7 +7142,8 @@ function currentRotation() {
         if (place.length > 28) place = place.slice(0, 26).replace(/\s+\S*$/, "") + "…";
         var pclass = e.inside ? "place-tag place-bw" : "place-tag place-out";
         var mapQ = e.inside ? ("BeachWalk by Manasota Key, Englewood FL") : ((e.loc || place || e.sum) + ", Englewood FL");
-        return '<div class="card map-hit' + (live ? " music" : "") + '" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '"><span class="' + pclass + '">' + place + "</span>" + (live ? '<span class="music-tag">Live music</span>' : "") + '<span class="busy-tag" hidden></span>' + "<b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
+        var kindHtml = kind ? ('<span class="kind-tag ' + kind.cls + '">' + kind.label + "</span>") : "";
+        return '<div class="card map-hit' + (live ? " music" : "") + '" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '"><span class="' + pclass + '">' + place + "</span>" + kindHtml + '<span class="busy-tag" hidden></span>' + "<b>" + d + " · " + e.sum + "</b><span>" + (e.loc || "") + "</span></div>";
       };
       function render(id, events) {
         var box = document.getElementById(id);
