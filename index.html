@@ -1595,6 +1595,55 @@
       height:56vh !important;
       min-height:340px !important;
     }
+
+    .traffic-crop {
+      position:relative;
+      width:100%;
+      height:56vh;
+      min-height:340px;
+      overflow:hidden;
+      border-radius:16px;
+      background:#d7e3ea;
+    }
+    .traffic-crop iframe#traffic-map {
+      position:absolute;
+      left:0;
+      width:100%;
+      top:-72px;
+      height:calc(56vh + 72px);
+      min-height:calc(340px + 72px);
+      border:0;
+      max-height:none !important;
+    }
+    #gulfsat .radar-crop,
+    #tropics .radar-crop {
+      height:auto !important;
+      min-height:0 !important;
+      overflow:visible !important;
+      background:#0b1220;
+    }
+    #gulfsat .radar-crop img,
+    #tropics .radar-crop img {
+      position:static !important;
+      inset:auto !important;
+      width:100% !important;
+      height:auto !important;
+      object-fit:contain !important;
+      display:block;
+    }
+    #radar.page .radar-crop img {
+      object-fit:contain !important;
+    }
+    html.kiosk main,
+    main {
+      overflow-y:auto !important;
+    }
+    .page.map-page.on,
+    html.kiosk .page.on {
+      overflow:auto !important;
+      height:auto !important;
+      display:block !important;
+    }
     #dev-lock { display:none !important; }
     </style>
 </head>
@@ -1820,19 +1869,20 @@
           <small class="stamp" data-feed="alerts"></small>
         </div>
         <div class="radar-crop radar-stage" id="radar-stage">
-          <img id="radar-view" alt="Radar loop" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
+          <iframe id="radar-live" title="RainViewer radar" allowfullscreen></iframe>
+          <img id="radar-view" alt="NWS radar loop" hidden src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
         </div>
         <p id="radar-cap" class="radar-legend">Local radar loop</p>
         <p class="pill-key" id="radar-note">Radar follows the home address. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
       </section>
-      <section id="gulfsat" class="page map-page">
+      <section id="gulfsat" class="page">
         <h2 data-k="Gulf">Gulf</h2>
         <div class="radar-crop radar-stage">
           <img id="gulfsat-view" alt="Gulf satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"/>
         </div>
         <p class="pill-key">GOES Gulf of America / East Gulf. Enters the rotation when a named storm is in the Gulf.</p>
       </section>
-      <section id="tropics" class="page map-page">
+      <section id="tropics" class="page">
         <h2 data-k="Atlantic">Tropics</h2>
         <div class="radar-crop radar-stage">
           <img id="tropics-view" alt="Atlantic tropics satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg"/>
@@ -1970,7 +2020,9 @@ Cart shop:</textarea>
       <section id="traffic" class="page map-page">
         <h2 data-k="The drive">Traffic</h2>
         <div id="traffic-gmap" class="lite gmap-box" hidden></div>
-        <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
+        <div class="traffic-crop">
+          <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
+        </div>
         <p class="pill-key" id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></p>
       </section>
       <section id="villa" class="page">
@@ -2797,7 +2849,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 478;
+    window.BOARD_VER = 480;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3511,28 +3563,44 @@ Cart shop:</textarea>
       setBtn(pd, pdN, pack && pack.pd, "Police");
       setBtn(fd, fdN, pack && pack.fd, "Fire");
     }
+    function rainviewerUrl(lat, lon) {
+      return "https://www.rainviewer.com/map.html?loc=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + ",8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=3&c=5&o=88&lm=1&th=0&sm=1&sn=1&layer=radar";
+    }
     function applyRadar() {
       var st = homeRadar();
+      var lat = homeLat();
+      var lon = homeLon();
+      var live = document.getElementById("radar-live");
       var img = document.getElementById("radar-view") || document.getElementById("radar-loop");
       var note = document.getElementById("radar-note");
       var cap = document.getElementById("radar-cap");
       var link = document.getElementById("radar-link");
-      var url = "https://radar.weather.gov/ridge/standard/" + st + "_loop.gif";
-      window.__radarLoopUrl = url;
+      var pin = (typeof homeAddress === "function" && homeAddress()) || homePlace();
+      var rv = rainviewerUrl(lat, lon);
+      var nws = "https://radar.weather.gov/ridge/standard/" + st + "_loop.gif";
+      window.__radarLoopUrl = rv;
       window.__radarView = "loop";
+      if (live) {
+        live.style.display = "block";
+        live.src = rv;
+        live.onerror = function () {
+          live.style.display = "none";
+          if (img) { img.hidden = false; img.src = nws + "?t=" + Date.now(); }
+          if (typeof noteFeed === "function") noteFeed("radar", false, "rainviewer blocked");
+        };
+      }
       if (img) {
-        img.hidden = false;
+        img.hidden = !!live;
         img.alt = st + " radar loop";
-        img.src = url + "?t=" + Date.now();
+        img.src = nws + "?t=" + Date.now();
       }
-      var live = document.getElementById("radar-live");
-      if (live) live.remove();
-      if (link) link.href = "https://radar.weather.gov/station/" + st + "/standard";
-      if (cap) cap.textContent = "NWS " + st + " loop · " + (homeAddress() || homePlace());
+      if (link) link.href = rv;
+      if (cap) cap.textContent = "RainViewer pinned on " + pin;
       if (note) {
-        note.innerHTML = "Closest NWS radar for " + (homeAddress() || homePlace()) + ". <a id=\"radar-link\" href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">Full NWS view</a>";
+        note.innerHTML = "Pinned on " + pin + ". <a id=\"radar-link\" href=\"" + rv + "\" target=\"_blank\" rel=\"noopener\">Open RainViewer</a> · <a href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">NWS " + st + "</a>";
       }
-      window.__radarBase = url;
+      window.__radarBase = nws;
+      if (typeof noteFeed === "function") noteFeed("radar", true, "rainviewer " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3));
       if (typeof paintPageRefs === "function") paintPageRefs();
     }
     function applyLocalMaps() {
@@ -6332,6 +6400,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v480 — Radar is RainViewer centered on the home address. NWS loop stays as fallback.",
+      "v479 — Traffic embed header is cropped off. Gulf and tropics show the full image. Map pages can scroll again.",
       "v478 — Radar back to NWS loop. Traffic back to the working embed at 56vh. Exit kiosk stays on screen. Kiosk no longer crushes cards.",
       "v477 — Radar is Windy, pinned on the home address. Maps are 70vh tall again. Traffic uses the Google ll+layer embed.",
       "v476 — Map stages use a real height again. Radar/sat images cover the box (no side bars). Traffic iframe is not flattened.",
