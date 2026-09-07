@@ -2870,7 +2870,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 484;
+    window.BOARD_VER = 485;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3590,35 +3590,8 @@ Cart shop:</textarea>
     function stopRainviewerLoop() {
       if (window.__rvTimer) { clearInterval(window.__rvTimer); window.__rvTimer = 0; }
     }
-    function startRainviewerPin(img, lat, lon) {
-      if (!img) return;
-      fetch("https://api.rainviewer.com/public/weather-maps.json")
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          var host = data && data.host;
-          var past = data && data.radar && data.radar.past;
-          if (!host || !past || !past.length) throw new Error("no frames");
-          var frames = past.slice(-10);
-          var urls = frames.map(function (f) {
-            return host + f.path + "/256/7/" + Number(lat).toFixed(4) + "/" + Number(lon).toFixed(4) + "/2/1_1.png";
-          });
-          window.__rvFrames = urls;
-          var n = 0;
-          stopRainviewerLoop();
-          function tick() {
-            if (!urls.length) return;
-            img.src = urls[n % urls.length];
-            n += 1;
-          }
-          tick();
-          window.__rvTimer = setInterval(tick, 450);
-          if (typeof noteFeed === "function") noteFeed("radar", true, "rainviewer pin " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3));
-        })
-        .catch(function () {
-          if (typeof noteFeed === "function") noteFeed("radar", true, "nws loop");
-        });
-    }
     function applyRadar() {
+      stopRainviewerLoop();
       var st = homeRadar();
       var lat = homeLat();
       var lon = homeLon();
@@ -3634,16 +3607,16 @@ Cart shop:</textarea>
       window.__radarView = "loop";
       if (img) {
         img.hidden = false;
-        img.alt = "Radar at " + pin;
+        img.alt = st + " radar loop";
         img.src = nws + "?t=" + Date.now();
       }
-      startRainviewerPin(img, lat, lon);
       if (link) link.href = rainviewerUrl(lat, lon);
-      if (cap) cap.textContent = "Radar pinned on " + pin;
+      if (cap) cap.textContent = "NWS " + st + " loop near " + pin;
       if (note) {
-        note.innerHTML = "Centered on " + pin + ". <a id=\"radar-link\" href=\"" + rainviewerUrl(lat, lon) + "\" target=\"_blank\" rel=\"noopener\">Open RainViewer</a> · <a href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">NWS " + st + "</a>";
+        note.innerHTML = "Official NWS loop for the nearest site to " + pin + ". <a id=\"radar-link\" href=\"" + rainviewerUrl(lat, lon) + "\" target=\"_blank\" rel=\"noopener\">RainViewer at this address</a> · <a href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">NWS " + st + "</a>";
       }
       window.__radarBase = nws;
+      if (typeof noteFeed === "function") noteFeed("radar", true, "nws " + st);
       if (typeof paintPageRefs === "function") paintPageRefs();
     }
     function applyLocalMaps() {
@@ -6443,6 +6416,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v485 — Radar is the NWS loop only. Stopped the RainViewer tile flicker.",
       "v484 — Fixed a broken notes line that stopped the board from running. Radar still NWS first, then RainViewer tiles on the home pin.",
       "v483 — Radar loads the NWS loop immediately, then swaps to RainViewer tiles centered on the home pin (no iframe).",
       "v482 — Empty traffic-gmap box is hidden so it cannot sit as a grey card above the map.",
