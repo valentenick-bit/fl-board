@@ -858,14 +858,33 @@
     .card span { color:var(--muted); font-size:15px; line-height:1.45; }
     .empty { color:var(--muted); font-size:14px; line-height:1.45; }
     .card.music { background:#f7ebe6; box-shadow:inset 4px 0 0 var(--coral); }
-    .music-tag, .place-tag { display:inline-block; margin:0 6px 4px 0; padding:2px 8px; border-radius:999px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; }
+    .music-tag, .place-tag, .kind-tag { display:inline-block; margin:0 6px 4px 0; padding:2px 10px; border-radius:999px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; line-height:1.4; }
     .card span.music-tag, .card span.kind-tag { background:var(--coral); color:#fff; }
-    .card span.kind-tag.bingo { background:#c4a35a; }
-    .card span.kind-tag.market { background:#2a9d8f; }
-    .card span.kind-tag.cars { background:#4a90a4; }
-    .card span.kind-tag.trivia { background:#1b6b62; }
-    .card span.kind-tag.fest { background:#c45a6a; }
-    .card span.kind-tag.lodge { background:#7a5a12; }
+    .card span.kind-tag.music { background:#e07a5f; color:#fff; }
+    .card span.kind-tag.karaoke { background:#c45a8a; color:#fff; }
+    .card span.kind-tag.bingo { background:#6b5b95; color:#fff; }
+    .card span.kind-tag.raffle { background:#8b5e3c; color:#fff; }
+    .card span.kind-tag.market { background:#3d8b5a; color:#fff; }
+    .card span.kind-tag.craft { background:#7a6bb5; color:#fff; }
+    .card span.kind-tag.cars { background:#3d6b8a; color:#fff; }
+    .card span.kind-tag.trivia { background:#1b6b62; color:#fff; }
+    .card span.kind-tag.fest { background:#c45a6a; color:#fff; }
+    .card span.kind-tag.lodge { background:#7a5a12; color:#fff; }
+    html.dark .card span.kind-tag,
+    html.dark .card span.music-tag,
+    html.dark .card span.place-tag.place-bw { color:#fff; }
+    html.dark .card span.place-tag.place-out { color:#1b2a4a; }
+    html.dark .card span.kind-tag.music { background:#e8927a; }
+    html.dark .card span.kind-tag.karaoke { background:#d06a9a; }
+    html.dark .card span.kind-tag.bingo { background:#8a78b8; }
+    html.dark .card span.kind-tag.raffle { background:#a4724a; }
+    html.dark .card span.kind-tag.market { background:#4ea06a; }
+    html.dark .card span.kind-tag.craft { background:#8f80c8; }
+    html.dark .card span.kind-tag.cars { background:#4d86a8; }
+    html.dark .card span.kind-tag.trivia { background:#2a8a80; }
+    html.dark .card span.kind-tag.fest { background:#d06a7a; }
+    html.dark .card span.kind-tag.lodge { background:#9a7428; }
+    html.dark .card span.music-tag { background:#e8927a; }
     .card span.place-tag { background:var(--teal); color:#fff; }
     .card span.place-tag.place-bw { background:var(--teal); }
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
@@ -2437,7 +2456,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 449;
+    window.BOARD_VER = 453;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5918,6 +5937,10 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v453 — Event type pills stay readable in dark mode.",
+      "v452 — Each event type gets its own pill color.",
+      "v451 — Event type pills are capsules again.",
+      "v450 — Collapse duplicate Englewood events on the wall.",
       "v449 — Event cards get a type pill (Bingo, farmers market, car show, live music).",
       "v448 — Stop live-flight pings after arrival. Ignore /busy and NWS misses in crash log.",
       "v447 — Lightning map popup only opens from the lightning card.",
@@ -7111,10 +7134,10 @@ function currentRotation() {
       if (/bingo/.test(s)) return { label: "Bingo", cls: "bingo" };
       if (/farmer.?s?\s*market|farmers market|flea market/.test(s)) return { label: "Farmers market", cls: "market" };
       if (/car show|cruise.?in|truck show|cars and coffee|auto show/.test(s)) return { label: "Car show", cls: "cars" };
-      if (/karaoke/.test(s)) return { label: "Karaoke", cls: "music" };
+      if (/karaoke/.test(s)) return { label: "Karaoke", cls: "karaoke" };
       if (/\btrivia\b/.test(s)) return { label: "Trivia", cls: "trivia" };
-      if (/meat raffle|\braffle\b/.test(s)) return { label: "Raffle", cls: "bingo" };
-      if (/craft fair|art walk|makers market/.test(s)) return { label: "Craft fair", cls: "market" };
+      if (/meat raffle|\braffle\b/.test(s)) return { label: "Raffle", cls: "raffle" };
+      if (/craft fair|art walk|makers market/.test(s)) return { label: "Craft fair", cls: "craft" };
       if (/festival|parade|firework/.test(s)) return { label: "Festival", cls: "fest" };
       if (/moose/.test(s) && /dinner|lodge dinner|queen of hearts/.test(s)) return { label: "Moose", cls: "lodge" };
       if (typeof isLiveMusic === "function" && isLiveMusic(sum, loc, desc)) return { label: "Live music", cls: "music" };
@@ -7156,8 +7179,22 @@ function currentRotation() {
         if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = true; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
         if (cached.eng) bag.eng = cached.eng.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = false; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
       } catch (e) {}
+      function dedupeEnt(list) {
+        var seen = {};
+        return (list || []).filter(function (e) {
+          var title = String(e.sum || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+          var day = e.when ? new Date(e.when).toDateString() : "";
+          var hr = e.when ? new Date(e.when).getHours() : "";
+          var k = title + "|" + day + "|" + hr;
+          if (seen[k]) return false;
+          seen[k] = 1;
+          return true;
+        });
+      }
       function paint() {
         window.paintEnt = paint;
+        bag.bw = dedupeEnt(bag.bw);
+        bag.eng = dedupeEnt(bag.eng);
         var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 15);
         var all = bag.bw.concat(bag.eng).filter(function (e) {
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
