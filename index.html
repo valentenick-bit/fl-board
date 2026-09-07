@@ -138,9 +138,9 @@
     :root { --lean:0deg; --wag:2deg; --sway-dur:3.6s; --sand:#f3eee4; --sand-2:#e8dfcf; --navy:#1b2a4a; --teal:#2a9d8f; --gold:#c4a35a; --coral:#e07a5f; --muted:#5c6b7a; --hair:rgba(196,163,90,.42); --card:#f7f2e8; }
     * { box-sizing: border-box; }
 
-    html, body { margin:0; min-height:100vh; min-height:100dvh; height:100%; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
+    html, body { margin:0; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
     html, body { background:var(--sand); }
-    .frame { position:relative; width:100%; height:100%; min-height:100vh; min-height:100dvh; max-width:none; max-height:none; margin:0; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
+    .frame { position:relative; width:100%; height:100dvh; max-height:100dvh; min-height:0; max-width:none; margin:0; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
     html.phone, html.phone body {
       height:100% !important;
       height:100dvh !important;
@@ -477,7 +477,7 @@
     .hdr-meta { display:none; }
     .who-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
     .who-row .card b { display:block; margin-bottom:6px; }
-    main { flex:1; padding:8px 10px 6px; overflow-y:auto; min-height:0; overscroll-behavior-y:contain; }
+    main { flex:1; padding:8px 10px calc(var(--foot, 120px) + 8px); overflow-y:auto; min-height:0; overscroll-behavior-y:contain; }
     .ptr { position:absolute; left:0; right:0; top:88px; height:0; overflow:hidden; display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--navy); pointer-events:none; z-index:9; }
     .ptr.on { height:28px; }
     .page { display:none !important; opacity:1; background:transparent; border-radius:16px; padding:8px 8px 4px; }
@@ -892,7 +892,7 @@
     html.dark .ev-rail .ev-num { color:#f4efe4; }
     html.dark .ev-rail { color:#7fd1c7; }
 
-    .music-tag, .place-tag, .kind-tag { display:inline-block; margin:0 6px 4px 0; padding:2px 10px; border-radius:999px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; line-height:1.4; }
+    .music-tag, .place-tag, .kind-tag, .warn-tag { display:inline-block; margin:0 6px 4px 0; padding:2px 10px; border-radius:999px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; line-height:1.4; }
     .card span.music-tag, .card span.kind-tag { background:var(--navy); color:#fff; }
     .card span.warn-tag { background:var(--coral); color:#fff; }
     .card span.kind-tag.music { background:#1b6b62; color:#fff; }
@@ -1248,16 +1248,19 @@
     .radar-crop.wide img { transform:scale(1.35); transform-origin:50% 50%; }
     html.kiosk .tenday { margin:6px 0 0; }
     html.phone header { position:relative; flex:0 0 auto; z-index:24; }
-    html.phone .board-foot { position:relative; flex:0 0 auto; }
+    html.phone .board-foot { position:fixed; left:0; right:0; bottom:0; z-index:60; }
     .board-foot {
-      position:relative;
-      flex:0 0 auto;
-      z-index:40;
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      z-index:60;
       display:flex;
       flex-direction:column;
       width:100%;
       background:var(--sand-2);
       box-shadow:0 -8px 20px rgba(15,18,30,.12);
+      padding-bottom:env(safe-area-inset-bottom, 0px);
     }
     .ticker-stack {
       position:relative;
@@ -1274,7 +1277,7 @@
       min-height:0 !important;
       overflow-y:auto !important;
       overflow-x:hidden !important;
-      padding-bottom:8px;
+      padding-bottom:calc(var(--foot, 120px) + 8px);
       touch-action:pan-y;
     }
     html.phone #health.page.on { height:auto; max-height:none; overflow:visible !important; }
@@ -1486,6 +1489,65 @@
       flex:1 1 auto;
       min-height:140px;
     }
+
+    @keyframes chipHot {
+      0%, 100% { box-shadow:0 0 0 0 rgba(224,122,95,.55); border-color:var(--coral); }
+      50% { box-shadow:0 0 0 10px rgba(224,122,95,0); border-color:#e07a5f; }
+    }
+    #today-bolt.hot .card.today-card,
+    .card.today-card.bolt.hot {
+      border:2px solid var(--coral);
+      animation:chipHot 1.5s ease-out infinite;
+    }
+    html.dark #today-bolt.hot .card.today-card {
+      box-shadow:0 0 0 0 rgba(224,122,95,.4);
+    }
+
+    main { display:flex; flex-direction:column; }
+    .page.map-page.on {
+      display:flex !important;
+      flex-direction:column;
+      flex:1 1 auto;
+      min-height:0;
+      height:100%;
+    }
+    .page.map-page > h2,
+    .page.map-page > .pill-key,
+    .page.map-page > .radar-legend,
+    .page.map-page > p,
+    .page.map-page > .card,
+    .page.map-page > .cam-cap {
+      flex:0 0 auto;
+    }
+    .page.map-page > iframe,
+    .page.map-page > .lite,
+    .page.map-page > .gmap-box,
+    .page.map-page > .radar-crop,
+    .page.map-page > .keycam,
+    .page.map-page > .hurr-stage {
+      flex:1 1 auto !important;
+      min-height:0 !important;
+      height:auto !important;
+      width:100%;
+      border-radius:16px;
+      overflow:hidden;
+    }
+    .page.map-page iframe,
+    .page.map-page .keycam iframe,
+    .page.map-page .radar-crop img,
+    .page.map-page .hurr-stage img,
+    .page.map-page #traffic-map,
+    .page.map-page #traffic-gmap,
+    .page.map-page #bolt-map {
+      width:100%;
+      height:100% !important;
+      border:0;
+      display:block;
+    }
+    .page.map-page .radar-crop img {
+      object-fit:contain;
+      object-position:center;
+    }
     #dev-lock { display:none !important; }
     </style>
 </head>
@@ -1656,7 +1718,7 @@
           <p class="letter-sign">Sincerely,<br>Commons</p>
         </article>
       </section>
-      <section id="cam" class="page">
+      <section id="cam" class="page map-page">
         <h2 data-k="On the Key">Views</h2>
         <div class="keycam keycam-full">
           <iframe id="keycam-yt" title="Siesta Key Beach live" src="about:blank" data-cam="https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
@@ -1702,7 +1764,7 @@
         </div>
         <div class="tenday"></div>
       </section>
-      <section id="radar" class="page">
+      <section id="radar" class="page map-page">
         <h2 data-k="Over the Key">Radar</h2>
         <div class="card leave-card" id="leave-card-radar" hidden>
           <b>Should we leave?</b>
@@ -1715,14 +1777,14 @@
         <p id="radar-cap" class="radar-legend">Local radar loop</p>
         <p class="pill-key" id="radar-note">Radar follows the home address. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
       </section>
-      <section id="gulfsat" class="page">
+      <section id="gulfsat" class="page map-page">
         <h2 data-k="Gulf">Gulf</h2>
         <div class="radar-crop radar-stage">
           <img id="gulfsat-view" alt="Gulf satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"/>
         </div>
         <p class="pill-key">GOES Gulf of America / East Gulf. Enters the rotation when a named storm is in the Gulf.</p>
       </section>
-      <section id="tropics" class="page">
+      <section id="tropics" class="page map-page">
         <h2 data-k="Atlantic">Tropics</h2>
         <div class="radar-crop radar-stage">
           <img id="tropics-view" alt="Atlantic tropics satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg"/>
@@ -1842,7 +1904,7 @@ Cart shop:</textarea>
 
         <p class="pill-key" id="cane-refs"><a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener">NHC Atlantic / Gulf outlook</a></p>
       </section>
-      <section id="hurr" class="page">
+      <section id="hurr" class="page map-page">
         <h2 data-k="Watch and warning">Hurricane</h2>
         <div class="card" id="hurr-stats"><b>No hurricane watch or warning</b><span>This page joins the rotation when NWS posts a hurricane or tropical-storm watch or warning for the Key.</span></div>
         <div class="card" id="hurr-disc"><b>NHC discussion</b><span>Waiting on the latest forecast discussion…</span></div>
@@ -1851,13 +1913,13 @@ Cart shop:</textarea>
           <div class="hurr-cap" id="hurr-cap">Radar</div>
         </div>
       </section>
-      <section id="bolt" class="page">
+      <section id="bolt" class="page map-page">
         <h2 data-k="Storms">Lightning</h2>
         <span id="live-bolt" hidden>Clear</span>
         <iframe class="lite" id="bolt-map" title="Lightning" src="https://map.blitzortung.org/#7/26.96/-82.35"></iframe>
         <p class="pill-key" id="bolt-note">Strikes near the home address.</p>
       </section>
-      <section id="traffic" class="page">
+      <section id="traffic" class="page map-page">
         <h2 data-k="The drive">Traffic</h2>
         <div id="traffic-gmap" class="lite gmap-box" hidden></div>
         <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
@@ -2687,7 +2749,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 472;
+    window.BOARD_VER = 475;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -2723,17 +2785,20 @@ Cart shop:</textarea>
         if (go) location.reload();
       }, { passive: true });
     })();
-    (function pinPhoneFoot() {
+    (function pinFoot() {
       function pad() {
-        if (!document.documentElement.classList.contains("phone")) return;
         var foot = document.querySelector(".board-foot");
         var main = document.querySelector("main");
         if (!foot || !main) return;
-        main.style.paddingBottom = Math.max(120, foot.offsetHeight + 16) + "px";
+        var h = Math.max(56, foot.offsetHeight);
+        document.documentElement.style.setProperty("--foot", h + "px");
+        main.style.paddingBottom = (h + 8) + "px";
       }
       window.addEventListener("resize", pad);
-      setInterval(pad, 4000);
-      setTimeout(pad, 200);
+      window.addEventListener("orientationchange", function () { setTimeout(pad, 120); });
+      setInterval(pad, 3000);
+      setTimeout(pad, 80);
+      setTimeout(pad, 600);
     })();
     window.ROT_DEFAULTS = {
       normal: ["now","tenday","radar","marine","sky","cam","traffic","ent","deliver"],
@@ -4865,18 +4930,41 @@ function currentRotation() {
         var boltBody = document.getElementById("today-bolt-body");
         if (boltBox) boltBox.hidden = !on;
         if (on) {
-          var line = prep.why || (alertBolt ? "Warning up for this address." : nowx.lightning ? "Thunder in the current hour." : ("Thunder possible " + when + "."));
+          var near = window.__strikesNear || {};
+          var close = !!(near.close10);
+          var miles = near.closest || "10";
+          var mode = close ? "near" : (alertBolt ? "warn" : "forecast");
+          var line = prep.why || (mode === "near"
+            ? ("Lightning within " + miles + " miles.")
+            : mode === "warn"
+              ? "Thunderstorm warning for this address."
+              : nowx.lightning
+                ? "Thunder is in the current hour's forecast."
+                : ("Thunder is in the forecast" + (when ? " " + when : "") + "."));
+          if (mode === "near") line = "Lightning within " + miles + " miles.";
+          else if (mode === "warn" && !/warning|alert posted/i.test(line)) line = prep.why || "Thunderstorm warning for this address.";
           var span = bolt.querySelector("span");
           if (span) span.textContent = line;
+          var pill = mode === "near" ? "Nearby" : mode === "warn" ? "Warning" : "Forecast";
+          var pillClass = mode === "near" ? "place-tag place-bw" : (mode === "warn" ? "warn-tag" : "place-tag place-out");
+          if (boltBox) boltBox.classList.toggle("hot", mode === "near" || mode === "warn");
           if (boltBody && typeof stampTodayArt === "function") {
-            var shelter = !!(prep.shelter || alertBolt || (window.__strikesNear && window.__strikesNear.close10));
-            var tip = shelter ? "Stay inside until it moves off." : "No strike inside 10 miles and no warning here — no need to stay inside for this.";
+            var shelter = mode === "near" || mode === "warn";
+            var tip = mode === "near"
+              ? "Strike within 10 miles — stay inside until it moves off."
+              : mode === "warn"
+                ? "Official warning for this address — stay inside until it expires."
+                : "No strike inside 10 miles and no warning here. This is only in the forecast.";
             boltBody.innerHTML = stampTodayArt(
-              '<div class="card"><span class="place-tag place-out">Now</span><span class="warn-tag">Lightning</span><b>' + line + "</b><span>" + tip + "</span></div>",
+              '<div class="card' + (shelter ? " hot" : "") + '"><span class="' + pillClass + '">' + pill + '</span><span class="kind-tag warn-tag">Lightning</span><b>' + line + "</b><span>" + tip + "</span></div>",
               "bolt"
             );
+            if (boltBody.querySelector(".today-card")) boltBody.querySelector(".today-card").classList.toggle("hot", shelter);
           }
-        } else if (boltBody) boltBody.innerHTML = "";
+        } else {
+          if (boltBox) boltBox.classList.remove("hot");
+          if (boltBody) boltBody.innerHTML = "";
+        }
       }
       if (cane) {
         var storms = window.__namedStorms || [];
@@ -6189,6 +6277,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v475 — Ticker and dock stay fixed to the visual bottom in landscape. Frame uses 100dvh so the footer is not clipped.",
+      "v474 — Radar, gulf, tropics, lightning, hurricane, and live cam use the same remaining-window fill as Traffic.",
+      "v473 — Lightning chip pills are rounded. Copy follows the trigger (nearby strike, warning, or forecast). Nearby or warning pulses the card.",
       "v472 — App shell: header, page, dock+tickers. Footer is in the layout so it cannot slide off. Landscape grows maps and tiles into leftover space.",
       "v471 — Kiosk no longer scales the page (that stacked cards). Wide view wraps cards. Tickers stay fixed at the bottom.",
       "v470 — Kiosk fills the screen: cards sit in 1–3 columns, then the page scales down if it still overflows.",
