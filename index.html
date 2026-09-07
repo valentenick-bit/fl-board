@@ -1565,6 +1565,36 @@
       object-position:center;
       display:block;
     }
+
+    #exit-kiosk {
+      display:none;
+      position:fixed;
+      top:10px;
+      right:10px;
+      z-index:90;
+      border:0;
+      border-radius:999px;
+      padding:8px 14px;
+      background:var(--navy);
+      color:#fff;
+      font-weight:800;
+      font-size:12px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+    html.kiosk #exit-kiosk { display:block; }
+    html.kiosk main { overflow-y:auto !important; }
+    html.kiosk .card { overflow:visible !important; }
+    html.kiosk .page.on { overflow:auto !important; height:auto !important; display:block !important; }
+    #traffic-map, #traffic-gmap, #bolt-map {
+      height:56vh !important;
+      min-height:340px !important;
+      max-height:56vh;
+    }
+    #radar-stage, #radar.page .radar-crop {
+      height:56vh !important;
+      min-height:340px !important;
+    }
     #dev-lock { display:none !important; }
     </style>
 </head>
@@ -1603,6 +1633,7 @@
         <span></span><span></span><span></span>
       </button>
       </div>
+      <button type="button" id="exit-kiosk" hidden>Exit kiosk</button>
       <div class="brand">
         <span class="titles"><b>COMMONS</b><small id="hdr-place">BEACHWALK by Manasota Key</small></span>
       </div>
@@ -1789,8 +1820,7 @@
           <small class="stamp" data-feed="alerts"></small>
         </div>
         <div class="radar-crop radar-stage" id="radar-stage">
-          <iframe id="radar-live" title="Live radar" allowfullscreen></iframe>
-          <img id="radar-view" alt="Radar loop" hidden src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
+          <img id="radar-view" alt="Radar loop" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
         </div>
         <p id="radar-cap" class="radar-legend">Local radar loop</p>
         <p class="pill-key" id="radar-note">Radar follows the home address. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
@@ -2767,7 +2797,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 477;
+    window.BOARD_VER = 478;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3483,28 +3513,26 @@ Cart shop:</textarea>
     }
     function applyRadar() {
       var st = homeRadar();
-      var lat = homeLat();
-      var lon = homeLon();
-      var live = document.getElementById("radar-live");
       var img = document.getElementById("radar-view") || document.getElementById("radar-loop");
       var note = document.getElementById("radar-note");
       var cap = document.getElementById("radar-cap");
       var link = document.getElementById("radar-link");
-      var crop = document.getElementById("radar-stage") || document.querySelector(".radar-crop");
-      var windy = "https://embed.windy.com/embed2.html?lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) + "&detailLat=" + lat.toFixed(4) + "&detailLon=" + lon.toFixed(4) + "&zoom=8&level=surface&overlay=radar&product=ecmwf&menu=&message=&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=mph&metricTemp=default&radarRange=-1";
-      var nws = "https://radar.weather.gov/ridge/standard/" + st + "_loop.gif";
-      window.__radarLoopUrl = windy;
-      if (live) live.src = windy;
+      var url = "https://radar.weather.gov/ridge/standard/" + st + "_loop.gif";
+      window.__radarLoopUrl = url;
+      window.__radarView = "loop";
       if (img) {
+        img.hidden = false;
         img.alt = st + " radar loop";
-        img.src = nws + "?t=" + Date.now();
+        img.src = url + "?t=" + Date.now();
       }
-      if (link) link.href = "https://www.windy.com/?" + lat.toFixed(3) + "," + lon.toFixed(3) + ",8";
-      if (cap) cap.textContent = "Radar pinned on " + (homeAddress() || homePlace());
+      var live = document.getElementById("radar-live");
+      if (live) live.remove();
+      if (link) link.href = "https://radar.weather.gov/station/" + st + "/standard";
+      if (cap) cap.textContent = "NWS " + st + " loop · " + (homeAddress() || homePlace());
       if (note) {
-        note.innerHTML = "Pinned on " + (homeAddress() || homePlace()) + ". <a id=\"radar-link\" href=\"https://www.windy.com/?" + lat.toFixed(3) + "," + lon.toFixed(3) + ",8\" target=\"_blank\" rel=\"noopener\">Open Windy</a> · <a href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">NWS " + st + "</a>";
+        note.innerHTML = "Closest NWS radar for " + (homeAddress() || homePlace()) + ". <a id=\"radar-link\" href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">Full NWS view</a>";
       }
-      window.__radarBase = nws;
+      window.__radarBase = url;
       if (typeof paintPageRefs === "function") paintPageRefs();
     }
     function applyLocalMaps() {
@@ -3517,7 +3545,7 @@ Cart shop:</textarea>
       var traf = document.getElementById("traffic-map");
       var pinTxt = homeAddress() || place || "";
       var pin = encodeURIComponent(pinTxt);
-      var trafficUrl = "https://maps.google.com/maps?q=" + pin + "&ll=" + lat + "," + lon + "&z=11&hl=en&t=m&layer=t&output=embed";
+      var trafficUrl = "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d48000!2d" + lon + "!3d" + lat + "!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!5m1!1e1";
       if (traf) traf.src = trafficUrl;
       if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps traffic " + lat.toFixed(3) + "," + lon.toFixed(3));
       var drives = document.getElementById("traffic-drives");
@@ -6304,6 +6332,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v478 — Radar back to NWS loop. Traffic back to the working embed at 56vh. Exit kiosk stays on screen. Kiosk no longer crushes cards.",
       "v477 — Radar is Windy, pinned on the home address. Maps are 70vh tall again. Traffic uses the Google ll+layer embed.",
       "v476 — Map stages use a real height again. Radar/sat images cover the box (no side bars). Traffic iframe is not flattened.",
       "v475 — Ticker and dock stay fixed to the visual bottom in landscape. Frame uses 100dvh so the footer is not clipped.",
@@ -8411,14 +8440,24 @@ function currentRotation() {
         document.documentElement.classList.toggle("nolinks", !linksTog.checked);
       });
       var kioskBtn = document.getElementById("kioskbtn");
-      if (kioskBtn) kioskBtn.addEventListener("click", function () {
-        var on = getSet().kiosk === "1" ? "0" : "1";
-        putSet({ kiosk: on });
+      function setKioskOn(on) {
+        on = on ? "1" : "0";
+        if (typeof putSet === "function") putSet({ kiosk: on });
         try { localStorage.setItem("bw-kiosk", on); } catch (e3) {}
         document.documentElement.classList.toggle("kiosk", on === "1");
-        kioskBtn.classList.toggle("on", on === "1");
-        kioskBtn.textContent = on === "1" ? "Kiosk on" : "Kiosk";
+        if (kioskBtn) {
+          kioskBtn.classList.toggle("on", on === "1");
+          kioskBtn.textContent = on === "1" ? "Kiosk on" : "Kiosk";
+        }
+        var ex = document.getElementById("exit-kiosk");
+        if (ex) ex.hidden = on !== "1";
+      }
+      if (kioskBtn) kioskBtn.addEventListener("click", function () {
+        setKioskOn(getSet().kiosk !== "1");
       });
+      var exitK = document.getElementById("exit-kiosk");
+      if (exitK) exitK.addEventListener("click", function () { setKioskOn(false); });
+      setKioskOn(getSet().kiosk === "1");
       tap("set-quiet", "quiet", function () {
         if (typeof paintSkyHeader === "function") paintSkyHeader();
             if (typeof syncLightningUI === "function") syncLightningUI();
