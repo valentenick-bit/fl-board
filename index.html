@@ -1408,6 +1408,44 @@
       accent-color:var(--teal);
     }
     html.dark .deliv-mark { color:var(--ink); border-color:var(--hair); }
+
+    html.kiosk main { overflow:hidden !important; }
+    html.kiosk .page.on {
+      display:grid !important;
+      grid-template-columns:repeat(var(--kcols, 1), minmax(0, 1fr));
+      grid-auto-flow:dense;
+      align-content:start;
+      align-items:stretch;
+      gap:6px;
+      height:100% !important;
+      max-height:100%;
+      overflow:hidden !important;
+      transform-origin:top center;
+    }
+    html.kiosk .page.on > h2,
+    html.kiosk .page.on > .wx-nowline,
+    html.kiosk .page.on > .today-stamp,
+    html.kiosk .page.on > .hourly,
+    html.kiosk .page.on > .tenday,
+    html.kiosk .page.on > .go-strip,
+    html.kiosk .page.on > .go4,
+    html.kiosk .page.on > .pills,
+    html.kiosk .page.on > .sky,
+    html.kiosk .page.on > .tiles,
+    html.kiosk .page.on > .marine-graphs,
+    html.kiosk .page.on > .sky-graphs,
+    html.kiosk .page.on > .radar-crop,
+    html.kiosk .page.on > .hurr-stage,
+    html.kiosk .page.on > .keycam,
+    html.kiosk .page.on > iframe,
+    html.kiosk .page.on > .lite,
+    html.kiosk .page.on > .gmap-box,
+    html.kiosk .page.on > .settings-head,
+    html.kiosk .page.on > .rip-banner,
+    html.kiosk .page.on > .best-chip {
+      grid-column:1 / -1;
+    }
+    html.kiosk .page.on > .card { min-width:0; max-height:100%; }
     #dev-lock { display:none !important; }
     </style>
 </head>
@@ -2609,7 +2647,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 469;
+    window.BOARD_VER = 470;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5354,30 +5392,46 @@ function currentRotation() {
     function packKiosk() {
       var root = document.documentElement;
       var on = root.classList.contains("kiosk");
-      var short = window.innerHeight < 680;
-      var drawerOn = (document.getElementById("drawer") || {}).classList && document.getElementById("drawer").classList.contains("on");
-      root.classList.toggle("wide", window.innerWidth > window.innerHeight + 40);
-      var main = document.querySelector("main");
       var page = document.querySelector(".page.on");
-      var need = false;
-      if (page && main) {
-        need = page.scrollHeight > main.clientHeight + 24;
+      var main = document.querySelector("main");
+      var drawer = document.getElementById("drawer");
+      var drawerOn = drawer && drawer.classList.contains("on");
+      var wide = window.innerWidth > window.innerHeight + 40;
+      root.classList.toggle("wide", wide);
+      if (page) {
+        page.style.transform = "";
+        page.style.width = "";
       }
-      var hideDock = !drawerOn && (short || (on && need) || (need && window.innerHeight < 820));
-      root.classList.toggle("dockless", hideDock);
       if (!on) {
         root.removeAttribute("data-pack");
+        root.classList.remove("dockless");
+        if (page) page.style.removeProperty("--kcols");
         return;
       }
+      var cols = 1;
+      if (wide && window.innerWidth >= 1100) cols = 3;
+      else if (wide || window.innerWidth >= 720) cols = 2;
+      if (page) page.style.setProperty("--kcols", String(cols));
+      var short = window.innerHeight < 700;
+      var need = page && main && page.scrollHeight > main.clientHeight + 12;
+      root.classList.toggle("dockless", !drawerOn && (short || need));
       root.setAttribute("data-pack", "0");
-      if (!main || !page) return;
-      function overflow() {
-        return page.scrollHeight > main.clientHeight + 8;
-      }
       var level = 0;
+      function overflow() {
+        return page && main && page.scrollHeight > main.clientHeight + 6;
+      }
       while (level < 3 && overflow()) {
         level += 1;
         root.setAttribute("data-pack", String(level));
+      }
+      if (page && main && overflow()) {
+        var sh = page.scrollHeight;
+        var sw = page.scrollWidth;
+        var s = Math.min(1, (main.clientHeight - 4) / Math.max(1, sh), (main.clientWidth - 4) / Math.max(1, sw));
+        if (s < 0.99) {
+          page.style.transformOrigin = "top center";
+          page.style.transform = "scale(" + s.toFixed(3) + ")";
+        }
       }
     }
     window.packKiosk = packKiosk;
@@ -6112,6 +6166,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v470 — Kiosk fills the screen: cards sit in 1–3 columns, then the page scales down if it still overflows.",
       "v469 — Header and tickers stay put in every view. The dock hides when the screen is short so the page can fit.",
       "v468 — Kiosk packs the page to the screen. Landscape splits cards. Long cards clamp. Density tightens until it fits. Type size stays put.",
       "v467 — Roads page is labeled Traffic.",
