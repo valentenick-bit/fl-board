@@ -1539,7 +1539,6 @@
     .page.map-page iframe,
     .page.map-page .keycam iframe,
     .page.map-page #traffic-map,
-    .page.map-page #traffic-gmap,
     .page.map-page #bolt-map {
       width:100%;
       height:100%;
@@ -1643,6 +1642,20 @@
       overflow:auto !important;
       height:auto !important;
       display:block !important;
+    }
+
+    #traffic-gmap[hidden],
+    #traffic-gmap:empty {
+      display:none !important;
+      height:0 !important;
+      min-height:0 !important;
+      padding:0 !important;
+      margin:0 !important;
+      border:0 !important;
+      overflow:hidden !important;
+    }
+    #traffic.page > .gmap-box:not(.on) {
+      display:none !important;
     }
     #dev-lock { display:none !important; }
     </style>
@@ -1869,8 +1882,7 @@
           <small class="stamp" data-feed="alerts"></small>
         </div>
         <div class="radar-crop radar-stage" id="radar-stage">
-          <iframe id="radar-live" title="RainViewer radar" allowfullscreen></iframe>
-          <img id="radar-view" alt="NWS radar loop" hidden src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
+          <img id="radar-view" alt="Radar" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
         </div>
         <p id="radar-cap" class="radar-legend">Local radar loop</p>
         <p class="pill-key" id="radar-note">Radar follows the home address. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
@@ -2858,7 +2870,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 481;
+    window.BOARD_VER = 483;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3573,43 +3585,65 @@ Cart shop:</textarea>
       setBtn(fd, fdN, pack && pack.fd, "Fire");
     }
     function rainviewerUrl(lat, lon) {
-      return "https://www.rainviewer.com/map.html?loc=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + ",8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=3&c=5&o=88&lm=1&th=0&sm=1&sn=1&layer=radar";
+      return "https://www.rainviewer.com/map.html?loc=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + ",8";
+    }
+    function stopRainviewerLoop() {
+      if (window.__rvTimer) { clearInterval(window.__rvTimer); window.__rvTimer = 0; }
+    }
+    function startRainviewerPin(img, lat, lon) {
+      if (!img) return;
+      fetch("https://api.rainviewer.com/public/weather-maps.json")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var host = data && data.host;
+          var past = data && data.radar && data.radar.past;
+          if (!host || !past || !past.length) throw new Error("no frames");
+          var frames = past.slice(-10);
+          var urls = frames.map(function (f) {
+            return host + f.path + "/256/7/" + Number(lat).toFixed(4) + "/" + Number(lon).toFixed(4) + "/2/1_1.png";
+          });
+          window.__rvFrames = urls;
+          var n = 0;
+          stopRainviewerLoop();
+          function tick() {
+            if (!urls.length) return;
+            img.src = urls[n % urls.length];
+            n += 1;
+          }
+          tick();
+          window.__rvTimer = setInterval(tick, 450);
+          if (typeof noteFeed === "function") noteFeed("radar", true, "rainviewer pin " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3));
+        })
+        .catch(function () {
+          if (typeof noteFeed === "function") noteFeed("radar", true, "nws loop");
+        });
     }
     function applyRadar() {
       var st = homeRadar();
       var lat = homeLat();
       var lon = homeLon();
       var live = document.getElementById("radar-live");
+      if (live) live.remove();
       var img = document.getElementById("radar-view") || document.getElementById("radar-loop");
       var note = document.getElementById("radar-note");
       var cap = document.getElementById("radar-cap");
       var link = document.getElementById("radar-link");
       var pin = (typeof homeAddress === "function" && homeAddress()) || homePlace();
-      var rv = rainviewerUrl(lat, lon);
       var nws = "https://radar.weather.gov/ridge/standard/" + st + "_loop.gif";
-      window.__radarLoopUrl = rv;
+      window.__radarLoopUrl = nws;
       window.__radarView = "loop";
-      if (live) {
-        live.style.display = "block";
-        live.src = rv;
-        live.onerror = function () {
-          live.style.display = "none";
-          if (img) { img.hidden = false; img.src = nws + "?t=" + Date.now(); }
-          if (typeof noteFeed === "function") noteFeed("radar", false, "rainviewer blocked");
-        };
-      }
       if (img) {
-        img.hidden = !!live;
-        img.alt = st + " radar loop";
+        img.hidden = false;
+        img.alt = "Radar at " + pin;
         img.src = nws + "?t=" + Date.now();
       }
-      if (link) link.href = rv;
-      if (cap) cap.textContent = "RainViewer pinned on " + pin;
+      startRainviewerPin(img, lat, lon);
+      if (link) link.href = rainviewerUrl(lat, lon);
+      if (cap) cap.textContent = "Radar pinned on " + pin;
       if (note) {
-        note.innerHTML = "Pinned on " + pin + ". <a id=\"radar-link\" href=\"" + rv + "\" target=\"_blank\" rel=\"noopener\">Open RainViewer</a> · <a href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">NWS " + st + "</a>";
+        note.innerHTML = "Centered on " + pin + ". <a id=\"radar-link\" href=\"" + rainviewerUrl(lat, lon) + "\" target=\"_blank\" rel=\"noopener\">Open RainViewer</a> · <a href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">NWS " + st + "</a>";
       }
       window.__radarBase = nws;
-      if (typeof noteFeed === "function") noteFeed("radar", true, "rainviewer " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3));
       if (typeof paintPageRefs === "function") paintPageRefs();
     }
     function applyLocalMaps() {
@@ -6408,7 +6442,8 @@ function currentRotation() {
       });
     }
 
-    window.BOARD_NOTES = [
+    window.BOARD_NOTES = [\n      "v483 — Radar loads the NWS loop immediately, then swaps to RainViewer tiles centered on the home pin (no iframe).",
+      "v482 — Empty traffic-gmap box is hidden so it cannot sit as a grey card above the map.",
       "v481 — Logged Google weather tiles as a later idea. Radar stays RainViewer.",
       "v480 — Radar is RainViewer centered on the home address. NWS loop stays as fallback.",
       "v479 — Traffic embed header is cropped off. Gulf and tropics show the full image. Map pages can scroll again.",
