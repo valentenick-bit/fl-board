@@ -1658,6 +1658,33 @@
       display:none !important;
     }
     #dev-lock { display:none !important; }
+    
+    /* v487 Today glance + device bands */
+    html.band-wall #now,
+    html.kiosk #now.page.on { overflow:hidden; }
+    html.kiosk #now.page.on { display:flex; flex-direction:column; gap:8px; min-height:0; }
+    html.kiosk #now .go-strip { flex:1 1 auto; min-height:0; }
+    html.kiosk #now .today-boards { flex:0 0 auto; }
+    html.kiosk #now .today-extra { display:none; }
+    .wx-hstrip { display:flex; flex-wrap:nowrap; gap:0; overflow-x:auto; -webkit-overflow-scrolling:touch; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:24px; margin:0 0 8px; padding:8px 4px 6px; scrollbar-width:thin; }
+    .wx-hstrip .hour { flex:0 0 68px; min-width:68px; text-align:center; padding:4px 2px; font-size:12px; color:var(--muted); }
+    .wx-hstrip .hour b { display:block; font-size:16px; color:var(--navy); }
+    .wx-hstrip .hour i.pop { display:block; font-style:normal; font-size:10px; color:#3a7084; }
+    html.dark .wx-hstrip { background:rgba(20,28,36,.55); }
+    html.dark .wx-hstrip .hour b { color:#f3efe6; }
+    .strip-lab { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); font-weight:800; margin:8px 0 4px; }
+    .greet-card { cursor:pointer; }
+    .greet-card .greet-more { display:none; margin-top:8px; }
+    .greet-card.open .greet-more { display:block; }
+    .greet-card .greet-hint { display:block; margin-top:6px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; opacity:.55; }
+    .dist-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#e7f3f1; color:#1f6f64; font-size:11px; font-weight:800; letter-spacing:.02em; }
+    html.dark .dist-tag { background:#1a3330; color:#9ee0d4; }
+    html.band-laptop #now .today-boards,
+    html.band-wall.orient-land #now .today-boards { grid-template-columns:1fr 1fr; }
+    html.band-wall #now .wx-hstrip .hour b { font-size:20px; }
+    html.band-wall #now .greet-card b { font-size:22px; }
+    #today-hourly, #today-daily { display:block; }
+
     </style>
 </head>
 <body>
@@ -1742,10 +1769,16 @@
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
 <p class="today-stamp" id="today-stamp" hidden></p>
-        <div class="card greet-card" aria-live="polite">
+        <div class="card greet-card" id="greet-card" aria-live="polite">
           <b id="greet-hi">Good evening</b>
           <span id="live-sky">Checking the day…</span>
+          <span class="greet-more" id="greet-more"></span>
+          <small class="greet-hint" id="greet-hint">Tap for more</small>
         </div>
+        <p class="strip-lab">Next hours</p>
+        <div class="wx-hstrip" id="today-hourly"></div>
+        <p class="strip-lab">This week</p>
+        <div class="wx-hstrip" id="today-daily"></div>
         <div class="rip-banner" id="rip-banner">Rip current: High — swim near a lifeguard.</div>
         <div class="best-chip" id="best-window" hidden></div>
         <div class="pills go4" id="go-grid-legacy" hidden>
@@ -1800,7 +1833,7 @@
             <h3 class="ent-h">Out and about</h3>
             <div id="today-do"></div>
           </div>
-          <div>
+          <div id="today-deliv-col">
             <h3 class="ent-h">Boxes on the way</h3>
             <div id="today-deliv"></div>
           </div>
@@ -2486,12 +2519,11 @@ Cart shop:</textarea>
         <div class="set-line"><label>Event radius</label>
           <div class="set-row" id="set-eventmiles">
             <button type="button" data-v="5">5 mi</button>
+            <button type="button" data-v="10">10 mi</button>
             <button type="button" data-v="15">15 mi</button>
-            <button type="button" data-v="30">30 mi</button>
-            <button type="button" data-v="50">50 mi</button>
           </div>
         </div>
-        <p class="hint">5 miles is BeachWalk only. 15 and up include Englewood listings.</p>
+        <p class="hint">5 / 10 / 15 miles from the home pin. BeachWalk stays. Englewood listings are kept only if the venue is inside that radius. Older 30/50 settings become 15.</p>
         <div class="set-line"><label>Sports radius</label>
           <div class="set-row" id="set-sportmiles">
             <button type="button" data-v="50">50 mi</button>
@@ -2758,8 +2790,15 @@ Cart shop:</textarea>
         <input id="set-address" type="text" placeholder="Number, street, city, state" autocomplete="off" />
         <ul id="addr-suggest" class="addr-suggest" hidden></ul>
         <button type="button" id="set-address-go" class="done" style="margin:8px 0 10px">Use this address</button>
-        <label>Google Maps key <small>(optional — live traffic colors on Traffic)</small></label>
+        <label>Google Maps key <small>(optional)</small></label>
         <input id="set-gmaps" type="text" placeholder="AIza…" autocomplete="off" />
+        <div class="set-line"><label>Use Google key</label>
+          <div class="set-row" id="set-gmapson">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <p class="hint">Off stops live traffic, drive minutes, and address lookup so you are not billed. The free embed map still works. Saved on this device.</p>
         <p class="hint" id="set-zip-hint">Weather, radar, tides, scanners, and maps pin here. Saved on this device.</p>
       </div>
       <div class="set-card">
@@ -2870,7 +2909,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 485;
+    window.BOARD_VER = 490;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3077,7 +3116,7 @@ Cart shop:</textarea>
     var SET_DEFAULTS = {
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
       station: "", vol: "whisper", noaa: "1", radioauto: "1",
-      zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL", address: "", streetNum: "", gmapsKey: "",
+      zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1",
       community: "BeachWalk by Manasota Key",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1",
       brief: "1", briefWx: "1", briefSports: "1", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
@@ -3089,7 +3128,12 @@ Cart shop:</textarea>
       var s = {};
       try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e) { s = {}; }
       Object.keys(SET_DEFAULTS).forEach(function (k) { if (s[k] == null) s[k] = SET_DEFAULTS[k]; });
-      ["chipBolt","chipCane","chipTrash","camNight","brief","briefWx","briefSports","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links"].forEach(function (k) {
+      var em = Number(s.eventMiles);
+      if (!em || em < 5) s.eventMiles = "5";
+      else if (em <= 7) s.eventMiles = "5";
+      else if (em <= 12) s.eventMiles = "10";
+      else s.eventMiles = "15";
+      ["chipBolt","chipCane","chipTrash","camNight","brief","briefWx","briefSports","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
         if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
         else if (v === false || v === 0 || v === "off" || v === "false") s[k] = "0";
@@ -3294,6 +3338,7 @@ Cart shop:</textarea>
 
     function loadGmaps(done) {
       if (window.google && google.maps && google.maps.Map) { done(true); return; }
+      if (typeof mapsPaidOn === "function" && !mapsPaidOn()) { done(false); return; }
       var key = String(getSet().gmapsKey || "").trim();
       if (!key) { done(false); return; }
       if (window.__gmapsLoading) { window.__gmapsWait = window.__gmapsWait || []; window.__gmapsWait.push(done); return; }
@@ -3313,18 +3358,34 @@ Cart shop:</textarea>
       document.head.appendChild(s);
     }
 
-    function paintGoogleTraffic() {
+    function nudgeTrafficLayer() {
+      clearTimeout(window.__trafficNudge);
+      window.__trafficNudge = setTimeout(function () {
+        if (typeof mapsPaidOn === "function" && !mapsPaidOn()) return;
+        if (!window.__trafficLayer || !window.__trafficMap) return;
+        try {
+          window.__trafficLayer.setMap(null);
+          window.__trafficLayer.setMap(window.__trafficMap);
+        } catch (e) {}
+        if (typeof noteFeed === "function") noteFeed("traffic", true, "layer refresh");
+        nudgeTrafficLayer();
+      }, 8 * 60 * 1000);
+    }
+    function paintGoogleTraffic(force) {
       var box = document.getElementById("traffic-gmap");
       var frame = document.getElementById("traffic-map");
-      var key = String(getSet().gmapsKey || "").trim();
-      if (!key || !box) {
-        if (box) box.hidden = true;
+      if (!box) return;
+      if (typeof mapsPaidOn === "function" ? !mapsPaidOn() : !String(getSet().gmapsKey || "").trim()) {
+        try { if (window.__trafficLayer) window.__trafficLayer.setMap(null); } catch (e) {}
+        clearTimeout(window.__trafficNudge);
+        box.hidden = true;
         if (frame) frame.style.display = "";
+        if (typeof noteFeed === "function") noteFeed("traffic", true, "key off · embed");
         return;
       }
       loadGmaps(function (ok) {
         if (!ok || !window.google || !google.maps) {
-          if (box) box.hidden = true;
+          box.hidden = true;
           if (frame) frame.style.display = "";
           if (typeof noteFeed === "function") noteFeed("traffic", true, "fl511 fallback");
           return;
@@ -3332,9 +3393,20 @@ Cart shop:</textarea>
         if (frame) frame.style.display = "none";
         box.hidden = false;
         var center = { lat: homeLat(), lng: homeLon() };
-        var map = new google.maps.Map(box, { center: center, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: 'greedy' });
-        new google.maps.TrafficLayer().setMap(map);
-        new google.maps.Marker({ position: center, map: map, title: homeAddress() });
+        if (window.__trafficMap && !force) {
+          try {
+            window.__trafficMap.panTo(center);
+            if (window.__trafficPin) window.__trafficPin.setPosition(center);
+          } catch (e) {}
+          if (typeof noteFeed === "function") noteFeed("traffic", true, "reuse map");
+          return;
+        }
+        var map = new google.maps.Map(box, { center: center, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
+        window.__trafficMap = map;
+        window.__trafficLayer = new google.maps.TrafficLayer();
+        window.__trafficLayer.setMap(map);
+        window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
+        nudgeTrafficLayer();
         if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps " + center.lat.toFixed(3) + "," + center.lng.toFixed(3));
       });
     }
@@ -3630,7 +3702,10 @@ Cart shop:</textarea>
       var pinTxt = homeAddress() || place || "";
       var pin = encodeURIComponent(pinTxt);
       var trafficUrl = "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d48000!2d" + lon + "!3d" + lat + "!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!5m1!1e1";
-      if (traf) traf.src = trafficUrl;
+      if (traf && traf.getAttribute("src") !== trafficUrl && !(window.__trafficMap && typeof mapsPaidOn === "function" && mapsPaidOn())) {
+        traf.src = trafficUrl;
+      }
+      if (typeof paintGoogleTraffic === "function") try { paintGoogleTraffic(false); } catch (eT) {}
       if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps traffic " + lat.toFixed(3) + "," + lon.toFixed(3));
       var drives = document.getElementById("traffic-drives");
       if (drives) drives.textContent = "Live Google traffic near " + pinTxt + ".";
@@ -5577,7 +5652,14 @@ function currentRotation() {
       }
       var plain = bits.join(" ").replace(/\s+/g, " ").trim();
       window.__bestWindow = plain;
-      el.innerHTML = boldGreeting(plain);
+      window.__greetFull = plain;
+      var short = plain.split(/(?<=\.)\s+/)[0] || plain;
+      if (short.length > 140) short = short.slice(0, 136).replace(/\s+\S*$/, "") + "…";
+      window.__greetShort = short;
+      el.innerHTML = boldGreeting(short);
+      var more = document.getElementById("greet-more");
+      if (more) more.innerHTML = boldGreeting(plain);
+      bindGreetToggle();
     }
     function boldGreeting(s) {
       var html = String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -6416,6 +6498,10 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v490 — Traffic map is created once and only nudged every 8 minutes. Google key has an On/Off switch to stop paid calls.",
+      "v489 — Event radius is 5 / 10 / 15 miles and now filters Englewood listings by distance from home.",
+      "v488 — If no packages are coming, Today uses that space for two more events.",
+      "v487 — Today glance layout, expandable greeting, hourly/daily strips, smarter event picks, Google key ready for drive times and traffic.",
       "v485 — Radar is the NWS loop only. Stopped the RainViewer tile flicker.",
       "v484 — Fixed a broken notes line that stopped the board from running. Radar still NWS first, then RainViewer tiles on the home pin.",
       "v483 — Radar loads the NWS loop immediately, then swaps to RainViewer tiles centered on the home pin (no iframe).",
@@ -7520,14 +7606,29 @@ function currentRotation() {
     }
     window.loadBusyPills = loadBusyPills;
     function paintToday() {
+      if (typeof paintTodayHours === "function") try { paintTodayHours(); } catch (e0) {}
+      if (typeof paintTodayDays === "function") try { paintTodayDays(); } catch (e1) {}
       var doBox = document.getElementById("today-do");
       var delBox = document.getElementById("today-deliv");
+      var delCol = document.getElementById("today-deliv-col");
+      var marks0 = window.__deliveredMarks || {};
+      function delivKey(item) { return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim(); }
+      var incomingAll = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks0[delivKey(x)]; });
+      var waitingD = !window.__delivData;
+      var showBoxes = waitingD || incomingAll.length > 0;
+      if (delCol) delCol.hidden = !showBoxes;
+      var evLimit = showBoxes ? 2 : 4;
       if (doBox) {
-        var evs = (window.__entAll || []).filter(function (e) {
+        var picked = (typeof pickTodayEvents === "function")
+          ? pickTodayEvents(window.__entAll || [], evLimit)
+          : [];
+        var evs = picked.length
+          ? picked.map(function (row) { return row.e; })
+          : (window.__entAll || []).filter(function (e) {
           if (!coversTodayET(e)) return false;
           var end = e.end ? new Date(e.end).getTime() : 0;
           return !end || end >= Date.now();
-        }).sort(function (a, b) { return a.when - b.when; });
+        }).sort(function (a, b) { return a.when - b.when; }).slice(0, evLimit);
         if (!evs.length) {
           var waitingE = !window.__entAll;
           doBox.innerHTML = todayEmpty("fun",
@@ -7540,11 +7641,12 @@ function currentRotation() {
         else doBox.innerHTML = evs.map(function (e) { return window.entCardHtml(e); }).join("");
       }
       if (delBox) {
-        var marks = window.__deliveredMarks || {};
-        function key(item) { return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim(); }
-        var inc = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks[key(x)]; });
-        if (!inc.length) {
-          var waitingD = !window.__delivData;
+        var marks = marks0;
+        function key(item) { return delivKey(item); }
+        var inc = incomingAll.slice(0, 2);
+        if (!showBoxes) {
+          delBox.innerHTML = "";
+        } else if (!inc.length) {
           delBox.innerHTML = todayEmpty("box",
             waitingD ? "Checking packages" : "Nothing on the way.",
             waitingD ? "Reading the delivery scan." : "Nothing on the way."
@@ -7684,13 +7786,15 @@ function currentRotation() {
         if (at) title = title.replace(/\s*@\s*.+$/, "").trim();
         var pclass = e.inside ? "place-tag place-bw" : "place-tag place-out";
         var mapQ = e.inside ? ("BeachWalk by Manasota Key, Englewood FL") : ((e.loc || place || e.sum) + ", Englewood FL");
+        var drive = (typeof fmtDrivePill === "function") ? fmtDrivePill(e) : "";
+        var distHtml = drive ? ('<span class="dist-tag">' + drive + "</span>") : "";
         var kindHtml = kind ? ('<span class="kind-tag ' + kind.cls + '">' + kind.label + "</span>") : "";
         var whenLine = allDay ? "All day" : (typeof fmtClockTime === "function" ? fmtClockTime(e.when) : "");
         var dow = (e.when.toLocaleDateString("en-US", { weekday: "short" }) || "").replace(".", "");
         var num = e.when.getDate();
         var artKey = (kind && kind.cls) || (live ? "music" : "fun");
         var ico = (window.EV_ART && EV_ART[artKey]) || (window.EV_ART && EV_ART.fun) || "";
-        return '<div class="card ev-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '"><div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + place + "</span>" + kindHtml + '<span class="busy-tag" hidden></span><b>' + title + '</b><span class="ev-when">' + whenLine + (e.loc ? " · " + e.loc : "") + "</span></div></div>";
+        return '<div class="card ev-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '"><div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + place + "</span>" + kindHtml + distHtml + '<span class="busy-tag" hidden></span><b>' + title + '</b><span class="ev-when">' + whenLine + (e.loc ? " · " + e.loc : "") + "</span></div></div>";
       };
       function render(id, events) {
         var box = document.getElementById(id);
@@ -7726,13 +7830,14 @@ function currentRotation() {
           return end.getTime() >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
         all.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
-        window.__entAll = all;
-        var area = miles >= 10 ? bag.eng : [];
-        var merged = bag.bw.concat(area).filter(function (e) {
+        var merged = bag.bw.concat(bag.eng).filter(function (e) {
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
-          return end.getTime() >= Date.now();
+          if (end.getTime() < Date.now()) return false;
+          return typeof eventInRange !== "function" || eventInRange(e);
         }).sort(function (a, b) { return a.when - b.when; });
         merged.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
+        window.__entAll = merged;
+        if (typeof enrichEventDistances === "function") enrichEventDistances(merged);
         paintToday();
         if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (eG) {}
         if (!merged.length) {
@@ -8384,6 +8489,7 @@ function currentRotation() {
         mark("set-greettone", s.greetTone || "full");
         mark("set-tickspeed", s.tickSpeed || "normal");
         mark("set-eventmiles", String(s.eventMiles || "15"));
+        mark("set-gmapson", s.gmapsOn !== "0" ? "1" : "0");
         mark("set-sportmiles", String(s.sportMiles || "150"));
         (function fillLang() {
           var sel = document.getElementById("set-lang");
@@ -8582,6 +8688,9 @@ function currentRotation() {
         });
       });
       tap("set-eventmiles", "eventMiles", function () { if (typeof window.paintEnt === "function") window.paintEnt(); else if (typeof paintToday === "function") paintToday(); });
+      tap("set-gmapson", "gmapsOn", function () {
+        if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
+      });
       tap("set-sportmiles", "sportMiles", function () {
         try {
           var ids = (typeof nearbyTeams === "function") ? nearbyTeams().map(teamId) : [];
@@ -11268,6 +11377,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             paintSkyHeader();
             if (typeof syncLightningUI === "function") syncLightningUI();
           })();
+          window.__hours = hours;
+          if (typeof paintTodayHours === "function") try { paintTodayHours(); } catch (eH) {}
           if (hours.length && document.querySelector(".hourly")) {
             var box = document.querySelector(".hourly");
             var n = Math.max(6, Math.min(8, Math.floor((box.clientWidth || 400) / 72)));
@@ -11321,6 +11432,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
                 var wid = Math.max(10, ((hi - lo) / (maxAll - minAll)) * 100);
                 return '<span class="tbar"><i style="left:' + left.toFixed(1) + "%;width:" + wid.toFixed(1) + '%"></i></span>';
               }
+              window.__tenRows = list;
+              if (typeof paintTodayDays === "function") try { paintTodayDays(); } catch (eD) {}
               td.innerHTML = list.map(function (r) {
                 if (!r.row) return "";
                 var pop = r.row.pop >= 10 ? '<span class="dpop">' + r.row.pop + "%</span>" : "<span></span>";
@@ -11712,6 +11825,200 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var h=Math.sin(d/2)*Math.sin(d/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(l/2)*Math.sin(l/2);
       return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
     }
+    
+    function layoutBand() {
+      var w = window.innerWidth || 800, h = window.innerHeight || 600;
+      var kiosk = document.documentElement.classList.contains("kiosk") || (typeof getSet === "function" && getSet().kiosk === "1");
+      var short = Math.min(w, h), long = Math.max(w, h);
+      var band = "phone";
+      if (kiosk || (long >= 1600 && short >= 900)) band = "wall";
+      else if (w >= 1100) band = "laptop";
+      else if (w >= 720) band = "tablet";
+      ["band-phone","band-tablet","band-laptop","band-wall"].forEach(function (c) { document.documentElement.classList.remove(c); });
+      document.documentElement.classList.add("band-" + band);
+      document.documentElement.classList.toggle("orient-land", w > h);
+      document.documentElement.classList.toggle("orient-port", h >= w);
+      return band;
+    }
+    window.addEventListener("resize", function () { layoutBand(); });
+    try { layoutBand(); } catch (eB) {}
+
+    var VENUE_PIN = [
+      { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 26.9595, lon: -82.3543, onSite: true },
+      { re: /englewood beach|chadwick/i, lat: 26.9247, lon: -82.3534 },
+      { re: /stump pass/i, lat: 26.899, lon: -82.341 },
+      { re: /venice (theatre|beach|downtown)?/i, lat: 27.0998, lon: -82.4543 },
+      { re: /port charlotte/i, lat: 26.976, lon: -82.0906 },
+      { re: /north port/i, lat: 27.0442, lon: -82.236 },
+      { re: /boca grande/i, lat: 26.749, lon: -82.261 },
+      { re: /rotonda/i, lat: 26.889, lon: -82.271 },
+      { re: /moose/i, lat: 26.965, lon: -82.352 },
+      { re: /sandbar|tiki/i, lat: 26.934, lon: -82.353 },
+      { re: /englewood/i, lat: 26.962, lon: -82.352 }
+    ];
+    function venueQuery(e) {
+      if (!e) return "";
+      if (e.inside) return "BeachWalk by Manasota Key, Englewood FL";
+      return String(e.loc || e.sum || "").replace(/\s+/g, " ").trim();
+    }
+    function pinVenue(e) {
+      var q = venueQuery(e);
+      if (e && e.inside) return { lat: homeLat(), lon: homeLon(), onSite: true, q: q };
+      for (var i = 0; i < VENUE_PIN.length; i++) {
+        if (VENUE_PIN[i].re.test(q) || VENUE_PIN[i].re.test(String(e && e.sum || ""))) {
+          return { lat: VENUE_PIN[i].lat, lon: VENUE_PIN[i].lon, onSite: !!VENUE_PIN[i].onSite, q: q };
+        }
+      }
+      return q ? { q: q } : null;
+    }
+    function eventMilesFromHome(e) {
+      var pin = pinVenue(e);
+      if (pin && pin.onSite) return 0;
+      if (pin && pin.lat != null) return milesApart(homeLat(), homeLon(), pin.lat, pin.lon);
+      if (e && e.miles != null) return Number(e.miles);
+      if (e && e.inside) return 0;
+      return milesApart(homeLat(), homeLon(), 26.962, -82.352);
+    }
+    function eventInRange(e) {
+      var limit = Number((typeof getSet === "function" && getSet().eventMiles) || 15) || 15;
+      if (e && e.inside) return true;
+      var mi = eventMilesFromHome(e);
+      return mi <= limit + 0.35;
+    }
+    function eventPopScore(e) {
+      var blob = String((e && (e.sum + " " + e.desc + " " + e.loc)) || "").toLowerCase();
+      var n = 0;
+      if (e && e.live) n += 40;
+      if (e && e.inside) n += 28;
+      if (/live music|concert|festival|market|bingo|trivia|karaoke|boat parade/i.test(blob)) n += 22;
+      if (/sold out|popular|annual/i.test(blob)) n += 10;
+      return n;
+    }
+    function pickTodayEvents(list, limit) {
+      limit = limit || 2;
+      var now = Date.now();
+      var rows = (list || []).filter(function (e) {
+        return eventInRange(e) && typeof coversTodayET === "function" && coversTodayET(e);
+      }).map(function (e) {
+        var mi = eventMilesFromHome(e);
+        if (mi == null) mi = e.inside ? 0 : 12;
+        var soon = e.when ? Math.max(0, 24 - Math.abs(e.when.getTime() - now) / 3600000) : 0;
+        var score = eventPopScore(e) + soon * 1.2 - mi * 4;
+        return { e: e, score: score, mi: mi };
+      });
+      rows.sort(function (a, b) { return b.score - a.score; });
+      return rows.slice(0, limit);
+    }
+    function fmtDrivePill(e) {
+      if (e && e.driveMin != null) return Math.max(1, Math.round(e.driveMin)) + " min";
+      var mi = eventMilesFromHome(e);
+      if (mi == null) return "";
+      if (mi < 0.4) return "On site";
+      var guess = Math.max(2, Math.round(mi / 0.35));
+      return mi.toFixed(mi >= 10 ? 0 : 1) + " mi · ~" + guess + " min";
+    }
+    function gmapsKey() { return String((typeof getSet === "function" && getSet().gmapsKey) || "").trim(); }
+    function mapsPaidOn() {
+      var s = typeof getSet === "function" ? getSet() : {};
+      return !!(String(s.gmapsKey || "").trim() && s.gmapsOn !== "0");
+    }
+    function driveMinutesFor(e, cb) {
+      var pin = pinVenue(e);
+      if (!pin) { cb(null); return; }
+      if (typeof mapsPaidOn === "function" ? !mapsPaidOn() : !gmapsKey()) { cb(null); return; }
+      loadGmaps(function (ok) {
+        if (!ok || !window.google || !google.maps || !google.maps.DistanceMatrixService) { cb(null); return; }
+        var dest = (pin.lat != null) ? new google.maps.LatLng(pin.lat, pin.lon) : (pin.q || "");
+        var origin = new google.maps.LatLng(homeLat(), homeLon());
+        var svc = new google.maps.DistanceMatrixService();
+        svc.getDistanceMatrix({
+          origins: [origin],
+          destinations: [dest],
+          travelMode: google.maps.TravelMode.DRIVING,
+          unitSystem: google.maps.UnitSystem.IMPERIAL
+        }, function (res, status) {
+          try {
+            var el = res && res.rows && res.rows[0] && res.rows[0].elements && res.rows[0].elements[0];
+            if (status !== "OK" || !el || el.status !== "OK") { cb(null); return; }
+            cb({ min: Math.round(el.duration.value / 60), mi: el.distance.value / 1609.34 });
+          } catch (err) { cb(null); }
+        });
+      });
+    }
+    function geocodeVenue(e, cb) {
+      var pin = pinVenue(e);
+      if (pin && pin.lat != null) { cb(pin); return; }
+      var q = pin && pin.q;
+      if (!q || (typeof mapsPaidOn === "function" ? !mapsPaidOn() : !gmapsKey())) { cb(pin || null); return; }
+      loadGmaps(function (ok) {
+        if (!ok || !google.maps.Geocoder) { cb(pin || null); return; }
+        new google.maps.Geocoder().geocode({ address: q + (/, fl/i.test(q) ? "" : ", FL") }, function (results, status) {
+          if (status === "OK" && results && results[0]) {
+            var loc = results[0].geometry.location;
+            cb({ lat: loc.lat(), lon: loc.lng(), q: q });
+          } else cb(pin || null);
+        });
+      });
+    }
+    function enrichEventDistances(list) {
+      (list || []).forEach(function (e) {
+        var mi = eventMilesFromHome(e);
+        if (mi != null) e.miles = mi;
+        driveMinutesFor(e, function (d) {
+          if (!d) return;
+          e.driveMin = d.min;
+          e.miles = d.mi;
+          if (typeof paintToday === "function") paintToday();
+          if (typeof window.paintEnt === "function") try { window.paintEnt(); } catch (err) {}
+        });
+      });
+    }
+    function paintTodayHours() {
+      var box = document.getElementById("today-hourly");
+      if (!box) return;
+      var hours = window.__hours || [];
+      if (!hours.length) { box.innerHTML = ""; return; }
+      var nowMs = Date.now(), startH = 0;
+      for (var si = 0; si < hours.length; si++) {
+        var endH = hours[si].endTime ? new Date(hours[si].endTime).getTime() : new Date(hours[si].startTime).getTime() + 3600000;
+        if (endH > nowMs) { startH = si; break; }
+      }
+      var slice = hours.slice(startH, startH + 18);
+      box.innerHTML = slice.map(function (h) {
+        var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
+        var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+        var svg = (typeof wxSvg === "function" && typeof wxKind === "function") ? wxSvg(wxKind(h.shortForecast || ""), 28) : "";
+        var temp = (typeof fmtTempN === "function" ? fmtTempN(h.temperature) : h.temperature);
+        var popHtml = pop >= 10 ? '<i class="pop">' + pop + "%</i>" : "";
+        return '<div class="hour"><em>' + when + "</em>" + svg + "<b>" + temp + "°</b>" + popHtml + "</div>";
+      }).join("");
+      if (typeof noteFeed === "function") noteFeed("today-hours", !!slice.length, slice.length + " hours");
+    }
+    function paintTodayDays() {
+      var box = document.getElementById("today-daily");
+      if (!box) return;
+      var list = window.__tenRows || [];
+      box.innerHTML = list.map(function (r) {
+        if (!r || !r.row) return "";
+        var pop = r.row.pop >= 10 ? '<i class="pop">' + r.row.pop + "%</i>" : "";
+        var svg = (typeof wxSvg === "function" && typeof wxKind === "function") ? wxSvg(wxKind(r.row.fx), 28) : "";
+        var hi = (typeof fmtTempN === "function" ? fmtTempN(r.row.hi) : r.row.hi);
+        var lo = (typeof fmtTempN === "function" ? fmtTempN(r.row.lo) : r.row.lo);
+        return '<div class="hour"><em>' + (r.label || "") + "</em>" + svg + "<b>" + hi + "°</b><i class=\"pop mute\">" + lo + "°</i>" + pop + "</div>";
+      }).join("");
+      if (typeof noteFeed === "function") noteFeed("today-days", !!list.length, list.length + " days");
+    }
+    function bindGreetToggle() {
+      var card = document.getElementById("greet-card");
+      if (!card || card._bound) return;
+      card._bound = true;
+      card.addEventListener("click", function () {
+        card.classList.toggle("open");
+        var hint = document.getElementById("greet-hint");
+        if (hint) hint.textContent = card.classList.contains("open") ? "Tap to shorten" : "Tap for more";
+      });
+    }
+
     function teamId(tm){ return (tm.sport + "-" + tm.abbr + "-" + tm.name).toLowerCase(); }
     function nearbyTeams(){
       var lat=homeLat(), lon=homeLon();
