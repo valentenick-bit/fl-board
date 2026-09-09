@@ -2909,7 +2909,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 490;
+    window.BOARD_VER = 491;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5112,8 +5112,11 @@ function currentRotation() {
         nextTrash();
       });
     });
-    nextTrash();
+    try { nextTrash(); } catch (eT) {}
     function writeTodayChips() {
+      try { __writeTodayChipsBody(); } catch (eChip) { if (typeof noteFeed === 'function') noteFeed('today-chips', false, String(eChip && eChip.message || eChip)); }
+    }
+    function __writeTodayChipsBody() {
       var bolt = document.getElementById("chip-bolt");
       var cane = document.getElementById("chip-cane");
       var trash = document.getElementById("chip-trash");
@@ -6498,6 +6501,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v491 — Fixed a boot crash in the trash chip that stopped greeting, forecast strips, events, and tickers from filling.",
       "v490 — Traffic map is created once and only nudged every 8 minutes. Google key has an On/Off switch to stop paid calls.",
       "v489 — Event radius is 5 / 10 / 15 miles and now filters Englewood listings by distance from home.",
       "v488 — If no packages are coming, Today uses that space for two more events.",
@@ -7566,8 +7570,9 @@ function currentRotation() {
     };
 
     function stampTodayArt(html, kind) {
-      var art = TODAY_ART[kind] || TODAY_ART.fun;
-      return String(html || "").replace(/<div class="card([^"]*)">/, '<div class="card today-card ' + kind + '$1"><div class="pulse-art" aria-hidden="true">' + art + '</div><div class="today-body">') + "</div>";
+      var bag = window.TODAY_ART || {};
+      var art = bag[kind] || bag.fun || bag.box || "";
+      return String(html || "").replace(/<div class="card([^"]*)">/, '<div class="card today-card ' + (kind || "fun") + '$1"><div class="pulse-art" aria-hidden="true">' + art + '</div><div class="today-body">') + "</div>";
     }
     function todayEmpty(kind, title, detail) {
       return stampTodayArt('<div class="card quiet"><b>' + title + "</b><span>" + detail + "</span></div>", kind);
