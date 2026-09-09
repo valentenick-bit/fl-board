@@ -1660,7 +1660,6 @@
     #dev-lock { display:none !important; }
     
     /* v487 Today glance + device bands */
-    html.band-wall #now,
     html.kiosk #now.page.on { overflow:hidden; }
     html.kiosk #now.page.on { display:flex; flex-direction:column; gap:8px; min-height:0; }
     html.kiosk #now .go-strip { flex:1 1 auto; min-height:0; }
@@ -2909,11 +2908,13 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 491;
+    window.BOARD_VER = 492;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
       function topY() {
+        var main = document.querySelector("main");
+        if (main) return main.scrollTop || 0;
         return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       }
       document.addEventListener("touchstart", function (e) {
@@ -4059,6 +4060,7 @@ function currentRotation() {
         p.style.display = "";
         p.style.opacity = "";
       });
+      if (typeof scrollBoardTop === "function") scrollBoardTop();
       if (typeof paintOffrot === "function") paintOffrot(id);
       document.querySelectorAll(".dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
       if (!Array.isArray(pages)) pages = (window.ROT_DEFAULTS && window.ROT_DEFAULTS.normal.slice()) || ["now"];
@@ -6501,6 +6503,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v492 — Phone and laptop can scroll the page again. Pull-to-refresh uses the real scroller. Changing pages jumps back to the top.",
       "v491 — Fixed a boot crash in the trash chip that stopped greeting, forecast strips, events, and tickers from filling.",
       "v490 — Traffic map is created once and only nudged every 8 minutes. Google key has an On/Off switch to stop paid calls.",
       "v489 — Event radius is 5 / 10 / 15 miles and now filters Englewood listings by distance from home.",
@@ -11831,12 +11834,17 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
     }
     
+        function scrollBoardTop() {
+      var main = document.querySelector("main");
+      if (main) main.scrollTop = 0;
+      try { window.scrollTo(0, 0); } catch (e) {}
+    }
     function layoutBand() {
       var w = window.innerWidth || 800, h = window.innerHeight || 600;
       var kiosk = document.documentElement.classList.contains("kiosk") || (typeof getSet === "function" && getSet().kiosk === "1");
-      var short = Math.min(w, h), long = Math.max(w, h);
       var band = "phone";
-      if (kiosk || (long >= 1600 && short >= 900)) band = "wall";
+      if (kiosk) band = "wall";
+      else if (h > w * 1.2 && w < 1400) band = w >= 720 ? "tablet" : "phone";
       else if (w >= 1100) band = "laptop";
       else if (w >= 720) band = "tablet";
       ["band-phone","band-tablet","band-laptop","band-wall"].forEach(function (c) { document.documentElement.classList.remove(c); });
