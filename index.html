@@ -1379,6 +1379,26 @@
     .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
     iframe.lite { width:100%; height:40vh; border:0; border-radius:12px; background:#111; }
     #traffic-map, #traffic-gmap { height:56vh; background:#d7e3ea; }
+    #traffic.page.on {
+      display:flex !important;
+      flex-direction:column;
+      min-height:0;
+    }
+    #traffic .traffic-crop,
+    #traffic #traffic-gmap.gmap-box {
+      flex:1 1 auto;
+      width:100%;
+      height:auto !important;
+      min-height:0;
+      background:#d7e3ea;
+    }
+    #traffic .traffic-crop iframe#traffic-map {
+      top:-48px;
+      height:calc(100% + 48px);
+      min-height:0;
+    }
+    html.kiosk #traffic .traffic-crop,
+    html.kiosk #traffic #traffic-gmap { min-height:0; }
 
   
     html.dark .card,
@@ -1774,10 +1794,6 @@
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for more</small>
         </div>
-        <p class="strip-lab">Next hours</p>
-        <div class="wx-hstrip" id="today-hourly"></div>
-        <p class="strip-lab">This week</p>
-        <div class="wx-hstrip" id="today-daily"></div>
         <div class="rip-banner" id="rip-banner">Rip current: High — swim near a lifeguard.</div>
         <div class="best-chip" id="best-window" hidden></div>
         <div class="pills go4" id="go-grid-legacy" hidden>
@@ -2908,7 +2924,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 492;
+    window.BOARD_VER = 493;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3396,6 +3412,7 @@ Cart shop:</textarea>
         var center = { lat: homeLat(), lng: homeLon() };
         if (window.__trafficMap && !force) {
           try {
+            if (window.google && google.maps && google.maps.event) google.maps.event.trigger(window.__trafficMap, "resize");
             window.__trafficMap.panTo(center);
             if (window.__trafficPin) window.__trafficPin.setPosition(center);
           } catch (e) {}
@@ -3408,6 +3425,12 @@ Cart shop:</textarea>
         window.__trafficLayer.setMap(map);
         window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
         nudgeTrafficLayer();
+        setTimeout(function () {
+          try {
+            if (window.google && google.maps && google.maps.event) google.maps.event.trigger(map, "resize");
+            map.setCenter(center);
+          } catch (eR) {}
+        }, 80);
         if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps " + center.lat.toFixed(3) + "," + center.lng.toFixed(3));
       });
     }
@@ -6503,6 +6526,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v493 — Traffic map fills its frame. Next hours and This week strips removed from Today.",
       "v492 — Phone and laptop can scroll the page again. Pull-to-refresh uses the real scroller. Changing pages jumps back to the top.",
       "v491 — Fixed a boot crash in the trash chip that stopped greeting, forecast strips, events, and tickers from filling.",
       "v490 — Traffic map is created once and only nudged every 8 minutes. Google key has an On/Off switch to stop paid calls.",
