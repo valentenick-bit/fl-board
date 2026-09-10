@@ -2893,7 +2893,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 496;
+    window.BOARD_VER = 497;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6501,6 +6501,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v497 — Events still show if distance is unknown. Loading labels clear instead of hanging.",
       "v496 — Traffic uses the same full-frame map layout as Lightning.",
       "v495 — Status is in the main menu. The report is on the page as selectable text so copy works on the phone.",
       "v494 — Greeting no longer uses a regex some phones crash on. Traffic map keeps a real height so it cannot collapse.",
@@ -6834,6 +6835,14 @@ function currentRotation() {
 
     }
 
+    function settleLoadings() {
+      var ids = ["live-tide-today","live-tide-next","live-fishing","ent-count","deliv-note","flight-note","wx-nowline"];
+      ids.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (/^Loading/i.test(String(el.textContent || "").trim())) el.textContent = "Not available right now.";
+      });
+    }
     function fillEmptyCards() {
       var line = document.getElementById("wx-nowline");
       if (line && /updating/i.test(line.textContent || "")) {
@@ -7840,11 +7849,16 @@ function currentRotation() {
           return end.getTime() >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
         all.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
-        var merged = bag.bw.concat(bag.eng).filter(function (e) {
+        var upcoming = bag.bw.concat(bag.eng).filter(function (e) {
+          if (!e || !e.when) return false;
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
-          if (end.getTime() < Date.now()) return false;
+          return end.getTime() >= Date.now() - 30 * 60 * 1000;
+        });
+        var merged = upcoming.filter(function (e) {
           return typeof eventInRange !== "function" || eventInRange(e);
-        }).sort(function (a, b) { return a.when - b.when; });
+        });
+        if (!merged.length && upcoming.length) merged = upcoming;
+        merged.sort(function (a, b) { return a.when - b.when; });
         merged.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
         window.__entAll = merged;
         if (typeof enrichEventDistances === "function") enrichEventDistances(merged);
@@ -11236,6 +11250,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       return hours.length > 0;
     }
 
+    window.loadWx = refreshWeather;
     function refreshWeather() {
       var hdr = { "Accept": "application/geo+json", "User-Agent": "BeachWalkBoard/1.0 (valente.nick@gmail.com)" };
       var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,uv_index,relative_humidity_2m,dew_point_2m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York")
@@ -11532,6 +11547,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     loadWxSnap();
     refreshWeather();
     setInterval(refreshWeather, 5 * 60 * 1000);
+    setTimeout(function () { if (typeof settleLoadings === 'function') settleLoadings(); }, 12000);
     (function radarLoop() {
       applyRadar();
       applyLocalMaps();
@@ -11905,6 +11921,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var limit = Number((typeof getSet === "function" && getSet().eventMiles) || 15) || 15;
       if (e && e.inside) return true;
       var mi = eventMilesFromHome(e);
+      if (mi == null || !isFinite(mi)) return true;
       return mi <= limit + 0.35;
     }
     function eventPopScore(e) {
