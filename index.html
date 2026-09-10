@@ -1820,10 +1820,6 @@
           <h3 class="ent-h">Lightning</h3>
           <div id="today-bolt-body"></div>
         </div>
-        <div id="today-stormwin" hidden>
-          <h3 class="ent-h">Storm window</h3>
-          <div id="today-stormwin-body"></div>
-        </div>
         <div id="today-cane" hidden>
           <h3 class="ent-h">Named storm</h3>
           <div id="today-cane-body"></div>
@@ -3102,7 +3098,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 506;
+    window.BOARD_VER = 507;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5368,7 +5364,8 @@ function currentRotation() {
           }
         });
         var prep = typeof lightningPrep === "function" ? lightningPrep() : { on: !!(nowx.lightning || alertBolt || soon), why: "" };
-        var on = getSet().chipBolt !== "0" && prep.on;
+        var win = typeof stormWindow === "function" ? stormWindow() : { on: false };
+        var on = getSet().chipBolt !== "0" && (prep.on || win.on);
         bolt.classList.toggle("on", on);
         bolt.hidden = true;
         var boltBox = document.getElementById("today-bolt");
@@ -5390,18 +5387,20 @@ function currentRotation() {
           else if (mode === "warn" && !/warning|alert posted/i.test(line)) line = prep.why || "Thunderstorm warning for this address.";
           var span = bolt.querySelector("span");
           if (span) span.textContent = line;
-          var win = typeof stormWindow === "function" ? stormWindow() : { on: false };
-          if (win.on && mode === "forecast") line = win.label + ".";
           var pill = mode === "near" ? "Nearby" : mode === "warn" ? "Warning" : "Forecast";
           var pillClass = mode === "near" ? "place-tag place-bw" : (mode === "warn" ? "warn-tag" : "place-tag place-out");
           if (boltBox) boltBox.classList.toggle("hot", mode === "near" || mode === "warn");
           if (boltBody && typeof stampTodayArt === "function") {
             var shelter = mode === "near" || mode === "warn";
+            if (win.on && mode === "forecast") line = win.label + ".";
+            else if (win.on && mode !== "forecast") line = line.replace(/\.?$/, "") + " — " + win.label + ".";
             var tip = mode === "near"
-              ? "Strike within 10 miles — stay inside until it moves off."
+              ? "Strike within 10 miles — stay inside. Lightning page is in the rotation."
               : mode === "warn"
                 ? "Official warning for this address — stay inside until it expires."
-                : "No strike inside 10 miles and no warning here. This is only in the forecast.";
+                : (win.on
+                  ? "Forecast only. Lightning page stays out until a strike is within 10 miles."
+                  : "No strike inside 10 miles and no warning here.");
             boltBody.innerHTML = stampTodayArt(
               '<div class="card' + (shelter ? " hot" : "") + '"><span class="' + pillClass + '">' + pill + '</span><span class="kind-tag warn-tag">Lightning</span><b>' + line + "</b><span>" + tip + "</span></div>",
               "bolt"
@@ -5470,16 +5469,6 @@ function currentRotation() {
           );
         } else if (trashBody) trashBody.innerHTML = "";
       }
-      var win = typeof stormWindow === "function" ? stormWindow() : { on: false };
-      var winBox = document.getElementById("today-stormwin");
-      var winBody = document.getElementById("today-stormwin-body");
-      if (winBox) winBox.hidden = !win.on;
-      if (win.on && winBody && typeof stampTodayArt === "function") {
-        winBody.innerHTML = stampTodayArt(
-          '<div class="card"><span class="place-tag place-out">Today</span><span class="kind-tag warn-tag">Storms</span><b>' + win.label + "</b><span>First to last hour in the forecast with thunder. Not a warning by itself.</span></div>",
-          "bolt"
-        );
-      } else if (winBody) winBody.innerHTML = "";
     }
     writeTodayChips();
     function writeHdrMeta() {
@@ -11965,11 +11954,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
               td.innerHTML = list.map(function (r) {
                 if (!r.row) return "";
                 var pop = r.row.pop >= 10 ? '<span class="dpop">' + r.row.pop + "%</span>" : "<span></span>";
-                var fx = String(r.row.fx || "").toLowerCase();
-                var heat = r.row.hi >= 95 || /hot|heat/.test(fx);
-                var storm = /thunder|t-storm|severe/.test(fx);
-                var flag = storm ? '<span class="dflag storm">storm</span>' : heat ? '<span class="dflag heat">heat</span>' : "";
-                return '<div class="day' + (r.label === "Today" ? " today" : "") + (storm ? " storm" : "") + (heat ? " heat" : "") + '"><span>' + r.label + "</span>" + wxSvg(wxKind(r.row.fx), 24) + pop + flag + '<span class="lo">' + fmtTempN(r.row.lo) + "°</span>" + tbar(r.row.lo, r.row.hi) + '<span class="hi">' + fmtTempN(r.row.hi) + "°</span></div>";
+                return '<div class="day' + (r.label === "Today" ? " today" : "") + '"><span>' + r.label + "</span>" + wxSvg(wxKind(r.row.fx), 24) + pop + '<span class="lo">' + fmtTempN(r.row.lo) + "°</span>" + tbar(r.row.lo, r.row.hi) + '<span class="hi">' + fmtTempN(r.row.hi) + "°</span></div>";
               }).join("");
               var nowline = document.getElementById("wx-nowline");
               if (nowline) {
@@ -12549,11 +12534,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var svg = (typeof wxSvg === "function" && typeof wxKind === "function") ? wxSvg(wxKind(r.row.fx), 28) : "";
         var hi = (typeof fmtTempN === "function" ? fmtTempN(r.row.hi) : r.row.hi);
         var lo = (typeof fmtTempN === "function" ? fmtTempN(r.row.lo) : r.row.lo);
-        var fx = String(r.row.fx || "").toLowerCase();
-        var heat = r.row.hi >= 95 || /hot|heat/.test(fx);
-        var storm = /thunder|t-storm|severe/.test(fx);
-        var flag = storm ? '<i class="pop bolt">storm</i>' : heat ? '<i class="pop bolt">heat</i>' : pop;
-        return '<div class="hour' + (storm ? " storm" : "") + '"><em>' + (r.label || "") + "</em>" + svg + "<b>" + hi + "°</b><i class=\"pop mute\">" + lo + "°</i>" + flag + "</div>";
+        return '<div class="hour"><em>' + (r.label || "") + "</em>" + svg + "<b>" + hi + "°</b><i class=\"pop mute\">" + lo + "°</i>" + pop + "</div>";
       }).join("");
       if (typeof noteFeed === "function") noteFeed("today-days", !!list.length, list.length + " days");
     }
