@@ -3125,7 +3125,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 514;
+    window.BOARD_VER = 516;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6810,11 +6810,16 @@ function currentRotation() {
         return { on: true, why: "Thunderstorm warning in effect", shelter: true };
       }
       var near = window.__strikesNear || {};
-      if (near.close10) {
-        return { on: true, why: "Lightning within " + near.closest + " miles", shelter: true };
+      if (near.close5 || near.close10) {
+        return { on: true, why: "Lightning within " + (near.closest || (near.close5 ? "5" : "10")) + " miles", shelter: true };
       }
       if (window.__wxNow && window.__wxNow.lightning) {
         return { on: true, why: "Thunder overhead this hour", shelter: false };
+      }
+      var hours = window.__hours || [];
+      var nowH = hours[0] || {};
+      if (typeof hourMentionsThunder === "function" && hourMentionsThunder(nowH)) {
+        return { on: true, why: "Thunderstorms this hour near " + (typeof homePlace === "function" ? homePlace() : "home"), shelter: false };
       }
       return { on: false, why: "No lightning now" };
     }
@@ -7098,7 +7103,11 @@ function currentRotation() {
     function lightningActive() { return lightningPrep(); }
     function boltWanted() {
       var near = window.__strikesNear || {};
-      return !!(near.close10);
+      if (near.close5 || near.close10) return true;
+      var hours = window.__hours || [];
+      if (typeof hourMentionsThunder === "function" && hourMentionsThunder(hours[0] || {})) return true;
+      var prep = typeof lightningPrep === "function" ? lightningPrep() : {};
+      return !!(prep && prep.on && prep.shelter);
     }
     function syncLightningUI() {
       var prep = lightningPrep();
@@ -7145,9 +7154,11 @@ function currentRotation() {
       var lsr = window.__lsrNear || {};
       var closest = h10[0] || h25[0];
       var closestMi = closest ? closest.mi : (lsr.closest ? parseFloat(lsr.closest) : null);
+      var h5 = hits.filter(function (h) { return h.mi <= 5; });
       window.__strikesNear = {
         count: h10.length,
         closest: closestMi != null && isFinite(closestMi) ? Math.max(0.1, closestMi).toFixed(1) : null,
+        close5: h5.length > 0,
         close10: h10.length > 0 || !!lsr.close10,
         close25: h25.length > 0 || !!lsr.close25
       };
@@ -7169,6 +7180,45 @@ function currentRotation() {
       if (window.__bzHits.length > 400) window.__bzHits = window.__bzHits.slice(-300);
       publishStrikes();
     }
+    function bzInflate(raw) {
+      if (raw == null) return "";
+      if (typeof raw !== "string") {
+        try {
+          if (raw instanceof ArrayBuffer) raw = new TextDecoder().decode(raw);
+          else if (raw && raw.data) raw = raw.data;
+          else raw = String(raw);
+        } catch (e) { return ""; }
+      }
+      var s = String(raw);
+      if (!s) return "";
+      if (s.charAt(0) === "{" || s.charAt(0) === "[") return s;
+      try {
+        var e = {}, d = s.split(""), c = d[0], f = c, g = [c], h = 256, o = h, i, a;
+        for (i = 1; i < d.length; i++) {
+          a = d[i].charCodeAt(0);
+          a = h > a ? d[i] : (e[a] != null ? e[a] : f + c);
+          g.push(a);
+          c = a.charAt(0);
+          e[o] = f + c;
+          o += 1;
+          f = a;
+        }
+        return g.join("");
+      } catch (err) {
+        return s;
+      }
+    }
+    function parseBzStrike(raw) {
+      var text = bzInflate(raw);
+      var obj = null;
+      try { obj = JSON.parse(text); } catch (e) { return null; }
+      if (!obj) return null;
+      var lat = obj.lat != null ? obj.lat : obj.latitude;
+      var lon = obj.lon != null ? obj.lon : obj.longitude;
+      var when = obj.time != null ? obj.time : (obj.timestamp != null ? obj.timestamp : obj.time_utc);
+      if (lat == null || lon == null) return null;
+      return { lat: lat, lon: lon, time: when };
+    }
     function connectBlitzWs() {
       if (window.__bzWs && (window.__bzWs.readyState === 0 || window.__bzWs.readyState === 1)) return;
       var n = ((window.__bzWsN || 0) % 8) + 1;
@@ -7179,14 +7229,16 @@ function currentRotation() {
         window.__bzWs = ws;
         ws.onopen = function () {
           try { ws.send('{"a":111}'); } catch (e) {}
+          try { ws.send('{"a":503}'); } catch (e2) {}
+          window.__bzLastHit = Date.now();
           if (typeof noteFeed === "function") noteFeed("strikes", true, "blitzortung socket up");
         };
         ws.onmessage = function (ev) {
-          var raw = ev.data;
-          if (typeof raw !== "string") return;
-          var obj = null;
-          try { obj = JSON.parse(raw); } catch (e) { return; }
-          if (obj && obj.lat != null && obj.lon != null) addBzHit(obj.lat, obj.lon, obj.time);
+          var hit = parseBzStrike(ev.data);
+          if (hit) {
+            window.__bzLastHit = Date.now();
+            addBzHit(hit.lat, hit.lon, hit.time);
+          }
         };
         ws.onclose = function () { setTimeout(connectBlitzWs, 4000); };
         ws.onerror = function () { try { ws.close(); } catch (e) {} };
@@ -7228,6 +7280,18 @@ function currentRotation() {
         window.__lsrNear = window.__lsrNear || { count: 0, closest: null, close10: false, close25: false };
         publishStrikes();
       });
+      fetch("https://avo-volcview.wr.usgs.gov/vv-api/lightningApi/nearPoint?lat=" + lat + "&long=" + lon + "&radiusKm=16")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var rows = (d && (d.features || d.data || d.lightning || d)) || [];
+          if (!Array.isArray(rows)) rows = [];
+          rows.forEach(function (row) {
+            var lat2 = row.lat || row.latitude || (row.geometry && row.geometry.coordinates && row.geometry.coordinates[1]);
+            var lon2 = row.lon || row.longitude || row.long || (row.geometry && row.geometry.coordinates && row.geometry.coordinates[0]);
+            var when = row.time || row.timestamp || row.unixTimestamp;
+            if (lat2 != null && lon2 != null) addBzHit(lat2, lon2, when);
+          });
+        }).catch(function () {});
     }
 
     window.BOARD_NOTES = [
@@ -10432,7 +10496,17 @@ function currentRotation() {
         localStorage.setItem("bw-cam-slot", "sky-roads");
       } catch (e) {}
     })();
-    if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 60 * 1000); setInterval(function(){ if (typeof publishStrikes === "function") publishStrikes(); }, 30 * 1000); }
+    if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 60 * 1000);
+    setInterval(function () {
+      var quiet = Date.now() - (window.__bzLastHit || 0) > 90 * 1000;
+      var hours = window.__hours || [];
+      var want = typeof hourMentionsThunder === "function" && hourMentionsThunder(hours[0] || {});
+      if (!quiet) return;
+      try { if (window.__bzWs) window.__bzWs.close(); } catch (e) {}
+      window.__bzWs = null;
+      if (typeof connectBlitzWs === "function") connectBlitzWs();
+      if (want && typeof noteFeed === "function") noteFeed("strikes", true, "blitzortung socket recycled");
+    }, 45 * 1000); setInterval(function(){ if (typeof publishStrikes === "function") publishStrikes(); }, 30 * 1000); }
     if (typeof loadHistWx === "function") { loadHistWx(); setInterval(loadHistWx, 30 * 60 * 1000); }
     if (typeof paintGuide === "function") paintGuide();
     if (typeof paintSources === "function") paintSources();
@@ -12213,7 +12287,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             var thunderWords = /thunder|t-storm|lightning/.test(hour);
             var raining = wetWords && !isolated && (likely || pop >= 40);
             if (isolated && pop >= 55) raining = true;
-            var boltNow = hourHasThunder(nowH) || (/severe|lightning storm/.test(hour));
+            var boltNow = hourMentionsThunder(nowH) || hourHasThunder(nowH) || (/severe|lightning storm/.test(hour));
             window.__wxNow = {
               rain: raining,
               hard: raining && (likely || /heavy|downpour|torrential/.test(hour + " " + hourD) || pop >= 70),
