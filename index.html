@@ -1378,27 +1378,14 @@
 
     .check label { display:flex; gap:8px; align-items:flex-start; padding:6px 0; font-size:14px; }
     iframe.lite { width:100%; height:40vh; border:0; border-radius:12px; background:#111; }
-    #traffic-map, #traffic-gmap { height:56vh; background:#d7e3ea; }
-    #traffic.page.on {
-      display:flex !important;
-      flex-direction:column;
-      min-height:0;
-    }
-    #traffic .traffic-crop,
-    #traffic #traffic-gmap.gmap-box {
-      flex:1 1 auto;
+    
+    #traffic-map, #traffic-gmap {
       width:100%;
-      height:calc(100dvh - 220px) !important;
-      min-height:calc(100dvh - 220px);
+      height:100%;
+      border:0;
+      display:block;
       background:#d7e3ea;
     }
-    #traffic .traffic-crop iframe#traffic-map {
-      top:-48px;
-      height:calc(100% + 48px);
-      min-height:calc(100dvh - 172px);
-    }
-    html.kiosk #traffic .traffic-crop,
-    html.kiosk #traffic #traffic-gmap { min-height:0; }
 
   
     html.dark .card,
@@ -1615,25 +1602,6 @@
       min-height:340px !important;
     }
 
-    .traffic-crop {
-      position:relative;
-      width:100%;
-      height:56vh;
-      min-height:340px;
-      overflow:hidden;
-      border-radius:16px;
-      background:#d7e3ea;
-    }
-    .traffic-crop iframe#traffic-map {
-      position:absolute;
-      left:0;
-      width:100%;
-      top:-72px;
-      height:calc(56vh + 72px);
-      min-height:calc(340px + 72px);
-      border:0;
-      max-height:none !important;
-    }
     #gulfsat .radar-crop,
     #tropics .radar-crop {
       height:auto !important;
@@ -2080,9 +2048,7 @@ Cart shop:</textarea>
       <section id="traffic" class="page map-page">
         <h2 data-k="The drive">Traffic</h2>
         <div id="traffic-gmap" class="lite gmap-box" hidden></div>
-        <div class="traffic-crop">
-          <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
-        </div>
+        <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
         <p class="pill-key" id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></p>
       </section>
       <section id="villa" class="page">
@@ -2446,6 +2412,8 @@ Cart shop:</textarea>
         <h2 data-k="Board">Status</h2>
         <p class="pill-key">Copy the report when something is wrong. Summary first. New live-* tiles show up here on their own.</p>
         <button type="button" class="copy-report" id="copy-report">Copy board report</button>
+        <p class="pill-key">If Copy does nothing on the phone, select the box below and paste it here.</p>
+        <textarea id="health-paste" readonly rows="12" style="width:100%;min-height:180px;margin:0 0 12px;padding:10px;border-radius:12px;border:1px solid var(--hair,#c9c1b4);background:var(--card,#fff);color:inherit;font:12px/1.45 ui-monospace,monospace;"></textarea>
         <div class="card"><b>Summary</b><span id="health-sum">Checking…</span></div>
         <div class="card"><b>Look first</b><span id="health-hints">Checking…</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
@@ -2883,6 +2851,7 @@ Cart shop:</textarea>
         <button type="button" data-p="house">House</button>
         <button type="button" data-p="villa">Open / close</button>
         <p class="drawer-lab">Board</p>
+        <button type="button" data-p="health">Status</button>
         <button type="button" id="setbtn" data-p="settings">Settings</button>
         <button type="button" id="refreshbtn">Refresh</button>
         <button type="button" id="devbtn">Developer</button>
@@ -2924,7 +2893,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 494;
+    window.BOARD_VER = 496;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3112,6 +3081,8 @@ Cart shop:</textarea>
     }
     function copyBoardReport() {
       var txt = buildBoardReport();
+      var box = document.getElementById("health-paste");
+      if (box) box.value = txt;
       var btn = document.getElementById("copy-report");
       function ok() {
         if (btn) { btn.textContent = "Copied — paste in chat"; btn.classList.add("ok"); setTimeout(function () { btn.textContent = "Copy board report"; btn.classList.remove("ok"); }, 2500); }
@@ -4097,6 +4068,10 @@ function currentRotation() {
         stopKeyCam();
       }
       if (id === "traffic" && typeof applyLocalMaps === "function") applyLocalMaps();
+      if (id === "health") {
+        try { if (typeof paintHealth === "function") paintHealth(); } catch (eH) {}
+        try { if (typeof fillHealthPaste === "function") fillHealthPaste(); } catch (eH2) {}
+      }
       if (id === "guide" && typeof paintGuide === "function") paintGuide();
       if (id === "sources" && typeof paintSources === "function") paintSources();
       if (id === "house" && typeof paintHouseFlights === "function") paintHouseFlights();
@@ -6526,6 +6501,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v496 — Traffic uses the same full-frame map layout as Lightning.",
+      "v495 — Status is in the main menu. The report is on the page as selectable text so copy works on the phone.",
       "v494 — Greeting no longer uses a regex some phones crash on. Traffic map keeps a real height so it cannot collapse.",
       "v493 — Traffic map fills its frame. Next hours and This week strips removed from Today.",
       "v492 — Phone and laptop can scroll the page again. Pull-to-refresh uses the real scroller. Changing pages jumps back to the top.",
@@ -9481,13 +9458,19 @@ function currentRotation() {
       var seen = {};
       return hints.filter(function (h) { if (seen[h]) return false; seen[h] = 1; return true; }).slice(0, 8);
     }
+    function fillHealthPaste() {
+      var box = document.getElementById("health-paste");
+      if (!box || typeof buildBoardReport !== "function") return;
+      try { box.value = buildBoardReport(); } catch (e) {
+        box.value = "Commons report\nversion: v" + (window.BOARD_VER || "?") + "\nurl: " + location.href + "\nwhen: " + new Date().toISOString() + "\ncrash: " + String(e && e.message || e);
+      }
+    }
     function paintHealth() {
-      if (window.__paintingHealth) return;
       window.__paintingHealth = true;
       var probed = null;
       try {
         if (typeof noteDarkMode === "function") noteDarkMode();
-        probed = typeof probeBoardCards === "function" ? probeBoardCards() : null;
+        try { probed = typeof probeBoardCards === "function" ? probeBoardCards() : null; } catch (eP) { probed = null; }
         var buildEl = document.getElementById("health-build");
         if (buildEl) {
           var ver = String(window.BOARD_VER || "");
@@ -9576,6 +9559,7 @@ function currentRotation() {
       if (all) all.textContent = rows.length ? rows.join(" · ") : "Feeds have not reported in yet. Open a few pages and wait one refresh.";
       } finally {
         window.__paintingHealth = false;
+        try { if (typeof fillHealthPaste === "function") fillHealthPaste(); } catch (eF) {}
       }
     }
     function wireAcFilter() {
