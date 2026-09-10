@@ -2836,7 +2836,7 @@ Cart shop:</textarea>
           </div>
         </div>
       </div>
-      <div class="set-card" id="set-radio">
+      <div class="set-card" id="set-radio" style="scroll-margin-top:12px">
         <h3>Radio</h3>
         <p class="hint" id="radio-status">Tap a station to play. Mute stops it. Volume stays low.</p>
         <label>Stations</label>
@@ -3143,7 +3143,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 523;
+    window.BOARD_VER = 524;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4292,20 +4292,28 @@ function currentRotation() {
       window.showPage = showPage;
       var cur = document.querySelector(".page.on");
       if (cur && cur.id && pageOnRotation(cur.id)) window.__fromPage = cur.id;
+      var jump = "";
       if (id === "sports" || id === "radio") {
-        var jump = id === "sports" ? "set-sports" : "set-radio";
+        jump = id === "sports" ? "set-sports" : "set-radio";
         id = "settings";
-        setTimeout(function () {
-          var el = document.getElementById(jump);
-          if (el && el.scrollIntoView) el.scrollIntoView({ block: "start", behavior: "smooth" });
-        }, 60);
       }
       document.querySelectorAll(".page").forEach(function (p) {
         p.classList.toggle("on", p.id === id);
         p.style.display = "";
         p.style.opacity = "";
       });
-      if (typeof scrollBoardTop === "function") scrollBoardTop();
+      if (jump) {
+        requestAnimationFrame(function () {
+          setTimeout(function () {
+            var main = document.querySelector("main");
+            var el = document.getElementById(jump);
+            if (!main || !el) return;
+            var m = main.getBoundingClientRect();
+            var r = el.getBoundingClientRect();
+            main.scrollTop = Math.max(0, main.scrollTop + (r.top - m.top) - 8);
+          }, 80);
+        });
+      } else if (typeof scrollBoardTop === "function") scrollBoardTop();
       if (typeof paintOffrot === "function") paintOffrot(id);
       document.querySelectorAll(".dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === id); });
       if (!Array.isArray(pages)) pages = (window.ROT_DEFAULTS && window.ROT_DEFAULTS.normal.slice()) || ["now"];
@@ -5196,7 +5204,7 @@ function currentRotation() {
       var root = document.documentElement;
       root.style.setProperty("--wind", scale.toFixed(3));
       root.style.setProperty("--wind-dir", String(dir));
-      root.style.setProperty("--lean", (scale * -dir * 16).toFixed(1) + "deg");
+      root.style.setProperty("--lean", (scale * dir * 16).toFixed(1) + "deg");
       root.style.setProperty("--wag", (2.2 + scale * 2.4).toFixed(1) + "deg");
       root.style.setProperty("--sway-dur", (4.2 - scale * 3.1).toFixed(2) + "s");
       root.style.setProperty("--rain-ang", (scale * dir * 34).toFixed(1) + "deg");
@@ -8769,8 +8777,9 @@ function currentRotation() {
       var DELIV_ID = "1H5r7aej9DvSo2Up4GPUhgMZyK2kGmAy-";
       var drive = "https://drive.google.com/uc?export=download&id=" + DELIV_ID;
       var urls = [
-        "/deliveries.json?cb=" + Date.now(),
         drive + "&cb=" + Date.now(),
+        "https://drive.usercontent.google.com/download?id=" + DELIV_ID + "&export=download&confirm=t&cb=" + Date.now(),
+        "/deliveries.json?cb=" + Date.now(),
         "https://api.allorigins.win/raw?url=" + encodeURIComponent(drive),
         "https://api.allorigins.win/get?url=" + encodeURIComponent(drive),
         "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(drive)
