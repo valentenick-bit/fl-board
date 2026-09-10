@@ -611,6 +611,7 @@
     .hdr-chip.radio { display:inline-flex; background:rgba(42,157,143,.9); color:#fff; }
     .hdr-chip.heat { display:none; background:rgba(224,122,95,.92); color:#fff; }
     .hdr-chip.heat.on { display:inline-flex; }
+    .hdr-chip.heat.chill { background:rgba(74,130,186,.94); color:#f4f8ff; }
     .hdr-chip.hdr-alert.on { display:inline-flex; }
     .temprow { cursor:pointer; }
     .pausebtn.on { background:var(--navy); color:#fff; }
@@ -788,6 +789,19 @@
     .hour b { display:block; font-size:16px; color:var(--navy); }
     .hour svg { width:26px; height:26px; display:block; margin:2px auto; }
     .wx-nowline { margin:0 0 10px; font-size:15px; color:var(--muted); }
+    .wx-extra { display:none; }
+    .wx-extra.on { display:block; }
+    .wx-strips { display:flex; flex-direction:column; gap:6px; margin:0 0 12px; }
+    .wx-strip { display:none; font-family:"Source Sans 3",system-ui,sans-serif; font-size:14px; font-weight:700; padding:8px 12px; border-radius:10px; }
+    .wx-strip.on { display:block; }
+    .wx-strip.cold { background:#d7e6f6; color:#1b3a56; }
+    .wx-strip.heat { background:#f6ddd4; color:#7a2e1b; }
+    .wx-strip.fire { background:#f3e0c8; color:#6a3a10; }
+    .wx-strip.flood { background:#d4e4d8; color:#1f4a32; }
+    .wx-strip.quake { background:#e8e0d4; color:#3a3228; }
+    .wx-strip.spc { background:#efe4c4; color:#5a4310; }
+    .wx-strip.stale { background:#eee8dc; color:#4a4538; }
+
     .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
     .tiles.facts { grid-template-columns:repeat(4,1fr); }
     .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:10px 0; }
@@ -1737,7 +1751,7 @@
         </div>
         <div class="clock-bits" id="hdr-pills">
           <div class="clock-pills">
-            <button type="button" class="hdr-chip heat" id="live-heat">Heat</button>
+            <button type="button" class="hdr-chip heat" id="live-heat">Heat index</button>
             <button type="button" class="hdr-chip radio on" id="hdr-radio">Mute</button>
           </div>
           <button type="button" class="hdr-chip hdr-alert" id="hdr-alert" hidden></button>
@@ -1761,6 +1775,14 @@
           <span id="live-sky">Checking the day…</span>
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for more</small>
+        </div>
+
+        <div class="wx-strips" id="wx-strips">
+          <div class="wx-strip stale" id="wx-stale"></div>
+          <div class="wx-strip spc" id="wx-spc"></div>
+          <div class="wx-strip fire" id="wx-redflag"></div>
+          <div class="wx-strip flood" id="wx-flood"></div>
+          <div class="wx-strip quake" id="wx-quake"></div>
         </div>
         <div class="rip-banner" id="rip-banner">Rip current: High — swim near a lifeguard.</div>
         <div class="best-chip" id="best-window" hidden></div>
@@ -1871,6 +1893,12 @@
           <div class="tile"><label>Air quality</label><strong id="live-aqi">—</strong><small id="live-aqi-note"></small></div>
           <div class="tile"><label>Rain this month</label><strong id="live-rain-mo">—</strong></div>
           <div class="tile"><label>UV</label><strong id="live-uv">—</strong></div>
+
+          <div class="tile wx-extra" id="tile-frost"><label>Frost</label><strong id="live-frost">—</strong></div>
+          <div class="tile wx-extra" id="tile-freeze"><label>Freeze</label><strong id="live-freeze">—</strong></div>
+          <div class="tile wx-extra" id="tile-snow"><label>Snow 24h</label><strong id="live-snow">—</strong></div>
+          <div class="tile wx-extra" id="tile-ice"><label>Ice</label><strong id="live-ice">—</strong></div>
+          <div class="tile wx-extra" id="tile-heatrisk"><label>Heat risk</label><strong id="live-heatrisk">—</strong></div>
         </div>
         <div class="tile wide" style="margin-bottom:8px">
           <label>UV index</label>
@@ -2155,6 +2183,42 @@ Cart shop:</textarea>
         <p class="pill-key">Ship it, take it off. New agreement goes in the right card. Address is the pin; community is who that pin belongs to.</p>
         <div id="idea-backlog">
 
+        <div class="card" data-idea="wx-next">
+          <b>Weather cards to ship next</b>
+          <span class="stamp">10 Sep 2026. Order is the order we build. Today and Weather stay as they are until a line here is done and taken off.</span>
+          <ul class="check-list">
+            <li>Official Watch / Warning strip on Today. NWS only. Watch is amber and keeps the day. Warning takes the screen. No homemade alerts from a gloomy forecast.</li>
+            <li>Feels-like tile: heat index when it is hot, wind chill when it is cold, blank when it is neither. Do not show both.</li>
+            <li>Next-rain sentence: “Rain 3–5 p.m.” or “No rain through tonight.” Built from hourly PoP, not a second 10-day.</li>
+            <li>Region chips under Today: Gulf = Beach / Pool / Boat / Heat. North = Roads / Pipes / Ice / Walk. Desert = Heat / Dust / AQI. Good / fair / poor only.</li>
+            <li>Winter tiles that appear only when the pack or the night is cold: snow next 24h, ice, frost, freeze warning. Hidden on a 90° Gulf day.</li>
+            <li>Heat Risk (NWS) on hot packs. One word, not a research page.</li>
+            <li>Visibility + fog when the station reports it. Skip when it is 10 miles.</li>
+            <li>Records card already listed below — keep it short and next to today’s number.</li>
+            <li>Yesterday vs today one line: “Two degrees cooler than yesterday at 3 p.m.”</li>
+            <li>Severe outlook (SPC) as a small tile when the home pin is in a slight risk or worse. Not a wall of maps.</li>
+            <li>Fire / Red Flag on dry windy packs. Flood / river only where a nearby gauge exists.</li>
+            <li>Quake strip when USGS has something the pin can feel. Not a seismograph hobby page.</li>
+            <li>As-of + office already on Weather — add a stale flag if the observation is older than 90 minutes.</li>
+          </ul>
+        </div>
+
+
+        <div class="card" data-idea="c2-line">
+          <b>Commons 2 line — build on this board</b>
+          <span class="stamp">9 Sep 2026. Do not fork a second site on the 1.0 worker. Add pages here. Version 2.0.0.s1 is the name of the line, not a new URL.</span>
+          <ul class="check-list">
+            <li>Everyday / Watch / Warning postures on weather. Watch adds a banner. Warning takes the screen and hides the desk note.</li>
+            <li>Climate packs for the whole country (Gulf, desert, Rockies, lakes, Northeast ice, Midwest). Everyday colors follow the pack. Warning red stays national.</li>
+            <li>Unit is the home address. Occupants share the unit. Occupants own their calendar/email connections.</li>
+            <li>Desk notice is the first Clubhouse slice: one headline the wall and the phones both show.</li>
+            <li>Land-and-expand: Safety weather free on a kiosk URL, Clubhouse cheap, Homes per door later. Volume, not high margin.</li>
+            <li>AI is the differentiator later: personable, local vendors with resident 5-star notes, not a second radar toy.</li>
+            <li>National hazards including snow, ice, blizzard, nor’easter — not Gulf-only.</li>
+          </ul>
+        </div>
+
+
         <div class="card">
           <b>Settings still unfinished</b>
           <span class="stamp">Controls that save but do not finish the job.</span>
@@ -2362,9 +2426,140 @@ Cart shop:</textarea>
           <b>Still unanswered</b>
           <span>Will they pay through vacant snowbird months. Who owns the address on resale. Insurance copy on a warning. Whether a CAM will type a desk note if it is one field instead of a PDF.</span>
         </div>
+      
+        <h3 class="ent-h">Commons 2 line (9 Sep 2026)</h3>
+        <div class="card" data-biz="c2-sep">
+          <b>Same board, new line</b>
+          <span>Keep selling and running this URL. Do not hang a prototype on /c2 of this worker. New features land as Developer pages first, then as real Today/Weather/desk behavior when they are ready. 1.0 index.html is the trunk. Drive folder Commons holds the long specs.</span>
+        </div>
+        <div class="card" data-biz="c2-price">
+          <b>Price we are willing to say out loud</b>
+          <span>Safety kiosk weather stays free so they hang a TV. Clubhouse about $29/month for the desk note and clubhouse glass. Homes about $0.49/door if they want the house layer. Govern and Operate are small add-ons. Recurring has to be cheap enough that a treasurer does not reopen the invoice.</span>
+        </div>
+        <div class="card" data-biz="c2-proof2">
+          <b>Proof still needed</b>
+          <span>The BeachWalk manager question on this page still stands. Add: would they type a desk note themselves if it showed on the lobby TV the same minute. If they still want a JPEG slideshow, we are early.</span>
+        </div>
+</section>
+
+      
+      <section id="c2brief" class="page">
+        <h2 data-k="Developer">Commons 2</h2>
+        <p class="pill-key">Working brief parked on this board so the line is not only in chat and Word files. Trunk is this index.html. Long specs live in Drive folder Commons.</p>
+        <div class="card">
+          <b>What it is</b>
+          <span>A canned national product for HOAs, condos, and apartment communities. One pin (the home or clubhouse address) drives weather and hazards. The community record is who that pin belongs to. The desk talks to residents without building a new slideshow every week.</span>
+        </div>
+        <div class="card">
+          <b>Four piles on the glass</b>
+          <span>Sky (weather and official hazards). This place (notices, meetings, hours). This house (unit logistics, later). The person who talks back (Ask). Start simple. Grow detail only when someone asks for control.</span>
+        </div>
+        <div class="card">
+          <b>Three weather postures</b>
+          <span>Everyday is the default board. Watch adds an amber strip and keeps the day visible. Warning replaces the day: headline, what to do, official source, amenity holds. Status colors are national. Pack colors are only for Everyday chrome.</span>
+        </div>
+        <div class="card">
+          <b>Who holds the data</b>
+          <span>The unit is the membership. Occupants of that unit can each connect a mail or calendar if they want. They can leave. They can belong to more than one community (snowbirds). We do not scrape a personal Gmail to run the clubhouse.</span>
+        </div>
+        <div class="card">
+          <b>Hardware</b>
+          <span>Default is the TV, phone, laptop, or tablet they already own. Wall and table hardware are an upsell later. Setup has to be a URL and a pin, not a site visit.</span>
+        </div>
+        <div class="card">
+          <b>Living files (Drive Commons)</b>
+          <span>Product definition, change checklist, business plan, user guide, deployment guide, sales pitch, rollout and licensing, sitemap, s1 card list, data contract, pack catalog, color themes. Edit those when the line moves. This page is the short board copy.</span>
+        </div>
+        <div class="card">
+          <b>What we already built off-board (keep, do not wire into this worker)</b>
+          <span>Pack JSON for 16 US regions. HomePayload shape. Fixture stories (Gulf day, NE ice watch, Midwest tornado). NWS adapter. Create-community flow in the commons2 folder. Preview kiosk HTML that talks to weather.gov. Treat that folder as a spare parts bin for this board, not a second website.</span>
+        </div>
       </section>
 
-      <section id="menu" class="page">
+      <section id="c2weather" class="page">
+        <h2 data-k="Developer">2 · Weather line</h2>
+        <p class="pill-key">How weather should land on this board over time. Radar and Today stay as they are until a card here is checked off and shipped.</p>
+        <div class="card">
+          <b>Everyday</b>
+          <span>Now, one sentence, pack chips with good / fair / poor, one map frame, next hours, next days, as-of and office. Chips change by region: Beach/Pool/Boat/Heat on the Gulf, Roads/Pipes/Ice in the Northeast, Heat/Dust in the desert.</span>
+        </div>
+        <div class="card">
+          <b>Watch</b>
+          <span>Official NWS Watch only. Amber strip. Everyday stays. Do not invent a watch from a gloomy forecast.</span>
+        </div>
+        <div class="card">
+          <b>Warning</b>
+          <span>Official NWS Warning only. Take over. Instruction from the product. Radar or polygon. Desk notice hides so the siren is not under a pool memo.</span>
+        </div>
+        <div class="card">
+          <b>Packs</b>
+          <span>gulf_coast, florida_interior, atlantic_south, northeast_coastal, northeast_winter, mid_atlantic, great_lakes, midwest, southern_plains, northern_plains, rockies, southwest_desert, california_coast, pacific_northwest, alaska, hawaii_caribbean. Fallback is midwest, never gulf_coast.</span>
+        </div>
+        <div class="card">
+          <b>Sources</b>
+          <span>api.weather.gov points, forecast, hourly, alerts. USGS for quake when that card ships. No invented alerts. Stale flags if a feed is late.</span>
+        </div>
+      
+        <div class="card">
+          <b>What Today already shows</b>
+          <span>Now line, hourly strip, wind, gusts, humidity, dew point, pressure, AQI, month rain, UV. Radar, Marine, Sky, Lightning, Tropical, Hurricane, Gulf sat stay on their own pages. Do not copy those pages onto Today.</span>
+        </div>
+        <div class="card">
+          <b>1 · Alert strip</b>
+          <span>First real add. Read NWS alerts for the pin. Watch = amber bar + headline. Warning = full takeover, instruction, source. Advisory can sit as a quiet line under the now sentence. Multiple alerts: worst wins the posture; others list under it.</span>
+        </div>
+        <div class="card">
+          <b>2 · Feels-like</b>
+          <span>One tile. Heat index ≥ 90°F. Wind chill ≤ 40°F. Otherwise omit the tile so a 76° day does not say “feels like 76.”</span>
+        </div>
+        <div class="card">
+          <b>3 · Timing</b>
+          <span>One sentence from hourly: when rain, thunder, or snow starts and ends today. If nothing: “Quiet through tonight.” This is the card residents actually use.</span>
+        </div>
+        <div class="card">
+          <b>4 · Pack chips</b>
+          <span>Four chips max. Same good / fair / poor language everywhere. Pack file picks which four. Never show Ice on Englewood in September.</span>
+        </div>
+        <div class="card">
+          <b>5 · Cold and heat extras</b>
+          <span>Winter pack or overnight ≤ 36°F: frost, freeze, snow inches, ice. Hot pack or heat index ≥ 95: Heat Risk. Hide the rest.</span>
+        </div>
+        <div class="card">
+          <b>6 · Hazard extras</b>
+          <span>SPC slight+ at the pin. Red Flag. Nearby river flood if a gauge is mapped. USGS quake if magnitude and distance pass a feel test. Each is a strip, not a new dock button.</span>
+        </div>
+        <div class="card">
+          <b>7 · Trust</b>
+          <span>Observation older than 90 minutes: “Station late” on the now line. Always name the NWS office. Never invent a watch.</span>
+        </div>
+        <div class="card">
+          <b>Leave alone for now</b>
+          <span>Google weather overlay (needs a billed key). Second radar product. A meteogram wall. Ham-shack / solar unless a resident asks. Do not add dock buttons for each hazard.</span>
+        </div>
+</section>
+
+      <section id="c2club" class="page">
+        <h2 data-k="Developer">2 · Clubhouse</h2>
+        <p class="pill-key">First paid slice after free weather. Ship on this board when the desk can type one note without touching GitHub.</p>
+        <div class="card">
+          <b>The note</b>
+          <span>Headline, short body, optional until-time, who posted. Lives on the community record. Wall and phone show the same text. Warning posture hides it.</span>
+        </div>
+        <div class="card">
+          <b>Who types it</b>
+          <span>Activity director, manager, or a board member with desk access. Not a resident chat. Later: hours, menus, club calendars, reservations, votes, meeting stream — each as its own card when the note is boringly reliable.</span>
+        </div>
+        <div class="card">
+          <b>Do not do this again</b>
+          <span>Do not paste Clubhouse onto a /c2 path of this worker. Do not ask the manager to share a Drive JSON as “Anyone with the link.” Desk has to feel like Settings: type, save, done.</span>
+        </div>
+        <div class="card">
+          <b>Next after the note</b>
+          <span>Amenity hours. Private dining hours and a reservation later. Clubs (cards, bingo, pickleball) with a time and a room. Snowbird digest of what they missed. Voting and meeting stream only after the desk note is in daily use.</span>
+        </div>
+      </section>
+
+<section id="menu" class="page">
         <h2 data-k="All pages">Menu</h2>
         <p class="pill-key">Pick a page. The main row stays Today, weather, and the house.</p>
         <div class="menu-block">
@@ -2872,6 +3067,10 @@ Cart shop:</textarea>
         <button type="button" data-p="ideas">Ideas</button>
         <button type="button" data-p="sources">Sources</button>
         <button type="button" data-p="business">Business</button>
+        <button type="button" data-p="c2brief">Commons 2</button>
+        <button type="button" data-p="c2weather">2 · Weather</button>
+        <button type="button" data-p="c2club">2 · Clubhouse</button>
+
         <button type="button" data-p="kioskpage">Kiosk</button>
       </nav>
     </aside>
@@ -2893,7 +3092,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 499;
+    window.BOARD_VER = 503;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3887,6 +4086,7 @@ Cart shop:</textarea>
           var st = p.radarStation || "KTBW";
           var office = String(p.forecastOffice || "");
           var wfo = (office.match(/offices\/([A-Z]{3})/) || [])[1] || "TBW";
+          window.__nwsWfo = wfo;
           var nwr = NWR_BY_WFO[wfo] || ["KHB32", "NOAA Tampa", "KHB34"];
           var countyUrl = p.county || "";
           var cty = (countyUrl.match(/counties\/([A-Z]{2})C(\d+)/) || []);
@@ -4398,6 +4598,7 @@ function currentRotation() {
     }
     function stampGreet() {
       if (typeof writeGreetingCard === "function") writeGreetingCard();
+      if (typeof paintWxExtras === "function") paintWxExtras();
     }
 
     function etMinutesNow() {
@@ -5453,6 +5654,149 @@ function currentRotation() {
       if (go && no === 0) return "ok";
       return "mixed";
     }
+    
+    function milesBetween(lat1, lon1, lat2, lon2) {
+      var r = 3958.8;
+      var p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+      var dphi = (lat2 - lat1) * Math.PI / 180;
+      var dl = (lon2 - lon1) * Math.PI / 180;
+      var a = Math.sin(dphi/2)*Math.sin(dphi/2) + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+      return 2 * r * Math.asin(Math.min(1, Math.sqrt(a)));
+    }
+    function showWxTile(id, on, text) {
+      var tile = document.getElementById(id);
+      var strong = tile && tile.querySelector("strong");
+      if (!tile) return;
+      tile.classList.toggle("on", !!on);
+      if (strong && on) strong.textContent = text;
+    }
+    function showWxStrip(id, on, text) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle("on", !!on);
+      if (on) el.textContent = text;
+    }
+    function overnightLowF() {
+      var days = window.__nwsDays || [];
+      var hr = new Date().getHours();
+      for (var i = 0; i < days.length; i++) {
+        var d = days[i] || {};
+        if (/tonight|overnight|evening/i.test(d.name || "") && d.temperature != null) return Number(d.temperature);
+      }
+      return null;
+    }
+    function snowIceFromHours() {
+      var hours = window.__hours || [];
+      var out = { snow: false, ice: false, snowTxt: "" };
+      var cutoff = Date.now() + 24 * 3600 * 1000;
+      hours.forEach(function (h) {
+        if (!h || !h.startTime) return;
+        if (new Date(h.startTime).getTime() > cutoff) return;
+        var s = String(h.shortForecast || "").toLowerCase();
+        if (/snow|flurries|sleet/.test(s)) { out.snow = true; if (!out.snowTxt) out.snowTxt = h.shortForecast; }
+        if (/freezing|ice storm|glaze/.test(s)) out.ice = true;
+      });
+      return out;
+    }
+    function heatRiskWord(tempF, days) {
+      var max = tempF;
+      (days || []).forEach(function (d) {
+        if (d && d.isDaytime && d.temperature != null) max = Math.max(max || 0, Number(d.temperature));
+      });
+      if (max == null) return "";
+      if (max >= 105) return "Extreme";
+      if (max >= 100) return "High";
+      if (max >= 95) return "Moderate";
+      return "";
+    }
+    function paintWxExtras() {
+      var alerts = window.__nwsAlerts || [];
+      var days = window.__nwsDays || [];
+      var low = overnightLowF();
+      var win = snowIceFromHours();
+      var evs = alerts.map(function (f) { return String(((f.properties || {}).event) || "").toLowerCase(); });
+      function hasAlert(re) { return evs.some(function (e) { return re.test(e); }); }
+      var frost = (low != null && low <= 36 && low > 32) || hasAlert(/frost/);
+      var freeze = (low != null && low <= 32) || hasAlert(/freeze/);
+      var ice = win.ice || hasAlert(/ice storm|freezing rain|winter storm warning/);
+      var snow = win.snow || hasAlert(/blizzard|winter storm|snow/);
+      showWxTile("tile-frost", frost, frost ? (low != null ? "Low " + low + "°" : "Advisory") : "");
+      showWxTile("tile-freeze", freeze, freeze ? (low != null ? "Low " + low + "°" : "Warning") : "");
+      showWxTile("tile-snow", snow, snow ? (win.snowTxt || "In the forecast") : "");
+      showWxTile("tile-ice", ice, ice ? "Glaze / ice risk" : "");
+      var hr = heatRiskWord(window.__nowTempF, days);
+      var hotAlert = hasAlert(/heat/);
+      showWxTile("tile-heatrisk", !!hr || hotAlert, hr || (hotAlert ? "Alert" : ""));
+
+      showWxStrip("wx-redflag", hasAlert(/red flag|fire weather/), "Red Flag — fire weather. Watch wind and dry brush.");
+      showWxStrip("wx-flood", hasAlert(/flash flood|flood warning|river flood/), "Flood warning near this pin. Stay off flooded roads.");
+
+      var age = window.__obsAt ? (Date.now() - window.__obsAt) : 0;
+      var late = age > 90 * 60 * 1000;
+      var wfo = window.__nwsWfo || "";
+      var staleTxt = late ? ("Station late" + (wfo ? " · NWS " + wfo : "")) : (wfo ? ("NWS " + wfo) : "");
+      showWxStrip("wx-stale", late, staleTxt);
+      var line = document.getElementById("wx-nowline");
+      if (line && line.textContent && wfo && line.textContent.indexOf("NWS") < 0) {
+        line.textContent = line.textContent.replace(/\s+$/, "") + " · NWS " + wfo + (late ? " · Station late" : "");
+      } else if (line && late && line.textContent.indexOf("Station late") < 0) {
+        line.textContent = line.textContent + " · Station late";
+      }
+
+      if (!window.__spcTried) {
+        window.__spcTried = true;
+        fetchWxSpc();
+        fetchWxQuake();
+      }
+    }
+    function fetchWxSpc() {
+      fetch("https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.features) return;
+          var lat = homeLat(), lon = homeLon();
+          var hit = "";
+          d.features.forEach(function (f) {
+            var props = f.properties || {};
+            var label = String(props.LABEL || props.LABEL2 || props.Name || "").toLowerCase();
+            if (!/slight|enhanced|moderate|high/.test(label)) return;
+            var geom = f.geometry;
+            if (!geom) return;
+            var rings = geom.type === "Polygon" ? [geom.coordinates] : (geom.coordinates || []);
+            rings.forEach(function (poly) {
+              var ring = poly[0] || poly;
+              if (pointInRing(lon, lat, ring)) hit = label;
+            });
+          });
+          if (hit) showWxStrip("wx-spc", true, "Severe outlook today: " + hit + " risk (SPC).");
+        }).catch(function () {});
+    }
+    function pointInRing(x, y, ring) {
+      var inside = false;
+      for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        var xi = ring[i][0], yi = ring[i][1];
+        var xj = ring[j][0], yj = ring[j][1];
+        var inter = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-12) + xi);
+        if (inter) inside = !inside;
+      }
+      return inside;
+    }
+    function fetchWxQuake() {
+      fetch("https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=" + new Date(Date.now()-86400000).toISOString() + "&minmagnitude=3.5&latitude=" + homeLat() + "&longitude=" + homeLon() + "&maxradiuskm=500")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var feats = (d && d.features) || [];
+          if (!feats.length) return;
+          var best = feats[0];
+          var mag = best.properties && best.properties.mag;
+          var place = (best.properties && best.properties.place) || "";
+          var coords = (best.geometry && best.geometry.coordinates) || [];
+          var mi = (coords.length >= 2) ? Math.round(milesBetween(homeLat(), homeLon(), coords[1], coords[0])) : "";
+          if (mag >= 4.5 || (mag >= 3.5 && mi && mi <= 120)) {
+            showWxStrip("wx-quake", true, "Quake M" + mag + (mi ? " · " + mi + " mi" : "") + (place ? " · " + place : "") + ".");
+          }
+        }).catch(function () {});
+    }
     function writeGreetingCard() {
       var el = document.getElementById("live-sky");
       var hi = document.getElementById("greet-hi");
@@ -5520,14 +5864,42 @@ function currentRotation() {
       var uvN = parseInt(uv.replace(/[^\d]/g, ""), 10);
       if (hrNow >= 10 && hrNow <= 16 && uvN >= 6) bits.push("UV is " + uv + " — shade or a shirt if you're out long.");
 
+      var rainStart = null, rainEnd = null;
+      hours.forEach(function (h) {
+        if (!h || !h.startTime) return;
+        var same = typeof wxDayET === "function" ? wxDayET(h.startTime) === todayKey : true;
+        if (!same) return;
+        var pop = typeof wxPop === "function" ? wxPop(h) : 0;
+        var txt = String(h.shortForecast || "").toLowerCase();
+        var wet = pop >= 50 || /rain|shower|thunder|storm|snow/.test(txt);
+        if (!wet) return;
+        var ht = new Date(h.startTime);
+        var hh = parseInt(ht.toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}),10);
+        if (rainStart == null) rainStart = hh;
+        rainEnd = hh;
+      });
+      function clock12(h) {
+        var x = ((h + 11) % 12) + 1;
+        return x + (h >= 12 ? " p.m." : " a.m.");
+      }
+      function rainRange(a, b) {
+        if (a == null) return "";
+        if (b == null || a === b) return clock12(a);
+        var as = clock12(a), bs = clock12(b);
+        if ((a >= 12) === (b >= 12)) return as.replace(/ [ap]\.m\.$/, "") + "–" + bs;
+        return as + "–" + bs;
+      }
       if (hrNow >= 6 && hrNow < 22) {
-        if (nearStorm) bits.push("Thunder is in the next few hours. Don't plan a long sit outside.");
+        if (rainStart != null) {
+          var kind = stormy || nearStorm ? "Storms " : "Rain ";
+          bits.push(kind + rainRange(rainStart, rainEnd) + ".");
+        } else if (nearStorm) bits.push("Thunder is in the next few hours. Don't plan a long sit outside.");
         else if (nearPop >= 50) bits.push("Rain is a real chance over the next few hours.");
         else if (laterWord && laterWord !== word) bits.push("Later this stretch trends " + laterWord + ".");
         else if (stormy && hrNow < 17) bits.push("The storm threat is more of an afternoon problem. Earlier is cleaner.");
         else if (maxPop >= 50) bits.push("Rain still looks likely at some point even if it's quiet now.");
         else if (maxPop >= 30) bits.push("A shower could sneak through. Nothing that has to cancel the day.");
-        else bits.push("The next few hours look mostly dry.");
+        else bits.push("Quiet through tonight.");
       }
 
       var hazards = [];
@@ -8650,6 +9022,7 @@ function currentRotation() {
         document.documentElement.lang = (langSel.value && langSel.value !== "device") ? langSel.value : (navigator.language || "en");
         if (typeof clock === "function") clock();
         if (typeof writeGreetingCard === "function") writeGreetingCard();
+      if (typeof paintWxExtras === "function") paintWxExtras();
         if (typeof paintToday === "function") paintToday();
       });
       tap("set-dark", "dark");
@@ -8699,10 +9072,13 @@ function currentRotation() {
       tap("set-tap", "tap", function () { if (typeof applyA11y === "function") applyA11y(); });
       tap("set-rot", "rotate");
       tap("set-hdrwx", "hdrWx", function () { if (typeof applyHdrWx === "function") applyHdrWx(); });
-      tap("set-clock", "clock", function () { if (typeof clock === "function") clock(); if (typeof writeGreetingCard === "function") writeGreetingCard(); if (typeof paintToday === "function") paintToday(); });
+      tap("set-clock", "clock", function () { if (typeof clock === "function") clock(); if (typeof writeGreetingCard === "function") writeGreetingCard();
+      if (typeof paintWxExtras === "function") paintWxExtras(); if (typeof paintToday === "function") paintToday(); });
       tap("set-datefmt", "dateFmt", function () { if (typeof clock === "function") clock(); if (typeof paintToday === "function") paintToday(); });
-      tap("set-units", "units", function () { if (typeof loadWx === "function") loadWx(); if (typeof fillEmptyCards === "function") fillEmptyCards(); if (typeof writeGreetingCard === "function") writeGreetingCard(); });
-      tap("set-greettone", "greetTone", function () { if (typeof writeGreetingCard === "function") writeGreetingCard(); });
+      tap("set-units", "units", function () { if (typeof loadWx === "function") loadWx(); if (typeof fillEmptyCards === "function") fillEmptyCards(); if (typeof writeGreetingCard === "function") writeGreetingCard();
+      if (typeof paintWxExtras === "function") paintWxExtras(); });
+      tap("set-greettone", "greetTone", function () { if (typeof writeGreetingCard === "function") writeGreetingCard();
+      if (typeof paintWxExtras === "function") paintWxExtras(); });
       tap("set-tickspeed", "tickSpeed", function () {
         ["ticktext","alerttext","breaktext"].forEach(function (id) {
           var el = document.getElementById(id);
@@ -10522,6 +10898,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var feats = (d && d.features) || [];
+          window.__nwsAlerts = feats;
+          if (typeof paintWxExtras === "function") paintWxExtras();
           var rip = "Low";
           var craft = "None";
           feats.forEach(function (f) {
@@ -10994,6 +11372,12 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var hi = -42.379 + 2.04901523*t + 10.14333127*rh - 0.22475541*t*rh - 0.00683783*t*t - 0.05481717*rh*rh + 0.00122874*t*t*rh + 0.00085282*t*rh*rh - 0.00000199*t*t*rh*rh;
       return Math.round(hi);
     }
+    function windChillF(t, mph) {
+      if (t == null || mph == null) return t;
+      if (t > 50 || mph < 3) return Math.round(t);
+      var v = Math.pow(mph, 0.16);
+      return Math.round(35.74 + 0.6215*t - 35.75*v + 0.4275*t*v);
+    }
     function paintTemp(el, n) {
       if (!el || n == null || isNaN(n)) return;
       if (el.closest && el.closest("header")) { el.style.color = ""; return; }
@@ -11174,6 +11558,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var line = document.getElementById("wx-nowline");
       if (line && tempF != null) line.textContent = homePlace() + " · " + omWord(om.current.weather_code) + " · " + fmtTemp(tempF);
       if (typeof writeGreetingCard === "function") writeGreetingCard();
+      if (typeof paintWxExtras === "function") paintWxExtras();
       return true;
     }
 
@@ -11243,7 +11628,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       window.__hours = hours;
       try { if (typeof refreshExtras === "function") refreshExtras(hours, days); } catch (e) { if (typeof logCrash === "function") logCrash("js", "extras " + e.message); }
       try { if (typeof refreshMarineSky === "function") refreshMarineSky(days, hours, {}); } catch (e2) {}
-      try { if (typeof writeGreetingCard === "function") writeGreetingCard(); } catch (e3) {}
+      try { if (typeof writeGreetingCard === "function") writeGreetingCard();
+      if (typeof paintWxExtras === "function") paintWxExtras(); } catch (e3) {}
       touchFeed("wx", true, "open-meteo");
       return hours.length > 0;
     }
@@ -11316,6 +11702,10 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           var feelEl = document.getElementById("live-feels");
           var skyEl = document.getElementById("live-sky");
           if (tempEl && tempF != null) { tempEl.innerHTML = fmtTempN(tempF) + "&deg;"; paintTemp(tempEl, tempF); }
+          if (obs && obs.timestamp) window.__obsAt = new Date(obs.timestamp).getTime();
+          else if (om.current && om.current.time) window.__obsAt = new Date(om.current.time).getTime();
+          else window.__obsAt = Date.now();
+          window.__nowTempF = tempF;
           var feelF = null;
           if (om.current && om.current.apparent_temperature != null) feelF = Math.round(om.current.apparent_temperature);
           else if (obs.heatIndex && obs.heatIndex.value != null) {
@@ -11323,11 +11713,24 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           } else feelF = heatIndexF(tempF, rh);
           if (feelEl && feelF != null) { feelEl.innerHTML = feelF + "&deg;"; paintTemp(feelEl, feelF); }
           var heatEl = document.getElementById("live-heat");
-          var hiVal = (obs.heatIndex && obs.heatIndex.value != null) ? Math.round(obs.heatIndex.value * 9/5 + 32) : tempF;
-          if (obs.heatIndex && obs.heatIndex.unitCode && /degF/.test(obs.heatIndex.unitCode)) hiVal = Math.round(obs.heatIndex.value);
+          var hiVal = null;
+          if (obs.heatIndex && obs.heatIndex.value != null) {
+            hiVal = /degC/.test(obs.heatIndex.unitCode || "") ? Math.round(obs.heatIndex.value * 9/5 + 32) : Math.round(obs.heatIndex.value);
+          } else if (tempF != null && rh != null) hiVal = heatIndexF(tempF, rh);
+          var wcVal = null;
+          var windMphNow = parseInt(String(windTxt || "").replace(/[^\d]/g, ""), 10);
+          if (obs.windChill && obs.windChill.value != null) {
+            wcVal = /degC/.test(obs.windChill.unitCode || "") ? Math.round(obs.windChill.value * 9/5 + 32) : Math.round(obs.windChill.value);
+          } else if (tempF != null && windMphNow) wcVal = windChillF(tempF, windMphNow);
           if (heatEl) {
-            if (hiVal != null && hiVal >= 80) { heatEl.textContent = "Heat " + fmtTempN(hiVal) + "°"; heatEl.classList.add("on"); }
-            else heatEl.classList.remove("on");
+            heatEl.classList.remove("on", "chill");
+            if (tempF != null && tempF <= 50 && wcVal != null && wcVal < tempF - 1) {
+              heatEl.textContent = "Wind chill " + fmtTempN(wcVal) + "°";
+              heatEl.classList.add("on", "chill");
+            } else if (hiVal != null && hiVal >= 80) {
+              heatEl.textContent = "Heat index " + fmtTempN(hiVal) + "°";
+              heatEl.classList.add("on");
+            }
           }
           var windEl = document.getElementById("live-wind");
           var gustEl = document.getElementById("live-gusts");
@@ -11374,6 +11777,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
               greet: greet
             };
             if (typeof writeGreetingCard === "function") writeGreetingCard();
+      if (typeof paintWxExtras === "function") paintWxExtras();
             else skyEl.textContent = greet;
             window.__briefWx = {
               temp: tempF,
