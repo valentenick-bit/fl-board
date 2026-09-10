@@ -2893,7 +2893,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 497;
+    window.BOARD_VER = 498;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6135,7 +6135,7 @@ function currentRotation() {
         if (typeof syncStormDock === "function") syncStormDock();
         if (typeof rebuildDock === "function") rebuildDock();
         pages = window.__storm ? warnList() : rotateList();
-        if (!pages.length) return;
+        if (!pages || !pages.length) return;
         i = (i + 1) % pages.length;
         showPage(pages[i]);
         rot = setTimeout(step, pageDwell(pages[i]));
@@ -6501,6 +6501,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v498 — Calendar paint no longer crashes before tides, deliveries, and rotation finish loading.",
       "v497 — Events still show if distance is unknown. Loading labels clear instead of hanging.",
       "v496 — Traffic uses the same full-frame map layout as Lightning.",
       "v495 — Status is in the main menu. The report is on the page as selectable text so copy works on the phone.",
@@ -7904,14 +7905,14 @@ function currentRotation() {
             if (txt && txt.indexOf("BEGIN:VEVENT") >= 0) {
               var parsed = parseIcs(txt).map(function (e) { e.inside = inside; return e; });
               if (parsed.length) bag[key] = parsed;
-              paint();
+              try { paint(); } catch (ePaint2) {}
               if (done) done();
             } else next(i + 1);
           }).catch(function () { next(i + 1); });
         }
         next(0);
       }
-      paint();
+      try { paint(); } catch (ePaint) { try { console.warn(ePaint); } catch (e0) {} }
       load(ENG, "eng", false);
       load(BW, "bw", true);
       setInterval(function () { load(ENG, "eng", false); load(BW, "bw", true); }, 15 * 60 * 1000);
@@ -11881,7 +11882,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     window.addEventListener("resize", function () { layoutBand(); });
     try { layoutBand(); } catch (eB) {}
 
-    var VENUE_PIN = [
+    var VENUE_PIN = window.VENUE_PIN = [
       { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 26.9595, lon: -82.3543, onSite: true },
       { re: /englewood beach|chadwick/i, lat: 26.9247, lon: -82.3534 },
       { re: /stump pass/i, lat: 26.899, lon: -82.341 },
@@ -11902,9 +11903,12 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     function pinVenue(e) {
       var q = venueQuery(e);
       if (e && e.inside) return { lat: homeLat(), lon: homeLon(), onSite: true, q: q };
-      for (var i = 0; i < VENUE_PIN.length; i++) {
-        if (VENUE_PIN[i].re.test(q) || VENUE_PIN[i].re.test(String(e && e.sum || ""))) {
-          return { lat: VENUE_PIN[i].lat, lon: VENUE_PIN[i].lon, onSite: !!VENUE_PIN[i].onSite, q: q };
+      var pins = (typeof VENUE_PIN !== "undefined" && VENUE_PIN) || window.VENUE_PIN || [];
+      if (!pins || !pins.length) return q ? { q: q } : null;
+      for (var i = 0; i < pins.length; i++) {
+        if (!pins[i] || !pins[i].re) continue;
+        if (pins[i].re.test(q) || pins[i].re.test(String(e && e.sum || ""))) {
+          return { lat: pins[i].lat, lon: pins[i].lon, onSite: !!pins[i].onSite, q: q };
         }
       }
       return q ? { q: q } : null;
