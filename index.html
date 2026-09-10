@@ -2893,7 +2893,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 498;
+    window.BOARD_VER = 499;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6501,6 +6501,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v499 — Deliveries pull the Sept 9 Gmail scan file, not the old Sept 6 list.",
       "v498 — Calendar paint no longer crashes before tides, deliveries, and rotation finish loading.",
       "v497 — Events still show if distance is unknown. Loading labels clear instead of hanging.",
       "v496 — Traffic uses the same full-frame map layout as Lightning.",
@@ -7928,14 +7929,14 @@ function currentRotation() {
       var box = document.getElementById("deliv-list");
       if (!box) return;
       if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
-      var DELIV_ID = "1foQflr8qwqvk0IYrTyTZsAD0V_a_RVV0";
+      var DELIV_ID = "12rJoPF1CJuzL4b7QQmHmsCgqvkXxSnEj";
       var drive = "https://drive.usercontent.google.com/download?id=" + DELIV_ID + "&export=download&confirm=t";
       var urls = [
-        "/deliveries.json",
+        drive + "&cb=" + Date.now(),
+        "/deliveries.json?cb=" + Date.now(),
         "https://api.allorigins.win/raw?url=" + encodeURIComponent(drive),
         "https://api.allorigins.win/get?url=" + encodeURIComponent(drive),
-        "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(drive),
-        drive
+        "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(drive)
       ];
       function esc(s) {
         return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
@@ -8009,15 +8010,11 @@ function currentRotation() {
       function next(i) {
         if (i >= urls.length) {
           paint({
-            updated: "fallback",
-            incoming: [
-              { who: "Amazon Pharmacy", title: "2 medications", detail: "Arriving Sunday Sep 6", when: "2026-09-06" },
-              { who: "Amazon", title: "Automotive item", detail: "Shipped Sep 2", when: "2026-09-02" },
-              { who: "Amazon", title: "O'Neal Sierra Helmet", detail: "Delivery attempted Aug 31", when: "2026-08-31" }
-            ],
+            updated: "",
+            incoming: [],
             delivered: []
           });
-          if (typeof noteFeed === "function") noteFeed("deliveries", true, "3 incoming · fallback");
+          if (typeof noteFeed === "function") noteFeed("deliveries", false, "no live report");
           return;
         }
         fetch(urls[i]).then(function (r) { return r.text(); }).then(function (txt) {
