@@ -171,12 +171,12 @@
     @media (max-width: 720px) {
       .hdr-moon { width:22px; height:22px; }
     }
-    .hdr-cloud-svg { position:absolute; z-index:2; opacity:0; color:#eef3f8; filter:drop-shadow(0 2px 2px rgba(8,12,24,.18)); pointer-events:none; will-change:left,opacity; }
+    .hdr-cloud-svg { position:absolute; z-index:2; opacity:0; color:#ffffff; filter:drop-shadow(0 1px 2px rgba(255,255,255,.45)) drop-shadow(0 2px 3px rgba(20,40,70,.16)); pointer-events:none; will-change:left,opacity; }
     .hdr-cloud-svg circle, .hdr-cloud-svg ellipse { fill:currentColor; }
     .hdr-cloud-svg.c1 { width:78px; top:8%; left:-20%; }
     .hdr-cloud-svg.c2 { width:62px; top:26%; left:-20%; }
     .hdr-cloud-svg.c3 { width:90px; top:4%; left:-20%; }
-    header.sky-night .hdr-cloud-svg { color:rgba(220,228,240,.35); }
+    header.sky-night .hdr-cloud-svg { color:rgba(236,242,255,.62); }
 
 
     .hamb { width:40px; height:40px; border:0; background:transparent; display:flex; flex-direction:column; justify-content:center; gap:5px; padding:8px; z-index:6; cursor:pointer; }
@@ -693,8 +693,8 @@
     .pulse { display:none; align-items:center; gap:12px; margin:0; padding:10px 12px; border-radius:18px; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-left:5px solid var(--teal); color:var(--navy); }
     #chip-bolt { display:none !important; }
     .pulse.on { display:flex; }
-    .pulse-art { flex:0 0 72px; width:72px; height:72px; border-radius:16px; background:transparent; display:grid; place-items:center; }
-    .pulse-art svg { width:56px; height:56px; display:block; overflow:visible; }
+    .pulse-art { flex:0 0 92px; width:92px; height:92px; border-radius:18px; background:transparent; display:grid; place-items:center; }
+    .pulse-art svg { width:76px; height:76px; display:block; overflow:visible; }
     .pulse-copy { min-width:0; flex:1; }
     .pulse-copy .card { margin:0; padding:0; background:transparent; border:0; box-shadow:none; }
     .pulse-copy .card b { font-size:16px; letter-spacing:0; text-transform:none; font-family:"Fraunces",Georgia,serif; color:var(--navy); }
@@ -725,12 +725,12 @@
       margin-bottom:8px;
     }
     .card.today-card > .pulse-art {
-      flex:0 0 72px; width:72px; height:72px; min-width:72px; min-height:72px;
-      border-radius:16px; display:grid; place-items:center; overflow:hidden;
+      flex:0 0 92px; width:92px; height:92px; min-width:92px; min-height:92px;
+      border-radius:18px; display:grid; place-items:center; overflow:hidden;
     }
     .card.today-card > .pulse-art svg,
     .card.today-card > .pulse-art img {
-      width:64px; height:64px; display:block; object-fit:contain;
+      width:84px; height:84px; display:block; object-fit:contain;
     }
     .card.today-card > .today-body { flex:1; min-width:0; }
     .card.today-card.fly > .pulse-art { background:transparent; }
@@ -786,6 +786,10 @@
     .hour { min-width:52px; background:transparent; border-radius:0; text-align:center; padding:4px 2px; font-size:11px; color:var(--muted); }
     .hour em { display:block; font-style:normal; font-weight:700; color:var(--navy); font-size:12px; }
     .hour .pop { display:block; font-size:10px; font-weight:800; color:#4a90a4; min-height:14px; }
+    .hour .pop.bolt { color:#c45c26; }
+    .day .dflag { font-size:10px; font-weight:800; letter-spacing:.02em; }
+    .day .dflag.heat { color:#c45c26; }
+    .day .dflag.storm { color:#2a6f8f; }
     .hour .pop.mute { color:transparent; }
     .hour b { display:block; font-size:16px; color:var(--navy); }
     .hour svg { width:26px; height:26px; display:block; margin:2px auto; }
@@ -1816,6 +1820,10 @@
           <h3 class="ent-h">Lightning</h3>
           <div id="today-bolt-body"></div>
         </div>
+        <div id="today-stormwin" hidden>
+          <h3 class="ent-h">Storm window</h3>
+          <div id="today-stormwin-body"></div>
+        </div>
         <div id="today-cane" hidden>
           <h3 class="ent-h">Named storm</h3>
           <div id="today-cane-body"></div>
@@ -1894,6 +1902,7 @@
           <div class="tile"><label>Air quality</label><strong id="live-aqi">—</strong><small id="live-aqi-note"></small></div>
           <div class="tile"><label>Rain this month</label><strong id="live-rain-mo">—</strong></div>
           <div class="tile"><label>UV</label><strong id="live-uv">—</strong></div>
+          <div class="tile" id="tile-vis"><label>Visibility</label><strong id="live-vis">—</strong><small id="live-vis-note"></small></div>
 
           <div class="tile wx-extra" id="tile-frost"><label>Frost</label><strong id="live-frost">—</strong></div>
           <div class="tile wx-extra" id="tile-freeze"><label>Freeze</label><strong id="live-freeze">—</strong></div>
@@ -3093,7 +3102,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 504;
+    window.BOARD_VER = 506;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4819,18 +4828,27 @@ function currentRotation() {
       var cover = window.__wxNow && (window.__wxNow.cloudCover != null ? window.__wxNow.cloudCover : window.__wxNow.cloud);
       if (cover == null && hours[0] && hours[0].cloudCover != null) cover = hours[0].cloudCover;
       cover = cover != null ? Number(cover) : null;
-      var storm = /thunder|lightning/.test(txt) && !/possible|chance|scattered|isolated/.test(txt);
-      var rain = /\brain\b|shower|drizzle/.test(txt) && !/scattered|isolated|slight chance|possible/.test(txt);
+      var storm = /thunder|lightning/.test(txt) && !/possible|chance/.test(txt);
+      var rain = /\brain\b|shower|drizzle/.test(txt) && !/slight chance|possible/.test(txt);
+      var patchy = /scattered|isolated/.test(txt) && /shower|thunder|cloud/.test(txt);
       var overcast = /overcast|fog|mist/.test(txt) || (/mostly cloudy/.test(txt) && !/partly/.test(txt)) || (cover != null && cover >= 85);
       var cloudy = /cloudy/.test(txt) && !/partly|mostly sunny/.test(txt) || (cover != null && cover >= 60);
       var partly = /partly cloudy|partly sunny|mostly sunny|few clouds/.test(txt) || (cover != null && cover >= 20 && cover < 60);
       var clear = /sunny|clear|fair/.test(txt) && !/partly|mostly cloudy|cloudy/.test(txt) || (cover != null && cover < 20);
-      var kind = storm ? "storm" : rain ? "rain" : overcast ? "overcast" : cloudy ? "cloudy" : partly ? "partly" : clear ? "clear" : "unknown";
-      var cap = kind === "storm" || kind === "rain" || kind === "overcast" ? 0.62
-        : kind === "cloudy" ? 0.42
-        : kind === "partly" ? 0.22
-        : kind === "clear" ? 0
-        : 0.12;
+      var kind = storm ? "storm" : rain ? "rain" : overcast ? "overcast" : cloudy ? "cloudy" : partly ? "partly" : patchy ? "partly" : clear ? "clear" : "unknown";
+      if (cover != null && !storm) {
+        if (cover >= 85) kind = rain ? "rain" : "overcast";
+        else if (cover >= 55) kind = rain ? "rain" : "cloudy";
+        else if (cover >= 20) kind = rain ? "rain" : "partly";
+        else if (!rain) kind = "clear";
+      }
+      var cap = cover != null
+        ? Math.max(kind === "clear" ? 0.06 : 0.18, Math.min(0.88, 0.10 + cover / 100 * 0.78))
+        : kind === "storm" || kind === "rain" || kind === "overcast" ? 0.82
+        : kind === "cloudy" ? 0.62
+        : kind === "partly" ? 0.42
+        : kind === "clear" ? 0.08
+        : 0.28;
       return { kind: kind, cap: cap, text: txt.slice(0, 80), cover: cover };
     }
     (function driftClouds() {
@@ -5372,6 +5390,8 @@ function currentRotation() {
           else if (mode === "warn" && !/warning|alert posted/i.test(line)) line = prep.why || "Thunderstorm warning for this address.";
           var span = bolt.querySelector("span");
           if (span) span.textContent = line;
+          var win = typeof stormWindow === "function" ? stormWindow() : { on: false };
+          if (win.on && mode === "forecast") line = win.label + ".";
           var pill = mode === "near" ? "Nearby" : mode === "warn" ? "Warning" : "Forecast";
           var pillClass = mode === "near" ? "place-tag place-bw" : (mode === "warn" ? "warn-tag" : "place-tag place-out");
           if (boltBox) boltBox.classList.toggle("hot", mode === "near" || mode === "warn");
@@ -5450,6 +5470,16 @@ function currentRotation() {
           );
         } else if (trashBody) trashBody.innerHTML = "";
       }
+      var win = typeof stormWindow === "function" ? stormWindow() : { on: false };
+      var winBox = document.getElementById("today-stormwin");
+      var winBody = document.getElementById("today-stormwin-body");
+      if (winBox) winBox.hidden = !win.on;
+      if (win.on && winBody && typeof stampTodayArt === "function") {
+        winBody.innerHTML = stampTodayArt(
+          '<div class="card"><span class="place-tag place-out">Today</span><span class="kind-tag warn-tag">Storms</span><b>' + win.label + "</b><span>First to last hour in the forecast with thunder. Not a warning by itself.</span></div>",
+          "bolt"
+        );
+      } else if (winBody) winBody.innerHTML = "";
     }
     writeTodayChips();
     function writeHdrMeta() {
@@ -6747,6 +6777,29 @@ function currentRotation() {
       }
       return { on: false, why: "No lightning within 10 miles", shelter: false };
     }
+    function stormWindow() {
+      var hours = window.__hours || [];
+      var first = null, last = null;
+      var nowMs = Date.now();
+      hours.forEach(function (h) {
+        if (!h || !h.startTime) return;
+        var t0 = new Date(h.startTime).getTime();
+        if (t0 < nowMs - 20 * 60000) return;
+        if (t0 > nowMs + 24 * 3600000) return;
+        var fx = String(h.shortForecast || "").toLowerCase();
+        var mention = /thunder|t-storm|lightning/.test(fx);
+        if (!mention) return;
+        if (!first) first = h;
+        last = h;
+      });
+      if (!first) return { on: false, label: "" };
+      function clock(h) {
+        return new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+      }
+      var a = clock(first), b = last ? clock(last) : a;
+      var label = a === b ? ("Thunder around " + a) : ("Thunder " + a + " to " + b);
+      return { on: true, first: first, last: last, label: label };
+    }
     function lightningActive() { return lightningPrep(); }
     function boltWanted() {
       var near = window.__strikesNear || {};
@@ -7279,7 +7332,7 @@ function currentRotation() {
         if (el && /loading/i.test(el.textContent || "")) el.textContent = "Tide station did not answer. See the chart.";
       });
       var marine = "https://marine-api.open-meteo.com/v1/marine?latitude=" + homeLat() + "&longitude=" + homeLon() +
-        "&current=sea_surface_temperature,wave_height&temperature_unit=fahrenheit&length_unit=imperial";
+        "&current=sea_surface_temperature,wave_height,wind_wave_height,swell_wave_height&temperature_unit=fahrenheit&length_unit=imperial";
       fetch(marine).then(function (r) { return r.text(); }).then(function (txt) {
         var d = null; try { d = JSON.parse(txt); } catch (e) { return; }
         var cur = (d && d.current) || {};
@@ -7289,9 +7342,13 @@ function currentRotation() {
         var coast = document.getElementById("live-coastal");
         if (sst && cur.sea_surface_temperature != null) sst.textContent = fmtTempN(cur.sea_surface_temperature) + "°";
         if (inlet && sst && /°/.test(sst.textContent || "")) inlet.textContent = sst.textContent.replace(/\s+/g, " ").trim();
-        if (seas && cur.wave_height != null) {
-          var ft = Number(cur.wave_height);
-          seas.textContent = (ft < 1.5 ? "1 ft" : ft.toFixed(1) + " ft");
+        if (seas) {
+          var windW = cur.wind_wave_height != null ? Number(cur.wind_wave_height) : null;
+          var swellW = cur.swell_wave_height != null ? Number(cur.swell_wave_height) : null;
+          var tot = cur.wave_height != null ? Number(cur.wave_height) : null;
+          function ftlab(v) { return v == null ? "" : (v < 1.5 ? "1 ft" : v.toFixed(1) + " ft"); }
+          if (windW != null && swellW != null) seas.textContent = "Wind " + ftlab(windW) + " · swell " + ftlab(swellW);
+          else if (tot != null) seas.textContent = ftlab(tot);
         }
         if (coast && (/loading/i.test(coast.textContent || "") || !coast.textContent.trim())) {
           var wave = seas && seas.textContent !== "—" ? seas.textContent : "light";
@@ -10378,7 +10435,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
 
     function loadHistWx() {
       var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
-        "&hourly=relative_humidity_2m,surface_pressure,precipitation&past_days=2&forecast_days=1&timezone=America%2FNew_York";
+        "&hourly=relative_humidity_2m,surface_pressure,precipitation,visibility,cloud_cover&current=visibility,cloud_cover&past_days=2&forecast_days=1&timezone=America%2FNew_York";
       fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
         var d = null;
         try { d = txt ? JSON.parse(txt) : null; } catch (e) { d = null; }
@@ -11593,8 +11650,31 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var presNow = c.surface_pressure;
       if (presNow == null && lastH >= 0 && h.surface_pressure) presNow = h.surface_pressure[lastH];
       if (rhEl && rhNow != null && !/%/.test(rhEl.textContent || "")) rhEl.textContent = Math.round(rhNow) + "%";
+      var visEl = document.getElementById("live-vis");
+      var visNote = document.getElementById("live-vis-note");
+      var visM = c.visibility;
+      if (visM == null && lastH >= 0 && h.visibility) visM = h.visibility[lastH];
+      if (visEl && visM != null) {
+        var miles = Number(visM) / 1609.34;
+        visEl.textContent = miles >= 10 ? "10+ mi" : miles >= 1 ? miles.toFixed(1) + " mi" : Math.round(miles * 5280) + " ft";
+        if (visNote) visNote.textContent = miles < 2 ? "Haze / mist" : miles < 6 ? "Hazy" : "Clear";
+        if (typeof noteFeed === "function") noteFeed("live-vis", true, visEl.textContent);
+      }
+      var coverNow = c.cloud_cover;
+      if (coverNow == null && lastH >= 0 && h.cloud_cover) coverNow = h.cloud_cover[lastH];
+      if (coverNow != null) {
+        window.__wxNow = window.__wxNow || {};
+        window.__wxNow.cloudCover = Number(coverNow);
+      }
       if (dewEl && dewNow != null && !/Dew/.test(dewEl.textContent || "")) dewEl.textContent = "Dew " + fmtTempN(dewNow) + "°";
       if (presEl && presNow != null && !/\d/.test(presEl.textContent || "")) presEl.textContent = (Number(presNow) * 0.02953).toFixed(2) + '"';
+      var presNote = document.getElementById("live-pres-note");
+      if (presNote && lastH >= 3 && h.surface_pressure && h.surface_pressure[lastH] != null && h.surface_pressure[lastH - 3] != null) {
+        var nowIn = Number(h.surface_pressure[lastH]) * 0.02953;
+        var thenIn = Number(h.surface_pressure[lastH - 3]) * 0.02953;
+        var dlt = nowIn - thenIn;
+        presNote.textContent = dlt >= 0.03 ? "Rising" : dlt <= -0.03 ? "Falling" : "Steady";
+      }
       var hum = [], pres = [], rain = [];
       for (var i = 0; i < times.length; i++) {
         var ts = new Date(times[i]).getTime();
@@ -11764,7 +11844,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           if (presEl && pres) {
             presEl.textContent = pres + '"';
             var pnum = parseFloat(pres);
-            if (presNote) presNote.textContent = pnum >= 30.2 ? "High" : pnum <= 29.8 ? "Low" : "Fair";
+            if (presNote && !/Rising|Falling|Steady/.test(presNote.textContent || "")) presNote.textContent = pnum >= 30.2 ? "High" : pnum <= 29.8 ? "Low" : "Fair";
           }
           if (meta) {
             var rain = (nowH.probabilityOfPrecipitation && nowH.probabilityOfPrecipitation.value != null) ? nowH.probabilityOfPrecipitation.value : null;
@@ -11823,6 +11903,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           })();
           window.__hours = hours;
           if (typeof paintTodayHours === "function") try { paintTodayHours(); } catch (eH) {}
+          if (typeof writeTodayChips === "function") try { writeTodayChips(); } catch (eC) {}
           if (hours.length && document.querySelector(".hourly")) {
             var box = document.querySelector(".hourly");
             var n = Math.max(6, Math.min(8, Math.floor((box.clientWidth || 400) / 72)));
@@ -11834,9 +11915,12 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             box.innerHTML = hours.slice(startH, startH + n).map(function (h, hi) {
               var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
               var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
-              var popHtml = pop >= 10 ? '<i class="pop">' + pop + "%</i>" : '<i class="pop mute">·</i>';
+              var bolt = typeof hourMentionsThunder === "function" && hourMentionsThunder(h);
+              var popHtml = bolt
+                ? '<i class="pop bolt">' + (pop ? pop + "% ⚡" : "⚡") + "</i>"
+                : pop >= 10 ? '<i class="pop">' + pop + "%</i>" : '<i class="pop mute">·</i>';
               var label = hi === 0 ? "now" : when;
-              return '<div class="hour' + (hi === 0 ? " now" : "") + '"><em>' + label + "</em>" + popHtml + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime(), pop), 26) + "<b>" + fmtTempN(h.temperature) + "°</b></div>";
+              return '<div class="hour' + (hi === 0 ? " now" : "") + (bolt ? " storm" : "") + '"><em>' + label + "</em>" + popHtml + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime(), pop), 26) + "<b>" + fmtTempN(h.temperature) + "°</b></div>";
             }).join("");
           }
           if (days.length && document.querySelector(".tenday")) {
@@ -11881,7 +11965,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
               td.innerHTML = list.map(function (r) {
                 if (!r.row) return "";
                 var pop = r.row.pop >= 10 ? '<span class="dpop">' + r.row.pop + "%</span>" : "<span></span>";
-                return '<div class="day' + (r.label === "Today" ? " today" : "") + '"><span>' + r.label + "</span>" + wxSvg(wxKind(r.row.fx), 24) + pop + '<span class="lo">' + fmtTempN(r.row.lo) + "°</span>" + tbar(r.row.lo, r.row.hi) + '<span class="hi">' + fmtTempN(r.row.hi) + "°</span></div>";
+                var fx = String(r.row.fx || "").toLowerCase();
+                var heat = r.row.hi >= 95 || /hot|heat/.test(fx);
+                var storm = /thunder|t-storm|severe/.test(fx);
+                var flag = storm ? '<span class="dflag storm">storm</span>' : heat ? '<span class="dflag heat">heat</span>' : "";
+                return '<div class="day' + (r.label === "Today" ? " today" : "") + (storm ? " storm" : "") + (heat ? " heat" : "") + '"><span>' + r.label + "</span>" + wxSvg(wxKind(r.row.fx), 24) + pop + flag + '<span class="lo">' + fmtTempN(r.row.lo) + "°</span>" + tbar(r.row.lo, r.row.hi) + '<span class="hi">' + fmtTempN(r.row.hi) + "°</span></div>";
               }).join("");
               var nowline = document.getElementById("wx-nowline");
               if (nowline) {
@@ -12443,8 +12531,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
         var svg = (typeof wxSvg === "function" && typeof wxKind === "function") ? wxSvg(wxKind(h.shortForecast || ""), 28) : "";
         var temp = (typeof fmtTempN === "function" ? fmtTempN(h.temperature) : h.temperature);
-        var popHtml = pop >= 10 ? '<i class="pop">' + pop + "%</i>" : "";
-        return '<div class="hour"><em>' + when + "</em>" + svg + "<b>" + temp + "°</b>" + popHtml + "</div>";
+        var bolt = typeof hourMentionsThunder === "function" && hourMentionsThunder(h);
+        var popHtml = bolt
+          ? '<i class="pop bolt">' + (pop ? pop + "% ⚡" : "⚡") + "</i>"
+          : pop >= 10 ? '<i class="pop">' + pop + "%</i>" : "";
+        return '<div class="hour' + (bolt ? " storm" : "") + '"><em>' + when + "</em>" + svg + "<b>" + temp + "°</b>" + popHtml + "</div>";
       }).join("");
       if (typeof noteFeed === "function") noteFeed("today-hours", !!slice.length, slice.length + " hours");
     }
@@ -12458,7 +12549,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var svg = (typeof wxSvg === "function" && typeof wxKind === "function") ? wxSvg(wxKind(r.row.fx), 28) : "";
         var hi = (typeof fmtTempN === "function" ? fmtTempN(r.row.hi) : r.row.hi);
         var lo = (typeof fmtTempN === "function" ? fmtTempN(r.row.lo) : r.row.lo);
-        return '<div class="hour"><em>' + (r.label || "") + "</em>" + svg + "<b>" + hi + "°</b><i class=\"pop mute\">" + lo + "°</i>" + pop + "</div>";
+        var fx = String(r.row.fx || "").toLowerCase();
+        var heat = r.row.hi >= 95 || /hot|heat/.test(fx);
+        var storm = /thunder|t-storm|severe/.test(fx);
+        var flag = storm ? '<i class="pop bolt">storm</i>' : heat ? '<i class="pop bolt">heat</i>' : pop;
+        return '<div class="hour' + (storm ? " storm" : "") + '"><em>' + (r.label || "") + "</em>" + svg + "<b>" + hi + "°</b><i class=\"pop mute\">" + lo + "°</i>" + flag + "</div>";
       }).join("");
       if (typeof noteFeed === "function") noteFeed("today-days", !!list.length, list.length + " days");
     }
