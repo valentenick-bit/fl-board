@@ -176,9 +176,12 @@
     .hdr-cloud-svg.c2 { width:62px; top:26%; left:-20%; }
     .hdr-cloud-svg.c3 { width:90px; top:4%; left:-20%; }
     header.sky-night .hdr-cloud-svg { color:rgba(236,242,255,.62); }
+    header.sky-cover-light .hdr-cloud-svg { color:#ffffff; }
+    header.sky-cover-mid .hdr-cloud-svg { color:#8b9aaa; filter:drop-shadow(0 2px 3px rgba(20,30,40,.35)); }
+    header.sky-cover-heavy .hdr-cloud-svg { color:#3a4450; filter:drop-shadow(0 3px 5px rgba(8,12,18,.5)); }
     header.sky-cloud .hdr-cloud-svg { color:#8b9aaa; filter:drop-shadow(0 2px 3px rgba(20,30,40,.35)); }
     header.sky-storm .hdr-cloud-svg,
-    header.sky-warn .hdr-cloud-svg { color:#4d5866; filter:drop-shadow(0 3px 4px rgba(8,12,18,.45)); }
+    header.sky-warn .hdr-cloud-svg { color:#3a4450; filter:drop-shadow(0 3px 4px rgba(8,12,18,.45)); }
     header.sky-storm .hdr-cloud-svg.c1,
     header.sky-warn .hdr-cloud-svg.c1 { width:130px; }
     header.sky-storm .hdr-cloud-svg.c2,
@@ -3140,7 +3143,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 520;
+    window.BOARD_VER = 521;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4995,14 +4998,20 @@ function currentRotation() {
         if (sunPos) {
           parkBody(sun, sunPos, 22);
           var sFade = Math.min(1, sunPos.p * 16, (1 - sunPos.p) * 16);
-          sun.style.opacity = String(Math.max(0.85, sFade));
+          var coverW = window.__skyCover || "light";
+          if (coverW === "heavy") sun.style.opacity = "0";
+          else if (coverW === "mid") sun.style.opacity = String(Math.max(0.18, sFade * 0.28));
+          else sun.style.opacity = String(Math.max(0.85, sFade));
         } else if (sun && !window.__sunUp) {
           sun.style.opacity = "0";
         }
         if (moonPos) {
           parkBody(moon, moonPos, 28);
           var fade = Math.min(1, moonPos.p * 12, (1 - moonPos.p) * 12);
-          moon.style.opacity = String(Math.max(0.4, fade));
+          var coverWm = window.__skyCover || "light";
+          if (coverWm === "heavy") moon.style.opacity = "0";
+          else if (coverWm === "mid") moon.style.opacity = String(Math.max(0.12, fade * 0.25));
+          else moon.style.opacity = String(Math.max(0.4, fade));
         } else if (moon && !moonWin) {
           moon.style.opacity = "0";
         }
@@ -5144,10 +5153,12 @@ function currentRotation() {
       var wx = typeof skyWeatherNow === "function" ? skyWeatherNow() : { kind: "unknown" };
       var sunny = wx.kind === "clear" || wx.kind === "partly";
       var overcast = wx.kind === "overcast" || wx.kind === "cloudy";
-      var rainingNow = wx.kind === "rain";
-      var stormNow = wx.kind === "storm";
+      var rainingNow = wx.kind === "rain" || !!(window.__wxNow && window.__wxNow.rain);
+      var stormNow = wx.kind === "storm" || !!(window.__wxNow && window.__wxNow.lightning);
       var slot = nextSlot;
-      var skyKey = [slot, warn ? "warn" : "", wx.kind || ""].join("|");
+      var coverW = (stormNow || rainingNow || warn) ? "heavy" : overcast ? "mid" : (wx.kind === "cloudy" ? "mid" : "light");
+      window.__skyCover = coverW;
+      var skyKey = [slot, warn ? "warn" : "", wx.kind || "", coverW].join("|");
       if (window.__skyKey !== skyKey) {
         head.classList.remove("sky-sun","sky-storm","sky-warn","sky-night","night","sky-dawn","sky-dusk","sky-cloud","sky-partly");
         if (warn) head.classList.add("sky-warn");
@@ -5160,6 +5171,8 @@ function currentRotation() {
         else if (stormNow || rainingNow || warn) { /* storm/warn already set */ }
         else if (overcast) head.classList.add("sky-cloud");
         else if (sunny || slot === "day") head.classList.add("sky-partly");
+        head.classList.remove("sky-cover-light","sky-cover-mid","sky-cover-heavy");
+        head.classList.add("sky-cover-" + coverW);
         window.__skyKey = skyKey;
       }
       if (typeof placeSkyBodies === "function") placeSkyBodies(slot);
