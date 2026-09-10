@@ -688,7 +688,8 @@
     .best-chip span, .today-chip span { display:block; font-weight:650; font-size:16px; line-height:1.4; color:var(--navy); }
     .today-chips { display:none; }
     .go-title small { display:block; margin-top:4px; font-size:12px; font-weight:650; letter-spacing:.02em; color:var(--muted); text-transform:none; }
-    .pulse-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 0 12px; }
+    #today-pulse { display:none !important; }
+    .pulse-grid { display:none !important; }
     .pulse { display:none; align-items:center; gap:12px; margin:0; padding:10px 12px; border-radius:18px; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-left:5px solid var(--teal); color:var(--navy); }
     #chip-bolt { display:none !important; }
     .pulse.on { display:flex; }
@@ -760,7 +761,7 @@
     .card.today-card.bolt > .pulse-art { background:transparent; }
     .card.today-card.cane > .pulse-art { background:transparent; }
     .card.today-card.trash > .pulse-art { background:transparent; }
-    #today-bolt-body, #today-cane-body, #today-trash-body { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:stretch; }
+    #today-bolt-body, #today-cane-body, #today-trash-body { display:grid; grid-template-columns:1fr; gap:10px; align-items:stretch; }
     .card.today-card.fun > .pulse-art { background:transparent; }
     .card.today-card.music > .pulse-art { background:transparent; }
     .card.today-card.box > .pulse-art { background:transparent; }
@@ -3092,7 +3093,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 503;
+    window.BOARD_VER = 504;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5314,6 +5315,14 @@ function currentRotation() {
       });
     });
     try { nextTrash(); } catch (eT) {}
+    (function seedWinterTiles() {
+      ["live-frost","live-freeze","live-snow","live-ice"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && (/^\s*[—\-]?\s*$/.test(el.textContent || "") || el.textContent === "—")) el.textContent = "None";
+        var tile = document.getElementById(id.replace("live-", "tile-"));
+        if (tile) tile.classList.remove("on");
+      });
+    })();
     function writeTodayChips() {
       try { __writeTodayChipsBody(); } catch (eChip) { if (typeof noteFeed === 'function') noteFeed('today-chips', false, String(eChip && eChip.message || eChip)); }
     }
@@ -5419,7 +5428,8 @@ function currentRotation() {
         var names = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
         var afterPickup = add === 0 && now.getHours() >= 12;
         var show = getSet().chipTrash !== "0" && !afterPickup && add <= 1;
-        trash.classList.toggle("on", show);
+        trash.classList.remove("on");
+        trash.hidden = true;
         var trashBox = document.getElementById("today-trash");
         var trashBody = document.getElementById("today-trash-body");
         if (trashBox) trashBox.hidden = !show;
