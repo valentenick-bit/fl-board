@@ -3143,7 +3143,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 521;
+    window.BOARD_VER = 522;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4713,13 +4713,14 @@ function currentRotation() {
       var now = Date.now();
       var rise = Date.parse(c.rise || "") || 0;
       var set = Date.parse(c.set || "") || 0;
-      var sunShould = !!(rise && set && now >= rise && now < set);
       var sunEl = document.getElementById("hdr-sun");
       var moonEl = document.getElementById("hdr-moon");
       var sunOn = !!(sunEl && parseFloat(sunEl.style.opacity || "0") > 0.05);
       var moonOn = !!(moonEl && parseFloat(moonEl.style.opacity || "0") > 0.05);
       var head = document.querySelector("header");
       var cls = head ? ["sky-night","sky-dawn","sky-sun","sky-partly","sky-dusk","sky-cloud","sky-storm","sky-warn"].filter(function (k) { return head.classList.contains(k); }).join("+") || "none" : "none";
+      var heavyCover = !!(head && (head.classList.contains("sky-cover-heavy") || head.classList.contains("sky-storm") || head.classList.contains("sky-warn")));
+      var sunShould = !!(rise && set && now >= rise && now < set) && !heavyCover;
       var slotOk = (slot === "dawn" && /sky-dawn/.test(cls)) || (slot === "night" && /sky-night/.test(cls)) || (slot === "dusk" && /sky-dusk/.test(cls)) || (slot === "day" && /sky-sun|sky-partly|sky-cloud|sky-storm|sky-warn/.test(cls));
       var sunOk = sunOn === sunShould;
       var ok = !!(slotOk && sunOk && c.rise);
@@ -7040,6 +7041,14 @@ function currentRotation() {
       }
       one("flood", info.floodOn, "Street flooding", info.floodTxt || "Standing water in streets, not a river.");
       one("fog", info.fogOn, "Dense fog", info.fogTxt || "Short visibility overnight.");
+      var fl = document.getElementById("live-flood");
+      var fg = document.getElementById("live-fog");
+      if (fl) fl.textContent = info.floodOn ? (info.floodTxt || "Advisory") : "None";
+      if (fg) fg.textContent = info.fogOn ? (info.fogTxt || "Dense fog") : "None";
+      if (typeof noteFeed === "function") {
+        noteFeed("live-flood", true, fl ? fl.textContent : "None");
+        noteFeed("live-fog", true, fg ? fg.textContent : "None");
+      }
     }
     function paintSpaceWeather(kp, flare) {
       var el = document.getElementById("live-space");
@@ -10056,10 +10065,11 @@ function currentRotation() {
         if (/did not load|timed out|not wired|video unavailable|no data was found|no live report|none upcoming|no upcoming flights|drive file blocked|gmail scan/i.test(s)) return "failed";
         if (/NHC list is quiet|no named|outlook maps below still update/i.test(s)) return "ok";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
-        if (s.length < 90 && /quiet|not in yet|see marine|see gulf sst|see gulf|see tide|see coastal|checking range|updating|gaps filled|catching up|pick signs/i.test(s) && !/NHC list is quiet/i.test(s)) return "failed";
+        if (/\bG0\b|space weather|flare [A-Z]\d/i.test(s)) return "ok";
+        if (s.length < 90 && /quiet|not in yet|see marine|see gulf sst|see gulf|see tide|see coastal|checking range|updating|gaps filled|catching up|pick signs/i.test(s) && !/NHC list is quiet|\bG0\b|flare /i.test(s)) return "failed";
         if (/^(loading|checking|updating|waiting|pulling|looking up)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc|waiting on the home|checking gulf|checking noaa|checking air|pulling the nws|looking up the next|· updating/i.test(s))
           return grace ? "placeholder" : "failed";
-        if (!s || /^(—|–|…|\.{1,3}|n\/a|See )/i.test(s)) return grace ? "placeholder" : "failed";
+        if (!s || /^(—|–|…|\.{1,3}|n\/a|See |None)$/i.test(s)) return "ok";
         if (/\b1 days\b/.test(s)) return "failed";
         if (/off but|radar only with/.test(s)) return "failed";
         if (/MISMATCH/.test(s)) return "failed";
