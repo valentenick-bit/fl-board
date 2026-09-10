@@ -1145,6 +1145,7 @@
     .settings #set-dockreset { width:100%; background:var(--sand); border-radius:12px; padding:10px; font-weight:800; }
     html.dark .settings, html.dark .settings-head { background:rgba(34,30,54,.97); color:#f7f1e6; }
     html.dark .set-card { background:#2a3430; border-color:#3e4a42; }
+    html.dark .set-row { background:#24302c; }
     html.dark .set-line { border-top-color:#3e4a42; }
     html.dark .settings select, html.dark .settings input[type="text"], html.dark .settings .set-row { background:#1f2824; color:#f7f1e6; border-color:#3e4a42; }
     html.dark .settings .set-row button { color:#efe4c8; }
@@ -3143,7 +3144,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 524;
+    window.BOARD_VER = 525;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3520,6 +3521,8 @@ Cart shop:</textarea>
         if (typeof resolveHomeGeo === "function") resolveHomeGeo();
         if (typeof applyLocalMaps === "function") applyLocalMaps();
         if (typeof refreshWeather === "function") refreshWeather();
+        if (typeof loadWx === "function") loadWx();
+        if (typeof fillZipRadio === "function") fillZipRadio();
       }).catch(function () {
         finish(false, "Could not pin that address. Check the line and try again.");
       });
@@ -8774,7 +8777,7 @@ function currentRotation() {
       var box = document.getElementById("deliv-list");
       if (!box) return;
       if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
-      var DELIV_ID = "1H5r7aej9DvSo2Up4GPUhgMZyK2kGmAy-";
+      var DELIV_ID = "1fdtZGOyKVZvxi480Ypp3XlEsyENSx4cA";
       var drive = "https://drive.google.com/uc?export=download&id=" + DELIV_ID;
       var urls = [
         drive + "&cb=" + Date.now(),
@@ -9552,7 +9555,7 @@ function currentRotation() {
       tap("set-motion", "motion", function () { if (typeof applyA11y === "function") applyA11y(); });
       tap("set-colorhelp", "colorHelp", function () { if (typeof applyA11y === "function") applyA11y(); });
       tap("set-tap", "tap", function () { if (typeof applyA11y === "function") applyA11y(); });
-      tap("set-rot", "rotate");
+      tap("set-rot", "rotate", function () { if (!window.__paused && typeof startRotate === "function") startRotate(); });
       tap("set-hdrwx", "hdrWx", function () { if (typeof applyHdrWx === "function") applyHdrWx(); });
       tap("set-clock", "clock", function () { if (typeof clock === "function") clock(); if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras(); if (typeof paintToday === "function") paintToday(); });
@@ -9579,7 +9582,10 @@ function currentRotation() {
         if (typeof paintSportsPage === "function") paintSportsPage();
         if (typeof loadSportsScores === "function") loadSportsScores();
       });
-      tap("set-vol", "vol");
+      tap("set-vol", "vol", function () {
+        var audio = document.getElementById("radioPlayer");
+        if (audio && typeof setLoudness === "function") setLoudness(audio, audio.getAttribute("src") || "");
+      });
       tap("set-noaa", "noaa");
       tap("set-radioauto", "radioauto");
       tap("set-camnight", "camNight");
@@ -9603,9 +9609,12 @@ function currentRotation() {
         paint();
         if (typeof writeBriefing === "function") writeBriefing();
       });
-      tap("set-break", "breakOn");
-      tap("set-breaknat", "breakNat");
-      tap("set-breakloc", "breakLoc");
+      tap("set-break", "breakOn", function () {
+        if (typeof applySkin === "function") applySkin();
+        if (typeof pollBreaking === "function") pollBreaking();
+      });
+      tap("set-breaknat", "breakNat", function () { if (typeof pollBreaking === "function") pollBreaking(); });
+      tap("set-breakloc", "breakLoc", function () { if (typeof pollBreaking === "function") pollBreaking(); });
       var trashRow = document.getElementById("set-trash");
       if (trashRow) trashRow.addEventListener("click", function (e) {
         var b = e.target.closest("button[data-v]");
