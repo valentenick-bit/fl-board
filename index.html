@@ -191,7 +191,7 @@
     .drawer-gear { width:40px; height:40px; border:0; background:transparent; font-size:22px; color:var(--navy); cursor:pointer; }
     .drawer-back-btn { width:40px; height:40px; border:0; background:transparent; font-size:34px; line-height:1; color:var(--navy); cursor:pointer; margin-left:-8px; }
     html.dark .drawer-back-btn { color:#f7f1e6; }
-    .drawer-list { display:flex; flex-direction:column; }
+    .drawer-list { display:flex; flex-direction:column; padding-bottom:28px; }
     .drawer-list button { text-align:left; border:0; background:transparent; padding:12px 8px; font-size:15px; font-weight:700; color:var(--navy); border-bottom:1px solid var(--hair); }
     .drawer-list button.on { background:#fff; box-shadow:0 0 0 1px var(--hair); }
     .drawer-list button.soon { opacity:.45; font-weight:600; }
@@ -2606,6 +2606,7 @@ Cart shop:</textarea>
           <div class="menu-grid">
             <button type="button" data-p="house">House</button>
             <button type="button" data-p="villa">Open / close</button>
+            <button type="button" data-p="account">Account</button>
           </div>
         </div>
       </section>
@@ -3052,12 +3053,11 @@ Cart shop:</textarea>
         <button type="button" data-p="house">House</button>
         <button type="button" data-p="villa">Open / close</button>
         <p class="drawer-lab">Board</p>
+        <button type="button" data-p="account">Account</button>
         <button type="button" data-p="health">Status</button>
         <button type="button" id="setbtn" data-p="settings">Settings</button>
         <button type="button" id="refreshbtn">Refresh</button>
         <button type="button" id="devbtn">Developer</button>
-        <p class="drawer-lab">Account</p>
-        <button type="button" data-p="account">Account</button>
       </nav>
     </aside>
     <aside class="drawer" id="dev-drawer" aria-label="Developer">
@@ -3098,7 +3098,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 507;
+    window.BOARD_VER = 508;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5395,12 +5395,12 @@ function currentRotation() {
             if (win.on && mode === "forecast") line = win.label + ".";
             else if (win.on && mode !== "forecast") line = line.replace(/\.?$/, "") + " — " + win.label + ".";
             var tip = mode === "near"
-              ? "Strike within 10 miles — stay inside. Lightning page is in the rotation."
+              ? "A strike just registered close by. Stay inside until it moves off."
               : mode === "warn"
-                ? "Official warning for this address — stay inside until it expires."
+                ? "There is an official thunderstorm warning for this address. Stay inside until it expires."
                 : (win.on
-                  ? "Forecast only. Lightning page stays out until a strike is within 10 miles."
-                  : "No strike inside 10 miles and no warning here.");
+                  ? "That's the window in the forecast. Nothing is overhead right now."
+                  : "Thunder is in the forecast. Nothing is overhead right now.");
             boltBody.innerHTML = stampTodayArt(
               '<div class="card' + (shelter ? " hot" : "") + '"><span class="' + pillClass + '">' + pill + '</span><span class="kind-tag warn-tag">Lightning</span><b>' + line + "</b><span>" + tip + "</span></div>",
               "bolt"
@@ -6767,26 +6767,30 @@ function currentRotation() {
       return { on: false, why: "No lightning within 10 miles", shelter: false };
     }
     function stormWindow() {
-      var hours = window.__hours || [];
-      var first = null, last = null;
       var nowMs = Date.now();
-      hours.forEach(function (h) {
-        if (!h || !h.startTime) return;
+      var hits = (window.__hours || []).filter(function (h) {
+        if (!h || !h.startTime) return false;
         var t0 = new Date(h.startTime).getTime();
-        if (t0 < nowMs - 20 * 60000) return;
-        if (t0 > nowMs + 24 * 3600000) return;
-        var fx = String(h.shortForecast || "").toLowerCase();
-        var mention = /thunder|t-storm|lightning/.test(fx);
-        if (!mention) return;
-        if (!first) first = h;
-        last = h;
-      });
-      if (!first) return { on: false, label: "" };
+        if (t0 < nowMs - 20 * 60000) return false;
+        if (t0 > nowMs + 24 * 3600000) return false;
+        return /thunder|t-storm|lightning/.test(String(h.shortForecast || "").toLowerCase());
+      }).sort(function (a, b) { return new Date(a.startTime) - new Date(b.startTime); });
+      if (!hits.length) return { on: false, label: "" };
+      var first = hits[0], last = hits[hits.length - 1];
       function clock(h) {
         return new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
       }
-      var a = clock(first), b = last ? clock(last) : a;
-      var label = a === b ? ("Thunder around " + a) : ("Thunder " + a + " to " + b);
+      function dayKey(h) {
+        return new Date(h.startTime).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      }
+      var today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      var a = clock(first), b = clock(last);
+      var aDay = dayKey(first), bDay = dayKey(last);
+      var label;
+      if (a === b && aDay === bDay) label = "Thunder around " + a;
+      else if (aDay === bDay) label = "Thunder " + a + " to " + b;
+      else if (aDay === today && bDay > today) label = "Thunder " + a + " today through " + b + " tomorrow";
+      else label = "Thunder " + a + " through " + b + " tomorrow";
       return { on: true, first: first, last: last, label: label };
     }
     function lightningActive() { return lightningPrep(); }
@@ -8224,7 +8228,7 @@ function currentRotation() {
         var kind = typeof eventKind === "function" ? eventKind(e.sum, e.loc, e.desc) : null;
         var live = !!(kind && kind.cls === "music") || e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc));
         if (live && (!kind || kind.cls !== "music")) kind = { label: "Live music", cls: "music" };
-        var place = e.inside ? "BeachWalk" : "Englewood";
+        var place = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : "Englewood";
         var at = (String(e.sum || "").match(/@\s*(.+)$/) || [])[1];
         if (!e.inside) {
           if (at) place = at.replace(/\s*\(.*$/, "").trim();
@@ -12398,12 +12402,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       return q ? { q: q } : null;
     }
     function eventMilesFromHome(e) {
+      if (e && e.inside) return 0;
       var pin = pinVenue(e);
-      if (pin && pin.onSite) return 0;
       if (pin && pin.lat != null) return milesApart(homeLat(), homeLon(), pin.lat, pin.lon);
       if (e && e.miles != null) return Number(e.miles);
-      if (e && e.inside) return 0;
-      return milesApart(homeLat(), homeLon(), 26.962, -82.352);
+      return null;
     }
     function eventInRange(e) {
       var limit = Number((typeof getSet === "function" && getSet().eventMiles) || 15) || 15;
@@ -12436,11 +12439,16 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       rows.sort(function (a, b) { return b.score - a.score; });
       return rows.slice(0, limit);
     }
+    function communityLabel() {
+      var n = String((typeof getSet === "function" && getSet().community) || "BeachWalk").trim();
+      if (/beachwalk/i.test(n)) return "BeachWalk";
+      return (n.split(/[,—]/)[0] || "Community").trim().slice(0, 18) || "Community";
+    }
     function fmtDrivePill(e) {
+      if (e && e.inside) return "On site";
       if (e && e.driveMin != null) return Math.max(1, Math.round(e.driveMin)) + " min";
       var mi = eventMilesFromHome(e);
-      if (mi == null) return "";
-      if (mi < 0.4) return "On site";
+      if (mi == null || isNaN(mi)) return "";
       var guess = Math.max(2, Math.round(mi / 0.35));
       return mi.toFixed(mi >= 10 ? 0 : 1) + " mi · ~" + guess + " min";
     }
