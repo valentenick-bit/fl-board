@@ -2265,7 +2265,7 @@ Cart shop:</textarea>
 
         <div class="card" data-idea="heading-out">
           <b>Heading out — door-close card on Today</b>
-          <span class="stamp">11 Sep 2026. Simple mode. Now plus the next hour. Hide after dark or after they have been out a while.</span>
+          <span class="stamp">11 Sep 2026. Door-close lines live in the Today greeting — no second card. Rain, lightning, events, flights, and packages were already there. Outing go/wait/skip and trash-morning added 11 Sep. Still open: traffic one-liner, villa garage/AC checks.</span>
           <ul class="check-list">
             <li>One card, 3–5 sentences. Not a second hourly grid.</li>
             <li>Rain in the next 60–90 minutes, or “dry through late morning.” Same next-rain sentence already on the weather list.</li>
@@ -3202,7 +3202,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 531;
+    window.BOARD_VER = 532;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6130,6 +6130,51 @@ function currentRotation() {
       if (tide && !/loading|quiet|—/i.test(tide) && hrNow >= 6 && hrNow < 20 && (dayPlay("beach") !== "skip" || dayPlay("boat") !== "skip")) {
         bits.push("Tides: " + tide.replace(/\s+/g, " ") + ".");
       }
+
+      if (hrNow >= 6 && hrNow < 20 && typeof dayPlay === "function") {
+        var acts = [
+          { k: "beach", n: "beach" },
+          { k: "pool", n: "pool" },
+          { k: "cart", n: "cart" },
+          { k: "boat", n: "boat" },
+          { k: "courts", n: "courts" }
+        ];
+        var goA = [], waitA = [], skipA = [];
+        acts.forEach(function (a) {
+          var p = dayPlay(a.k);
+          if (p === "closed") return;
+          if (p === "good" || p === "ok") goA.push(a.n);
+          else if (p === "mixed") waitA.push(a.n);
+          else if (p === "skip") skipA.push(a.n);
+        });
+        function listActs(arr) {
+          if (!arr.length) return "";
+          if (arr.length === 1) return arr[0];
+          if (arr.length === 2) return arr[0] + " and " + arr[1];
+          return arr.slice(0, -1).join(", ") + ", and " + arr[arr.length - 1];
+        }
+        var playParts = [];
+        if (goA.length) playParts.push(listActs(goA) + (goA.length === 1 ? " is a go" : " are a go"));
+        if (waitA.length) playParts.push(listActs(waitA) + " can wait an hour");
+        if (skipA.length) playParts.push("skip the " + listActs(skipA));
+        if (playParts.length) {
+          var play = playParts.join(". ");
+          bits.push(play.charAt(0).toUpperCase() + play.slice(1) + ".");
+        }
+      }
+      try {
+        if (typeof trashDay === "function") {
+          var wantTrash = trashDay();
+          var nowET = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+          if (wantTrash === nowET.getDay() && hrNow >= 5 && hrNow < 11) {
+            var recOn = typeof recycleThisWeek === "function" ? recycleThisWeek(nowET) : true;
+            var recWord = (typeof recycleEvery === "function" && recycleEvery() === "bi")
+              ? (recOn ? "garbage and recycle" : "garbage")
+              : "garbage and recycle";
+            bits.push("Trash morning — " + recWord + " to the curb by 6 a.m.");
+          }
+        }
+      } catch (e0) {}
 
       if (hrNow >= 21 || hrNow < 6) {
         bits.push("Overnight is quiet. Tomorrow is the useful forecast.");
