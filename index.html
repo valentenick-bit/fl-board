@@ -354,6 +354,15 @@
     header.sky-partly .tempblock label, header.sky-partly .iconblock label, header.sky-partly .feels label,
     header.sky-cloud .tempblock label, header.sky-cloud .iconblock label, header.sky-cloud .feels label { color:#061018; }
     header.sky-sun .hamb span, header.sky-partly .hamb span, header.sky-cloud .hamb span { background:#041018; }
+    header.sky-cover-heavy .brand, header.sky-cover-heavy .clock, header.sky-cover-heavy .brand b, header.sky-cover-heavy .brand small,
+    header.sky-cover-heavy #when, header.sky-cover-heavy .hdr-ver, header.sky-cover-heavy .hdr-updated,
+    header.sky-cover-heavy .tempblock label, header.sky-cover-heavy .iconblock label, header.sky-cover-heavy .feels label, header.sky-cover-heavy #hdr-wx-lab,
+    header.sky-storm .brand, header.sky-storm .clock, header.sky-storm .brand b, header.sky-storm .brand small,
+    header.sky-storm #when, header.sky-storm .hdr-ver, header.sky-storm .hdr-updated {
+      color:#f7f1e6 !important;
+      text-shadow:0 1px 3px rgba(4,8,14,.9), 0 0 16px rgba(4,8,14,.55) !important;
+    }
+    header.sky-cover-heavy .hamb span, header.sky-storm .hamb span { background:#f7f1e6 !important; }
     header.sky-sun .sandshelf { background:#e8c27a; }
     header.sky-partly .sandshelf { background:#d4c199; }
     header.sky-cloud .sandshelf { background:#b7a888; }
@@ -3193,7 +3202,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 530;
+    window.BOARD_VER = 531;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6671,12 +6680,14 @@ function currentRotation() {
     });
     window.STICKY_PAGES = { health:1, settings:1, account:1, guide:1, ideas:1, business:1, kioskpage:1, triggers:1, welcome:1, markets:1 };
     function holdThenRotate(ms) {
+      if (typeof popIsOpen === "function" ? popIsOpen() : window.__popOpen) return;
       window.__holdPage = true;
       clearTimeout(rot); clearInterval(rot); clearTimeout(idle);
       clearTimeout(window.__holdT);
       window.__holdT = setTimeout(function () {
-        window.__holdPage = false;
+        if (typeof popIsOpen === "function" ? popIsOpen() : window.__popOpen) return;
         if (window.__paused) return;
+        window.__holdPage = false;
         startRotate(true);
       }, ms || 30000);
     }
@@ -6692,6 +6703,10 @@ function currentRotation() {
     }
     window.pinOrHold = pinOrHold;
     function startRotate(immediate) {
+      if (typeof popIsOpen === "function" ? popIsOpen() : window.__popOpen) {
+        window.__holdPage = true;
+        return;
+      }
       window.__rotStarted = true;
       clearInterval(rot);
       clearTimeout(rot);
@@ -7855,7 +7870,7 @@ function currentRotation() {
         cane.textContent = n ? (n + " named") : "NHC list is quiet";
       }
       var iss = document.getElementById("live-iss");
-      if (iss && /loading/i.test(iss.textContent)) iss.textContent = "No ISS pass listed";
+      if (iss && /loading|pass feed|listed when/i.test(iss.textContent)) iss.textContent = "Visible after dusk or before dawn — NASA Spot the Station for exact times.";
       var horo = document.getElementById("horo-box");
       if (horo && !horo.textContent.trim()) horo.innerHTML = "<div class=\"card\"><b>Horoscope</b><span>Pick signs in Settings.</span></div>";
       var coast = document.getElementById("live-coastal");
@@ -8343,12 +8358,20 @@ function currentRotation() {
         closeMapPop();
       }, left);
     }
+    function popIsOpen() {
+      var pop = document.getElementById("map-pop");
+      return !!(window.__popOpen || (pop && pop.classList.contains("on")));
+    }
     function pauseRotForPop() {
+      window.__popOpen = true;
       window.__holdPage = true;
       clearTimeout(rot);
       clearInterval(rot);
+      clearTimeout(window.__holdT);
+      clearTimeout(idle);
     }
     function resumeRotAfterPop() {
+      window.__popOpen = false;
       window.__holdPage = !!window.__paused;
       if (!window.__paused && typeof startRotate === "function") startRotate();
     }
@@ -11718,7 +11741,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             if (!/^Next pass/i.test(issEl.textContent || "")) {
               issEl.textContent = km < 900
                 ? ("ISS is up now · about " + Math.round(km) + " km off the Key · " + vis + ".")
-                : ("ISS " + Math.round(km) + " km from the house · " + vis + ". Next visible pass listed when the pass feed answers.");
+                : ("ISS is about " + Math.round(km) + " km from here · " + vis + ". Visible passes are usually just after dusk or before dawn.");
             }
             touchFeed("iss", true, Math.round(km) + " km");
           }).catch(function () {
