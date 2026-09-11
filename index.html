@@ -2249,7 +2249,6 @@ Cart shop:</textarea>
           <b>Weather cards to ship next</b>
           <span class="stamp">10 Sep 2026. Order is the order we build. Today and Weather stay as they are until a line here is done and taken off.</span>
           <ul class="check-list">
-            <li>Official Watch / Warning strip on Today. NWS only. Watch is amber and keeps the day. Warning takes the screen. No homemade alerts from a gloomy forecast. (Warn ticker, NOAA radio, leave card, and storm rotation already exist.)</li>
             <li>Feels-like tile: heat index when it is hot, wind chill when it is cold, hide the tile when it is neither. Header Real Feel always shows today — that is not the same rule.</li>
             <li>Next-rain sentence: “Rain 3–5 p.m.” or “No rain through tonight.” Built from hourly PoP, not a second 10-day.</li>
             <li>Region chips under Today: Gulf = Beach / Pool / Boat / Heat. North = Roads / Pipes / Ice / Walk. Desert = Heat / Dust / AQI. Good / fair / poor only. Gulf go-bars already exist.</li>
@@ -3202,7 +3201,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 532;
+    window.BOARD_VER = 533;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4940,8 +4939,9 @@ function currentRotation() {
       if (cover == null && hours[0] && hours[0].cloudCover != null) cover = hours[0].cloudCover;
       cover = cover != null ? Number(cover) : null;
       var liveRain = !!(window.__wxNow && window.__wxNow.rain);
-      var liveBolt = !!(window.__wantFlash || (window.__wxNow && window.__wxNow.lightning) || (typeof lightningNow === "function" && lightningNow().on) || (typeof hourMentionsThunder === "function" && hourMentionsThunder(hours[0] || {})));
-      var storm = liveBolt || (/thunder|lightning/.test(txt) && !/slight chance only/.test(txt));
+      var near = window.__strikesNear || {};
+      var liveBolt = !!(window.__wantFlash || near.close5 || near.close10);
+      var storm = liveBolt;
       var rain = liveRain || (/\brain\b|shower|drizzle/.test(txt) && !/slight chance|possible/.test(txt));
       var patchy = /scattered|isolated/.test(txt) && /shower|thunder|cloud/.test(txt);
       var overcast = /overcast|fog|mist/.test(txt) || (/mostly cloudy/.test(txt) && !/partly/.test(txt)) || (cover != null && cover >= 85);
@@ -5224,7 +5224,8 @@ function currentRotation() {
       var sunny = wx.kind === "clear" || wx.kind === "partly";
       var overcast = wx.kind === "overcast" || wx.kind === "cloudy";
       var rainingNow = wx.kind === "rain" || !!(window.__wxNow && window.__wxNow.rain);
-      var stormNow = wx.kind === "storm" || !!(window.__wxNow && window.__wxNow.lightning);
+      var nearStrikes = window.__strikesNear || {};
+      var stormNow = wx.kind === "storm" || !!(nearStrikes.close5 || nearStrikes.close10);
       var slot = nextSlot;
       var coverW = (stormNow || rainingNow || warn) ? "heavy" : overcast ? "mid" : (wx.kind === "cloudy" ? "mid" : "light");
       window.__skyCover = coverW;
@@ -5234,12 +5235,14 @@ function currentRotation() {
         if (slot === "dawn") head.classList.add("sky-dawn");
         else if (slot === "dusk") head.classList.add("sky-dusk");
         else if (slot === "night") head.classList.add("sky-night","night");
+        else if (stormNow) head.classList.add("sky-storm");
+        else if (rainingNow || overcast) head.classList.add("sky-cloud");
+        else if (wx.kind === "partly" || wx.kind === "cloudy" || sunny) head.classList.add("sky-partly");
         else head.classList.add("sky-sun");
         if (warn) head.classList.add("sky-warn");
-        if (stormNow || rainingNow) head.classList.add("sky-storm");
-        else if (slot === "day") {
-          if (overcast) head.classList.add("sky-cloud");
-          else if (wx.kind === "partly" || wx.kind === "cloudy" || sunny) head.classList.add("sky-partly");
+        if (slot === "day" && !stormNow && rainingNow && !overcast) {
+          head.classList.remove("sky-sun","sky-partly");
+          head.classList.add("sky-cloud");
         }
         head.classList.remove("sky-cover-light","sky-cover-mid","sky-cover-heavy");
         head.classList.add("sky-cover-" + coverW);
@@ -6964,13 +6967,10 @@ function currentRotation() {
       if (near.close5 || near.close10) {
         return { on: true, why: "Lightning within " + (near.closest || (near.close5 ? "5" : "10")) + " miles", shelter: true };
       }
-      if (window.__wxNow && window.__wxNow.lightning) {
-        return { on: true, why: "Thunder overhead this hour", shelter: false };
-      }
       var hours = window.__hours || [];
       var nowH = hours[0] || {};
       if (typeof hourMentionsThunder === "function" && hourMentionsThunder(nowH)) {
-        return { on: true, why: "Thunderstorms this hour near " + (typeof homePlace === "function" ? homePlace() : "home"), shelter: false };
+        return { on: false, why: "Thunder in the forecast this hour — no strikes near the house", shelter: false };
       }
       return { on: false, why: "No lightning now" };
     }
