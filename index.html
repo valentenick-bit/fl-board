@@ -822,6 +822,16 @@
     .wx-nowline { margin:0 0 10px; font-size:15px; color:var(--muted); }
     .wx-extra { display:none; }
     .wx-extra.on { display:block; }
+    .region-chips { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
+    .region-chip { flex:1 1 22%; min-width:72px; border-radius:12px; padding:8px 10px; text-align:center; }
+    .region-chip b { display:block; font-size:10px; letter-spacing:.05em; text-transform:uppercase; opacity:.8; }
+    .region-chip span { display:block; font-size:16px; font-weight:800; }
+    .region-chip.good { background:#d8efe8; color:#1b5c4e; }
+    .region-chip.fair { background:#f4e6c4; color:#6a4e16; }
+    .region-chip.poor { background:#f6ddd4; color:#7a2e1b; }
+    html.dark .region-chip.good { background:#1d3d36; color:#c8ebe2; }
+    html.dark .region-chip.fair { background:#3d3420; color:#f0e0b8; }
+    html.dark .region-chip.poor { background:#3a241f; color:#f3d2c8; }
     .wx-strips { display:flex; flex-direction:column; gap:6px; margin:0 0 12px; }
     .wx-strip { display:none; font-family:"Source Sans 3",system-ui,sans-serif; font-size:14px; font-weight:700; padding:8px 12px; border-radius:10px; }
     .wx-strip.on { display:block; }
@@ -1827,7 +1837,9 @@
           <div class="wx-strip quake" id="wx-quake"></div>
           <div class="wx-strip tsunami" id="wx-tsunami"></div>
           <div class="wx-strip volcano" id="wx-volcano"></div>
+          <div class="wx-strip heat" id="wx-heatrisk"></div>
         </div>
+        <div class="region-chips" id="region-chips"></div>
         <div class="rip-banner" id="rip-banner">Rip current: High — swim near a lifeguard.</div>
         <div class="best-chip" id="best-window" hidden></div>
         <div class="pills go4" id="go-grid-legacy" hidden>
@@ -2249,12 +2261,9 @@ Cart shop:</textarea>
           <b>Weather cards to ship next</b>
           <span class="stamp">10 Sep 2026. Order is the order we build. Today and Weather stay as they are until a line here is done and taken off.</span>
           <ul class="check-list">
-            <li>Feels-like tile: heat index when it is hot, wind chill when it is cold, hide the tile when it is neither. Header Real Feel always shows today — that is not the same rule.</li>
-            <li>Next-rain sentence: “Rain 3–5 p.m.” or “No rain through tonight.” Built from hourly PoP, not a second 10-day.</li>
-            <li>Region chips under Today: Gulf = Beach / Pool / Boat / Heat. North = Roads / Pipes / Ice / Walk. Desert = Heat / Dust / AQI. Good / fair / poor only. Gulf go-bars already exist.</li>
-            <li>Hide the visibility tile when the station is 10+ miles. Tile and fog strip already paint.</li>
-            <li>Yesterday vs today one line: “Two degrees cooler than yesterday at 3 p.m.”</li>
-            <li>Official NWS HeatRisk product (the word on Weather today is a local max-temp label, not the NWS grid).</li>
+            <li>Region chips under Today — live 11 Sep. Gulf Beach/Pool/Boat/Heat. North Roads/Pipes/Ice/Walk. Desert Heat/Dust/AQI. Good / fair / poor.</li>
+            <li>Yesterday vs today — in the Today greeting after the current temp. Live 11 Sep. Only if it differs by 2° or more.</li>
+            <li>Official NWS HeatRisk — live 11 Sep. Weather tile + Today strip when Moderate or higher. Gridpoint heatRisk layer.</li>
             <li>River gauge flood only where a nearby gauge exists. NWS flood/flash-flood alerts already paint.</li>
           </ul>
         </div>
@@ -3201,7 +3210,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 533;
+    window.BOARD_VER = 537;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3914,6 +3923,89 @@ Cart shop:</textarea>
     }
     function gatorRange() {
       return /^(FL|GA|AL|MS|LA|SC|NC|TX|AR|OK)$/.test(homeState());
+    }
+    function climateRegion() {
+      var st = homeState();
+      var lat = typeof homeLat === "function" ? homeLat() : 27;
+      var lon = typeof homeLon === "function" ? homeLon() : -82;
+      if (/^(AZ|NM|NV|UT)$/.test(st)) return "desert";
+      if (st === "CA" && lat < 39 && lon < -116) return "desert";
+      if (st === "TX" && lon < -100) return "desert";
+      if (/^(FL|LA|MS|AL)$/.test(st)) return "gulf";
+      if (st === "TX" && lat < 31 && lon > -98) return "gulf";
+      if (st === "GA" && lat < 32.2 && lon > -82.8) return "gulf";
+      if (lat >= 37 || /^(ME|NH|VT|MA|RI|CT|NY|NJ|PA|OH|MI|WI|MN|IA|IL|IN|ND|SD|NE|MT|WY|ID|AK|CO)$/.test(st)) return "north";
+      return "gulf";
+    }
+    function heatRiskLabel(n) {
+      return ["Little", "Minor", "Moderate", "Major", "Extreme"][n] || "";
+    }
+    function loadHeatRisk() {
+      var hdr = { "User-Agent": "CommonsBoard/1.0 (valente.nick@gmail.com)", "Accept": "application/geo+json" };
+      fetch("https://api.weather.gov/points/" + homePoint(), { headers: hdr })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (pt) {
+          var url = pt && pt.properties && pt.properties.forecastGridData;
+          if (!url) throw new Error("no grid");
+          return fetch(url, { headers: hdr });
+        })
+        .then(function (r) { return r && r.ok ? r.json() : null; })
+        .then(function (g) {
+          var vals = (((g || {}).properties || {}).heatRisk || {}).values || [];
+          var now = Date.now();
+          var best = null;
+          vals.forEach(function (row) {
+            var start = Date.parse(String(row.validTime || "").split("/")[0]);
+            if (!isFinite(start)) return;
+            if (start <= now + 18 * 3600000 && (best == null || start <= now)) best = Number(row.value);
+          });
+          window.__heatRiskNws = isFinite(best) ? best : null;
+          if (typeof paintWxExtras === "function") paintWxExtras();
+          if (typeof paintRegionChips === "function") paintRegionChips();
+          if (typeof noteFeed === "function") noteFeed("heatrisk", window.__heatRiskNws != null, heatRiskLabel(window.__heatRiskNws) || "none");
+        })
+        .catch(function () {
+          window.__heatRiskNws = null;
+          if (typeof noteFeed === "function") noteFeed("heatrisk", false, "grid missed");
+        });
+    }
+    function chipGrade(kind) {
+      var hours = window.__hours || [];
+      var h = hours[0] || {};
+      var grade = "good";
+      if (typeof hourOutlook === "function") {
+        var o = hourOutlook(h, kind);
+        grade = o === "no" ? "poor" : o === "win" ? "fair" : "good";
+      }
+      return grade;
+    }
+    function paintRegionChips() {
+      var box = document.getElementById("region-chips");
+      if (!box) return;
+      var region = climateRegion();
+      var n = window.__heatRiskNws;
+      var heat = n == null ? "" : n >= 3 ? "poor" : n >= 2 ? "fair" : "good";
+      if (!heat) {
+        var hi = window.__nowTempF;
+        heat = hi != null && hi >= 100 ? "poor" : hi != null && hi >= 95 ? "fair" : "good";
+      }
+      var aqi = window.__aqi;
+      var aqiG = aqi == null ? "good" : aqi >= 101 ? "poor" : aqi >= 51 ? "fair" : "good";
+      var dust = window.__dust;
+      var dustG = dust != null && dust >= 50 ? "poor" : dust != null && dust >= 35 ? "fair" : "good";
+      var iceOn = !!(window.__wxRisk && /ice|freeze|winter|blizzard|snow/.test(window.__wxRisk.warnTypes || ""));
+      var low = typeof overnightLowF === "function" ? overnightLowF() : null;
+      var freeze = low != null && low <= 32;
+      var sets = {
+        gulf: [["Beach", chipGrade("beach")], ["Pool", chipGrade("pool")], ["Boat", chipGrade("boat")], ["Heat", heat]],
+        north: [["Roads", iceOn ? "poor" : chipGrade("cart")], ["Pipes", freeze || iceOn ? "poor" : "good"], ["Ice", iceOn || freeze ? "poor" : "good"], ["Walk", iceOn ? "poor" : chipGrade("courts")]],
+        desert: [["Heat", heat], ["Dust", dustG], ["AQI", aqiG], ["Walk", aqiG === "poor" || heat === "poor" ? "poor" : "good"]]
+      };
+      var rows = sets[region] || sets.gulf;
+      box.innerHTML = rows.map(function (r) {
+        return '<div class="region-chip ' + r[1] + '"><b>' + r[0] + "</b><span>" + r[1] + "</span></div>";
+      }).join("");
+      if (typeof noteFeed === "function") noteFeed("region-chips", true, region + " " + rows.map(function (r) { return r[0] + ":" + r[1]; }).join(" "));
     }
     function noaaCalls() {
       var s = getSet();
@@ -5823,6 +5915,13 @@ function currentRotation() {
       var a = Math.sin(dphi/2)*Math.sin(dphi/2) + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
       return 2 * r * Math.asin(Math.min(1, Math.sqrt(a)));
     }
+    function showVisTile(miles) {
+      var tile = document.getElementById("tile-vis");
+      if (!tile) return;
+      var show = miles != null && isFinite(miles) && miles < 10;
+      tile.hidden = !show;
+      tile.style.display = show ? "" : "none";
+    }
     function showWxTile(id, on, text) {
       var tile = document.getElementById(id);
       var strong = tile && tile.querySelector("strong");
@@ -5884,9 +5983,12 @@ function currentRotation() {
       showWxTile("tile-freeze", freeze, freeze ? (low != null ? "Low " + low + "°" : "Warning") : "");
       showWxTile("tile-snow", snow, snow ? (win.snowTxt || "In the forecast") : "");
       showWxTile("tile-ice", ice, ice ? "Glaze / ice risk" : "");
-      var hr = heatRiskWord(window.__nowTempF, days);
+      var nwsN = window.__heatRiskNws;
+      var hr = (nwsN != null && nwsN >= 2) ? heatRiskLabel(nwsN) : heatRiskWord(window.__nowTempF, days);
       var hotAlert = hasAlert(/heat/);
-      showWxTile("tile-heatrisk", !!hr || hotAlert, hr || (hotAlert ? "Alert" : ""));
+      showWxTile("tile-heatrisk", !!hr || hotAlert, hr ? (hr + (nwsN != null && nwsN >= 2 ? " · NWS" : "")) : (hotAlert ? "Alert" : ""));
+      showWxStrip("wx-heatrisk", nwsN != null && nwsN >= 2, "NWS HeatRisk " + heatRiskLabel(nwsN) + " today. Shade, water, and shorter spells outside.");
+      if (typeof paintRegionChips === "function") paintRegionChips();
 
       showWxStrip("wx-redflag", hasAlert(/red flag|fire weather/), "Red Flag — fire weather. Watch wind and dry brush.");
       var floodOn = hasAlert(/flash flood|flood warning|flood advisory|urban and small stream|coastal flood/);
@@ -6043,6 +6145,14 @@ function currentRotation() {
       if (wx.temp != null) {
         now = "It's " + fmtTemp(wx.temp);
         if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) now += " that feels like " + fmtTemp(wx.feel);
+        if (window.__yestTempF != null && isFinite(window.__yestTempF)) {
+          var dlt = Math.round(Number(wx.temp) - Number(window.__yestTempF));
+          if (Math.abs(dlt) >= 2) {
+            now += dlt > 0
+              ? ", " + dlt + "° warmer than yesterday at this hour"
+              : ", " + Math.abs(dlt) + "° cooler than yesterday at this hour";
+          }
+        }
         now += " under " + word;
       } else now = "It's " + word + " out";
       var windTxt = feedTxt("live-wind");
@@ -7017,6 +7127,7 @@ function currentRotation() {
       else if (miles != null && miles < 6) label = "Hazy";
       else label = "Clear";
       visNote.textContent = label;
+      if (typeof showVisTile === "function") showVisTile(miles);
       window.__hazeKind = /smoke/i.test(label) ? "smoke" : /dust/i.test(label) ? "dust" : /haze/i.test(label) ? "haze" : "clear";
       if (typeof noteFeed === "function") noteFeed("live-vis", !!(visEl && visEl.textContent && visEl.textContent !== "—"), (visEl && visEl.textContent || "") + " " + label);
       if (typeof paintWxExtras === "function") try { paintWxExtras(); } catch (eHaze) {}
@@ -7921,6 +8032,7 @@ function currentRotation() {
       var coast = document.getElementById("live-coastal");
       if (coast && /loading/i.test(coast.textContent)) { /* leave loading so Status can see it */ }
       if (typeof loadHistWx === "function") loadHistWx();
+      if (typeof loadHeatRisk === "function") loadHeatRisk();
       if (typeof noteFeed === "function") noteFeed("settle", true, "gaps filled");
     }
 
@@ -11032,7 +11144,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
 
     function loadHistWx() {
       var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
-        "&hourly=relative_humidity_2m,surface_pressure,precipitation,visibility,cloud_cover&current=visibility,cloud_cover&past_days=2&forecast_days=1&timezone=America%2FNew_York";
+        "&hourly=relative_humidity_2m,surface_pressure,precipitation,visibility,cloud_cover,temperature_2m&current=visibility,cloud_cover&past_days=2&forecast_days=1&temperature_unit=fahrenheit&timezone=America%2FNew_York";
       fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
         var d = null;
         try { d = txt ? JSON.parse(txt) : null; } catch (e) { d = null; }
@@ -11052,6 +11164,21 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var rh = h.relative_humidity_2m || [];
         var pr = h.surface_pressure || [];
         var pc = h.precipitation || [];
+        var tf = h.temperature_2m || [];
+        window.__yestTempF = null;
+        var yestKey = new Date(Date.now() - 86400000).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+        var hrY = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+        if (hrY === 24) hrY = 0;
+        for (var yi = 0; yi < times.length; yi++) {
+          var iso = String(times[yi] || "");
+          if (iso.slice(0, 10) !== yestKey) continue;
+          var hh = parseInt(iso.slice(11, 13), 10);
+          if (hh === hrY && tf[yi] != null && isFinite(Number(tf[yi]))) {
+            window.__yestTempF = Number(tf[yi]);
+            break;
+          }
+        }
+        if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (eY) {}
         var now = Date.now();
         var hum = [], pres = [], rain = [];
         for (var i = 0; i < times.length; i++) {
@@ -12271,10 +12398,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var miles = Number(visM) / 1609.34;
         visEl.textContent = miles >= 10 ? "10+ mi" : miles >= 1 ? miles.toFixed(1) + " mi" : Math.round(miles * 5280) + " ft";
         window.__visMiles = miles;
+        if (typeof showVisTile === "function") showVisTile(miles);
         if (typeof paintHazeNote === "function") paintHazeNote();
         else if (visNote) visNote.textContent = miles < 2 ? "Haze / mist" : miles < 6 ? "Hazy" : "Clear";
-        if (typeof noteFeed === "function") noteFeed("live-vis", true, visEl.textContent);
-      }
+        if (typeof noteFeed === "function") noteFeed("live-vis", miles < 10, miles < 10 ? visEl.textContent : "hidden 10+ mi");
+      } else if (typeof showVisTile === "function") showVisTile(null);
       var coverNow = c.cloud_cover;
       if (coverNow == null && lastH >= 0 && h.cloud_cover) coverNow = h.cloud_cover[lastH];
       if (coverNow != null) {
