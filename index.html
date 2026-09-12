@@ -161,12 +161,13 @@
     .hdr-sun, .hdr-moon { position:absolute; left:0; top:0; border-radius:50%; opacity:0; pointer-events:none; }
     .hdr-sun { transition:opacity 1.2s linear, background 20s linear; will-change:transform,opacity; }
     .hdr-moon { transition:opacity 2.4s linear; will-change:transform,opacity; }
-    .hdr-sun { width:26px; height:26px; z-index:6; background:#ffd35a; box-shadow:0 0 22px 10px rgba(255,211,90,.7); }
+    .hdr-sun { width:28px; height:28px; z-index:6; background:#ffd24a; box-shadow:0 0 28px 12px rgba(255,210,70,.95); }
     header:not(.sky-night) .hdr-sun.up { opacity:1; }
+    .hdr-moon.up { opacity:.92; }
     header.sky-dawn .hdr-sun { background:#f2b05e; }
     header.sky-dusk .hdr-sun.up { background:#e07a5f; }
     .hdr-moon { width:28px; height:28px; left:0; top:0; background:transparent; box-shadow:none; z-index:7; overflow:visible; pointer-events:none; }
-    .hdr-moon svg { display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 0 10px rgba(247,241,230,.65)); }
+    .hdr-moon svg { display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 0 12px rgba(255,255,255,.95)) drop-shadow(0 0 4px rgba(247,241,230,.8)); }
     @media (max-width: 720px) {
       .hdr-moon { width:22px; height:22px; }
     }
@@ -601,6 +602,9 @@
     .go-saxis { display:grid; grid-template-columns:repeat(12,1fr); font-size:9px; letter-spacing:.04em; text-transform:uppercase; opacity:.7; margin:0 0 8px 5.6em; }
     main { position:relative; }
     .hdr-tools { display:flex; align-items:center; gap:6px; }
+
+    .hdr-right { display:flex; flex-direction:column; align-items:flex-end; gap:3px; justify-self:end; }
+    .hdr-right .hdr-ver { font-size:11px; font-weight:700; letter-spacing:.08em; opacity:.9; padding:0 2px; line-height:1; }
     .hdr-setstack { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:1px; }
     .hdr-setstack .hdr-ver { font-size:10px; letter-spacing:.06em; line-height:1; opacity:.85; margin:0; padding:1px 4px 0; }
     .hdr-act {
@@ -1851,14 +1855,14 @@
       <div class="clock">
         <div class="clock-top">
           <div id="when"><span id="when-date"></span><span id="when-time"></span></div>
+          <div class="hdr-right">
+          <span class="hdr-ver" id="hdr-ver">v559</span>
           <div class="hdr-act">
             <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
-            <div class="hdr-setstack">
-            <span class="hdr-ver" id="hdr-ver">v558</span>
             <button type="button" class="setgear" id="hdr-setbtn" title="Settings" aria-label="Settings">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.81 8.48a.5.5 0 0 0 .12.64L4.96 10.7c-.04.31-.06.63-.06.94s.02.63.06.94L2.93 14.16a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.4.31.64.22l2.39-.96c.5.39 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.55 1.63-.94l2.39.96c.24.09.51 0 .64-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
             </button>
-            </div>
+          </div>
           </div>
         </div>
         <div class="clock-bits" id="hdr-pills">
@@ -3292,7 +3296,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 558;
+    window.BOARD_VER = 559;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5241,7 +5245,8 @@ function currentRotation() {
         var win = typeof moonNowWindow === "function" ? moonNowWindow() : null;
         window.__moonNight = !!win;
         window.__moonWin = win;
-        if (!win) moon.style.opacity = "0";
+        if (!win) { moon.classList.remove("up"); moon.style.opacity = "0"; }
+        else moon.classList.add("up");
       }
     }
     setInterval(function () { if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 15000);
@@ -9133,7 +9138,8 @@ function currentRotation() {
           deliveredRecent.push({ who: x.who, title: x.title, detail: (x.detail || "") + " · marked delivered", when: x.when, marked: marks0[delivKey(x)] });
         }
       });
-      var waitingD = !window.__delivData;
+      window.__delivStarted = window.__delivStarted || Date.now();
+      var waitingD = !window.__delivData && (Date.now() - window.__delivStarted < 8000);
       var showBoxes = true;
       if (delCol) delCol.hidden = false;
       var evLimit = 4;
@@ -9423,6 +9429,7 @@ function currentRotation() {
       if (savedMarks && typeof savedMarks === "object") window.__deliveredMarks = savedMarks;
     } catch (e) {}
     (function loadDeliveries() {
+      window.__delivStarted = Date.now();
       var note = document.getElementById("deliv-note");
       var box = document.getElementById("deliv-list");
       if (!box) return;
@@ -9530,10 +9537,14 @@ function currentRotation() {
           if (data && typeof data.contents === "string") {
             try { data = JSON.parse(data.contents); } catch (e2) { data = null; }
           }
+          if (data && data.error && i + 1 < urls.length) return next(i + 1);
+          if (data) {
+            if (!data.incoming) data.incoming = data.onTheWay || data.packages || data.items || [];
+            if (!data.delivered) data.delivered = data.done || data.arrived || [];
+          }
           var nIn = data && data.incoming ? data.incoming.length : 0;
           var nDel = data && data.delivered ? data.delivered.length : 0;
-          if (data && data.error && i + 1 < urls.length) return next(i + 1);
-          if (data && (data.updated || nIn || nDel)) paint(data);
+          if (data && (data.updated || nIn || nDel || data.source)) paint(data);
           else next(i + 1);
         }).catch(function () { next(i + 1); });
       }
