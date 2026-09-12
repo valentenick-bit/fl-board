@@ -3385,7 +3385,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 599;
+    window.BOARD_VER = 601;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9511,70 +9511,6 @@ function currentRotation() {
         box.innerHTML = events.map(window.entCardHtml).join("");
       }
       var bag = { bw: [], eng: [], comedy: [] };
-      function comedyEvent(sum, when) {
-        return {
-          sum: sum,
-          loc: "McCurdy's Comedy Theatre, 1923 Ringling Blvd, Sarasota, FL",
-          desc: "Comedy show",
-          when: when,
-          end: new Date(when.getTime() + 2 * 3600 * 1000),
-          inside: false,
-          live: false
-        };
-      }
-      function parseMcCurdyDates(blob, year) {
-        var out = [];
-        if (!blob) return out;
-        var s = String(blob);
-        var slash = s.match(/\b(\d{1,2})\/(\d{1,2})\b/g) || [];
-        slash.forEach(function (p) {
-          var bits = p.split("/");
-          var d = new Date(year, Number(bits[0]) - 1, Number(bits[1]), 19, 0);
-          if (!isNaN(d) && d.getTime() > Date.now() - 12 * 3600 * 1000) out.push(d);
-        });
-        if (out.length) return out;
-        var monMap = { jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11 };
-        var mon = s.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)\b/i);
-        if (!mon) return out;
-        var mi = monMap[mon[1].toLowerCase()];
-        var days = [];
-        s.replace(/\b(\d{1,2})(?:st|nd|rd|th)?\b/g, function (_, n) {
-          var day = Number(n);
-          if (day >= 1 && day <= 31) days.push(day);
-        });
-        days.forEach(function (day) {
-          var d = new Date(year, mi, day, 19, 0);
-          if (!isNaN(d) && d.getTime() > Date.now() - 12 * 3600 * 1000) out.push(d);
-        });
-        return out;
-      }
-      function loadComedy() {
-        var url = "https://corsproxy.io/?" + encodeURIComponent("https://www.mccurdyscomedy.com/shows/");
-        fetch(url).then(function (r) { return r.text(); }).then(function (html) {
-          var text = String(html || "").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ");
-          var chunks = text.split(/<h2[^>]*>/i);
-          var year = new Date().getFullYear();
-          var rows = [];
-          chunks.forEach(function (chunk) {
-            var name = chunk.split(/<\/h2>/i)[0] || "";
-            name = name.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-            if (!name || /upcoming shows|buy ticket/i.test(name) || name.length > 60) return;
-            var after = chunk.split(/<\/h2>/i)[1] || "";
-            var dateLine = "";
-            var hm = after.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
-            if (hm) dateLine = hm[1].replace(/<[^>]+>/g, " ");
-            parseMcCurdyDates(dateLine, year).forEach(function (when) {
-              rows.push(comedyEvent(name + " @ McCurdy's", when));
-            });
-          });
-          bag.comedy = rows;
-          if (typeof noteFeed === "function") noteFeed("comedy", !!rows.length, rows.length ? (rows.length + " shows") : "none parsed");
-          if (typeof window.paintEnt === "function") try { window.paintEnt(); } catch (eP) {}
-        }).catch(function () {
-          if (typeof noteFeed === "function") noteFeed("comedy", false, "McCurdy fetch failed");
-        });
-      }
-      setTimeout(loadComedy, 1600);
       try {
         var cached = JSON.parse(localStorage.getItem("bw-ent-cache") || "{}");
         if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = true; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
@@ -9630,6 +9566,8 @@ function currentRotation() {
         var note = document.getElementById("ent-count");
         if (note) note.textContent = merged.length + " upcoming";
         if (typeof noteFeed === "function") noteFeed("events", true, merged.length + " upcoming");
+        var mc = merged.filter(function (e) { return /mccurdy/i.test(String(e.sum || "") + " " + String(e.loc || "")); }).length;
+        if (typeof noteFeed === "function") noteFeed("comedy", mc > 0, mc ? (mc + " on calendar") : "none on calendar");
         try {
           localStorage.setItem("bw-ent-cache", JSON.stringify({
             bw: bag.bw.slice(0, 40),
@@ -10456,7 +10394,9 @@ function currentRotation() {
           if (list && list.length) {
             if (typeof noteFeed === "function") noteFeed("eats-src", true, (rows && rows.length ? "OpenStreetMap" : "cache") + " · " + list.length);
             fillAddrs(list, paint);
-          } else if (typeof noteFeed === "function") noteFeed("eats-src", false, "OpenStreetMap empty");
+          } else if (!(window.__eatBag && window.__eatBag.length) && typeof noteFeed === "function") {
+            noteFeed("eats-src", false, "OpenStreetMap empty");
+          }
         });
         window.__eatBag = window.__eatBag || [];
         function ingestEats(rows) {
