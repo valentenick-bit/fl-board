@@ -862,21 +862,21 @@
     .eat-rate { display:block; color:var(--navy); font-size:14px; font-weight:700; margin:0 0 2px; }
     html.dark .eat-rate { color:#f0e2b8; }
     html.dark .eat-card b { color:#efe4c8; }
-    .kind-tag.eat-sea { background:#1b6b62; color:#fff; }
-    .kind-tag.eat-steak { background:#8b3d2a; color:#fff; }
-    .kind-tag.eat-bbq { background:#8b5e3c; color:#fff; }
-    .kind-tag.eat-mex { background:#c45a2a; color:#fff; }
-    .kind-tag.eat-ital { background:#7a2d3a; color:#fff; }
-    .kind-tag.eat-japan { background:#2a4a7a; color:#fff; }
-    .kind-tag.eat-china { background:#a33a3a; color:#fff; }
-    .kind-tag.eat-thai { background:#3d8b5a; color:#fff; }
-    .kind-tag.eat-india { background:#b56b1a; color:#fff; }
-    .kind-tag.eat-med { background:#2a7a8a; color:#fff; }
-    .kind-tag.eat-fr { background:#6b5b95; color:#fff; }
-    .kind-tag.eat-amer { background:#3d6b8a; color:#fff; }
-    .kind-tag.eat-cafe { background:#7a6bb5; color:#fff; }
-    .kind-tag.eat-brk { background:#c4a35a; color:#1a140c; }
-    .kind-tag.eat-rest { background:#1f3b4d; color:#fff; }
+    #eat-list .kind-tag.eat-sea, .card span.kind-tag.eat-sea { background:#1b6b62; color:#fff; }
+    #eat-list .kind-tag.eat-steak, .card span.kind-tag.eat-steak { background:#8b3d2a; color:#fff; }
+    #eat-list .kind-tag.eat-bbq, .card span.kind-tag.eat-bbq { background:#8b5e3c; color:#fff; }
+    #eat-list .kind-tag.eat-mex, .card span.kind-tag.eat-mex { background:#c45a2a; color:#fff; }
+    #eat-list .kind-tag.eat-ital, .card span.kind-tag.eat-ital { background:#7a2d3a; color:#fff; }
+    #eat-list .kind-tag.eat-japan, .card span.kind-tag.eat-japan { background:#2a4a7a; color:#fff; }
+    #eat-list .kind-tag.eat-china, .card span.kind-tag.eat-china { background:#a33a3a; color:#fff; }
+    #eat-list .kind-tag.eat-thai, .card span.kind-tag.eat-thai { background:#3d8b5a; color:#fff; }
+    #eat-list .kind-tag.eat-india, .card span.kind-tag.eat-india { background:#b56b1a; color:#fff; }
+    #eat-list .kind-tag.eat-med, .card span.kind-tag.eat-med { background:#2a7a8a; color:#fff; }
+    #eat-list .kind-tag.eat-fr, .card span.kind-tag.eat-fr { background:#6b5b95; color:#fff; }
+    #eat-list .kind-tag.eat-amer, .card span.kind-tag.eat-amer { background:#3d6b8a; color:#fff; }
+    #eat-list .kind-tag.eat-cafe, .card span.kind-tag.eat-cafe { background:#7a6bb5; color:#fff; }
+    #eat-list .kind-tag.eat-brk, .card span.kind-tag.eat-brk { background:#c4a35a; color:#1a140c; }
+    #eat-list .kind-tag.eat-rest, .card span.kind-tag.eat-rest { background:#1f3b4d; color:#fff; }
     @media (orientation:portrait) {
       .fun-shell { grid-template-columns:1fr; }
     }
@@ -3370,7 +3370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 571;
+    window.BOARD_VER = 572;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9628,11 +9628,11 @@ function currentRotation() {
       }
       function kindOf(raw) {
         var c = String(raw || "").toLowerCase().replace(/[_/]+/g, " ");
-        if (/sea|fish|oyster|crab|shrimp|grouper|chowder/.test(c)) return "Seafood";
+        if (/sea|fish|oyster|crab|shrimp|grouper|chowder|seafood/.test(c)) return "Seafood";
         if (/steak|chop house|grill/.test(c) && !/sea/.test(c)) return "Steak";
         if (/bbq|barbecue|smoke/.test(c)) return "BBQ";
         if (/mex|taco|tex-mex/.test(c)) return "Mexican";
-        if (/ital|pizza|pasta/.test(c)) return "Italian";
+        if (/ital|pizza|pasta|pizzeria/.test(c)) return "Italian";
         if (/sushi|japan|ramen/.test(c)) return "Japanese";
         if (/china|chinese|szech/.test(c)) return "Chinese";
         if (/thai/.test(c)) return "Thai";
@@ -9728,36 +9728,56 @@ function currentRotation() {
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
       }
       function fromPlaces(cb) {
-        var s = getSet() || {};
-        var key = String(s.gmaps || s.gmapsKey || "").trim();
-        if (!key || s.gmapsOn === "0") return cb(null);
-        var miles = Number(s.eventMiles || 15);
-        var raw = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + homeLat() + "," + homeLon() + "&radius=" + Math.round(miles * 1609.34) + "&type=restaurant&opennow=false&key=" + encodeURIComponent(key);
-        var urls = ["https://corsproxy.io/?" + encodeURIComponent(raw), "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw)];
-        var i = 0;
-        function next() {
-          if (i >= urls.length) return cb(null);
-          fetch(urls[i++]).then(function (r) { return r.json(); }).then(function (d) {
-            if (d && d.contents) { try { d = JSON.parse(d.contents); } catch (e) {} }
-            var rows = (d && d.results) || [];
-            if (!rows.length) return next();
-            cb(rows.map(function (p) {
-              var loc = (p.geometry && p.geometry.location) || {};
+        if (typeof loadGmaps !== "function") return cb(null);
+        loadGmaps(function (ok) {
+          if (!ok || !(window.google && google.maps && google.maps.places)) return cb(null);
+          var miles = Number((getSet() || {}).eventMiles || 15);
+          var node = document.getElementById("eat-places-attr");
+          if (!node) { node = document.createElement("div"); node.id = "eat-places-attr"; node.style.display = "none"; document.body.appendChild(node); }
+          var svc = new google.maps.places.PlacesService(node);
+          svc.nearbySearch({
+            location: new google.maps.LatLng(homeLat(), homeLon()),
+            radius: Math.min(50000, Math.round(miles * 1609.34)),
+            type: "restaurant"
+          }, function (results, status) {
+            if (status !== google.maps.places.PlacesServiceStatus.OK || !results || !results.length) return cb(null);
+            var list = results.map(function (p) {
+              var loc = p.geometry && p.geometry.location;
+              var lat = loc && (loc.lat ? loc.lat() : loc.lat);
+              var lon = loc && (loc.lng ? loc.lng() : loc.lng);
               return {
                 name: p.name,
                 rating: p.rating,
-                reviews: p.user_ratings_total || p.userRatingsTotal || 0,
+                reviews: p.user_ratings_total || 0,
                 open: p.opening_hours ? p.opening_hours.open_now : null,
-                kind: kindOf((p.types || []).filter(function (x) { return x !== "restaurant" && x !== "food" && x !== "point_of_interest" && x !== "establishment"; }).join(" ")),
-                miles: (loc.lat && loc.lng) ? milesOf(loc.lat, loc.lng) : null,
+                kind: kindOf(((p.types || []).join(" ")) + " " + (p.name || "")),
+                miles: (lat && lon) ? milesOf(lat, lon) : null,
                 area: p.vicinity || "",
-                addr: p.vicinity || p.formatted_address || "",
+                addr: p.vicinity || "",
                 placeId: p.place_id || ""
               };
-            }));
-          }).catch(next);
-        }
-        next();
+            });
+            var need = list.slice(0, 10);
+            var left = need.length;
+            function finish() { cb(list); }
+            if (!left) return finish();
+            need.forEach(function (r) {
+              if (!r.placeId) { if (!--left) finish(); return; }
+              svc.getDetails({
+                placeId: r.placeId,
+                fields: ["formatted_address", "rating", "user_ratings_total", "types", "name", "vicinity"]
+              }, function (d, st) {
+                if (st === google.maps.places.PlacesServiceStatus.OK && d) {
+                  r.addr = d.formatted_address || d.vicinity || r.addr;
+                  if (d.rating != null) r.rating = d.rating;
+                  if (d.user_ratings_total) r.reviews = d.user_ratings_total;
+                  r.kind = kindOf(((d.types || []).join(" ")) + " " + (d.name || r.name || ""));
+                }
+                if (!--left) finish();
+              });
+            });
+          });
+        });
       }
       function fromOverpass(cb) {
         var miles = Number((getSet() || {}).eventMiles || 15);
