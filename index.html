@@ -3370,7 +3370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 577;
+    window.BOARD_VER = 578;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3903,7 +3903,13 @@ Cart shop:</textarea>
           return;
         }
         if (typeof google.maps.Map !== "function") {
-          if (typeof noteFeed === "function") noteFeed("traffic", false, "Map is not a constructor");
+          box.hidden = true;
+          if (frame) {
+            frame.style.display = "";
+            var q = encodeURIComponent(homeAddress() || "Englewood FL");
+            frame.src = "https://maps.google.com/maps?q=" + q + "&z=11&hl=en&layer=t&output=embed";
+          }
+          if (typeof noteFeed === "function") noteFeed("traffic", true, "embed fallback · Map not ready");
           return;
         }
         var map;
@@ -3914,7 +3920,13 @@ Cart shop:</textarea>
           window.__trafficLayer.setMap(map);
           window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
         } catch (eMap) {
-          if (typeof noteFeed === "function") noteFeed("traffic", false, String(eMap && eMap.message || eMap));
+          box.hidden = true;
+          if (frame) {
+            frame.style.display = "";
+            var q2 = encodeURIComponent(homeAddress() || "Englewood FL");
+            frame.src = "https://maps.google.com/maps?q=" + q2 + "&z=11&hl=en&layer=t&output=embed";
+          }
+          if (typeof noteFeed === "function") noteFeed("traffic", true, "embed fallback · " + String(eMap && eMap.message || eMap));
           return;
         }
         nudgeTrafficLayer();
