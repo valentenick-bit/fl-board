@@ -3411,7 +3411,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 609;
+    window.BOARD_VER = 610;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9243,7 +9243,7 @@ function currentRotation() {
       }
       if (el) {
         if (!list.length) {
-          el.textContent = window.__flightData ? "No upcoming flights in the Gmail scan." : "Loading Gmail flight scan…";
+          el.textContent = window.__flightData ? "No trips on the board." : "Loading flight scan…";
         } else {
           el.innerHTML = list.map(line).join("");
         }
@@ -10569,9 +10569,11 @@ function currentRotation() {
       var el = document.getElementById("live-flights");
       var FLIGHT_ID = "19TGlPZR7yD9uiuWu-foeulHGoRZpp1qr";
       var driveF = "https://drive.usercontent.google.com/download?id=" + FLIGHT_ID + "&export=download&confirm=t";
+      if (typeof noteFeed === "function") noteFeed("flights", true, "loading scan");
       var urls = [
         "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/flights.json?cb=" + Date.now(),
         "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/flights.json?cb=" + Date.now(),
+        "https://corsproxy.io/?" + encodeURIComponent("https://raw.githubusercontent.com/valentenick-bit/fl-board/main/flights.json"),
         "/flights.json?cb=" + Date.now(),
         "https://api.allorigins.win/raw?url=" + encodeURIComponent(driveF),
         driveF
@@ -10583,7 +10585,7 @@ function currentRotation() {
         if (typeof paintHouseFlights === "function") try { paintHouseFlights(); } catch (eH) {}
         if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (e) {}
         if (!rows.length) {
-          if (typeof touchFeed === "function") touchFeed("flights", true, "none upcoming");
+          if (typeof touchFeed === "function") touchFeed("flights", true, "none upcoming · " + ((d && d.updated) || "scan empty"));
           return;
         }
         rows.slice(0, 4).forEach(function (f) {
@@ -11856,6 +11858,10 @@ function currentRotation() {
           })()],
           ["flights", (function(){
             var f = window.__feeds && window.__feeds.flights;
+            if (window.__flightData && Array.isArray(window.__flightData.flights)) {
+              var n = window.__flightData.flights.length;
+              return n ? (n + " flights") : ("none upcoming · " + (window.__flightData.updated || "scan empty"));
+            }
             if (f && f.ok === false) return "flights.json failed";
             var t = txt("live-flights");
             if (/failed|no flights\.json/i.test(t)) return "flights.json failed";
@@ -11869,7 +11875,7 @@ function currentRotation() {
           ["power", txt("live-fpl") || txt("fpl-tot")],
           ["cam", document.getElementById("keycam-yt") ? (txt("keycam-cap") || "siesta") : txt("keycam-cap")],
           ["deliveries", (window.__feeds && window.__feeds.deliveries && window.__feeds.deliveries.detail) || txt("deliv-note") || ""],
-          ["flights-page", txt("live-flights")],
+          ["flights-page", (window.__flightData && Array.isArray(window.__flightData.flights) && !window.__flightData.flights.length) ? ("none upcoming · " + (window.__flightData.updated || "scan empty")) : txt("live-flights")],
           ["house", txt("house-occ") + " " + txt("house-seen")],
           ["emergency", (document.querySelectorAll("#contacts a.dial").length || document.querySelectorAll("#contacts .card").length) ? "contacts" : ""],
           ["prep", document.querySelectorAll("#prep li, #prep .card").length ? (document.querySelectorAll("#prep li, #prep .card").length + " items") : ""],
