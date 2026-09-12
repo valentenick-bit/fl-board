@@ -3212,7 +3212,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 541;
+    window.BOARD_VER = 542;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6894,9 +6894,16 @@ function currentRotation() {
         return;
       }
       if (e.target && (e.target.id === "live-heat" || (e.target.closest && e.target.closest("#live-heat")))) {
-        var cur = (typeof getSet === "function" ? getSet().hdrWx : "feels") || "feels";
-        var next = cur === "heat" ? "feels" : "heat";
-        if (typeof putSet === "function") putSet({ hdrWx: next });
+        var s = typeof getSet === "function" ? getSet() : {};
+        var cur = s.hdrWx || "feels";
+        var next;
+        if (cur === "heat") {
+          next = s.hdrWxPrev || "feels";
+          if (next === "heat") next = "feels";
+          if (typeof putSet === "function") putSet({ hdrWx: next });
+        } else {
+          if (typeof putSet === "function") putSet({ hdrWxPrev: cur, hdrWx: "heat" });
+        }
         if (typeof applyHdrWx === "function") applyHdrWx();
         return;
       }
