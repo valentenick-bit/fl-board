@@ -2069,11 +2069,13 @@
         </div>
         </div>
         <aside class="today-side" id="today-side">
+          <div id="today-eat-col">
+            <p class="today-sec-h" id="today-eat-h">Tonight’s table</p>
+            <div id="today-eat-pick"></div>
+          </div>
           <div id="today-deliv-col">
             <p class="today-sec-h" id="today-deliv-h">Packages</p>
             <div id="today-deliv"></div>
-            <p class="today-sec-h" id="today-eat-h">Tonight’s table</p>
-            <div id="today-eat-pick"></div>
           </div>
           <div id="today-do-col">
             <p class="today-sec-h" id="today-do-h">Today’s events</p>
@@ -3411,7 +3413,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 612;
+    window.BOARD_VER = 615;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9361,15 +9363,15 @@ function currentRotation() {
       function delivKey(item) { return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim(); }
       function delivAgeMs(item) {
         var raw = (item && (item.when || item.at || item.date || item.delivered)) || "";
-        var t0 = Date.parse(raw);
-        if (item && item.marked && item.marked.at) t0 = Math.max(t0 || 0, Date.parse(item.marked.at) || 0);
+        var t0 = parseDelivWhen(raw);
+        if (item && item.marked && item.marked.at) t0 = Math.max(t0 || 0, parseDelivWhen(item.marked.at));
         var mark = marks0[delivKey(item)];
-        if (mark && mark.at) t0 = Math.max(t0 || 0, Date.parse(mark.at) || 0);
+        if (mark && mark.at) t0 = Math.max(t0 || 0, parseDelivWhen(mark.at));
         return t0 || 0;
       }
       var cut5 = Date.now() - 5 * 24 * 60 * 60 * 1000;
-      var incomingAll = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks0[delivKey(x)]; });
-      var deliveredRecent = ((window.__delivData || {}).delivered || []).filter(function (x) {
+      var incomingAll = expandPkgRows((window.__delivData || {}).incoming || []).filter(function (x) { return !marks0[delivKey(x)]; });
+      var deliveredRecent = expandPkgRows((window.__delivData || {}).delivered || []).filter(function (x) {
         var t0 = delivAgeMs(x);
         return t0 >= cut5;
       });
@@ -9692,16 +9694,37 @@ function currentRotation() {
       var savedMarks = JSON.parse(localStorage.getItem("bw-deliv-marks") || "{}");
       if (savedMarks && typeof savedMarks === "object") window.__deliveredMarks = savedMarks;
     } catch (e) {}
+    function parseDelivWhen(raw) {
+      var s = String(raw || "").trim();
+      if (!s) return 0;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return Date.parse(s + "T12:00:00") || 0;
+      return Date.parse(s) || 0;
+    }
+    function expandPkgRows(list) {
+      var out = [];
+      (list || []).forEach(function (x) {
+        var blob = String((x && (x.title || "")) + " " + (x && x.detail || ""));
+        var m = blob.match(/(\d+)\s+items?/i);
+        var n = m ? Math.min(8, parseInt(m[1], 10)) : 1;
+        if (n <= 1) { out.push(x); return; }
+        var base = String(x.title || "Package").replace(/\s*\(?\d+\s+items?\)?/ig, "").replace(/\s{2,}/g, " ").trim();
+        for (var i = 1; i <= n; i++) {
+          out.push(Object.assign({}, x, { title: base + " · item " + i + " of " + n, itemOf: i, itemN: n }));
+        }
+      });
+      return out;
+    }
     (function loadDeliveries() {
       window.__delivStarted = Date.now();
       var note = document.getElementById("deliv-note");
       var box = document.getElementById("deliv-list");
       if (!box) return;
       if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
-      var DELIV_ID = "1fdtZGOyKVZvxi480Ypp3XlEsyENSx4cA";
+      var DELIV_ID = "10ZVNK2VP1eH7EuBMOds5jUMiBg7U0lyb";
       var drive = "https://drive.google.com/uc?export=download&id=" + DELIV_ID;
       var urls = [
         "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/deliveries.json?cb=" + Date.now(),
+        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/deliveries.json?cb=" + Date.now(),
         "/deliveries.json?cb=" + Date.now(),
         drive + "&cb=" + Date.now(),
         "https://drive.usercontent.google.com/download?id=" + DELIV_ID + "&export=download&confirm=t&cb=" + Date.now(),
@@ -9747,11 +9770,12 @@ function currentRotation() {
         var src = window.__delivData || { incoming: [], delivered: [] };
         var view = split(src);
         var cut5 = Date.now() - 5 * 24 * 60 * 60 * 1000;
-        view.delivered = (view.delivered || []).filter(function (x) {
-          var t0 = Date.parse(x.when || x.at || x.date || "") || 0;
-          if (x.marked && x.marked.at) t0 = Math.max(t0, Date.parse(x.marked.at) || 0);
+        view.delivered = expandPkgRows(view.delivered || []).filter(function (x) {
+          var t0 = parseDelivWhen(x.when || x.at || x.date || "");
+          if (x.marked && x.marked.at) t0 = Math.max(t0, parseDelivWhen(x.marked.at));
           return t0 >= cut5;
         });
+        view.incoming = expandPkgRows(view.incoming || []);
         if (box) {
         if (!view.incoming.length && !view.delivered.length) {
           box.innerHTML = '<div class="card quiet"><b>No packages in the last 5 days.</b><span>Nothing still incoming.</span></div>';
@@ -9861,7 +9885,7 @@ function currentRotation() {
           dist = r.miles.toFixed(r.miles >= 10 ? 0 : 1) + " mi · ~" + guess + " min";
         }
         var rate = r.rating != null && r.rating !== ""
-          ? (Number(r.rating).toFixed(1) + "★" + (r.reviews ? " · " + r.reviews + " reviews" : ""))
+          ? (Number(r.rating).toFixed(1) + " Google" + (r.reviews ? " · " + Number(r.reviews).toLocaleString() + " reviews" : ""))
           : "";
         if (rate && r.prevRating != null && Number(r.prevRating) !== Number(r.rating)) {
           rate += Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
@@ -9960,9 +9984,15 @@ function currentRotation() {
         var box = document.getElementById("eat-list");
         var note = document.getElementById("eat-count");
         var miles = Number((getSet() || {}).eventMiles || 15);
-        list = dedupeEats((list || []).concat(mustEats()));
+        var incoming = list || [];
+        var haveRated = (window.__eats || []).filter(function (r) { return Number(r.reviews) > 0; }).length;
+        var incomingRated = incoming.filter(function (r) { return Number(r.reviews) > 0; }).length;
+        if (haveRated >= 6 && incomingRated < 3) return;
+        list = dedupeEats(incoming.concat(mustEats()));
         list = list.filter(inRange);
-        var rated = list.filter(function (r) { return Number(r.reviews) > 0; });
+        var rated = list.filter(function (r) { return r.rating != null && Number(r.reviews) > 0; });
+        var goog = list.filter(function (r) { return r.gRated || (r.rating != null && Number(r.reviews) > 0); });
+        if (goog.length) list = goog;
         if (rated.length) {
           var known = rated.filter(function (r) { return Number(r.reviews) > 2500; });
           if (known.length >= 10) list = known;
@@ -9991,7 +10021,7 @@ function currentRotation() {
           });
           localStorage.setItem("bw-eat-ratings", JSON.stringify(store));
         } catch (eS) {}
-        if (note) note.textContent = list.length ? ("2,500+ Google reviews · " + miles + " mi") : ("Looking up Google reviews inside " + miles + " mi");
+        if (note) note.textContent = list.length ? ("Google ratings · " + miles + " mi") : ("Looking up Google ratings inside " + miles + " mi");
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 200+ reviews in range.</b><span>Widen Around home in Settings.</span></div>';
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
@@ -9999,48 +10029,24 @@ function currentRotation() {
         clearTimeout(window.__eatEnrichTimer);
         window.__eatEnrichTimer = setTimeout(function () {
           var live = window.__eats || list;
-          enrichEatLive(live);
-          enrichGoogleRatings(live);
-        }, 500);
-        clearTimeout(window.__eatRetry);
-        window.__eatRetry = setTimeout(function () {
-          var live = window.__eats || [];
-          var thin = live.filter(function (r) { return r.rating == null || !r.reviews || r.driveMin == null; });
-          if (thin.length && thin.length >= Math.min(3, live.length)) {
-            enrichEatLive(live);
-            enrichGoogleRatings(live);
-          }
-        }, 4000);
+          if (!window.__eatDriveBusy) enrichEatLive(live);
+          if (!window.__eatRateBusy) enrichGoogleRatings(live);
+        }, 800);
       }
       function enrichGoogleRatings(list) {
+        if (window.__eatRateBusy) return;
+        window.__eatRateBusy = true;
         var i = 0;
         function next() {
           if (i >= (list || []).length) {
-            var pool = (window.__eatPool && window.__eatPool.length) ? window.__eatPool : (list || []);
-            list = pool.filter(function (r) { return Number(r.reviews) > 2500; });
-            var cut = 2500;
-            if (list.length < 10) {
-              list = pool.filter(function (r) { return Number(r.reviews) > 2000; });
-              cut = 2000;
-            }
-            if (list.length < 10) {
-              list = pool.filter(function (r) { return Number(r.reviews) > 0; });
-              cut = 0;
-            }
-            list.sort(function (a, b) {
-              return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
-            });
-            list = list.filter(inRange).slice(0, 10);
-            window.__eatCut = cut;
-            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + (cut ? (" with " + cut + "+ reviews") : " by rating")) : "none");
-            window.__eats = list;
-            if (typeof window.paintEatPick === "function") window.paintEatPick();
-            var box = document.getElementById("eat-list");
+            window.__eatRateBusy = false;
+            var shown = window.__eats || list || [];
+            if (typeof noteFeed === "function") noteFeed("eat-rate", !!shown.length, shown.length + " rated");
             var note = document.getElementById("eat-count");
             var miles = Number((getSet() || {}).eventMiles || 15);
-            if (note) note.textContent = list.length ? (list.length + " · " + cut.toLocaleString() + "+ Google reviews · by rating") : ("No restaurants with 2,000+ Google reviews inside " + miles + " mi");
-            if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 2,500+ Google reviews in range.</b><span>Widen Around home in Settings.</span></div>';
-            enrichEatLive(list);
+            if (note) note.textContent = shown.length ? (shown.length + " · Google reviews · " + miles + " mi") : ("No restaurants inside " + miles + " mi");
+            eatCacheWrite(shown);
+            if (typeof window.paintEatPick === "function") window.paintEatPick();
             return;
           }
           var r = list[i++];
@@ -10057,6 +10063,7 @@ function currentRotation() {
           googlePlaceRate(r, function (g) {
             if (g && g.rating != null) {
               r.rating = g.rating;
+              r.gRated = true;
               r.reviews = g.reviews || r.reviews;
               r.gRated = true;
               if (g.addr) r.addr = g.addr;
@@ -10127,6 +10134,8 @@ function currentRotation() {
         }).catch(function () { cb(null); });
       }
       function enrichEatLive(list) {
+        if (window.__eatDriveBusy) return;
+        window.__eatDriveBusy = true;
         var dests = (list || []).map(function (r) {
           return {
             lat: r.lat, lon: r.lon, q: (r.addr || r.name || "") + " Englewood FL",
@@ -10144,10 +10153,9 @@ function currentRotation() {
         });
         function nextChunk() {
           if (!dests.length) {
+            window.__eatDriveBusy = false;
             if (typeof noteFeed === "function") noteFeed("eat-drive", true, "google drive times");
             eatCacheWrite(window.__eats || list);
-            var box = document.getElementById("eat-list");
-            if (box && window.__eats && window.__eats.length) box.innerHTML = window.__eats.map(card).join("");
             if (typeof window.paintEatPick === "function") window.paintEatPick();
             return;
           }
@@ -10198,6 +10206,7 @@ function currentRotation() {
           name: p.name,
           rating: p.rating,
           reviews: p.user_ratings_total || 0,
+          gRated: p.rating != null,
           open: p.opening_hours ? p.opening_hours.open_now : null,
           kind: kindOf(((p.types || []).join(" ")) + " " + (p.name || "")),
           miles: (lat && lon) ? milesFn(lat, lon) : null,
@@ -10398,6 +10407,7 @@ function currentRotation() {
               name: name,
               rating: p.rating,
               reviews: p.userRatingCount || 0,
+              gRated: p.rating != null,
               open: p.currentOpeningHours ? p.currentOpeningHours.openNow : null,
               kind: kindOf(((p.types || []).join(" ")) + " " + name),
               miles: (lat && lon) ? milesOf(lat, lon) : null,
