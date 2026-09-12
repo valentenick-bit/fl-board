@@ -902,7 +902,10 @@
       .fun-shell { grid-template-columns:1fr; }
     }
     #ent-list .ev-card,
-    #eat-list .ev-card {
+    #eat-list .ev-card,
+    #today-do .ev-card,
+    #today-eat-pick .ev-card,
+    #today-eat-pick .eat-card {
       padding:10px 12px;
       margin:0 0 8px;
       min-height:102px;
@@ -910,6 +913,7 @@
       display:flex;
       align-items:stretch;
     }
+    #today-do .card, #today-eat-pick .card { cursor:pointer; }
     #ent-list .card { padding:10px 12px; margin-bottom:8px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
@@ -3407,7 +3411,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 608;
+    window.BOARD_VER = 609;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9512,7 +9516,15 @@ function currentRotation() {
         return false;
       }
       window.entCardHtml = function (e) {
-        var allDay = !!e.allDay || (e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
+        if (!e) return "";
+        var when = e.when instanceof Date ? e.when : new Date(e.when);
+        if (isNaN(when.getTime()) && typeof e.when === "string") {
+          var day = String(e.when).trim().slice(0, 10);
+          when = new Date(day + "T12:00:00");
+        }
+        if (isNaN(when.getTime())) when = new Date();
+        e.when = when;
+        var allDay = !!e.allDay || (when.getHours() === 12 && when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
         var kind = typeof eventKind === "function" ? eventKind(e.sum, e.loc, e.desc) : null;
         var live = !!(kind && kind.cls === "music") || e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc));
         if (live && (!kind || (kind.cls !== "music" && kind.cls !== "comedy"))) kind = { label: "Live music", cls: "music" };
