@@ -3384,7 +3384,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 592;
+    window.BOARD_VER = 593;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9460,15 +9460,23 @@ function currentRotation() {
     }
     function isLiveMusic(sum, loc, desc) {
         var s = [sum, loc, desc].join(" ").toLowerCase();
+        if (/comedy|stand-?up|mccurdy/.test(s) && !/\b(band|concert|tribute)\b/.test(s)) return false;
         if (/food truck|zumba|bakery|yoga|boat race|parade|craft festival|hoa|board meeting|committee|pickleball|water aerobics|bingo|raffle|farmers market/.test(s) && !/\b(live\s*music|band|dj|concert|karaoke)\b/.test(s)) return false;
-        if (/troll music|sandbar tiki|sand bar tiki/.test(s) && /\b(music|band|dj|piano|concert|live)\b/.test(s)) return true;
-        return /live\s*music|live\s*band|\blive\b.+\b(music|band|dj)\b|\b(music|band|dj)s?\b.+\blive\b|\bdjs?\b|\bconcert\b|\btribute\b|\bopen mic\b|\bkaraoke\b|steel drum|\breggae\b|\bacoustic\b|\bjazz\b|\bblues\b|\bcabana dogs\b|johnny d|jentgens|storm riders|rocket 88|generation gap/.test(s);
+        if (/kollections|endless summer|cabana dogs|johnny d|jentgens|storm riders|rocket 88|generation gap|troll music|trop rock|yacht rock|parrot head|steel ?pan|steel drum|calypso|island time|salty dog|beach dog|cover band|dance band|party band|music by|featuring\s+[a-z]|entertainment by/.test(s)) return true;
+        if (/troll music|sandbar tiki|sand bar tiki|lighthouse grill/.test(s) && /\b(music|band|dj|piano|concert|live|duo|trio)\b/.test(s)) return true;
+        if (/live\s*music|live\s*band|\blive\b.+\b(music|band|dj)\b|\b(music|band|dj)s?\b.+\blive\b|\bdjs?\b|\bconcert\b|\btribute\b|\bopen mic\b|\bkaraoke\b|steel drum|\breggae\b|\bacoustic\b|\bjazz\b|\bblues\b|\bduo\b|\btrio\b|singer|vocalist/.test(s)) return true;
+        var venue = /tiki|grill|grille|bar|lounge|tavern|pub|brew|clubhouse|moose|sandbar|lighthouse|stage|pavilion/.test(s);
+        var title = String(sum || "").replace(/@.*$/, "").replace(/\s*[-–|].*$/, "").trim();
+        var words = title.split(/\s+/).filter(Boolean);
+        var act = venue && words.length >= 1 && words.length <= 4 && title.length >= 4 && title.length <= 40;
+        if (act && !/bingo|trivia|meeting|hours|closed|dinner|lunch|happy hour|special|market|yoga|pickle|hoa|board|aerobic|raffle|karaoke/.test(title.toLowerCase())) return true;
+        return false;
       }
       window.entCardHtml = function (e) {
         var allDay = !!e.allDay || (e.when.getHours() === 12 && e.when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
         var kind = typeof eventKind === "function" ? eventKind(e.sum, e.loc, e.desc) : null;
         var live = !!(kind && kind.cls === "music") || e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc));
-        if (live && (!kind || kind.cls !== "music")) kind = { label: "Live music", cls: "music" };
+        if (live && (!kind || (kind.cls !== "music" && kind.cls !== "comedy"))) kind = { label: "Live music", cls: "music" };
         var place = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : "Englewood";
         var at = (String(e.sum || "").match(/@\s*(.+)$/) || [])[1];
         if (!e.inside) {
@@ -9908,16 +9916,17 @@ function currentRotation() {
         var i = 0;
         function next() {
           if (i >= (list || []).length) {
-            list = (list || []).filter(function (r) { return Number(r.reviews) > 2500; });
-            list.sort(function (a, b) {
-              return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
+            var rated = (list || []).slice().sort(function (a, b) {
+              return (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (Number(b.rating) || 0) - (Number(a.rating) || 0);
             });
-            list = list.slice(0, 10);
-            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " with 2500+ reviews") : "none with 2500+ reviews");
+            var top = rated.filter(function (r) { return Number(r.reviews) > 2500; });
+            var fill = rated.filter(function (r) { return Number(r.reviews) <= 2500 && Number(r.reviews) > 0; });
+            list = top.concat(fill).slice(0, 10);
+            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " restaurants") : "none");
             var box = document.getElementById("eat-list");
             var note = document.getElementById("eat-count");
             var miles = Number((getSet() || {}).eventMiles || 15);
-            if (note) note.textContent = list.length ? ("2,500+ Google reviews · " + miles + " mi") : ("No restaurants with 2,500+ Google reviews inside " + miles + " mi");
+            if (note) note.textContent = list.length ? (list.length + " near home · 2,500+ first") : ("No rated restaurants inside " + miles + " mi");
             if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 2,500+ Google reviews in range.</b><span>Widen Around home in Settings.</span></div>';
             enrichEatLive(list);
             return;
