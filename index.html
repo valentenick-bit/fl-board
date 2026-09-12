@@ -3370,7 +3370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 576;
+    window.BOARD_VER = 577;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9781,21 +9781,107 @@ function currentRotation() {
         });
         return list;
       }
+      function mapPlaceRow(p, milesFn) {
+        var loc = p.geometry && p.geometry.location;
+        var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
+        var lon = loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng);
+        return {
+          name: p.name,
+          rating: p.rating,
+          reviews: p.user_ratings_total || 0,
+          open: p.opening_hours ? p.opening_hours.open_now : null,
+          kind: kindOf(((p.types || []).join(" ")) + " " + (p.name || "")),
+          miles: (lat && lon) ? milesFn(lat, lon) : null,
+          lat: lat, lon: lon,
+          area: p.vicinity || p.formatted_address || "",
+          addr: p.vicinity || p.formatted_address || "",
+          placeId: p.place_id || ""
+        };
+      }
+      function fromPlacesNew(cb) {
+        var key = String((getSet() || {}).gmapsKey || "").trim();
+        if (!key) return cb(null);
+        var miles = Number((getSet() || {}).eventMiles || 15);
+        var body = {
+          includedTypes: ["restaurant"],
+          maxResultCount: 10,
+          rankPreference: "DISTANCE",
+          locationRestriction: {
+            circle: {
+              center: { latitude: homeLat(), longitude: homeLon() },
+              radius: Math.min(50000, miles * 1609.34)
+            }
+          }
+        };
+        fetch("https://places.googleapis.com/v1/places:searchNearby", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": key,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.types"
+          },
+          body: JSON.stringify(body)
+        }).then(function (r) { return r.json(); }).then(function (j) {
+          if (j && j.error) {
+            if (typeof noteFeed === "function") noteFeed("eats-src", false, "Places New · " + (j.error.message || j.error.status || "denied"));
+            return cb(null);
+          }
+          var rows = (j && j.places) || [];
+          if (!rows.length) {
+            if (typeof noteFeed === "function") noteFeed("eats-src", false, "Places New · zero");
+            return cb(null);
+          }
+          var list = rows.map(function (p) {
+            var loc = p.location || {};
+            var lat = loc.latitude, lon = loc.longitude;
+            var name = (p.displayName && (p.displayName.text || p.displayName)) || "Restaurant";
+            return {
+              name: name,
+              rating: p.rating,
+              reviews: p.userRatingCount || 0,
+              open: p.currentOpeningHours ? p.currentOpeningHours.openNow : null,
+              kind: kindOf(((p.types || []).join(" ")) + " " + name),
+              miles: (lat && lon) ? milesOf(lat, lon) : null,
+              lat: lat, lon: lon,
+              area: p.shortFormattedAddress || p.formattedAddress || "",
+              addr: p.formattedAddress || p.shortFormattedAddress || "",
+              placeId: p.id || ""
+            };
+          });
+          if (typeof noteFeed === "function") noteFeed("eats-src", true, "Places New · " + list.length);
+          cb(list);
+        }).catch(function (e) {
+          if (typeof noteFeed === "function") noteFeed("eats-src", false, "Places New · " + String(e && e.message || e));
+          cb(null);
+        });
+      }
       function fromPlaces(cb) {
         var loader = (typeof loadGmapsLib === "function") ? loadGmapsLib : loadGmaps;
-        if (typeof loader !== "function") return cb(null);
+        if (typeof loader !== "function") return fromPlacesNew(cb);
         loader(function (ok) {
-          if (!ok || !(window.google && google.maps && google.maps.places)) return cb(null);
+          if (!ok || !(window.google && google.maps && google.maps.places)) return fromPlacesNew(cb);
           var miles = Number((getSet() || {}).eventMiles || 15);
-          var node = document.getElementById("eat-places-attr");
-          if (!node) { node = document.createElement("div"); node.id = "eat-places-attr"; node.style.display = "none"; document.body.appendChild(node); }
-          var svc = new google.maps.places.PlacesService(node);
+          var box = document.getElementById("eat-places-map");
+          if (!box) {
+            box = document.createElement("div");
+            box.id = "eat-places-map";
+            box.style.cssText = "width:1px;height:1px;overflow:hidden;position:absolute;left:-9999px";
+            document.body.appendChild(box);
+          }
+          var map = null;
+          try { map = new google.maps.Map(box, { center: { lat: homeLat(), lng: homeLon() }, zoom: 12, disableDefaultUI: true }); } catch (eM) { map = null; }
+          var svc;
+          try { svc = new google.maps.places.PlacesService(map || box); } catch (eS) {
+            if (typeof noteFeed === "function") noteFeed("eats-src", false, "PlacesService " + eS);
+            return fromPlacesNew(cb);
+          }
           svc.nearbySearch({
             location: new google.maps.LatLng(homeLat(), homeLon()),
             radius: Math.min(50000, Math.round(miles * 1609.34)),
             type: "restaurant"
           }, function (results, status) {
-            if (status !== google.maps.places.PlacesServiceStatus.OK || !results || !results.length) return cb(null);
+            if (typeof noteFeed === "function") noteFeed("places-search", status === "OK", String(status || "none") + " · " + ((results && results.length) || 0));
+            if (status !== google.maps.places.PlacesServiceStatus.OK || !results || !results.length) return fromPlacesNew(cb);
             var list = results.map(function (p) {
               var loc = p.geometry && p.geometry.location;
               var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
@@ -9888,11 +9974,6 @@ function currentRotation() {
         step();
       }
       function run() {
-        var page = (document.querySelector(".page.on") || {}).id || "";
-        if (page !== "ent" && !window.__eatsForce) {
-          setTimeout(function () { window.__eatsForce = true; run(); }, 4000);
-          return;
-        }
         fromPlaces(function (places) {
           if (places && places.length) return paint(mergeEatCache(places));
           var cached = eatCacheRead().filter(function (r) { return r && r.at && (Date.now() - r.at) < 7 * 24 * 3600 * 1000 && r.rating; });
