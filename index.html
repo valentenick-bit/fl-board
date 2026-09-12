@@ -3370,7 +3370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 574;
+    window.BOARD_VER = 575;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3824,8 +3824,17 @@ Cart shop:</textarea>
       if (window.__gmapsLoading) { window.__gmapsWait = window.__gmapsWait || []; window.__gmapsWait.push(done); return; }
       window.__gmapsLoading = true;
       var s = document.createElement("script");
-      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places";
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places&loading=async";
+      window.__gmapsTimer = setTimeout(function () {
+        if (window.__gmapsLoading) {
+          window.__gmapsLoading = false;
+          done(false);
+          (window.__gmapsWait || []).forEach(function (fn) { try { fn(false); } catch (eT) {} });
+          window.__gmapsWait = [];
+        }
+      }, 8000);
       s.onload = function () {
+        clearTimeout(window.__gmapsTimer);
         window.__gmapsLoading = false;
         done(true);
         (window.__gmapsWait || []).forEach(function (fn) { try { fn(true); } catch (e) {} });
@@ -3847,14 +3856,23 @@ Cart shop:</textarea>
       }
       window.__gmapsLoading = true;
       var s = document.createElement("script");
-      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places";
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places&loading=async";
+      window.__gmapsTimer = setTimeout(function () {
+        if (window.__gmapsLoading) {
+          window.__gmapsLoading = false;
+          done(false);
+          (window.__gmapsWait || []).forEach(function (fn) { try { fn(false); } catch (eT) {} });
+          window.__gmapsWait = [];
+        }
+      }, 8000);
       s.onload = function () {
+        clearTimeout(window.__gmapsTimer);
         window.__gmapsLoading = false;
         done(!!(window.google && google.maps && google.maps.places));
         (window.__gmapsWait || []).forEach(function (fn) { try { fn(!!(window.google && google.maps && google.maps.places)); } catch (e) {} });
         window.__gmapsWait = [];
       };
-      s.onerror = function () { window.__gmapsLoading = false; done(false); };
+      s.onerror = function () { clearTimeout(window.__gmapsTimer); window.__gmapsLoading = false; done(false); };
       document.head.appendChild(s);
     }
 
@@ -9874,6 +9892,11 @@ function currentRotation() {
         step();
       }
       function run() {
+        var page = (document.querySelector(".page.on") || {}).id || "";
+        if (page !== "ent" && !window.__eatsForce) {
+          setTimeout(function () { window.__eatsForce = true; run(); }, 4000);
+          return;
+        }
         fromPlaces(function (places) {
           if (places && places.length) return paint(mergeEatCache(places));
           var cached = eatCacheRead().filter(function (r) { return r && r.at && (Date.now() - r.at) < 7 * 24 * 3600 * 1000 && r.rating; });
@@ -10683,7 +10706,7 @@ function currentRotation() {
         addrIn.addEventListener("keydown", function (e) {
           if (e.key === "Escape") hideAddrSuggest();
         });
-        if (String(getSet().gmapsKey || "").trim()) loadGmaps(function () {});
+        /* Maps loads on Fun / traffic, not when Settings paints */
         var gmIn = document.getElementById("set-gmaps");
         if (gmIn && !gmIn.dataset.bound) {
           gmIn.dataset.bound = "1";
