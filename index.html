@@ -983,6 +983,13 @@
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
     iframe.full { width:100%; height:52vh; border:0; border-radius:16px; background:#111; }
     #radar.page { background:transparent; }
+    .wx-map-frame { margin:12px 0 16px; }
+    .wx-map-frame .radar-crop { height:52vh; }
+    .wx-map-frame .wx-map-pane { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:#0b1220; }
+    .wx-map-frame .wx-map-pane.on { display:block; }
+    .wx-map-frame iframe.wx-map-pane { width:100%; height:100%; }
+    .wx-map-cap { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:6px 0 0; font-size:13px; opacity:.85; }
+    .wx-map-cap b { letter-spacing:.06em; text-transform:uppercase; font-size:11px; }
     .radar-crop { width:100%; height:52vh; overflow:hidden; border-radius:16px; background:#0b1220; }
     .radar-stage { position:relative; isolation:isolate; }
     .radar-stage img#radar-view { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; background:#0b1220; transform:none !important; filter:none; }
@@ -1977,6 +1984,13 @@
         </div>
         <div class="card chart"><b>Rain</b><span>Hourly inches this month</span>
           <div class="tide hist" id="rainmo-chart"></div>
+        </div>
+        <div class="wx-map-frame" id="wx-map-frame">
+          <div class="radar-crop radar-stage" id="wx-radar-stage">
+            <img class="wx-map-pane on" id="wx-radar-view" alt="Radar" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
+            <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank"></iframe>
+          </div>
+          <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">NWS loop</span></p>
         </div>
         <div class="tenday"></div>
       </section>
@@ -3242,7 +3256,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 550;
+    window.BOARD_VER = 551;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4171,6 +4185,12 @@ Cart shop:</textarea>
         img.alt = st + " radar loop";
         img.src = nws + "?t=" + Date.now();
       }
+      var wxImg = document.getElementById("wx-radar-view");
+      if (wxImg) {
+        wxImg.alt = st + " radar loop";
+        wxImg.src = nws + "?t=" + Date.now();
+      }
+      if (typeof syncWxMapFrame === "function") syncWxMapFrame();
       if (link) link.href = rainviewerUrl(lat, lon);
       if (cap) cap.textContent = "NWS " + st + " loop near " + pin;
       if (note) {
@@ -7559,6 +7579,39 @@ function currentRotation() {
       });
     }
     function lightningActive() { return lightningPrep(); }
+    function boltUrl() {
+      return "https://map.blitzortung.org/#7/" + homeLat() + "/" + homeLon();
+    }
+    function wxMapShow(which) {
+      var rad = document.getElementById("wx-radar-view");
+      var bolt = document.getElementById("wx-bolt-view");
+      var lab = document.getElementById("wx-map-label");
+      var note = document.getElementById("wx-map-note");
+      if (rad) rad.classList.toggle("on", which !== "bolt");
+      if (bolt) bolt.classList.toggle("on", which === "bolt");
+      if (lab) lab.textContent = which === "bolt" ? "Lightning" : "Radar";
+      if (note) note.textContent = which === "bolt" ? "Strikes near the house" : ((window.__radarLoopUrl || "NWS loop").replace(/^https:\/\/radar\.weather\.gov\/ridge\/standard\//, "NWS ").replace("_loop.gif", " loop"));
+    }
+    function syncWxMapFrame() {
+      var want = typeof boltWanted === "function" && boltWanted();
+      var bolt = document.getElementById("wx-bolt-view");
+      if (window.__wxMapTimer) { clearInterval(window.__wxMapTimer); window.__wxMapTimer = 0; }
+      if (!want) {
+        if (bolt && bolt.src && bolt.src.indexOf("blitzortung") >= 0) bolt.src = "about:blank";
+        wxMapShow("radar");
+        if (typeof noteFeed === "function") noteFeed("wx-map-frame", true, "radar");
+        return;
+      }
+      if (bolt && (!bolt.src || bolt.src.indexOf("blitzortung") < 0)) bolt.src = boltUrl();
+      var onBolt = false;
+      wxMapShow("radar");
+      window.__wxMapTimer = setInterval(function () {
+        if (!(typeof boltWanted === "function" && boltWanted())) { syncWxMapFrame(); return; }
+        onBolt = !onBolt;
+        wxMapShow(onBolt ? "bolt" : "radar");
+      }, 8000);
+      if (typeof noteFeed === "function") noteFeed("wx-map-frame", true, "radar + lightning");
+    }
     function boltWanted() {
       var near = window.__strikesNear || {};
       if (near.close5 || near.close10) return true;
@@ -7568,6 +7621,7 @@ function currentRotation() {
       return !!(prep && prep.on && prep.shelter);
     }
     function syncLightningUI() {
+      if (typeof syncWxMapFrame === "function") syncWxMapFrame();
       var prep = lightningPrep();
       var now = lightningNow();
       window.__wxRisk = window.__wxRisk || {};
