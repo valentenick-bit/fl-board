@@ -3385,7 +3385,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 597;
+    window.BOARD_VER = 598;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9798,10 +9798,17 @@ function currentRotation() {
 
     (function loadEats() {
       function milesOf(lat, lon) {
+        if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) return null;
         var R = 3958.8, toR = Math.PI / 180;
         var dLat = (lat - homeLat()) * toR, dLon = (lon - homeLon()) * toR;
         var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+      }
+      function inRange(r) {
+        var cap = Number((getSet() || {}).eventMiles || 15) + 0.25;
+        var m = r && r.miles;
+        if (m == null && r && r.lat != null && r.lon != null) m = r.miles = milesOf(r.lat, r.lon);
+        return m != null && !isNaN(m) && m <= cap;
       }
       function kindOf(raw) {
         var c = String(raw || "").toLowerCase().replace(/[_/]+/g, " ");
@@ -9882,7 +9889,7 @@ function currentRotation() {
         var note = document.getElementById("eat-count");
         var miles = Number((getSet() || {}).eventMiles || 15);
         list = dedupeEats((list || []).concat(mustEats()));
-        list = list.filter(function (r) { return r.miles == null || r.miles <= miles + 0.2; });
+        list = list.filter(inRange);
         var rated = list.filter(function (r) { return Number(r.reviews) > 0; });
         if (rated.length) {
           var known = rated.filter(function (r) { return Number(r.reviews) > 2500; });
@@ -9935,7 +9942,7 @@ function currentRotation() {
             list.sort(function (a, b) {
               return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
             });
-            list = list.slice(0, 10);
+            list = list.filter(inRange).slice(0, 10);
             window.__eatCut = cut;
             if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " with " + cut + "+ reviews") : "none");
             var box = document.getElementById("eat-list");
@@ -10166,7 +10173,7 @@ function currentRotation() {
           var body = {
             textQuery: q,
             pageSize: 20,
-            locationBias: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(50000, miles * 1609.34) } }
+            locationRestriction: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(32000, miles * 1609.34) } }
           };
           fetch("https://places.googleapis.com/v1/places:searchText", {
             method: "POST",
