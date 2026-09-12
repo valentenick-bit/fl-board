@@ -3384,7 +3384,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 593;
+    window.BOARD_VER = 595;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9833,14 +9833,14 @@ function currentRotation() {
           dist = r.miles.toFixed(r.miles >= 10 ? 0 : 1) + " mi · ~" + guess + " min";
         }
         var rate = r.rating != null && r.rating !== ""
-          ? (Number(r.rating).toFixed(1) + "★" + (r.reviews ? " · " + r.reviews + " ratings" : ""))
+          ? (Number(r.rating).toFixed(1) + "★" + (r.reviews ? " · " + r.reviews + " reviews" : ""))
           : "";
         if (rate && r.prevRating != null && Number(r.prevRating) !== Number(r.rating)) {
           rate += Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
         }
         var addr = r.addr || r.area || "";
         var mapQ = ((r.name || "") + (addr ? " " + addr : " Englewood FL")).trim();
-        var reviews = (r.gRated && r.reviews) ? (r.reviews + " ratings") : "";
+        var reviews = (r.gRated && r.reviews) ? (r.reviews + " reviews") : "";
         var pills = '<span class="kind-tag eat-' + kindCls(r.kind) + '">' + (r.kind || "Restaurant") + "</span>";
         if (dist) pills += '<span class="dist-tag">' + dist + "</span>";
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
@@ -9881,10 +9881,10 @@ function currentRotation() {
         var miles = Number((getSet() || {}).eventMiles || 15);
         list = dedupeEats((list || []).concat(mustEats()));
         list = list.filter(function (r) { return r.miles == null || r.miles <= miles + 0.2; });
+        var known = list.filter(function (r) { return Number(r.reviews) > 2500; });
+        if (known.length) list = known;
         list.sort(function (a, b) {
-          var ag = a.gRated ? 1 : 0, bg = b.gRated ? 1 : 0;
-          if (bg !== ag) return bg - ag;
-          return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (a.miles || 99) - (b.miles || 99);
+          return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
         });
         list = list.slice(0, 10);
         var prev = {};
@@ -9916,17 +9916,16 @@ function currentRotation() {
         var i = 0;
         function next() {
           if (i >= (list || []).length) {
-            var rated = (list || []).slice().sort(function (a, b) {
-              return (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (Number(b.rating) || 0) - (Number(a.rating) || 0);
+            list = (list || []).filter(function (r) { return Number(r.reviews) > 2500; });
+            list.sort(function (a, b) {
+              return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
             });
-            var top = rated.filter(function (r) { return Number(r.reviews) > 2500; });
-            var fill = rated.filter(function (r) { return Number(r.reviews) <= 2500 && Number(r.reviews) > 0; });
-            list = top.concat(fill).slice(0, 10);
-            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " restaurants") : "none");
+            list = list.slice(0, 10);
+            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " with 2500+ reviews") : "none with 2500+");
             var box = document.getElementById("eat-list");
             var note = document.getElementById("eat-count");
             var miles = Number((getSet() || {}).eventMiles || 15);
-            if (note) note.textContent = list.length ? (list.length + " near home · 2,500+ first") : ("No rated restaurants inside " + miles + " mi");
+            if (note) note.textContent = list.length ? (list.length + " · 2,500+ Google reviews · by rating") : ("No restaurants with 2,500+ Google reviews inside " + miles + " mi");
             if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 2,500+ Google reviews in range.</b><span>Widen Around home in Settings.</span></div>';
             enrichEatLive(list);
             return;
