@@ -634,6 +634,7 @@
     .hdr-chip.watch { background:#c4a35a; color:#1b2a4a; }
     .hdr-chip.warn { background:#c45c4a; color:#fff; }
     .hdr-chip.radio { display:inline-flex; background:rgba(42,157,143,.9); color:#fff; }
+    .hdr-chip.picked { outline:2px solid rgba(196,163,90,.9); }
     .hdr-chip.heat { display:none; background:rgba(224,122,95,.92); color:#fff; }
     .hdr-chip.heat.on { display:inline-flex; }
     .hdr-chip.heat.chill { background:rgba(74,130,186,.94); color:#f4f8ff; }
@@ -2771,6 +2772,7 @@ Cart shop:</textarea>
           <div class="set-row" id="set-hdrwx">
             <button type="button" data-v="temp">Temp</button>
             <button type="button" data-v="feels">Real Feel</button>
+            <button type="button" data-v="heat">Heat Index</button>
           </div>
         </div>
         <div class="set-line"><label>Clock</label>
@@ -3210,7 +3212,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 539;
+    window.BOARD_VER = 541;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3463,6 +3465,19 @@ Cart shop:</textarea>
     function fmtTemp(f) {
       var n = fmtTempN(f);
       return n == null ? "—" : n + "°";
+    }
+    function paintHdrTemps() {
+      var tempEl = document.getElementById("live-temp");
+      var feelEl = document.getElementById("live-feels");
+      var tf = window.__nowTempF, ff = window.__nowFeelF;
+      if (tempEl && tf != null && isFinite(Number(tf))) {
+        tempEl.innerHTML = fmtTempN(tf) + "&deg;";
+        if (typeof paintTemp === "function") paintTemp(tempEl, tf);
+      }
+      if (feelEl && ff != null && isFinite(Number(ff))) {
+        feelEl.innerHTML = fmtTempN(ff) + "&deg;";
+        if (typeof paintTemp === "function") paintTemp(feelEl, ff);
+      }
     }
     function tickSpeedPx() {
       var v = (typeof getSet === "function" ? getSet().tickSpeed : "normal") || "normal";
@@ -5276,9 +5291,29 @@ function currentRotation() {
       var lab = document.getElementById("hdr-wx-lab");
       var temp = document.getElementById("live-temp");
       var feel = document.getElementById("live-feels");
-      if (lab) lab.textContent = mode === "temp" ? "Temp" : "Real Feel";
-      if (temp) temp.style.display = mode === "temp" ? "block" : "none";
-      if (feel) feel.style.display = mode === "temp" ? "none" : "block";
+      var heatBtn = document.getElementById("live-heat");
+      if (mode === "temp") {
+        if (lab) lab.textContent = "Temp";
+        if (temp) temp.style.display = "block";
+        if (feel) feel.style.display = "none";
+      } else if (mode === "heat") {
+        if (lab) lab.textContent = "Heat Index";
+        if (temp) temp.style.display = "none";
+        if (feel) feel.style.display = "block";
+        if (feel && window.__nowHeatF != null && typeof fmtTempN === "function") {
+          feel.innerHTML = fmtTempN(window.__nowHeatF) + "&deg;";
+          if (typeof paintTemp === "function") paintTemp(feel, window.__nowHeatF);
+        }
+      } else {
+        if (lab) lab.textContent = "Real Feel";
+        if (temp) temp.style.display = "none";
+        if (feel) feel.style.display = "block";
+        if (feel && window.__nowFeelF != null && typeof fmtTempN === "function") {
+          feel.innerHTML = fmtTempN(window.__nowFeelF) + "&deg;";
+          if (typeof paintTemp === "function") paintTemp(feel, window.__nowFeelF);
+        }
+      }
+      if (heatBtn) heatBtn.classList.toggle("picked", mode === "heat");
     }
     function compassFromDeg(d) {
       if (d == null || d === "" || isNaN(Number(d))) return "";
@@ -6856,6 +6891,13 @@ function currentRotation() {
       if (jump && typeof showPage === "function") {
         showPage("tenday");
         if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        return;
+      }
+      if (e.target && (e.target.id === "live-heat" || (e.target.closest && e.target.closest("#live-heat")))) {
+        var cur = (typeof getSet === "function" ? getSet().hdrWx : "feels") || "feels";
+        var next = cur === "heat" ? "feels" : "heat";
+        if (typeof putSet === "function") putSet({ hdrWx: next });
+        if (typeof applyHdrWx === "function") applyHdrWx();
         return;
       }
       if (e.target && e.target.id === "hdr-radio") {
@@ -9885,7 +9927,7 @@ function currentRotation() {
       tap("set-clock", "clock", function () { if (typeof clock === "function") clock(); if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras(); if (typeof paintToday === "function") paintToday(); });
       tap("set-datefmt", "dateFmt", function () { if (typeof clock === "function") clock(); if (typeof paintToday === "function") paintToday(); });
-      tap("set-units", "units", function () { if (typeof loadWx === "function") loadWx(); if (typeof fillEmptyCards === "function") fillEmptyCards(); if (typeof writeGreetingCard === "function") writeGreetingCard();
+      tap("set-units", "units", function () { if (typeof paintHdrTemps === "function") paintHdrTemps(); if (typeof writeGreetingCard === "function") writeGreetingCard(); if (typeof loadWx === "function") loadWx(); if (typeof fillEmptyCards === "function") fillEmptyCards(); if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras(); });
       tap("set-greettone", "greetTone", function () { if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras(); });
@@ -12397,7 +12439,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var gustEl = document.getElementById("live-gusts");
       var uvEl = document.getElementById("live-uv");
       if (tempEl && tempF != null) { tempEl.innerHTML = fmtTempN(tempF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(tempEl, tempF); }
-      if (feelEl && feelF != null) { feelEl.innerHTML = fmtTempN(feelF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(feelEl, feelF); }
+      window.__nowFeelF = feelF; if (feelEl && feelF != null) { feelEl.innerHTML = fmtTempN(feelF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(feelEl, feelF); }
       if (windEl && wind != null) {
         var dir = typeof compassFromDeg === "function" ? compassFromDeg(om.current.wind_direction_10m) : "";
         windEl.textContent = typeof fmtWindLine === "function" ? fmtWindLine(dir, wind) : ((dir ? dir + " " : "") + wind + " mph");
@@ -12597,7 +12639,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           else if (obs.heatIndex && obs.heatIndex.value != null) {
             feelF = /degC/.test(obs.heatIndex.unitCode || "") ? Math.round(obs.heatIndex.value * 9/5 + 32) : Math.round(obs.heatIndex.value);
           } else feelF = heatIndexF(tempF, rh);
-          if (feelEl && feelF != null) { feelEl.innerHTML = feelF + "&deg;"; paintTemp(feelEl, feelF); }
+          window.__nowFeelF = feelF;
+          if (feelEl && feelF != null) { feelEl.innerHTML = fmtTempN(feelF) + "&deg;"; paintTemp(feelEl, feelF); }
           var heatEl = document.getElementById("live-heat");
           var hiVal = null;
           if (obs.heatIndex && obs.heatIndex.value != null) {
@@ -12617,6 +12660,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
               heatEl.textContent = "Heat index " + fmtTempN(hiVal) + "°";
               heatEl.classList.add("on");
             }
+            window.__nowHeatF = hiVal;
+            if (typeof applyHdrWx === "function") applyHdrWx();
           }
           var windEl = document.getElementById("live-wind");
           var gustEl = document.getElementById("live-gusts");
