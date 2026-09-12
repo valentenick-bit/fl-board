@@ -3380,7 +3380,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 589;
+    window.BOARD_VER = 591;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3709,7 +3709,17 @@ Cart shop:</textarea>
     function homeLon() { return Number(getSet().lon) || -82.3543; }
     function homeAddress() {
       var s = getSet();
-      return String(s.address || s.place || "Englewood FL").trim();
+      var box = document.getElementById("set-address");
+      var typed = box && box.value ? String(box.value).trim() : "";
+      return String(typed || s.address || s.place || "").trim();
+    }
+    function matrixOrigin() {
+      var addr = homeAddress();
+      if (addr && /\d/.test(addr) && addr.length > 8) return addr;
+      if (window.google && google.maps && getSet().lat && getSet().lon) {
+        return new google.maps.LatLng(homeLat(), homeLon());
+      }
+      return addr || (homeLat() + "," + homeLon());
     }
     function communityName() {
       var n = String((getSet() || {}).community || "").trim();
@@ -3772,11 +3782,19 @@ Cart shop:</textarea>
         if (typeof refreshWeather === "function") refreshWeather();
         if (typeof loadWx === "function") loadWx();
         if (typeof fillZipRadio === "function") fillZipRadio();
+        if (typeof window.reloadEats === "function") try { window.reloadEats(); } catch (eR) {}
+        if (typeof enrichEventDistances === "function" && window.__entAll) try { enrichEventDistances(window.__entAll); } catch (eE) {}
       }).catch(function () {
         finish(false, "Could not pin that address. Check the line and try again.");
       });
     }
 
+    setTimeout(function () {
+      try {
+        var a = homeAddress();
+        if (a && /\d/.test(a) && typeof geocodeHome === "function") geocodeHome(function () {});
+      } catch (e) {}
+    }, 900);
     function hideAddrSuggest() {
       var box = document.getElementById("addr-suggest");
       if (box) { box.hidden = true; box.innerHTML = ""; }
@@ -9849,7 +9867,7 @@ function currentRotation() {
           });
           localStorage.setItem("bw-eat-ratings", JSON.stringify(store));
         } catch (eS) {}
-        if (note) note.textContent = list.length ? ("Top rated · " + miles + " mi") : ("No rated restaurants inside " + miles + " mi");
+        if (note) note.textContent = list.length ? ("2,500+ Google reviews · " + miles + " mi") : ("Looking up Google reviews inside " + miles + " mi");
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 200+ reviews in range.</b><span>Widen Around home in Settings.</span></div>';
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
@@ -9860,12 +9878,17 @@ function currentRotation() {
         var i = 0;
         function next() {
           if (i >= (list || []).length) {
-            if (typeof noteFeed === "function") noteFeed("eat-rate", true, "google ratings");
+            list = (list || []).filter(function (r) { return Number(r.reviews) > 2500; });
             list.sort(function (a, b) {
               return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
             });
+            list = list.slice(0, 10);
+            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " with 2500+ reviews") : "none with 2500+ reviews");
             var box = document.getElementById("eat-list");
-            if (box) box.innerHTML = list.map(card).join("");
+            var note = document.getElementById("eat-count");
+            var miles = Number((getSet() || {}).eventMiles || 15);
+            if (note) note.textContent = list.length ? ("2,500+ Google reviews · " + miles + " mi") : ("No restaurants with 2,500+ Google reviews inside " + miles + " mi");
+            if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 2,500+ Google reviews in range.</b><span>Widen Around home in Settings.</span></div>';
             enrichEatLive(list);
             return;
           }
@@ -14454,7 +14477,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         try {
           var svc = new google.maps.DistanceMatrixService();
           svc.getDistanceMatrix({
-            origins: [new google.maps.LatLng(homeLat(), homeLon())],
+            origins: [matrixOrigin()],
             destinations: [new google.maps.LatLng(Number(lat), Number(lon))],
             travelMode: google.maps.TravelMode.DRIVING,
             unitSystem: google.maps.UnitSystem.IMPERIAL,
@@ -14484,7 +14507,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         try {
           var svc = new google.maps.DistanceMatrixService();
           svc.getDistanceMatrix({
-            origins: [new google.maps.LatLng(homeLat(), homeLon())],
+            origins: [matrixOrigin()],
             destinations: [String(q)],
             travelMode: google.maps.TravelMode.DRIVING,
             unitSystem: google.maps.UnitSystem.IMPERIAL,
@@ -14514,7 +14537,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       loadGmaps(function (ok) {
         if (!ok || !window.google || !google.maps || !google.maps.DistanceMatrixService) { cb(null); return; }
         var dest = (pin.lat != null) ? new google.maps.LatLng(pin.lat, pin.lon) : (pin.q || "");
-        var origin = new google.maps.LatLng(homeLat(), homeLon());
+        var origin = (typeof matrixOrigin === "function") ? matrixOrigin() : new google.maps.LatLng(homeLat(), homeLon());
         var svc = new google.maps.DistanceMatrixService();
         svc.getDistanceMatrix({
           origins: [origin],
@@ -14570,7 +14593,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             return String(d.q || "");
           });
           svc.getDistanceMatrix({
-            origins: [new google.maps.LatLng(homeLat(), homeLon())],
+            origins: [matrixOrigin()],
             destinations: destinations,
             travelMode: google.maps.TravelMode.DRIVING,
             unitSystem: google.maps.UnitSystem.IMPERIAL,
