@@ -1037,6 +1037,7 @@
     .card span.warn-tag { background:var(--coral); color:#fff; }
     .card span.kind-tag.music { background:#1b6b62; color:#fff; }
     .card span.kind-tag.karaoke { background:#c45a8a; color:#fff; }
+    .card span.kind-tag.comedy { background:#c45a3a; color:#fff; }
     .card span.kind-tag.bingo { background:#6b5b95; color:#fff; }
     .card span.kind-tag.raffle { background:#8b5e3c; color:#fff; }
     .card span.kind-tag.market { background:#3d8b5a; color:#fff; }
@@ -3379,7 +3380,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 584;
+    window.BOARD_VER = 587;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9399,6 +9400,7 @@ function currentRotation() {
   
     function eventKind(sum, loc, desc) {
       var s = [sum, loc, desc].join(" ").toLowerCase();
+      if (/comedy|stand-?up|open mic|improv|mccurdy/.test(s)) return { label: "Comedy", cls: "comedy" };
       if (/bingo/.test(s)) return { label: "Bingo", cls: "bingo" };
       if (/farmer.?s?\s*market|farmers market|flea market/.test(s)) return { label: "Farmers market", cls: "market" };
       if (/car show|cruise.?in|truck show|cars and coffee|auto show/.test(s)) return { label: "Car show", cls: "cars" };
@@ -9448,7 +9450,71 @@ function currentRotation() {
         if (!box || !events.length) return;
         box.innerHTML = events.map(window.entCardHtml).join("");
       }
-      var bag = { bw: [], eng: [] };
+      var bag = { bw: [], eng: [], comedy: [] };
+      function comedyEvent(sum, when) {
+        return {
+          sum: sum,
+          loc: "McCurdy's Comedy Theatre, 1923 Ringling Blvd, Sarasota, FL",
+          desc: "Comedy show",
+          when: when,
+          end: new Date(when.getTime() + 2 * 3600 * 1000),
+          inside: false,
+          live: false
+        };
+      }
+      function parseMcCurdyDates(blob, year) {
+        var out = [];
+        if (!blob) return out;
+        var s = String(blob);
+        var slash = s.match(/\b(\d{1,2})\/(\d{1,2})\b/g) || [];
+        slash.forEach(function (p) {
+          var bits = p.split("/");
+          var d = new Date(year, Number(bits[0]) - 1, Number(bits[1]), 19, 0);
+          if (!isNaN(d) && d.getTime() > Date.now() - 12 * 3600 * 1000) out.push(d);
+        });
+        if (out.length) return out;
+        var monMap = { jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11 };
+        var mon = s.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)\b/i);
+        if (!mon) return out;
+        var mi = monMap[mon[1].toLowerCase()];
+        var days = [];
+        s.replace(/\b(\d{1,2})(?:st|nd|rd|th)?\b/g, function (_, n) {
+          var day = Number(n);
+          if (day >= 1 && day <= 31) days.push(day);
+        });
+        days.forEach(function (day) {
+          var d = new Date(year, mi, day, 19, 0);
+          if (!isNaN(d) && d.getTime() > Date.now() - 12 * 3600 * 1000) out.push(d);
+        });
+        return out;
+      }
+      function loadComedy() {
+        var url = "https://corsproxy.io/?" + encodeURIComponent("https://www.mccurdyscomedy.com/shows/");
+        fetch(url).then(function (r) { return r.text(); }).then(function (html) {
+          var text = String(html || "").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ");
+          var chunks = text.split(/<h2[^>]*>/i);
+          var year = new Date().getFullYear();
+          var rows = [];
+          chunks.forEach(function (chunk) {
+            var name = chunk.split(/<\/h2>/i)[0] || "";
+            name = name.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            if (!name || /upcoming shows|buy ticket/i.test(name) || name.length > 60) return;
+            var after = chunk.split(/<\/h2>/i)[1] || "";
+            var dateLine = "";
+            var hm = after.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+            if (hm) dateLine = hm[1].replace(/<[^>]+>/g, " ");
+            parseMcCurdyDates(dateLine, year).forEach(function (when) {
+              rows.push(comedyEvent(name + " @ McCurdy's", when));
+            });
+          });
+          bag.comedy = rows;
+          if (typeof noteFeed === "function") noteFeed("comedy", !!rows.length, rows.length ? (rows.length + " shows") : "none parsed");
+          if (typeof window.paintEnt === "function") try { window.paintEnt(); } catch (eP) {}
+        }).catch(function () {
+          if (typeof noteFeed === "function") noteFeed("comedy", false, "McCurdy fetch failed");
+        });
+      }
+      setTimeout(loadComedy, 1600);
       try {
         var cached = JSON.parse(localStorage.getItem("bw-ent-cache") || "{}");
         if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = true; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
@@ -9472,12 +9538,12 @@ function currentRotation() {
         bag.bw = dedupeEnt(bag.bw);
         bag.eng = dedupeEnt(bag.eng);
         var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 15);
-        var all = bag.bw.concat(bag.eng).filter(function (e) {
+        var all = bag.bw.concat(bag.eng, bag.comedy || []).filter(function (e) {
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
         all.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
-        var upcoming = bag.bw.concat(bag.eng).filter(function (e) {
+        var upcoming = bag.bw.concat(bag.eng, bag.comedy || []).filter(function (e) {
           if (!e || !e.when) return false;
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now() - 30 * 60 * 1000;
@@ -9759,8 +9825,13 @@ function currentRotation() {
         var box = document.getElementById("eat-list");
         var note = document.getElementById("eat-count");
         var miles = Number((getSet() || {}).eventMiles || 15);
-        list = (list || []).filter(function (r) { return r.miles == null || r.miles <= miles + 0.2; });
-        list = list.filter(function (r) { return Number(r.reviews) > 2500; });
+        var pinned = mustEats();
+        pinned.forEach(function (p) {
+          var hit = (list || []).some(function (r) { return String(r.name || "").toLowerCase().indexOf(p.key) >= 0; });
+          if (!hit) list = (list || []).concat([p]);
+        });
+        list = (list || []).filter(function (r) { return r.miles == null || r.miles <= miles + 0.2 || r.pin; });
+        list = list.filter(function (r) { return r.pin || Number(r.reviews) >= 200; });
         list.sort(function (a, b) { return (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (Number(b.rating) || 0) - (Number(a.rating) || 0); });
         list = list.slice(0, 10);
         var prev = {};
@@ -9778,8 +9849,8 @@ function currentRotation() {
           });
           localStorage.setItem("bw-eat-ratings", JSON.stringify(store));
         } catch (eS) {}
-        if (note) note.textContent = list.length ? ("2,500+ reviews · " + miles + " mi") : ("No restaurants with 2,500+ reviews inside " + miles + " mi");
-        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 2,500+ reviews in range.</b><span>Widen Around home in Settings, or wait for Google Places.</span></div>';
+        if (note) note.textContent = list.length ? ("200+ reviews · " + miles + " mi") : ("No restaurants with 200+ reviews inside " + miles + " mi");
+        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 200+ reviews in range.</b><span>Widen Around home in Settings.</span></div>';
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
         enrichEatLive(list);
@@ -9852,14 +9923,83 @@ function currentRotation() {
           placeId: p.place_id || ""
         };
       }
+      function mustEats() {
+        function row(o) {
+          o.miles = (typeof milesOf === "function") ? milesOf(o.lat, o.lon) : o.miles;
+          o.area = o.addr;
+          o.pin = true;
+          return o;
+        }
+        return [
+          row({ name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood, FL 34223", lat: 26.9248, lon: -82.3535, rating: 4.5, reviews: 5500, kind: "Seafood", key: "sandbar" }),
+          row({ name: "Lighthouse Grill and Tiki Bar", addr: "260 Maryland Ave, Englewood, FL 34224", lat: 26.9062, lon: -82.3278, rating: 4.4, reviews: 900, kind: "Seafood", key: "lighthouse" })
+        ];
+      }
+      function fromPlacesText(cb) {
+        var key = String((getSet() || {}).gmapsKey || "").trim();
+        if (!key) return cb(null);
+        var miles = Number((getSet() || {}).eventMiles || 15);
+        var queries = [
+          "restaurants in Englewood FL",
+          "SandBar Tiki & Grille 1975 Beach Rd Englewood FL",
+          "Lighthouse Grill and Tiki Bar 260 Maryland Ave Englewood FL",
+          "best seafood Englewood FL",
+          "tiki bar Englewood FL"
+        ];
+        var all = [];
+        var left = queries.length;
+        function parse(j) {
+          return ((j && j.places) || []).map(function (pl) {
+            var loc = pl.location || {};
+            var lat = loc.latitude, lon = loc.longitude;
+            var name = (pl.displayName && (pl.displayName.text || pl.displayName)) || "Restaurant";
+            return {
+              name: name,
+              rating: pl.rating,
+              reviews: pl.userRatingCount || 0,
+              open: pl.currentOpeningHours ? pl.currentOpeningHours.openNow : null,
+              kind: kindOf(((pl.types || []).join(" ")) + " " + name),
+              miles: (lat && lon) ? milesOf(lat, lon) : null,
+              lat: lat, lon: lon,
+              area: pl.shortFormattedAddress || pl.formattedAddress || "",
+              addr: pl.formattedAddress || pl.shortFormattedAddress || "",
+              placeId: pl.id || ""
+            };
+          });
+        }
+        queries.forEach(function (q) {
+          var body = {
+            textQuery: q,
+            pageSize: 10,
+            locationBias: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(50000, miles * 1609.34) } }
+          };
+          fetch("https://places.googleapis.com/v1/places:searchText", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": key,
+              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.types"
+            },
+            body: JSON.stringify(body)
+          }).then(function (r) { return r.json(); }).then(function (j) {
+            all = all.concat(parse(j));
+            if (--left <= 0) {
+              if (typeof noteFeed === "function") noteFeed("eats-src", !!all.length, "Places text · " + all.length);
+              cb(all);
+            }
+          }).catch(function () {
+            if (--left <= 0) cb(all.length ? all : null);
+          });
+        });
+      }
       function fromPlacesNew(cb) {
         var key = String((getSet() || {}).gmapsKey || "").trim();
         if (!key) return cb(null);
         var miles = Number((getSet() || {}).eventMiles || 15);
         var body = {
-          includedTypes: ["restaurant"],
+          includedTypes: ["restaurant", "bar", "american_restaurant", "seafood_restaurant", "meal_takeaway"],
           maxResultCount: 20,
-          rankPreference: "DISTANCE",
+          rankPreference: "POPULARITY",
           locationRestriction: {
             circle: {
               center: { latitude: homeLat(), longitude: homeLon() },
@@ -10111,6 +10251,9 @@ function currentRotation() {
           } else if (typeof noteFeed === "function") noteFeed("eats-src", false, "OpenStreetMap empty");
         });
         fromPlacesNew(function (places) {
+          if (places && places.length) paint(mergeEatCache(places));
+        });
+        fromPlacesText(function (places) {
           if (places && places.length) paint(mergeEatCache(places));
         });
       }
@@ -14102,6 +14245,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 26.9595, lon: -82.3543, onSite: true },
       { re: /englewood beach|chadwick/i, lat: 26.9247, lon: -82.3534 },
       { re: /stump pass/i, lat: 26.899, lon: -82.341 },
+      { re: /mccurdy|comedy theatre/i, lat: 27.336, lon: -82.5307 },
       { re: /venice (theatre|beach|downtown)?/i, lat: 27.0998, lon: -82.4543 },
       { re: /port charlotte/i, lat: 26.976, lon: -82.0906 },
       { re: /north port/i, lat: 27.0442, lon: -82.236 },
@@ -14216,10 +14360,38 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         } catch (e1) { cb(null); }
       });
     }
+    function driveMinutesToQuery(q, cb) {
+      if (!q || (typeof gmapsKey === "function" && !gmapsKey())) { cb(null); return; }
+      loadGmaps(function (ok) {
+        if (!ok || !window.google || !google.maps || !google.maps.DistanceMatrixService) { cb(null); return; }
+        try {
+          var svc = new google.maps.DistanceMatrixService();
+          svc.getDistanceMatrix({
+            origins: [new google.maps.LatLng(homeLat(), homeLon())],
+            destinations: [String(q)],
+            travelMode: google.maps.TravelMode.DRIVING,
+            unitSystem: google.maps.UnitSystem.IMPERIAL,
+            drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
+          }, function (res, status) {
+            try {
+              var el = res && res.rows && res.rows[0] && res.rows[0].elements && res.rows[0].elements[0];
+              if (status !== "OK" || !el || el.status !== "OK") { cb(null); return; }
+              var sec = (el.duration_in_traffic && el.duration_in_traffic.value) || (el.duration && el.duration.value) || 0;
+              cb({ min: Math.max(1, Math.round(sec / 60)), miles: el.distance ? el.distance.value / 1609.34 : null });
+            } catch (e2) { cb(null); }
+          });
+        } catch (e1) { cb(null); }
+      });
+    }
     function driveMinutesFor(e, cb) {
+      if (e && e.inside) { cb({ min: 0, miles: 0 }); return; }
+      var pin = pinVenue(e);
+      if (pin && pin.lat != null && pin.lon != null) return driveMinutesToLatLng(pin.lat, pin.lon, cb);
+      var q = (pin && pin.q) || (typeof venueQuery === "function" ? venueQuery(e) : "") || (e && (e.loc || e.sum)) || "";
+      if (q) return driveMinutesToQuery(q, cb);
       cb(null);
       return;
-      var pin = pinVenue(e);
+      var _pin = pinVenue(e);
       if (!pin) { cb(null); return; }
       if (typeof mapsPaidOn === "function" ? !mapsPaidOn() : !gmapsKey()) { cb(null); return; }
       loadGmaps(function (ok) {
@@ -14260,14 +14432,31 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       (list || []).forEach(function (e) {
         var mi = eventMilesFromHome(e);
         if (mi != null) e.miles = mi;
-        driveMinutesFor(e, function (d) {
-          if (!d) return;
-          e.driveMin = d.min;
-          e.miles = d.mi;
-          if (typeof paintToday === "function") paintToday();
-          if (typeof window.paintEnt === "function") try { window.paintEnt(); } catch (err) {}
-        });
       });
+      var i = 0;
+      var queue = (list || []).filter(function (e) { return e && !e.inside; }).slice(0, 16);
+      function next() {
+        if (i >= queue.length) {
+          if (typeof noteFeed === "function") noteFeed("event-drive", true, queue.length + " events");
+          return;
+        }
+        var e = queue[i++];
+        driveMinutesFor(e, function (d) {
+          if (d && d.min) {
+            e.driveMin = d.min;
+            if (d.miles != null) e.miles = d.miles;
+            var hay = String(e.sum || "").slice(0, 22);
+            document.querySelectorAll("#ent-list .ev-card, #today-do .ev-card").forEach(function (card) {
+              if (hay && (card.textContent || "").indexOf(hay) >= 0) {
+                var tag = card.querySelector(".dist-tag");
+                if (tag) tag.textContent = (d.miles != null ? d.miles.toFixed(d.miles >= 10 ? 0 : 1) + " mi · " : "") + d.min + " min";
+              }
+            });
+          }
+          setTimeout(next, 160);
+        });
+      }
+      next();
     }
     function paintTodayHours() {
       var box = document.getElementById("today-hourly");
