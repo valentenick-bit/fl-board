@@ -983,13 +983,17 @@
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
     iframe.full { width:100%; height:52vh; border:0; border-radius:16px; background:#111; }
     #radar.page { background:transparent; }
-    #tenday .wx-top { display:grid; grid-template-columns:minmax(0,1fr) minmax(220px,40%); gap:12px 16px; align-items:start; }
+    #tenday .wx-top { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,46%); gap:12px 16px; align-items:start; }
     #tenday .wx-map-frame { grid-column:2; grid-row:1; margin:0; max-width:100%; }
     #tenday .wx-top-left { grid-column:1; grid-row:1; min-width:0; }
-    @media (max-width:720px) {
+    @media (max-width:900px) {
       #tenday .wx-top { grid-template-columns:1fr; }
-      #tenday .wx-map-frame { grid-column:1; grid-row:1; max-width:420px; margin:0 auto 8px; }
+      #tenday .wx-map-frame { grid-column:1; grid-row:1; max-width:none; width:100%; margin:0 0 12px; }
+      #tenday .wx-map-frame .radar-crop { min-height:42vh; }
       #tenday .wx-top-left { grid-column:1; grid-row:2; }
+    }
+    @media (max-width:900px) and (orientation:portrait) {
+      #tenday .wx-map-frame .radar-crop { min-height:48vh; }
     }
     .wx-map-frame { margin:12px 0 16px; max-width:600px; }
     .wx-map-frame .radar-crop { width:100%; height:auto; aspect-ratio:600 / 550; max-height:none; }
@@ -2785,7 +2789,7 @@ Cart shop:</textarea>
       <h2 data-k="Board">Settings</h2>
       <div class="settings-head">
         <button type="button" class="page-back" data-leave="settings" title="Back" aria-label="Back">‹</button>
-        <div><strong>Settings</strong><span>Board look, sound, radio, teams, and what rotates</span></div>
+        <div><strong>Settings</strong><span>Board look, sound, radio, teams, and the Today → Weather → Land → Sea → Sky loop</span></div>
       </div>
       <div class="set-card">
         <h3>Display</h3>
@@ -2865,7 +2869,7 @@ Cart shop:</textarea>
           </div>
         </div>
         <p class="hint">Used when picking nearby teams. Already-checked teams stay until you change them.</p>
-        <p class="hint">Today and Cam stay a little longer than the other pages.</p>
+        <p class="hint">Loop is Today, Weather, Land, Sea, Sky, then Views and the house pages. Radar and Lightning are not separate pages — radar sits on Weather, and lightning uses that same frame when it is close. Today and Cam stay a little longer than the other pages.</p>
       </div>
       <div class="set-card">
         <h3>Accessibility</h3>
@@ -2966,7 +2970,7 @@ Cart shop:</textarea>
         </div>
         <p class="hint" id="nwr-note"><b>NOAA Weather Radio.</b> Station follows the home address office.</p>
         <p class="hint"><b>Warnings now.</b> <span id="live-nwr-alert">Checking NWS for Englewood…</span></p>
-        <p class="hint"><b>Marine now.</b> <span id="live-nwr-marine">Coastal waters update with the Marine page.</span></p>
+        <p class="hint"><b>Marine now.</b> <span id="live-nwr-marine">Coastal waters update with the Sea page.</span></p>
       </div>
       <div class="set-card">
         <h3>Trash day</h3>
@@ -3002,6 +3006,19 @@ Cart shop:</textarea>
             <button type="button" data-v="1">On</button>
           </div>
         </div>
+        <div class="set-line"><label>Weather radar frame</label>
+          <div class="set-row" id="set-wxradar">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Off</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Lightning in that frame</label>
+          <div class="set-row" id="set-wxbolt">
+            <button type="button" data-v="1">On</button>
+            <button type="button" data-v="0">Radar only</button>
+          </div>
+        </div>
+        <p class="hint">Radar sits top-right on Weather (full width on a phone). Lightning uses the same frame when it is close, unless you lock it to radar only.</p>
         <div class="set-line"><label>Lightning chip</label>
           <div class="set-row" id="set-chipbolt">
             <button type="button" data-v="0">Off</button>
@@ -3097,7 +3114,7 @@ Cart shop:</textarea>
       <div class="set-card">
         <h3>When weather takes over</h3>
         <p class="hint">A watch or warning switches the board to this list. Pages marked “only when live” still sit out until that condition is true.</p>
-        <p class="hint">Lightning joins only when a lightning report is within 10 miles of the home address. Tropical joins when a named storm can affect this address. Hurricane joins on a hurricane or tropical-storm watch or warning. Gulf and Tropics join when a named storm is in that basin. Views drops out after dark unless Cam at night is on.</p>
+        <p class="hint">Lightning no longer has its own page — it swaps into the Weather radar frame when a strike is within 10 miles. Tropical joins when a named storm can affect this address. Hurricane joins on a hurricane or tropical-storm watch or warning. Gulf and Tropics join when a named storm is in that basin. Views drops out after dark unless Cam at night is on.</p>
         <div id="set-rot-storm"></div>
       </div>
       <div class="set-card">
@@ -3245,7 +3262,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 553;
+    window.BOARD_VER = 554;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3458,7 +3475,7 @@ Cart shop:</textarea>
       station: "", vol: "whisper", noaa: "1", radioauto: "1",
       zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1",
       community: "BeachWalk by Manasota Key",
-      camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1",
+      camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
       brief: "1", briefWx: "1", briefSports: "1", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
@@ -3473,7 +3490,7 @@ Cart shop:</textarea>
       else if (em <= 7) s.eventMiles = "5";
       else if (em <= 12) s.eventMiles = "10";
       else s.eventMiles = "15";
-      ["chipBolt","chipCane","chipTrash","camNight","brief","briefWx","briefSports","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
+      ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
         if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
         else if (v === false || v === 0 || v === "off" || v === "false") s[k] = "0";
@@ -7484,19 +7501,22 @@ function currentRotation() {
         .catch(function () {
           paintSpaceWeather(window.__kp || 0, "");
         });
-      fetch("https://services.swpc.noaa.gov/products/summary/solar-wind.json")
+      fetch("https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json")
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
           var el = document.getElementById("live-swind");
           if (!el) return;
           var v = d && (d.WindSpeed || d.windSpeed || d.speed);
-          if (Array.isArray(d) && d.length) v = d[d.length-1].WindSpeed || d[d.length-1][1];
-          var n = v != null ? Math.round(Number(v)) : null;
+          if (Array.isArray(d) && d.length) {
+            var last = d[d.length-1];
+            if (last && !Array.isArray(last) && typeof last === "object") v = last.WindSpeed || last.speed;
+            else if (Array.isArray(last)) v = last[2] != null ? last[2] : last[1];
+          }
+          var n = v != null && isFinite(Number(v)) ? Math.round(Number(v)) : null;
           el.textContent = n ? (n + " km/s") : "—";
           if (typeof noteFeed === "function") noteFeed("live-swind", !!n, el.textContent);
         }).catch(function () {
-          var el = document.getElementById("live-swind");
-          if (el && el.textContent === "—") {}
+          if (typeof noteFeed === "function") noteFeed("live-swind", false, "SWPC plasma failed");
         });
       fetch("https://services.swpc.noaa.gov/json/f107_cm_flux.json")
         .then(function (r) { return r.ok ? r.json() : []; })
@@ -7588,7 +7608,10 @@ function currentRotation() {
       if (note) note.textContent = which === "bolt" ? "Strikes near the house" : ((window.__radarLoopUrl || "NWS loop").replace(/^https:\/\/radar\.weather\.gov\/ridge\/standard\//, "NWS ").replace("_loop.gif", " loop"));
     }
     function syncWxMapFrame() {
-      var want = typeof boltWanted === "function" && boltWanted();
+      var set = typeof getSet === "function" ? getSet() : {};
+      var frame = document.getElementById("wx-map-frame");
+      if (frame) frame.style.display = set.wxradar === "0" ? "none" : "";
+      var want = set.wxbolt !== "0" && typeof boltWanted === "function" && boltWanted();
       var bolt = document.getElementById("wx-bolt-view");
       if (window.__wxMapTimer) { clearInterval(window.__wxMapTimer); window.__wxMapTimer = 0; }
       if (!want) {
@@ -9643,10 +9666,13 @@ function currentRotation() {
       if (n) n.innerHTML = rowHtml("normal", r.normal);
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
-    var ROT_DAILY_POOL = ["now","tenday","radar","marine","sky","cam","traffic","ent","deliver","wink","house"];
+    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","cam","traffic","ent","deliver","wink","house"];
     var ROT_STORM_POOL = ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"];
     var ROT_AUTO_NOTE = {
-      bolt: "only when lightning is reported within 10 miles of home",
+      tenday: "radar lives on this page; lightning swaps into that frame when it is close",
+      land: "quakes, AQI, heat, flood, fire weather",
+      marine: "tides, surge, water, rip, red tide",
+      bolt: "lightning now swaps into the Weather radar frame — no separate page",
       cane: "only when a named storm can affect this address",
       hurr: "only on a hurricane or tropical-storm watch or warning",
       gulfsat: "only when a named storm is in the Gulf",
@@ -9905,6 +9931,8 @@ function currentRotation() {
         mark("set-noaa", s.noaa);
         mark("set-radioauto", s.radioauto);
         mark("set-camnight", s.camNight);
+        mark("set-wxradar", s.wxradar);
+        mark("set-wxbolt", s.wxbolt);
         mark("set-chipbolt", s.chipBolt);
         mark("set-chipcane", s.chipCane);
         mark("set-chiptrash", s.chipTrash);
@@ -10099,6 +10127,8 @@ function currentRotation() {
       tap("set-noaa", "noaa");
       tap("set-radioauto", "radioauto");
       tap("set-camnight", "camNight");
+      tap("set-wxradar", "wxradar", function () { if (typeof syncWxMapFrame === "function") syncWxMapFrame(); });
+      tap("set-wxbolt", "wxbolt", function () { if (typeof syncWxMapFrame === "function") syncWxMapFrame(); });
       tap("set-chipbolt", "chipBolt", function () { if (typeof writeTodayChips === "function") writeTodayChips(); if (typeof syncLightningUI === "function") syncLightningUI(); });
       tap("set-chipcane", "chipCane", function () { if (typeof writeTodayChips === "function") writeTodayChips(); });
       tap("set-chiptrash", "chipTrash", function () { if (typeof writeTodayChips === "function") writeTodayChips(); });
