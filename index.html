@@ -3370,7 +3370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 575;
+    window.BOARD_VER = 576;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3816,66 +3816,48 @@ Cart shop:</textarea>
       }).catch(function () { hideAddrSuggest(); });
     }
 
+    function gmapsReady() {
+      return !!(window.google && google.maps && typeof google.maps.Map === "function");
+    }
+    function placesReady() {
+      return !!(gmapsReady() && google.maps.places && google.maps.places.PlacesService);
+    }
+    function finishGmaps(ok) {
+      clearTimeout(window.__gmapsTimer);
+      window.__gmapsLoading = false;
+      var good = !!(ok && gmapsReady());
+      if (typeof noteFeed === "function") {
+        noteFeed("gmaps", good, good ? (placesReady() ? "maps + places" : "maps, no places") : "script not ready");
+        noteFeed("places", placesReady(), placesReady() ? "PlacesService" : "off");
+      }
+      var fns = window.__gmapsWait || [];
+      window.__gmapsWait = [];
+      fns.forEach(function (fn) { try { fn(good); } catch (eF) {} });
+    }
+    window.__commonsGmaps = function () { finishGmaps(true); };
     function loadGmaps(done) {
-      if (window.google && google.maps && google.maps.Map) { done(true); return; }
-      if (typeof mapsPaidOn === "function" && !mapsPaidOn()) { done(false); return; }
-      var key = String(getSet().gmapsKey || "").trim();
-      if (!key) { done(false); return; }
-      if (window.__gmapsLoading) { window.__gmapsWait = window.__gmapsWait || []; window.__gmapsWait.push(done); return; }
+      if (gmapsReady()) { if (done) done(true); return; }
+      var key = String((typeof getSet === "function" && getSet().gmapsKey) || "").trim();
+      if (!key) {
+        if (typeof noteFeed === "function") noteFeed("gmaps", false, "no key");
+        if (done) done(false);
+        return;
+      }
+      window.__gmapsWait = window.__gmapsWait || [];
+      if (done) window.__gmapsWait.push(done);
+      if (document.getElementById("gmaps-js") || window.__gmapsLoading) return;
       window.__gmapsLoading = true;
+      window.__gmapsTimer = setTimeout(function () { finishGmaps(false); }, 10000);
       var s = document.createElement("script");
-      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places&loading=async";
-      window.__gmapsTimer = setTimeout(function () {
-        if (window.__gmapsLoading) {
-          window.__gmapsLoading = false;
-          done(false);
-          (window.__gmapsWait || []).forEach(function (fn) { try { fn(false); } catch (eT) {} });
-          window.__gmapsWait = [];
-        }
-      }, 8000);
-      s.onload = function () {
-        clearTimeout(window.__gmapsTimer);
-        window.__gmapsLoading = false;
-        done(true);
-        (window.__gmapsWait || []).forEach(function (fn) { try { fn(true); } catch (e) {} });
-        window.__gmapsWait = [];
-      };
-      s.onerror = function () {
-        window.__gmapsLoading = false;
-        done(false);
-      };
+      s.id = "gmaps-js";
+      s.async = true;
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places&callback=__commonsGmaps";
+      s.onerror = function () { finishGmaps(false); };
       document.head.appendChild(s);
     }
     function loadGmapsLib(done) {
-      if (window.google && google.maps && google.maps.places) { done(true); return; }
-      var key = String((typeof getSet === "function" && getSet().gmapsKey) || "").trim();
-      if (!key) { done(false); return; }
-      if (window.__gmapsLoading) { window.__gmapsWait = window.__gmapsWait || []; window.__gmapsWait.push(done); return; }
-      if (window.google && google.maps && !google.maps.places) {
-        // JS API loaded without places — still try nearby via new script flag
-      }
-      window.__gmapsLoading = true;
-      var s = document.createElement("script");
-      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places&loading=async";
-      window.__gmapsTimer = setTimeout(function () {
-        if (window.__gmapsLoading) {
-          window.__gmapsLoading = false;
-          done(false);
-          (window.__gmapsWait || []).forEach(function (fn) { try { fn(false); } catch (eT) {} });
-          window.__gmapsWait = [];
-        }
-      }, 8000);
-      s.onload = function () {
-        clearTimeout(window.__gmapsTimer);
-        window.__gmapsLoading = false;
-        done(!!(window.google && google.maps && google.maps.places));
-        (window.__gmapsWait || []).forEach(function (fn) { try { fn(!!(window.google && google.maps && google.maps.places)); } catch (e) {} });
-        window.__gmapsWait = [];
-      };
-      s.onerror = function () { clearTimeout(window.__gmapsTimer); window.__gmapsLoading = false; done(false); };
-      document.head.appendChild(s);
+      loadGmaps(function (ok) { if (done) done(!!(ok && placesReady())); });
     }
-
     function nudgeTrafficLayer() {
       clearTimeout(window.__trafficNudge);
       window.__trafficNudge = setTimeout(function () {
@@ -3920,11 +3902,21 @@ Cart shop:</textarea>
           if (typeof noteFeed === "function") noteFeed("traffic", true, "reuse map");
           return;
         }
-        var map = new google.maps.Map(box, { center: center, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
-        window.__trafficMap = map;
-        window.__trafficLayer = new google.maps.TrafficLayer();
-        window.__trafficLayer.setMap(map);
-        window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
+        if (typeof google.maps.Map !== "function") {
+          if (typeof noteFeed === "function") noteFeed("traffic", false, "Map is not a constructor");
+          return;
+        }
+        var map;
+        try {
+          map = new google.maps.Map(box, { center: center, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
+          window.__trafficMap = map;
+          window.__trafficLayer = new google.maps.TrafficLayer();
+          window.__trafficLayer.setMap(map);
+          window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
+        } catch (eMap) {
+          if (typeof noteFeed === "function") noteFeed("traffic", false, String(eMap && eMap.message || eMap));
+          return;
+        }
         nudgeTrafficLayer();
         setTimeout(function () {
           try {
@@ -9823,7 +9815,11 @@ function currentRotation() {
             });
             var need = list.slice(0, 10);
             var left = need.length;
-            function finish() { eatCacheWrite(list); cb(list); }
+            function finish() {
+              eatCacheWrite(list);
+              if (typeof noteFeed === "function") noteFeed("eats-src", true, "Google Places · " + list.length);
+              cb(list);
+            }
             if (!left) return finish();
             need.forEach(function (r) {
               if (!r.placeId) { if (!--left) finish(); return; }
@@ -9902,6 +9898,7 @@ function currentRotation() {
           var cached = eatCacheRead().filter(function (r) { return r && r.at && (Date.now() - r.at) < 7 * 24 * 3600 * 1000 && r.rating; });
           fromOverpass(function (rows) {
             var list = mergeEatCache(rows && rows.length ? rows : cached);
+            if (typeof noteFeed === "function") noteFeed("eats-src", !!(list && list.length), rows && rows.length ? "OpenStreetMap + cache" : (cached.length ? "cached ratings" : "none"));
             fillAddrs(list, paint);
           });
         });
