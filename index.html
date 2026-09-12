@@ -2111,8 +2111,8 @@
         <div class="wx-top">
                 <div class="wx-map-frame" id="wx-map-frame">
           <div class="radar-crop radar-stage" id="wx-radar-stage">
-            <img class="wx-map-pane on" id="wx-radar-view" alt="Radar" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
-            <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank"></iframe>
+            <iframe class="wx-map-pane on" id="wx-radar-view" title="Radar" src="about:blank" allowfullscreen></iframe>
+            <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
           </div>
           <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">NWS loop</span></p>
         </div>
@@ -2163,7 +2163,7 @@
         <div class="land-map-frame" id="land-map-frame">
           <div class="radar-crop radar-stage" id="land-traffic-stage">
             <div id="traffic-gmap" class="lite gmap-box land-map-pane" hidden></div>
-            <iframe class="lite land-map-pane on" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=12&hl=en&layer=t&t=m&output=embed" allowfullscreen></iframe>
+            <iframe class="lite land-map-pane on" id="traffic-map" title="Traffic" src="about:blank" allowfullscreen></iframe>
           </div>
           <p class="wx-map-cap"><b>Traffic</b><span id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></span></p>
         </div>
@@ -3411,7 +3411,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 610;
+    window.BOARD_VER = 611;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3747,6 +3747,17 @@ Cart shop:</textarea>
       var typed = box && box.value ? String(box.value).trim() : "";
       return String(typed || s.address || s.place || "").trim();
     }
+    function homePinQuery() {
+      var addr = homeAddress();
+      if (addr && /\d/.test(addr) && addr.length > 8) return addr;
+      return homeLat().toFixed(5) + "," + homeLon().toFixed(5);
+    }
+    function homeTrafficEmbed() {
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=14&hl=en&layer=t&t=m&output=embed";
+    }
+    function homeBoltEmbed() {
+      return "https://map.blitzortung.org/#10/" + homeLat() + "/" + homeLon();
+    }
     function matrixOrigin() {
       var addr = homeAddress();
       if (addr && /\d/.test(addr) && addr.length > 8) return addr;
@@ -3826,6 +3837,8 @@ Cart shop:</textarea>
         finish(true, addr + " · " + lat.toFixed(4) + ", " + lon.toFixed(4));
         if (typeof resolveHomeGeo === "function") resolveHomeGeo();
         if (typeof applyLocalMaps === "function") applyLocalMaps();
+        if (typeof applyRadar === "function") applyRadar();
+        if (typeof syncWxMapFrame === "function") syncWxMapFrame();
         if (typeof refreshWeather === "function") refreshWeather();
         if (typeof loadWx === "function") loadWx();
         if (typeof fillZipRadio === "function") fillZipRadio();
@@ -3961,9 +3974,12 @@ Cart shop:</textarea>
       var frame = document.getElementById("traffic-map");
       if (!box && !frame) return;
       var center = { lat: homeLat(), lng: homeLon() };
-      var embed = "https://maps.google.com/maps?q=" + encodeURIComponent(homeAddress() || "Englewood, FL") + "&z=12&hl=en&layer=t&t=m&output=embed";
+      var embed = homeTrafficEmbed();
       var page = (document.querySelector(".page.on") || {}).id || "";
-      if (frame && (force || /waze/i.test(frame.src || "") || !frame.src)) frame.src = embed;
+      if (frame && (force || frame.getAttribute("data-pin") !== homePinQuery() || !frame.src || frame.src === "about:blank")) {
+        frame.src = embed;
+        frame.setAttribute("data-pin", homePinQuery());
+      }
       if (page !== "land" && !force) {
         if (box) box.hidden = true;
         if (frame) frame.style.display = "";
@@ -4475,7 +4491,7 @@ Cart shop:</textarea>
       setBtn(fd, fdN, pack && pack.fd, "Fire");
     }
     function rainviewerUrl(lat, lon) {
-      return "https://www.rainviewer.com/map.html?loc=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + ",8";
+      return "https://www.rainviewer.com/map.html?loc=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + ",9";
     }
     function stopRainviewerLoop() {
       if (window.__rvTimer) { clearInterval(window.__rvTimer); window.__rvTimer = 0; }
@@ -4502,6 +4518,15 @@ Cart shop:</textarea>
       }
       var wxImg = document.getElementById("wx-radar-view");
       if (wxImg) {
+        var rv = rainviewerUrl(lat, lon);
+        if (wxImg.tagName === "IFRAME") {
+          if (wxImg.getAttribute("data-pin") !== rv) {
+            wxImg.src = rv;
+            wxImg.setAttribute("data-pin", rv);
+          }
+        } else {
+          wxImg.src = nws + "?t=" + Date.now();
+        }
         wxImg.alt = st + " radar loop";
         wxImg.onload = function () {
           var box = document.getElementById("wx-radar-stage");
@@ -4524,16 +4549,17 @@ Cart shop:</textarea>
     function applyLocalMaps() {
       var lat = homeLat(), lon = homeLon(), place = homePlace();
       var bolt = document.getElementById("bolt-map");
-      if (bolt) bolt.src = "https://map.blitzortung.org/#7/" + lat + "/" + lon;
+      if (bolt) bolt.src = homeBoltEmbed();
       var boltNote = document.getElementById("bolt-note");
       if (boltNote) boltNote.textContent = "Strikes near " + place + ".";
       if (typeof noteFeed === "function") noteFeed("bolt-map", true, "blitzortung");
       var traf = document.getElementById("traffic-map");
-      var pinTxt = homeAddress() || place || "";
+      var pinTxt = homePinQuery();
       var pin = encodeURIComponent(pinTxt);
-      var trafficUrl = "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d48000!2d" + lon + "!3d" + lat + "!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!5m1!1e1";
-      if (traf && traf.getAttribute("src") !== trafficUrl && !(window.__trafficMap && typeof mapsPaidOn === "function" && mapsPaidOn())) {
+      var trafficUrl = homeTrafficEmbed();
+      if (traf && (traf.getAttribute("data-pin") !== pinTxt || !traf.src || traf.src === "about:blank")) {
         traf.src = trafficUrl;
+        traf.setAttribute("data-pin", pinTxt);
       }
       if (typeof paintGoogleTraffic === "function") try { paintGoogleTraffic(false); } catch (eT) {}
       if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps traffic " + lat.toFixed(3) + "," + lon.toFixed(3));
@@ -7906,7 +7932,7 @@ function currentRotation() {
     }
     function lightningActive() { return lightningPrep(); }
     function boltUrl() {
-      return "https://map.blitzortung.org/#7/" + homeLat() + "/" + homeLon();
+      return homeBoltEmbed();
     }
     function wxMapShow(which) {
       var rad = document.getElementById("wx-radar-view");
@@ -7931,7 +7957,12 @@ function currentRotation() {
         if (typeof noteFeed === "function") noteFeed("wx-map-frame", true, "radar");
         return;
       }
-      if (bolt && (!bolt.src || bolt.src.indexOf("blitzortung") < 0)) bolt.src = boltUrl();
+      if (bolt) bolt.src = boltUrl();
+      var rad = document.getElementById("wx-radar-view");
+      if (rad && rad.tagName === "IFRAME") {
+        var rv = rainviewerUrl(homeLat(), homeLon());
+        if (rad.getAttribute("data-pin") !== rv) { rad.src = rv; rad.setAttribute("data-pin", rv); }
+      }
       var onBolt = false;
       wxMapShow("radar");
       window.__wxMapTimer = setInterval(function () {
@@ -9150,9 +9181,7 @@ function currentRotation() {
         '<a href="https://www.flightaware.com/live/flight/' + code + '" target="_blank" rel="noopener">FlightAware</a>';
     }
     function boltMapSrc() {
-      var lat = (window.__home && window.__home.lat) || 26.9595;
-      var lon = (window.__home && window.__home.lon) || -82.3543;
-      return "https://map.blitzortung.org/#7/" + lat + "/" + lon;
+      return homeBoltEmbed();
     }
     function eventMapQuery(el, ev) {
       if (ev && ev.loc) return ev.loc + (ev.inside ? " BeachWalk Manasota Key Florida" : " Englewood Florida");
