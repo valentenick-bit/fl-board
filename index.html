@@ -820,7 +820,10 @@
     .today-main { min-width:0; }
     .today-side { min-width:0; display:flex; flex-direction:column; gap:14px; }
     .today-side .ent-h { margin:0 0 8px; }
-    #today-do, #today-deliv { display:flex; flex-direction:column; gap:8px; }
+    #today-do, #today-deliv, #today-eat-pick { display:flex; flex-direction:column; gap:8px; }
+    #today-eat-pick { margin-top:10px; }
+    .eat-why { display:block; margin:6px 0 0; font-size:13px; line-height:1.35; color:var(--ink); opacity:.88; }
+    html.dark .eat-why { color:#d9d0c0; }
     #today-fly-body { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:stretch; }
     @media (orientation:portrait) {
       .today-shell { grid-template-columns:1fr; }
@@ -838,7 +841,13 @@
     }
     html.phone #today-do, html.phone #today-deliv, html.phone #today-fly-body, html.phone #today-bolt-body, html.phone #today-cane-body, html.phone #today-trash-body { grid-template-columns:1fr; }
 
-    .fun-shell { display:grid; grid-template-columns:1fr 1fr; gap:16px 18px; align-items:stretch; }
+    .fun-shell { display:grid; grid-template-columns:1fr 1fr; gap:16px 18px; align-items:start; }
+    @media (max-width:900px) {
+      .fun-shell { grid-template-columns:1fr; }
+    }
+    html.phone .fun-shell { grid-template-columns:1fr; }
+    #eat-list { min-width:0; }
+    html.phone #eat-list .eat-card, html.phone #eat-list .ev-card { max-width:100%; }
 
     .fun-col-h {
       margin:0 0 4px;
@@ -2046,6 +2055,7 @@
         <aside class="today-side" id="today-side">
           <div id="today-deliv-col">
             <div id="today-deliv"></div>
+            <div id="today-eat-pick"></div>
           </div>
           <div id="today-do-col">
             <div id="today-do"></div>
@@ -2945,11 +2955,8 @@ Cart shop:</textarea>
         <div class="set-line"><label>Date format</label>
           <div class="set-row" id="set-datefmt">
             <button type="button" data-v="us">Sat, Sep 5</button>
-            <button type="button" data-v="intl">Sat 5 Sep</button>
-            <button type="button" data-v="long">5 September 2026</button>
-            <button type="button" data-v="iso">2026-09-05</button>
             <button type="button" data-v="num-us">9/5/2026</button>
-            <button type="button" data-v="num-intl">5/9/2026</button>
+            <button type="button" data-v="intl">Sat 5 Sep</button>
           </div>
         </div>
         <div class="set-line"><label>Units</label>
@@ -3385,7 +3392,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 601;
+    window.BOARD_VER = 604;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3608,6 +3615,8 @@ Cart shop:</textarea>
       var s = {};
       try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e) { s = {}; }
       Object.keys(SET_DEFAULTS).forEach(function (k) { if (s[k] == null) s[k] = SET_DEFAULTS[k]; });
+      if (s.dateFmt === "iso" || s.dateFmt === "num-intl" || s.dateFmt === "long") s.dateFmt = "intl";
+      if (s.dateFmt !== "us" && s.dateFmt !== "num-us" && s.dateFmt !== "intl") s.dateFmt = "us";
       var em = Number(s.eventMiles);
       if (!em || em < 5) s.eventMiles = "5";
       else if (em <= 7) s.eventMiles = "5";
@@ -9291,6 +9300,7 @@ function currentRotation() {
       if (typeof paintTodayHours === "function") try { paintTodayHours(); } catch (e0) {}
       if (typeof paintTodayDays === "function") try { paintTodayDays(); } catch (e1) {}
       var doBox = document.getElementById("today-do");
+      if (typeof window.paintEatPick === "function") try { window.paintEatPick(); } catch (eEat) {}
       var delBox = document.getElementById("today-deliv");
       var delCol = document.getElementById("today-deliv-col");
       var marks0 = window.__deliveredMarks || {};
@@ -9623,12 +9633,11 @@ function currentRotation() {
       var DELIV_ID = "1fdtZGOyKVZvxi480Ypp3XlEsyENSx4cA";
       var drive = "https://drive.google.com/uc?export=download&id=" + DELIV_ID;
       var urls = [
+        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/deliveries.json?cb=" + Date.now(),
+        "/deliveries.json?cb=" + Date.now(),
         drive + "&cb=" + Date.now(),
         "https://drive.usercontent.google.com/download?id=" + DELIV_ID + "&export=download&confirm=t&cb=" + Date.now(),
-        "/deliveries.json?cb=" + Date.now(),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent(drive),
-        "https://api.allorigins.win/get?url=" + encodeURIComponent(drive),
-        "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(drive)
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(drive)
       ];
       function esc(s) {
         return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
@@ -9808,6 +9817,27 @@ function currentRotation() {
           "</div></div>";
       }
 
+      window.eatCardHtml = card;
+      function pickCard(r) {
+        var html = card(r);
+        if (r && r.why) {
+          html = html.replace("</div></div>", '<span class="eat-why">' + String(r.why).replace(/</g, "") + "</span></div></div>");
+        }
+        return html;
+      }
+      window.paintEatPick = function () {
+        var box = document.getElementById("today-eat-pick");
+        if (!box) return;
+        var p = window.__eatPick;
+        if (!p || !p.name) { box.innerHTML = ""; return; }
+        if (p.lat != null && p.lon != null && typeof milesOf === "function" && typeof inRange === "function") {
+          p.miles = milesOf(p.lat, p.lon);
+          if (!inRange(p)) { box.innerHTML = ""; if (typeof noteFeed === "function") noteFeed("eat-pick", false, "outside range"); return; }
+        }
+        box.innerHTML = '<p class="ent-h">Today’s table</p>' + pickCard(p);
+        if (typeof noteFeed === "function") noteFeed("eat-pick", true, p.name);
+        if (typeof loadBusyPills === "function") setTimeout(loadBusyPills, 80);
+      };
       function enrichAddrs(list) {
         var s = getSet() || {};
         var key = String(s.gmaps || s.gmapsKey || "").trim();
@@ -10415,11 +10445,13 @@ function currentRotation() {
       setInterval(run, 15 * 60 * 1000);
     })();
     (function loadKeyJson() {
-      var KEY_ID = "1Yl_BVtP0Gx3bEZIvxnb-U7-gW4OUdXv_";
+      var KEY_ID = "195jOs8blhTyKRJpMoDDpICnbl97A7kO1";
       var urls = [
+        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/key.json?cb=" + Date.now(),
+        "/key.json?cb=" + Date.now(),
+        "key.json",
         "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=" + KEY_ID),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://drive.google.com/uc?export=download&id=" + KEY_ID),
-        "/key.json", "key.json", "./key.json"
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://drive.google.com/uc?export=download&id=" + KEY_ID)
       ];
       function apply(d) {
         if (!d) return;
@@ -10442,6 +10474,10 @@ function currentRotation() {
           if (bAge) bAge.textContent = sampleAgeLabel(bWhen);
         }
         if (d.fpl && document.getElementById("live-fpl")) document.getElementById("live-fpl").textContent = d.fpl;
+        if (d.eatPick && d.eatPick.name) {
+          window.__eatPick = d.eatPick;
+          if (typeof window.paintEatPick === "function") window.paintEatPick();
+        }
       }
       function next(i) {
         if (i >= urls.length) return;
@@ -10455,10 +10491,9 @@ function currentRotation() {
       var FLIGHT_ID = "19TGlPZR7yD9uiuWu-foeulHGoRZpp1qr";
       var driveF = "https://drive.usercontent.google.com/download?id=" + FLIGHT_ID + "&export=download&confirm=t";
       var urls = [
-        "/flights.json",
+        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/flights.json?cb=" + Date.now(),
+        "/flights.json?cb=" + Date.now(),
         "https://api.allorigins.win/raw?url=" + encodeURIComponent(driveF),
-        "https://api.allorigins.win/get?url=" + encodeURIComponent(driveF),
-        "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(driveF),
         driveF
       ];
       function paint(d) {
