@@ -858,6 +858,8 @@
       .fun-shell { grid-template-columns:1fr; }
     }
     html.phone .fun-shell { grid-template-columns:1fr; }
+    html.phone .fun-eats { order: -1; }
+    html.phone .fun-main { order: 1; }
     #eat-list { min-width:0; }
     html.phone #eat-list .eat-card, html.phone #eat-list .ev-card { max-width:100%; }
 
@@ -3413,7 +3415,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 615;
+    window.BOARD_VER = 616;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -8169,6 +8171,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v616 — Phone Fun puts Top restaurants above Events. Cards keep ratings and addresses when Google Places is off.",
       "v499 — Deliveries pull the Sept 9 Gmail scan file, not the old Sept 6 list.",
       "v498 — Calendar paint no longer crashes before tides, deliveries, and rotation finish loading.",
       "v497 — Events still show if distance is unknown. Loading labels clear instead of hanging.",
@@ -9980,26 +9983,41 @@ function currentRotation() {
           }).catch(function () {});
         });
       }
-      function paint(list) {
+      function paintEatBox(list) {
         var box = document.getElementById("eat-list");
         var note = document.getElementById("eat-count");
+        var rows = list || window.__eats || [];
+        var miles = Number((getSet() || {}).eventMiles || 15);
+        var ratedN = rows.filter(function (r) { return r && r.rating != null; }).length;
+        if (box) {
+          box.innerHTML = rows.length
+            ? rows.map(card).join("")
+            : '<div class="card quiet"><b>No restaurants in range.</b><span>Widen Around home in Settings.</span></div>';
+        }
+        if (note) {
+          note.textContent = rows.length
+            ? (ratedN ? (rows.length + " · Google ratings · " + miles + " mi") : (rows.length + " nearby · ratings loading · " + miles + " mi"))
+            : ("Looking up restaurants inside " + miles + " mi");
+        }
+      }
+      function paint(list) {
         var miles = Number((getSet() || {}).eventMiles || 15);
         var incoming = list || [];
         var haveRated = (window.__eats || []).filter(function (r) { return Number(r.reviews) > 0; }).length;
         var incomingRated = incoming.filter(function (r) { return Number(r.reviews) > 0; }).length;
-        if (haveRated >= 6 && incomingRated < 3) return;
-        list = dedupeEats(incoming.concat(mustEats()));
+        if (haveRated >= 6 && incomingRated < 3) {
+          paintEatBox(window.__eats);
+          return;
+        }
+        list = dedupeEats(incoming.concat(mustEats()).concat(eatCacheRead()));
         list = list.filter(inRange);
         var rated = list.filter(function (r) { return r.rating != null && Number(r.reviews) > 0; });
-        var goog = list.filter(function (r) { return r.gRated || (r.rating != null && Number(r.reviews) > 0); });
+        var goog = list.filter(function (r) { return r.gRated || (r.rating != null && Number(r.reviews) > 0) || r.pin; });
         if (goog.length) list = goog;
-        if (rated.length) {
-          var known = rated.filter(function (r) { return Number(r.reviews) > 2500; });
-          if (known.length >= 10) list = known;
-          else {
-            var mid = rated.filter(function (r) { return Number(r.reviews) > 2000; });
-            list = mid.length ? mid : rated;
-          }
+        if (rated.length >= 4) {
+          var known = rated.filter(function (r) { return Number(r.reviews) > 800; });
+          if (known.length >= 6) list = known;
+          else list = rated;
         }
         window.__eatPool = (list || []).slice();
         list.sort(function (a, b) {
@@ -10021,8 +10039,7 @@ function currentRotation() {
           });
           localStorage.setItem("bw-eat-ratings", JSON.stringify(store));
         } catch (eS) {}
-        if (note) note.textContent = list.length ? ("Google ratings · " + miles + " mi") : ("Looking up Google ratings inside " + miles + " mi");
-        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 200+ reviews in range.</b><span>Widen Around home in Settings.</span></div>';
+        paintEatBox(list);
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
         eatCacheWrite(list);
@@ -10042,9 +10059,7 @@ function currentRotation() {
             window.__eatRateBusy = false;
             var shown = window.__eats || list || [];
             if (typeof noteFeed === "function") noteFeed("eat-rate", !!shown.length, shown.length + " rated");
-            var note = document.getElementById("eat-count");
-            var miles = Number((getSet() || {}).eventMiles || 15);
-            if (note) note.textContent = shown.length ? (shown.length + " · Google reviews · " + miles + " mi") : ("No restaurants inside " + miles + " mi");
+            paintEatBox(shown);
             eatCacheWrite(shown);
             if (typeof window.paintEatPick === "function") window.paintEatPick();
             return;
@@ -10070,6 +10085,7 @@ function currentRotation() {
               if (g.placeId) r.placeId = g.placeId;
               if (g.lat) { r.lat = g.lat; r.lon = g.lon; }
               gCacheSet("place", r.name || "", { rating: r.rating, reviews: r.reviews, addr: r.addr, placeId: r.placeId, lat: r.lat, lon: r.lon });
+              if (i === 1 || i % 3 === 0) paintEatBox(window.__eats || list);
             }
             setTimeout(next, 180);
           });
@@ -10216,13 +10232,33 @@ function currentRotation() {
           placeId: p.place_id || ""
         };
       }
+      function eatStem(r) {
+        var n = String((r && r.name) || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ");
+        n = n.replace(/\b(the|grill|grille|bar|tiki|restaurant|tavern|marina|pier|and|cafe|café|on|at)\b/g, " ").replace(/\s+/g, " ").trim();
+        return n.split(" ").slice(0, 3).join(" ");
+      }
       function eatKey(r) {
         if (!r) return "";
+        var stem = eatStem(r);
+        if (stem) return "n:" + stem;
         if (r.placeId) return "id:" + r.placeId;
-        var n = String(r.name || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ");
-        n = n.replace(/\b(the|grill|grille|bar|tiki|restaurant|and|cafe|café)\b/g, " ").replace(/\s+/g, " ").trim();
-        if (r.lat && r.lon) return n + "@" + Number(r.lat).toFixed(3) + "," + Number(r.lon).toFixed(3);
-        return n || String(r.addr || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        if (r.lat && r.lon) return "geo:" + Number(r.lat).toFixed(3) + "," + Number(r.lon).toFixed(3);
+        return String(r.addr || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      }
+      function mergeEatRow(prev, r) {
+        var out = Object.assign({}, prev, r);
+        if ((Number(prev.reviews) || 0) > (Number(r.reviews) || 0)) {
+          out = Object.assign({}, r, prev);
+        }
+        if (!out.addr || String(out.addr).length < 12) out.addr = prev.addr || r.addr || out.addr;
+        if (out.rating == null) out.rating = prev.rating != null ? prev.rating : r.rating;
+        if (!out.reviews) out.reviews = prev.reviews || r.reviews || 0;
+        if (!out.kind || out.kind === "Restaurant") out.kind = (prev.kind && prev.kind !== "Restaurant" ? prev.kind : r.kind) || out.kind;
+        if (out.lat == null) { out.lat = prev.lat != null ? prev.lat : r.lat; out.lon = prev.lon != null ? prev.lon : r.lon; }
+        if (!out.placeId) out.placeId = prev.placeId || r.placeId;
+        if (prev.gRated || r.gRated || out.rating != null) out.gRated = true;
+        if (prev.pin || r.pin) out.pin = true;
+        return out;
       }
       function dedupeEats(list) {
         var by = {};
@@ -10230,14 +10266,7 @@ function currentRotation() {
           var k = eatKey(r);
           if (!k) return;
           var prev = by[k];
-          if (!prev) { by[k] = r; return; }
-          if ((Number(r.reviews) || 0) > (Number(prev.reviews) || 0)) by[k] = Object.assign({}, prev, r);
-          else {
-            if (!prev.addr && r.addr) prev.addr = r.addr;
-            if (!prev.placeId && r.placeId) prev.placeId = r.placeId;
-            if (prev.rating == null && r.rating != null) prev.rating = r.rating;
-            if (!prev.lat && r.lat) { prev.lat = r.lat; prev.lon = r.lon; }
-          }
+          by[k] = prev ? mergeEatRow(prev, r) : r;
         });
         return Object.keys(by).map(function (k) { return by[k]; });
       }
@@ -10246,11 +10275,20 @@ function currentRotation() {
           o.miles = (typeof milesOf === "function") ? milesOf(o.lat, o.lon) : o.miles;
           o.area = o.addr;
           o.pin = true;
+          if (o.rating != null) o.gRated = true;
           return o;
         }
         return [
-          row({ name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood, FL 34223", lat: 26.9248, lon: -82.3535, rating: null, reviews: 0, kind: "Seafood", key: "sandbar" }),
-          row({ name: "Lighthouse Grill and Tiki Bar", addr: "260 Maryland Ave, Englewood, FL 34224", lat: 26.9062, lon: -82.3278, rating: null, reviews: 0, kind: "Seafood", key: "lighthouse" })
+          row({ name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood, FL 34223", lat: 26.9248, lon: -82.3535, rating: 4.5, reviews: 5935, kind: "Seafood" }),
+          row({ name: "Farlow's on the Water", addr: "2080 S McCall Rd, Englewood, FL 34224", lat: 26.9324, lon: -82.3429, rating: 4.5, reviews: 2591, kind: "Seafood" }),
+          row({ name: "Lighthouse Grill and Tiki Bar", addr: "260 Maryland Ave, Englewood, FL 34224", lat: 26.9062, lon: -82.3278, rating: 4.3, reviews: 3600, kind: "Seafood" }),
+          row({ name: "Crow's Nest Restaurant, Tavern & Marina", addr: "1968 Tarpon Center Dr, Venice, FL 34285", lat: 27.112, lon: -82.465, rating: 4.8, reviews: 4416, kind: "Seafood" }),
+          row({ name: "Sharky's on the Pier", addr: "1600 Harbor Dr S, Venice, FL 34285", lat: 27.0764, lon: -82.4525, rating: 4.4, reviews: 15531, kind: "Seafood" }),
+          row({ name: "Dockside Waterfront Grill", addr: "1215 Tarpon Center Dr, Venice, FL 34285", lat: 27.1006, lon: -82.4489, rating: 4.5, reviews: 3200, kind: "Seafood" }),
+          row({ name: "Snook Haven", addr: "5000 E Venice Ave, Venice, FL 34292", lat: 27.1008, lon: -82.3575, rating: 4.4, reviews: 4100, kind: "American" }),
+          row({ name: "The Soda Fountain", addr: "201 W Venice Ave, Venice, FL 34285", lat: 27.0996, lon: -82.4498, rating: 4.6, reviews: 2100, kind: "Cafe" }),
+          row({ name: "Norma Jean's Sports Grill", addr: "1635 US 41 Bypass S, Venice, FL 34293", lat: 27.082, lon: -82.431, rating: 4.4, reviews: 2800, kind: "American" }),
+          row({ name: "Richard's at Boca", addr: "595 Boca Cove, Englewood, FL 34223", lat: 26.9265, lon: -82.353, rating: 4.5, reviews: 900, kind: "American" })
         ];
       }
       function fromPlacesText(cb) {
