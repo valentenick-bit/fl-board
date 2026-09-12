@@ -2072,7 +2072,7 @@
             <div id="today-eat-pick"></div>
           </div>
           <div id="today-do-col">
-            <p class="today-sec-h" id="today-do-h">Today</p>
+            <p class="today-sec-h" id="today-do-h">Today’s events</p>
             <div id="today-do"></div>
           </div>
         </aside>
@@ -2260,7 +2260,7 @@
         </p>
         </div>
         <aside class="fun-eats" id="fun-eats">
-          <h3 class="fun-col-h">Restaurants</h3>
+          <h3 class="fun-col-h">Top restaurants</h3>
           <p class="pill-key" id="eat-count">Restaurants near home…</p>
           <div id="eat-list"></div>
         </aside>
@@ -3407,7 +3407,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 605;
+    window.BOARD_VER = 608;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -8765,6 +8765,12 @@ function currentRotation() {
     })();
 
     function dayKeyET(d) {
+      if (d == null || d === "") return "";
+      if (typeof d === "string") {
+        var s = d.trim();
+        var dayOnly = s.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (dayOnly && (s.length === 10 || /T00:00:00/.test(s))) return dayOnly[1];
+      }
       return new Date(d).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
     }
     function isTodayET(d) {
@@ -9170,7 +9176,7 @@ function currentRotation() {
         openMapPop("Lightning", boltMapSrc(), '<a href="' + boltMapSrc() + '" target="_blank" rel="noopener">Open live lightning map</a>');
         return;
       }
-      var evCard = e.target.closest && e.target.closest("#today-do .card, #ent-list .card, #eat-list .card");
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #ent-list .card, #eat-list .card");
       if (evCard) {
         var q = eventMapQuery(evCard);
         var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
@@ -9341,15 +9347,21 @@ function currentRotation() {
       });
       window.__delivStarted = window.__delivStarted || Date.now();
       var waitingD = !window.__delivData && (Date.now() - window.__delivStarted < 8000);
+      if (waitingD) setTimeout(function () { try { paintToday(); } catch (eW) {} }, 2500);
       var showBoxes = true;
       if (delCol) delCol.hidden = false;
       if (doBox) {
         var evs = (window.__entAll || []).filter(function (e) {
-          if (typeof coversTodayET === "function" && !coversTodayET(e)) return false;
+          if (!e) return false;
+          var todayish = (typeof coversTodayET === "function" && coversTodayET(e)) || (typeof isTodayET === "function" && isTodayET(e.when));
+          if (!todayish) return false;
           var start = e.when ? new Date(e.when).getTime() : 0;
-          var end = e.end ? new Date(e.end).getTime() : 0;
+          var end = e.end ? new Date(e.end).getTime() : start;
+          if (typeof e.when === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.when.trim())) {
+            end = start + 24 * 3600000;
+          }
           if (!end && start) end = start + 2 * 3600000;
-          return !end || end >= Date.now();
+          return !end || end >= Date.now() - 30 * 60000;
         }).sort(function (a, b) { return (a.when || 0) - (b.when || 0); });
         if (!evs.length) {
           var waitingE = !window.__entAll;
@@ -9815,11 +9827,11 @@ function currentRotation() {
         }
         var addr = r.addr || r.area || "";
         var mapQ = ((r.name || "") + (addr ? " " + addr : " Englewood FL")).trim();
-        var reviews = (r.gRated && r.reviews) ? (r.reviews + " reviews") : "";
+        var reviews = r.reviews ? (r.reviews + " reviews") : "";
         var pills = '<span class="kind-tag eat-' + kindCls(r.kind) + '">' + (r.kind || "Restaurant") + "</span>";
         if (dist) pills += '<span class="dist-tag">' + dist + "</span>";
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
-        var stars = r.gRated && r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
+        var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var delta = "";
         if (r.prevRating != null && r.rating != null && Number(r.prevRating) !== Number(r.rating)) {
           delta = Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
@@ -9835,8 +9847,13 @@ function currentRotation() {
       window.eatCardHtml = card;
       function pickCard(r) {
         var html = card(r);
-        if (r && r.why) {
-          html = html.replace("</div></div>", '<span class="eat-why">' + String(r.why).replace(/</g, "") + "</span></div></div>");
+        var why = r && String(r.why || "").trim();
+        if (why) {
+          var bit = '<span class="eat-why">' + why.replace(/</g, "") + "</span>";
+          if (html.indexOf("eat-why") < 0) {
+            html = html.replace(/<\/div><\/div>\s*$/, bit + "</div></div>");
+            if (html.indexOf("eat-why") < 0) html += bit;
+          }
         }
         return html;
       }
@@ -9844,6 +9861,26 @@ function currentRotation() {
         var box = document.getElementById("today-eat-pick");
         if (!box) return;
         var p = window.__eatPick;
+        if (p && p.name && window.__eats && window.__eats.length) {
+          var want = String(p.name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+          var hit = window.__eats.filter(function (r) {
+            var n = String(r.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+            return n === want || n.indexOf(want) >= 0 || want.indexOf(n) >= 0;
+          })[0];
+          if (hit) {
+            p = Object.assign({}, hit, p, {
+              driveMin: hit.driveMin != null ? hit.driveMin : p.driveMin,
+              miles: hit.miles != null ? hit.miles : p.miles,
+              rating: hit.rating != null ? hit.rating : p.rating,
+              reviews: hit.reviews || p.reviews,
+              addr: hit.addr || p.addr,
+              kind: hit.kind || p.kind,
+              gRated: true,
+              why: p.why || hit.why || ""
+            });
+          }
+        }
+        if (p && p.rating != null) p.gRated = true;
         if (!p || !p.name) {
           box.innerHTML = "";
           var eatH0 = document.getElementById("today-eat-h");
@@ -9893,6 +9930,7 @@ function currentRotation() {
             list = mid.length ? mid : rated;
           }
         }
+        window.__eatPool = (list || []).slice();
         list.sort(function (a, b) {
           return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
         });
@@ -9926,19 +9964,25 @@ function currentRotation() {
         var i = 0;
         function next() {
           if (i >= (list || []).length) {
-            var pool = list || [];
+            var pool = (window.__eatPool && window.__eatPool.length) ? window.__eatPool : (list || []);
             list = pool.filter(function (r) { return Number(r.reviews) > 2500; });
             var cut = 2500;
             if (list.length < 10) {
               list = pool.filter(function (r) { return Number(r.reviews) > 2000; });
               cut = 2000;
             }
+            if (list.length < 10) {
+              list = pool.filter(function (r) { return Number(r.reviews) > 0; });
+              cut = 0;
+            }
             list.sort(function (a, b) {
               return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
             });
             list = list.filter(inRange).slice(0, 10);
             window.__eatCut = cut;
-            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " with " + cut + "+ reviews") : "none");
+            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + (cut ? (" with " + cut + "+ reviews") : " by rating")) : "none");
+            window.__eats = list;
+            if (typeof window.paintEatPick === "function") window.paintEatPick();
             var box = document.getElementById("eat-list");
             var note = document.getElementById("eat-count");
             var miles = Number((getSet() || {}).eventMiles || 15);
@@ -10037,11 +10081,12 @@ function currentRotation() {
             on: function (d) {
               r.driveMin = d.min;
               if (d.miles != null) r.miles = d.miles;
-              document.querySelectorAll("#eat-list .eat-card").forEach(function (card) {
+              document.querySelectorAll("#eat-list .eat-card, #today-eat-pick .eat-card").forEach(function (card) {
                 if ((card.getAttribute("data-eat") || "") !== (r.name || "")) return;
-                var tag = card.querySelector(".eat-drive");
+                var tag = card.querySelector(".eat-drive, .dist-tag");
                 if (tag) tag.textContent = (d.miles != null ? d.miles.toFixed(d.miles >= 10 ? 0 : 1) + " mi · " : "") + d.min + " min";
               });
+              if (typeof window.paintEatPick === "function") window.paintEatPick();
             }
           };
         });
@@ -10514,6 +10559,7 @@ function currentRotation() {
       var driveF = "https://drive.usercontent.google.com/download?id=" + FLIGHT_ID + "&export=download&confirm=t";
       var urls = [
         "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/flights.json?cb=" + Date.now(),
+        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/flights.json?cb=" + Date.now(),
         "/flights.json?cb=" + Date.now(),
         "https://api.allorigins.win/raw?url=" + encodeURIComponent(driveF),
         driveF
