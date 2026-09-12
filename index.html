@@ -603,8 +603,12 @@
     main { position:relative; }
     .hdr-tools { display:flex; align-items:center; gap:6px; }
 
-    .hdr-right { display:flex; flex-direction:column; align-items:flex-end; gap:3px; justify-self:end; }
-    .hdr-right .hdr-ver { font-size:11px; font-weight:700; letter-spacing:.08em; opacity:.9; padding:0 2px; line-height:1; }
+    header > .hdr-ver {
+      position:absolute; top:4px; right:8px; z-index:50;
+      font-size:11px; font-weight:800; letter-spacing:.08em;
+      line-height:1; opacity:.95; pointer-events:none;
+      text-shadow:0 1px 2px rgba(0,0,0,.35);
+    }
     .hdr-setstack { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:1px; }
     .hdr-setstack .hdr-ver { font-size:10px; letter-spacing:.06em; line-height:1; opacity:.85; margin:0; padding:1px 4px 0; }
     .hdr-act {
@@ -800,8 +804,17 @@
     .card.today-card.music > .pulse-art { background:transparent; }
     .card.today-card.box > .pulse-art { background:transparent; }
     #now .sky { display:block; width:100%; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:16px; padding:12px 14px; }
-    .today-boards { display:grid; grid-template-columns:1fr; gap:12px; }
-    #today-do, #today-deliv, #today-fly-body { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:stretch; }
+    .today-shell { display:grid; grid-template-columns:minmax(0,1fr) minmax(250px,32%); gap:16px 18px; align-items:start; }
+    .today-main { min-width:0; }
+    .today-side { min-width:0; display:flex; flex-direction:column; gap:14px; }
+    .today-side .ent-h { margin:0 0 8px; }
+    #today-do, #today-deliv { display:flex; flex-direction:column; gap:8px; }
+    #today-fly-body { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:stretch; }
+    @media (orientation:portrait) {
+      .today-shell { grid-template-columns:1fr; }
+      .today-side { order:2; }
+      .today-main { order:1; }
+    }
     .card.today-card.quiet { opacity:.92; }
     #now .ent-h { display:block; background:transparent; color:var(--gold); padding:0; border-radius:0; }
     html.dark #now .sky { background:#2a3430; }
@@ -1803,6 +1816,7 @@
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
+      <span class="hdr-ver" id="hdr-ver">v560</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -1855,14 +1869,11 @@
       <div class="clock">
         <div class="clock-top">
           <div id="when"><span id="when-date"></span><span id="when-time"></span></div>
-          <div class="hdr-right">
-          <span class="hdr-ver" id="hdr-ver">v559</span>
           <div class="hdr-act">
             <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
             <button type="button" class="setgear" id="hdr-setbtn" title="Settings" aria-label="Settings">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.81 8.48a.5.5 0 0 0 .12.64L4.96 10.7c-.04.31-.06.63-.06.94s.02.63.06.94L2.93 14.16a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.4.31.64.22l2.39-.96c.5.39 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.55 1.63-.94l2.39.96c.24.09.51 0 .64-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
             </button>
-          </div>
           </div>
         </div>
         <div class="clock-bits" id="hdr-pills">
@@ -1885,7 +1896,9 @@
     <main>
       <section id="now" class="page on">
         <h2 data-k="On the Key">Today</h2>
-<p class="today-stamp" id="today-stamp" hidden></p>
+        <p class="today-stamp" id="today-stamp" hidden></p>
+        <div class="today-shell">
+        <div class="today-main">
         <div class="card greet-card" id="greet-card" aria-live="polite">
           <b id="greet-hi">Good evening</b>
           <span id="live-sky">Checking the day…</span>
@@ -1963,20 +1976,22 @@
           <div id="today-fly-body"></div>
           <div id="today-fly-track" hidden></div>
         </div>
-        <div class="today-boards">
-          <div>
-            <h3 class="ent-h">Out and about</h3>
-            <div id="today-do"></div>
-          </div>
-          <div id="today-deliv-col">
-            <h3 class="ent-h">Packages</h3>
-            <div id="today-deliv"></div>
-          </div>
-        </div>
         <div class="card leave-card" id="leave-card" hidden>
           <b>Should we leave?</b>
           <span class="leave-body">Checking warnings…</span>
           <small class="stamp" data-feed="alerts"></small>
+        </div>
+        </div>
+        <aside class="today-side" id="today-side">
+          <div id="today-deliv-col">
+            <h3 class="ent-h">Packages</h3>
+            <div id="today-deliv"></div>
+          </div>
+          <div id="today-do-col">
+            <h3 class="ent-h">Out and about</h3>
+            <div id="today-do"></div>
+          </div>
+        </aside>
         </div>
       </section>
       <section id="welcome" class="page">
@@ -3296,7 +3311,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 559;
+    window.BOARD_VER = 561;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5261,12 +5276,13 @@ function currentRotation() {
       var cover = window.__wxNow && (window.__wxNow.cloudCover != null ? window.__wxNow.cloudCover : window.__wxNow.cloud);
       if (cover == null && hours[0] && hours[0].cloudCover != null) cover = hours[0].cloudCover;
       cover = cover != null ? Number(cover) : null;
+      if (cover != null && cover <= 1 && cover >= 0) cover = cover * 100;
       var liveRain = !!(window.__wxNow && window.__wxNow.rain);
       var near = window.__strikesNear || {};
       var liveBolt = !!(window.__wantFlash || near.close5 || near.close10);
       var storm = liveBolt;
-      var rain = liveRain || (/\brain\b|shower|drizzle/.test(txt) && !/slight chance|possible/.test(txt));
-      var patchy = /scattered|isolated/.test(txt) && /shower|thunder|cloud/.test(txt);
+      var rain = liveRain || (/\brain\b|drizzle/.test(txt) && !/slight chance|possible|isolated|scattered/.test(txt));
+      var patchy = /scattered|isolated/.test(txt) && /shower|thunder|cloud|rain/.test(txt);
       var overcast = /overcast/.test(txt) || (cover != null && cover >= 90);
       var cloudy = (/mostly cloudy/.test(txt) && !/partly/.test(txt)) || (/cloudy/.test(txt) && !/partly|mostly sunny/.test(txt)) || (cover != null && cover >= 70);
       var partly = /partly cloudy|partly sunny|mostly sunny|few clouds|scattered/.test(txt) || (cover != null && cover >= 20 && cover < 70);
@@ -5392,9 +5408,8 @@ function currentRotation() {
           parkBody(sun, sunPos, 22);
           var sFade = Math.min(1, sunPos.p * 16, (1 - sunPos.p) * 16);
           var coverW = window.__skyCover || "light";
-          if (coverW === "heavy") sun.style.opacity = "0";
-          else if (coverW === "mid") sun.style.opacity = String(Math.max(0.18, sFade * 0.28));
-          else sun.style.opacity = String(Math.max(0.85, sFade));
+          if (coverW === "heavy") sun.style.opacity = String(Math.max(0.7, sFade * 0.85));
+          else sun.style.opacity = String(Math.max(0.95, sFade));
         } else if (sun && !window.__sunUp) {
           sun.style.opacity = "0";
         }
@@ -5402,9 +5417,8 @@ function currentRotation() {
           parkBody(moon, moonPos, 28);
           var fade = Math.min(1, moonPos.p * 12, (1 - moonPos.p) * 12);
           var coverWm = window.__skyCover || "light";
-          if (coverWm === "heavy") moon.style.opacity = "0";
-          else if (coverWm === "mid") moon.style.opacity = String(Math.max(0.12, fade * 0.25));
-          else moon.style.opacity = String(Math.max(0.4, fade));
+          if (coverWm === "heavy") moon.style.opacity = String(Math.max(0.6, fade * 0.8));
+          else moon.style.opacity = String(Math.max(0.9, fade));
         } else if (moon && !moonWin) {
           moon.style.opacity = "0";
         }
@@ -5551,7 +5565,7 @@ function currentRotation() {
       var nearStrikes = window.__strikesNear || {};
       var stormNow = wx.kind === "storm" || !!(nearStrikes.close5 || nearStrikes.close10);
       var slot = nextSlot;
-      var coverW = stormNow ? "heavy" : (wx.kind === "overcast" ? "mid" : (wx.kind === "cloudy" || rainingNow ? "mid" : "light"));
+      var coverW = stormNow || wx.kind === "storm" ? "heavy" : (wx.kind === "overcast" ? "mid" : "light");
       window.__skyCover = coverW;
       var skyKey = [slot, warn ? "warn" : "", wx.kind || "", coverW].join("|");
       if (window.__skyKey !== skyKey) {
@@ -9142,18 +9156,14 @@ function currentRotation() {
       var waitingD = !window.__delivData && (Date.now() - window.__delivStarted < 8000);
       var showBoxes = true;
       if (delCol) delCol.hidden = false;
-      var evLimit = 4;
       if (doBox) {
-        var picked = (typeof pickTodayEvents === "function")
-          ? pickTodayEvents(window.__entAll || [], evLimit)
-          : [];
-        var evs = picked.length
-          ? picked.map(function (row) { return row.e; })
-          : (window.__entAll || []).filter(function (e) {
-          if (!coversTodayET(e)) return false;
+        var evs = (window.__entAll || []).filter(function (e) {
+          if (typeof coversTodayET === "function" && !coversTodayET(e)) return false;
+          var start = e.when ? new Date(e.when).getTime() : 0;
           var end = e.end ? new Date(e.end).getTime() : 0;
+          if (!end && start) end = start + 2 * 3600000;
           return !end || end >= Date.now();
-        }).sort(function (a, b) { return a.when - b.when; }).slice(0, evLimit);
+        }).sort(function (a, b) { return (a.when || 0) - (b.when || 0); });
         if (!evs.length) {
           var waitingE = !window.__entAll;
           doBox.innerHTML = todayEmpty("fun",
