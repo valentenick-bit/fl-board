@@ -120,7 +120,7 @@
       }, true);
       setTimeout(function () {
         if (window.__rotStarted) return;
-        var ids = ["now","tenday","radar","land","marine","sky","ent","deliver"];
+        var ids = ["now","tenday","land","marine","sky","ent","deliver"];
         var n = 0;
         window.__fallbackRot = setInterval(function () {
           if (window.__rotStarted) { clearInterval(window.__fallbackRot); return; }
@@ -983,9 +983,9 @@
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
     iframe.full { width:100%; height:52vh; border:0; border-radius:16px; background:#111; }
     #radar.page { background:transparent; }
-    .wx-map-frame { margin:12px 0 16px; }
-    .wx-map-frame .radar-crop { height:52vh; }
-    .wx-map-frame .wx-map-pane { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:#0b1220; }
+    .wx-map-frame { margin:12px 0 16px; max-width:600px; }
+    .wx-map-frame .radar-crop { width:100%; height:auto; aspect-ratio:600 / 550; max-height:none; }
+    .wx-map-frame .wx-map-pane { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:#0b1220; object-fit:contain; object-position:center; }
     .wx-map-frame .wx-map-pane.on { display:block; }
     .wx-map-frame iframe.wx-map-pane { width:100%; height:100%; }
     .wx-map-cap { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:6px 0 0; font-size:13px; opacity:.85; }
@@ -2014,19 +2014,6 @@
         <div class="card wx-extra" id="volcano-card"><b>Volcano</b><span id="live-volcano">No advisory.</span></div>
         <p class="pill-key">USGS quakes within about 300 miles, plus the significant worldwide list. Fire weather follows NWS Red Flag. Pollen has no free national feed yet.</p>
       </section>
-      <section id="radar" class="page map-page">
-        <h2 data-k="Over the Key">Radar</h2>
-        <div class="card leave-card" id="leave-card-radar" hidden>
-          <b>Should we leave?</b>
-          <span class="leave-body">Checking warnings…</span>
-          <small class="stamp" data-feed="alerts"></small>
-        </div>
-        <div class="radar-crop radar-stage" id="radar-stage">
-          <img id="radar-view" alt="Radar" src="https://radar.weather.gov/ridge/standard/KTBW_loop.gif"/>
-        </div>
-        <p id="radar-cap" class="radar-legend">Local radar loop</p>
-        <p class="pill-key" id="radar-note">Radar follows the home address. <a id="radar-link" href="https://radar.weather.gov/station/KTBW/standard" target="_blank" rel="noopener">Full NWS view</a></p>
-      </section>
       <section id="gulfsat" class="page">
         <h2 data-k="Gulf">Gulf</h2>
         <div class="radar-crop radar-stage">
@@ -2174,12 +2161,6 @@ Cart shop:</textarea>
           <img id="hurr-frame" alt="Hurricane view" src="https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif"/>
           <div class="hurr-cap" id="hurr-cap">Radar</div>
         </div>
-      </section>
-      <section id="bolt" class="page map-page">
-        <h2 data-k="Storms">Lightning</h2>
-        <span id="live-bolt" hidden>Clear</span>
-        <iframe class="lite" id="bolt-map" title="Lightning" src="https://map.blitzortung.org/#7/26.96/-82.35"></iframe>
-        <p class="pill-key" id="bolt-note">Strikes near the home address.</p>
       </section>
       <section id="traffic" class="page map-page">
         <h2 data-k="The drive">Traffic</h2>
@@ -2729,7 +2710,6 @@ Cart shop:</textarea>
           <div class="menu-grid">
             <button type="button" data-p="now">Today</button>
             <button type="button" data-p="tenday">Weather</button>
-            <button type="button" data-p="radar">Radar</button>
             <button type="button" data-p="land">Land</button>
             <button type="button" data-p="marine">Sea</button>
             <button type="button" data-p="sky">Sky</button>
@@ -2750,7 +2730,6 @@ Cart shop:</textarea>
         <div class="menu-block">
           <h3>Storm</h3>
           <div class="menu-grid">
-            <button type="button" data-p="bolt">Lightning</button>
             <button type="button" data-p="cane">Tropical</button>
             <button type="button" data-p="hurr">Hurricane</button>
             <button type="button" data-p="contacts">Emergency</button>
@@ -3164,8 +3143,8 @@ Cart shop:</textarea>
     <nav class="dock" id="dock">
       <button type="button" data-p="now" class="on">Today</button>
       <button type="button" data-p="tenday">Weather</button>
-      <button type="button" data-p="radar">Radar</button>
-      <button type="button" data-p="marine">Marine</button>
+      <button type="button" data-p="land">Land</button>
+      <button type="button" data-p="marine">Sea</button>
       <button type="button" data-p="sky">Sky</button>
       <button type="button" data-p="ent">Fun</button>
       <button type="button" data-p="deliver">Delivery</button>
@@ -3187,7 +3166,6 @@ Cart shop:</textarea>
         <p class="drawer-lab">Daily</p>
         <button type="button" data-p="now">Today</button>
         <button type="button" data-p="tenday">Weather</button>
-        <button type="button" data-p="radar">Radar</button>
         <button type="button" data-p="land">Land</button>
         <button type="button" data-p="marine">Sea</button>
         <button type="button" data-p="sky">Sky</button>
@@ -3198,7 +3176,6 @@ Cart shop:</textarea>
         <button type="button" data-p="traffic">Traffic</button>
         <button type="button" data-p="wink">News</button>
         <p class="drawer-lab">Storms</p>
-        <button type="button" data-p="bolt">Lightning</button>
         <button type="button" data-p="cane">Tropical</button>
         <button type="button" data-p="hurr">Hurricane</button>
         <button type="button" data-p="gulfsat">Gulf</button>
@@ -3256,7 +3233,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 551;
+    window.BOARD_VER = 552;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3310,8 +3287,8 @@ Cart shop:</textarea>
       setTimeout(pad, 600);
     })();
     window.ROT_DEFAULTS = {
-      normal: ["now","tenday","radar","land","marine","sky","cam","traffic","ent","deliver"],
-      storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
+      normal: ["now","tenday","land","marine","sky","cam","traffic","ent","deliver"],
+      storm: ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
     };
     var ROT_DEFAULTS = window.ROT_DEFAULTS;
     var pages = ROT_DEFAULTS.normal.slice();
@@ -4188,6 +4165,12 @@ Cart shop:</textarea>
       var wxImg = document.getElementById("wx-radar-view");
       if (wxImg) {
         wxImg.alt = st + " radar loop";
+        wxImg.onload = function () {
+          var box = document.getElementById("wx-radar-stage");
+          if (box && wxImg.naturalWidth && wxImg.naturalHeight) {
+            box.style.aspectRatio = wxImg.naturalWidth + " / " + wxImg.naturalHeight;
+          }
+        };
         wxImg.src = nws + "?t=" + Date.now();
       }
       if (typeof syncWxMapFrame === "function") syncWxMapFrame();
@@ -6898,8 +6881,8 @@ function currentRotation() {
     })();
     clock(); setInterval(clock, 15000);
     var ROT_DEFAULTS = window.ROT_DEFAULTS || {
-      normal: ["now","tenday","radar","land","marine","sky","cam","traffic","ent","deliver"],
-      storm: ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
+      normal: ["now","tenday","land","marine","sky","cam","traffic","ent","deliver"],
+      storm: ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
     };
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
@@ -6914,8 +6897,8 @@ function currentRotation() {
           s.normal = (s.normal || []).filter(function (id) { return id !== "land"; });
           var atSea = s.normal.indexOf("marine");
           s.normal.splice(atSea >= 0 ? atSea : s.normal.length, 0, "land");
-          s.normal = (s.normal || []).filter(function (id) { return id !== "sports" && id !== "radio"; });
-          s.storm = (s.storm || []).filter(function (id) { return id !== "sports" && id !== "radio"; });
+          s.normal = (s.normal || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt"; });
+          s.storm = (s.storm || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt"; });
           function placeAfter(list, afterId, id) {
             if ((list || []).indexOf(id) >= 0) return list;
             list = (list || []).slice();
@@ -6928,7 +6911,7 @@ function currentRotation() {
           return s;
         }
       } catch (e) {}
-      var def = window.ROT_DEFAULTS || ROT_DEFAULTS || { normal: ["now","tenday","radar","land","marine","sky","ent","deliver"], storm: ["radar"] };
+      var def = window.ROT_DEFAULTS || ROT_DEFAULTS || { normal: ["now","tenday","land","marine","sky","ent","deliver"], storm: ["radar"] };
       return { normal: (def.normal || []).slice(), storm: (def.storm || []).slice() };
     }
     function saveRots(r) {
@@ -8312,10 +8295,10 @@ function currentRotation() {
         list.splice(at >= 0 ? at + 1 : list.length, 0, id);
         seen[id] = true;
       }
-      if (typeof boltWanted === "function" && boltWanted()) insertAfter("radar", "bolt");
-      if (rotVisible("cane")) insertAfter(list.indexOf("bolt") >= 0 ? "bolt" : "radar", "cane");
-      if (rotVisible("hurr")) insertAfter(list.indexOf("cane") >= 0 ? "cane" : (list.indexOf("bolt") >= 0 ? "bolt" : "radar"), "hurr");
-      if (rotVisible("gulfsat")) insertAfter("radar", "gulfsat");
+      if (typeof boltWanted === "function" && boltWanted()) 
+      if (rotVisible("cane")) insertAfter("tenday", "cane");
+      if (rotVisible("hurr")) insertAfter(list.indexOf("cane") >= 0 ? "cane" : "tenday", "hurr");
+      if (rotVisible("gulfsat")) insertAfter("tenday", "gulfsat");
       if (rotVisible("tropics")) insertAfter(list.indexOf("gulfsat") >= 0 ? "gulfsat" : "radar", "tropics");
       if (typeof noteFeed === "function") {
         noteFeed("bolt-rot", true, list.indexOf("bolt") >= 0 ? "in rotation" : "idle");
@@ -9649,7 +9632,7 @@ function currentRotation() {
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
     var ROT_DAILY_POOL = ["now","tenday","radar","marine","sky","cam","traffic","ent","deliver","wink","house"];
-    var ROT_STORM_POOL = ["radar","bolt","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"];
+    var ROT_STORM_POOL = ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"];
     var ROT_AUTO_NOTE = {
       bolt: "only when lightning is reported within 10 miles of home",
       cane: "only when a named storm can affect this address",
