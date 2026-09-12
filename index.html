@@ -2981,6 +2981,7 @@ Cart shop:</textarea>
             <button type="button" data-v="5">5 mi</button>
             <button type="button" data-v="10">10 mi</button>
             <button type="button" data-v="15">15 mi</button>
+            <button type="button" data-v="20">20 mi</button>
           </div>
         </div>
         <p class="hint">Events and restaurants this far from the home pin. BeachWalk events always stay. Englewood listings and restaurant cards drop off outside the radius.</p>
@@ -3384,7 +3385,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 596;
+    window.BOARD_VER = 597;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3611,7 +3612,8 @@ Cart shop:</textarea>
       if (!em || em < 5) s.eventMiles = "5";
       else if (em <= 7) s.eventMiles = "5";
       else if (em <= 12) s.eventMiles = "10";
-      else s.eventMiles = "15";
+      else if (em <= 17) s.eventMiles = "15";
+      else s.eventMiles = "20";
       ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
         if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
@@ -9881,11 +9883,14 @@ function currentRotation() {
         var miles = Number((getSet() || {}).eventMiles || 15);
         list = dedupeEats((list || []).concat(mustEats()));
         list = list.filter(function (r) { return r.miles == null || r.miles <= miles + 0.2; });
-        var known = list.filter(function (r) { return Number(r.reviews) > 2500; });
-        if (known.length >= 10) list = known;
-        else {
-          var mid = list.filter(function (r) { return Number(r.reviews) > 2000; });
-          if (mid.length) list = mid;
+        var rated = list.filter(function (r) { return Number(r.reviews) > 0; });
+        if (rated.length) {
+          var known = rated.filter(function (r) { return Number(r.reviews) > 2500; });
+          if (known.length >= 10) list = known;
+          else {
+            var mid = rated.filter(function (r) { return Number(r.reviews) > 2000; });
+            list = mid.length ? mid : rated;
+          }
         }
         list.sort(function (a, b) {
           return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
@@ -10135,6 +10140,7 @@ function currentRotation() {
         var queries = [
           "top restaurants near " + (homeAddress() || "Englewood FL")
         ];
+        if (miles >= 20) queries.push("top restaurants in Venice FL");
         var all = [];
         var left = queries.length;
         function parse(j) {
@@ -10159,7 +10165,7 @@ function currentRotation() {
         queries.forEach(function (q) {
           var body = {
             textQuery: q,
-            pageSize: 10,
+            pageSize: 20,
             locationBias: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(50000, miles * 1609.34) } }
           };
           fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -10186,7 +10192,7 @@ function currentRotation() {
         if (!key) return cb(null);
         var miles = Number((getSet() || {}).eventMiles || 15);
         var body = {
-          includedTypes: ["restaurant", "bar", "american_restaurant", "seafood_restaurant", "meal_takeaway"],
+          includedTypes: ["restaurant", "bar", "american_restaurant", "seafood_restaurant", "mexican_restaurant", "meal_takeaway"],
           maxResultCount: 20,
           rankPreference: "POPULARITY",
           locationRestriction: {
@@ -10943,7 +10949,6 @@ function currentRotation() {
         mark("set-greettone", s.greetTone || "full");
         mark("set-tickspeed", s.tickSpeed || "normal");
         mark("set-eventmiles", String(s.eventMiles || "15"));
-        if (typeof window.reloadEats === "function") window.reloadEats();
         mark("set-gmapson", s.gmapsOn !== "0" ? "1" : "0");
         mark("set-sportmiles", String(s.sportMiles || "150"));
         (function fillLang() {
@@ -11148,7 +11153,13 @@ function currentRotation() {
           if (el && typeof spinEl === "function") spinEl(el, tickSpeedPx(), true);
         });
       });
-      tap("set-eventmiles", "eventMiles", function () { if (typeof window.paintEnt === "function") window.paintEnt(); else if (typeof paintToday === "function") paintToday(); });
+      tap("set-eventmiles", "eventMiles", function () {
+        window.__eatEnrichAt = 0;
+        window.__eatBag = [];
+        if (typeof window.reloadEats === "function") window.reloadEats();
+        if (typeof window.paintEnt === "function") window.paintEnt();
+        else if (typeof paintToday === "function") paintToday();
+      });
       tap("set-gmapson", "gmapsOn", function () {
         if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
       });
