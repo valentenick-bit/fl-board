@@ -3384,7 +3384,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 595;
+    window.BOARD_VER = 596;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9882,7 +9882,11 @@ function currentRotation() {
         list = dedupeEats((list || []).concat(mustEats()));
         list = list.filter(function (r) { return r.miles == null || r.miles <= miles + 0.2; });
         var known = list.filter(function (r) { return Number(r.reviews) > 2500; });
-        if (known.length) list = known;
+        if (known.length >= 10) list = known;
+        else {
+          var mid = list.filter(function (r) { return Number(r.reviews) > 2000; });
+          if (mid.length) list = mid;
+        }
         list.sort(function (a, b) {
           return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
         });
@@ -9916,16 +9920,23 @@ function currentRotation() {
         var i = 0;
         function next() {
           if (i >= (list || []).length) {
-            list = (list || []).filter(function (r) { return Number(r.reviews) > 2500; });
+            var pool = list || [];
+            list = pool.filter(function (r) { return Number(r.reviews) > 2500; });
+            var cut = 2500;
+            if (list.length < 10) {
+              list = pool.filter(function (r) { return Number(r.reviews) > 2000; });
+              cut = 2000;
+            }
             list.sort(function (a, b) {
               return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
             });
             list = list.slice(0, 10);
-            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " with 2500+ reviews") : "none with 2500+");
+            window.__eatCut = cut;
+            if (typeof noteFeed === "function") noteFeed("eat-rate", !!list.length, list.length ? (list.length + " with " + cut + "+ reviews") : "none");
             var box = document.getElementById("eat-list");
             var note = document.getElementById("eat-count");
             var miles = Number((getSet() || {}).eventMiles || 15);
-            if (note) note.textContent = list.length ? (list.length + " · 2,500+ Google reviews · by rating") : ("No restaurants with 2,500+ Google reviews inside " + miles + " mi");
+            if (note) note.textContent = list.length ? (list.length + " · " + cut.toLocaleString() + "+ Google reviews · by rating") : ("No restaurants with 2,000+ Google reviews inside " + miles + " mi");
             if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 2,500+ Google reviews in range.</b><span>Widen Around home in Settings.</span></div>';
             enrichEatLive(list);
             return;
