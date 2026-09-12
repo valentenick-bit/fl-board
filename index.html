@@ -3411,7 +3411,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 611;
+    window.BOARD_VER = 612;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9995,11 +9995,22 @@ function currentRotation() {
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 200+ reviews in range.</b><span>Widen Around home in Settings.</span></div>';
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
-        if (!window.__eatEnrichAt || Date.now() - window.__eatEnrichAt > 10 * 60 * 1000) {
-          window.__eatEnrichAt = Date.now();
-          enrichEatLive(list);
-          enrichGoogleRatings(list);
-        }
+        eatCacheWrite(list);
+        clearTimeout(window.__eatEnrichTimer);
+        window.__eatEnrichTimer = setTimeout(function () {
+          var live = window.__eats || list;
+          enrichEatLive(live);
+          enrichGoogleRatings(live);
+        }, 500);
+        clearTimeout(window.__eatRetry);
+        window.__eatRetry = setTimeout(function () {
+          var live = window.__eats || [];
+          var thin = live.filter(function (r) { return r.rating == null || !r.reviews || r.driveMin == null; });
+          if (thin.length && thin.length >= Math.min(3, live.length)) {
+            enrichEatLive(live);
+            enrichGoogleRatings(live);
+          }
+        }, 4000);
       }
       function enrichGoogleRatings(list) {
         var i = 0;
@@ -10134,6 +10145,10 @@ function currentRotation() {
         function nextChunk() {
           if (!dests.length) {
             if (typeof noteFeed === "function") noteFeed("eat-drive", true, "google drive times");
+            eatCacheWrite(window.__eats || list);
+            var box = document.getElementById("eat-list");
+            if (box && window.__eats && window.__eats.length) box.innerHTML = window.__eats.map(card).join("");
+            if (typeof window.paintEatPick === "function") window.paintEatPick();
             return;
           }
           if (typeof matrixChunk === "function") matrixChunk(dests.splice(0, 25), nextChunk);
@@ -10148,7 +10163,11 @@ function currentRotation() {
       function eatCacheWrite(list) {
         try {
           localStorage.setItem("bw-eats-live", JSON.stringify((list || []).map(function (r) {
-            return { name: r.name, rating: r.rating, reviews: r.reviews, addr: r.addr, area: r.area, kind: r.kind, miles: r.miles, placeId: r.placeId, at: Date.now() };
+            return {
+              name: r.name, rating: r.rating, reviews: r.reviews, addr: r.addr || r.area, area: r.area,
+              kind: r.kind, miles: r.miles, driveMin: r.driveMin, placeId: r.placeId,
+              lat: r.lat, lon: r.lon, gRated: r.gRated || (r.rating != null), at: Date.now()
+            };
           })));
         } catch (eW) {}
       }
@@ -10161,8 +10180,13 @@ function currentRotation() {
           if (!c) return;
           if (r.rating == null && c.rating != null) r.rating = c.rating;
           if (!r.reviews && c.reviews) r.reviews = c.reviews;
-          if ((!r.addr || r.addr.length < 12) && c.addr) r.addr = c.addr;
+          if ((!r.addr || r.addr.length < 12) && (c.addr || c.area)) r.addr = c.addr || c.area;
           if (!r.kind && c.kind) r.kind = c.kind;
+          if (r.driveMin == null && c.driveMin != null) r.driveMin = c.driveMin;
+          if (r.miles == null && c.miles != null) r.miles = c.miles;
+          if (r.lat == null && c.lat != null) r.lat = c.lat;
+          if (r.lon == null && c.lon != null) r.lon = c.lon;
+          if (!r.gRated && (c.gRated || c.rating != null)) r.gRated = true;
         });
         return list;
       }
@@ -10526,6 +10550,10 @@ function currentRotation() {
         step();
       }
       function run() {
+        var warm = eatCacheRead();
+        if (warm.length) {
+          paint(mergeEatCache(warm));
+        }
         fromOverpass(function (rows) {
           var cached = eatCacheRead().filter(function (r) { return r && r.at && (Date.now() - r.at) < 7 * 24 * 3600 * 1000 && r.rating; });
           var list = mergeEatCache(rows && rows.length ? rows : cached);
