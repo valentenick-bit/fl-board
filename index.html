@@ -3380,7 +3380,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 587;
+    window.BOARD_VER = 588;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9443,7 +9443,8 @@ function currentRotation() {
         var num = e.when.getDate();
         var artKey = (kind && kind.cls) || (live ? "music" : "fun");
         var ico = (window.EV_ART && EV_ART[artKey]) || (window.EV_ART && EV_ART.fun) || "";
-        return '<div class="card ev-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '"><div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + place + "</span>" + kindHtml + distHtml + '<span class="busy-tag" hidden></span><b>' + title + '</b><span class="ev-when">' + whenLine + (e.loc ? " · " + e.loc : "") + "</span></div></div>";
+        var driveKey = String(e.sum || "") + "|" + (e.when && e.when.toISOString ? e.when.toISOString() : "");
+        return '<div class="card ev-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '" data-drive="' + String(driveKey).replace(/"/g, "&quot;") + '"><div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + place + "</span>" + kindHtml + distHtml + '<span class="busy-tag" hidden></span><b>' + title + '</b><span class="ev-when">' + whenLine + (e.loc ? " · " + e.loc : "") + "</span></div></div>";
       };
       function render(id, events) {
         var box = document.getElementById(id);
@@ -9825,14 +9826,10 @@ function currentRotation() {
         var box = document.getElementById("eat-list");
         var note = document.getElementById("eat-count");
         var miles = Number((getSet() || {}).eventMiles || 15);
-        var pinned = mustEats();
-        pinned.forEach(function (p) {
-          var hit = (list || []).some(function (r) { return String(r.name || "").toLowerCase().indexOf(p.key) >= 0; });
-          if (!hit) list = (list || []).concat([p]);
-        });
-        list = (list || []).filter(function (r) { return r.miles == null || r.miles <= miles + 0.2 || r.pin; });
-        list = list.filter(function (r) { return r.pin || Number(r.reviews) >= 200; });
-        list.sort(function (a, b) { return (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (Number(b.rating) || 0) - (Number(a.rating) || 0); });
+        list = dedupeEats((list || []).concat(mustEats()));
+        list = list.filter(function (r) { return r.miles == null || r.miles <= miles + 0.2; });
+        list = list.filter(function (r) { return Number(r.rating) > 0; });
+        list.sort(function (a, b) { return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (a.miles || 99) - (b.miles || 99); });
         list = list.slice(0, 10);
         var prev = {};
         try { prev = JSON.parse(localStorage.getItem("bw-eat-ratings") || "{}") || {}; } catch (eP) { prev = {}; }
@@ -9849,37 +9846,36 @@ function currentRotation() {
           });
           localStorage.setItem("bw-eat-ratings", JSON.stringify(store));
         } catch (eS) {}
-        if (note) note.textContent = list.length ? ("200+ reviews · " + miles + " mi") : ("No restaurants with 200+ reviews inside " + miles + " mi");
+        if (note) note.textContent = list.length ? ("Top rated · " + miles + " mi") : ("No rated restaurants inside " + miles + " mi");
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 200+ reviews in range.</b><span>Widen Around home in Settings.</span></div>';
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
         enrichEatLive(list);
       }
       function enrichEatLive(list) {
-        var i = 0;
-        function nextDrive() {
-          if (i >= (list || []).length) {
+        var dests = (list || []).map(function (r) {
+          return {
+            lat: r.lat, lon: r.lon, q: (r.addr || r.name || "") + " Englewood FL",
+            on: function (d) {
+              r.driveMin = d.min;
+              if (d.miles != null) r.miles = d.miles;
+              document.querySelectorAll("#eat-list .eat-card").forEach(function (card) {
+                if ((card.getAttribute("data-eat") || "") !== (r.name || "")) return;
+                var tag = card.querySelector(".eat-drive");
+                if (tag) tag.textContent = (d.miles != null ? d.miles.toFixed(d.miles >= 10 ? 0 : 1) + " mi · " : "") + d.min + " min";
+              });
+            }
+          };
+        });
+        function nextChunk() {
+          if (!dests.length) {
             if (typeof noteFeed === "function") noteFeed("eat-drive", true, "google drive times");
             return;
           }
-          var r = list[i++];
-          if (typeof driveMinutesToLatLng !== "function") return;
-          driveMinutesToLatLng(r.lat, r.lon, function (d) {
-            if (d) {
-              r.driveMin = d.min;
-              if (d.miles != null) r.miles = d.miles;
-              var cards = document.querySelectorAll("#eat-list .eat-card");
-              for (var c = 0; c < cards.length; c++) {
-                if ((cards[c].getAttribute("data-eat") || "") === (r.name || "")) {
-                  var tag = cards[c].querySelector(".eat-drive");
-                  if (tag) tag.textContent = (d.miles != null ? d.miles.toFixed(d.miles >= 10 ? 0 : 1) + " mi · " : "") + d.min + " min";
-                }
-              }
-            }
-            setTimeout(nextDrive, 150);
-          });
+          if (typeof matrixChunk === "function") matrixChunk(dests.splice(0, 25), nextChunk);
+          else dests.length = 0;
         }
-        nextDrive();
+        nextChunk();
         if (typeof loadBusyPills === "function") setTimeout(loadBusyPills, 200);
       }
       function eatCacheRead() {
@@ -9922,6 +9918,31 @@ function currentRotation() {
           addr: p.vicinity || p.formatted_address || "",
           placeId: p.place_id || ""
         };
+      }
+      function eatKey(r) {
+        if (!r) return "";
+        if (r.placeId) return "id:" + r.placeId;
+        var n = String(r.name || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ");
+        n = n.replace(/\b(the|grill|grille|bar|tiki|restaurant|and|cafe|café)\b/g, " ").replace(/\s+/g, " ").trim();
+        if (r.lat && r.lon) return n + "@" + Number(r.lat).toFixed(3) + "," + Number(r.lon).toFixed(3);
+        return n || String(r.addr || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      }
+      function dedupeEats(list) {
+        var by = {};
+        (list || []).forEach(function (r) {
+          var k = eatKey(r);
+          if (!k) return;
+          var prev = by[k];
+          if (!prev) { by[k] = r; return; }
+          if ((Number(r.reviews) || 0) > (Number(prev.reviews) || 0)) by[k] = Object.assign({}, prev, r);
+          else {
+            if (!prev.addr && r.addr) prev.addr = r.addr;
+            if (!prev.placeId && r.placeId) prev.placeId = r.placeId;
+            if (prev.rating == null && r.rating != null) prev.rating = r.rating;
+            if (!prev.lat && r.lat) { prev.lat = r.lat; prev.lon = r.lon; }
+          }
+        });
+        return Object.keys(by).map(function (k) { return by[k]; });
       }
       function mustEats() {
         function row(o) {
@@ -10250,11 +10271,16 @@ function currentRotation() {
             fillAddrs(list, paint);
           } else if (typeof noteFeed === "function") noteFeed("eats-src", false, "OpenStreetMap empty");
         });
+        window.__eatBag = window.__eatBag || [];
+        function ingestEats(rows) {
+          window.__eatBag = dedupeEats(window.__eatBag.concat(rows || []));
+          paint(mergeEatCache(window.__eatBag));
+        }
         fromPlacesNew(function (places) {
-          if (places && places.length) paint(mergeEatCache(places));
+          if (places && places.length) ingestEats(places);
         });
         fromPlacesText(function (places) {
-          if (places && places.length) paint(mergeEatCache(places));
+          if (places && places.length) ingestEats(places);
         });
       }
       window.reloadEats = run;
@@ -14428,35 +14454,75 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         });
       });
     }
+    function applyDriveToCards(e, d) {
+      if (!e || !d) return;
+      e.driveMin = d.min;
+      if (d.miles != null) e.miles = d.miles;
+      var key = String(e.sum || "") + "|" + (e.when && e.when.toISOString ? e.when.toISOString() : "");
+      var label = e.inside ? "On site" : ((d.miles != null ? d.miles.toFixed(d.miles >= 10 ? 0 : 1) + " mi · " : "") + d.min + " min");
+      document.querySelectorAll("#ent-list .ev-card, #today-do .ev-card").forEach(function (card) {
+        var match = (card.getAttribute("data-drive") || "") === key;
+        if (!match && key && (card.textContent || "").indexOf(String(e.sum || "").slice(0, 18)) >= 0) match = true;
+        if (!match) return;
+        var tag = card.querySelector(".dist-tag");
+        if (tag) tag.textContent = label;
+      });
+    }
+    function matrixChunk(dests, done) {
+      if (!dests.length) { done(); return; }
+      loadGmaps(function (ok) {
+        if (!ok || !window.google || !google.maps || !google.maps.DistanceMatrixService) { done(); return; }
+        try {
+          var svc = new google.maps.DistanceMatrixService();
+          var destinations = dests.map(function (d) {
+            if (d.lat != null && d.lon != null) return new google.maps.LatLng(Number(d.lat), Number(d.lon));
+            return String(d.q || "");
+          });
+          svc.getDistanceMatrix({
+            origins: [new google.maps.LatLng(homeLat(), homeLon())],
+            destinations: destinations,
+            travelMode: google.maps.TravelMode.DRIVING,
+            unitSystem: google.maps.UnitSystem.IMPERIAL,
+            drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
+          }, function (res, status) {
+            dests.forEach(function (d, i) {
+              try {
+                var el = res && res.rows && res.rows[0] && res.rows[0].elements && res.rows[0].elements[i];
+                if (status !== "OK" || !el || el.status !== "OK") return;
+                var sec = (el.duration_in_traffic && el.duration_in_traffic.value) || (el.duration && el.duration.value) || 0;
+                d.on({ min: Math.max(1, Math.round(sec / 60)), miles: el.distance ? el.distance.value / 1609.34 : null });
+              } catch (e1) {}
+            });
+            done();
+          });
+        } catch (e0) { done(); }
+      });
+    }
     function enrichEventDistances(list) {
       (list || []).forEach(function (e) {
         var mi = eventMilesFromHome(e);
         if (mi != null) e.miles = mi;
+        if (e.inside) applyDriveToCards(e, { min: 0, miles: 0 });
       });
-      var i = 0;
-      var queue = (list || []).filter(function (e) { return e && !e.inside; }).slice(0, 16);
-      function next() {
-        if (i >= queue.length) {
-          if (typeof noteFeed === "function") noteFeed("event-drive", true, queue.length + " events");
+      var dests = [];
+      (list || []).forEach(function (e) {
+        if (!e || e.inside) return;
+        var pin = typeof pinVenue === "function" ? pinVenue(e) : null;
+        dests.push({
+          lat: pin && pin.lat,
+          lon: pin && pin.lon,
+          q: (pin && pin.q) || (typeof venueQuery === "function" ? venueQuery(e) : "") || e.loc || e.sum,
+          on: function (d) { applyDriveToCards(e, d); }
+        });
+      });
+      function nextChunk() {
+        if (!dests.length) {
+          if (typeof noteFeed === "function") noteFeed("event-drive", true, "google drive · events");
           return;
         }
-        var e = queue[i++];
-        driveMinutesFor(e, function (d) {
-          if (d && d.min) {
-            e.driveMin = d.min;
-            if (d.miles != null) e.miles = d.miles;
-            var hay = String(e.sum || "").slice(0, 22);
-            document.querySelectorAll("#ent-list .ev-card, #today-do .ev-card").forEach(function (card) {
-              if (hay && (card.textContent || "").indexOf(hay) >= 0) {
-                var tag = card.querySelector(".dist-tag");
-                if (tag) tag.textContent = (d.miles != null ? d.miles.toFixed(d.miles >= 10 ? 0 : 1) + " mi · " : "") + d.min + " min";
-              }
-            });
-          }
-          setTimeout(next, 160);
-        });
+        matrixChunk(dests.splice(0, 25), nextChunk);
       }
-      next();
+      nextChunk();
     }
     function paintTodayHours() {
       var box = document.getElementById("today-hourly");
