@@ -831,7 +831,19 @@
       .today-main { order:1; }
     }
     .card.today-card.quiet { opacity:.92; }
-    #now .ent-h { display:none; }
+    #now .ent-h, #now .today-sec-h {
+      display:block;
+      margin:2px 0 8px;
+      font-family:"Fraunces",Georgia,serif;
+      font-size:18px;
+      font-weight:600;
+      letter-spacing:0;
+      text-transform:none;
+      color:var(--navy);
+    }
+    html.dark #now .ent-h, html.dark #now .today-sec-h { color:#efe4c8; }
+    #today-deliv-col .today-sec-h:first-child { margin-top:0; }
+    #today-eat-h { margin-top:16px; }
     html.dark #now .sky { background:#2a3430; }
     html.dark .today-stamp { color:#7fd3c6; }
     @media (max-width:720px) {
@@ -2054,10 +2066,13 @@
         </div>
         <aside class="today-side" id="today-side">
           <div id="today-deliv-col">
+            <p class="today-sec-h" id="today-deliv-h">Packages</p>
             <div id="today-deliv"></div>
+            <p class="today-sec-h" id="today-eat-h">Tonight’s table</p>
             <div id="today-eat-pick"></div>
           </div>
           <div id="today-do-col">
+            <p class="today-sec-h" id="today-do-h">Today</p>
             <div id="today-do"></div>
           </div>
         </aside>
@@ -3392,7 +3407,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 604;
+    window.BOARD_VER = 605;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9829,12 +9844,19 @@ function currentRotation() {
         var box = document.getElementById("today-eat-pick");
         if (!box) return;
         var p = window.__eatPick;
-        if (!p || !p.name) { box.innerHTML = ""; return; }
+        if (!p || !p.name) {
+          box.innerHTML = "";
+          var eatH0 = document.getElementById("today-eat-h");
+          if (eatH0) eatH0.hidden = true;
+          return;
+        }
         if (p.lat != null && p.lon != null && typeof milesOf === "function" && typeof inRange === "function") {
           p.miles = milesOf(p.lat, p.lon);
           if (!inRange(p)) { box.innerHTML = ""; if (typeof noteFeed === "function") noteFeed("eat-pick", false, "outside range"); return; }
         }
-        box.innerHTML = '<p class="ent-h">Today’s table</p>' + pickCard(p);
+        box.innerHTML = pickCard(p);
+        var eatH = document.getElementById("today-eat-h");
+        if (eatH) eatH.hidden = false;
         if (typeof noteFeed === "function") noteFeed("eat-pick", true, p.name);
         if (typeof loadBusyPills === "function") setTimeout(loadBusyPills, 80);
       };
