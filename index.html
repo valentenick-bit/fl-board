@@ -2124,7 +2124,7 @@
         <div class="land-map-frame" id="land-map-frame">
           <div class="radar-crop radar-stage" id="land-traffic-stage">
             <div id="traffic-gmap" class="lite gmap-box land-map-pane" hidden></div>
-            <iframe class="lite land-map-pane on" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
+            <iframe class="lite land-map-pane on" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=12&hl=en&layer=t&t=m&output=embed" allowfullscreen></iframe>
           </div>
           <p class="wx-map-cap"><b>Traffic</b><span id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></span></p>
         </div>
@@ -3370,7 +3370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 580;
+    window.BOARD_VER = 582;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3874,97 +3874,72 @@ Cart shop:</textarea>
     function paintGoogleTraffic(force) {
       var box = document.getElementById("traffic-gmap");
       var frame = document.getElementById("traffic-map");
-      if (!box) return;
-      var qEmbed = encodeURIComponent((typeof homeAddress === "function" && homeAddress()) || "Englewood, FL");
-      if (frame) {
-        frame.style.display = "";
-        if (!frame.src || frame.src.indexOf("layer=t") < 0 || force) {
-          frame.src = "https://maps.google.com/maps?q=" + qEmbed + "&z=12&hl=en&layer=t&t=m&output=embed";
-        }
-      }
-      box.hidden = true;
-      if (typeof noteFeed === "function") noteFeed("traffic", true, "embed " + decodeURIComponent(qEmbed).slice(0, 40));
-      return;
-      if (typeof mapsPaidOn === "function" ? !mapsPaidOn() : !String(getSet().gmapsKey || "").trim()) {
-        try { if (window.__trafficLayer) window.__trafficLayer.setMap(null); } catch (e) {}
-        clearTimeout(window.__trafficNudge);
-        box.hidden = true;
+      if (!box && !frame) return;
+      var center = { lat: homeLat(), lng: homeLon() };
+      var embed = "https://maps.google.com/maps?q=" + encodeURIComponent(homeAddress() || "Englewood, FL") + "&z=12&hl=en&layer=t&t=m&output=embed";
+      var page = (document.querySelector(".page.on") || {}).id || "";
+      if (frame && (force || /waze/i.test(frame.src || "") || !frame.src)) frame.src = embed;
+      if (page !== "land" && !force) {
+        if (box) box.hidden = true;
         if (frame) frame.style.display = "";
-        if (typeof noteFeed === "function") noteFeed("traffic", true, "key off · embed");
+        if (typeof noteFeed === "function") noteFeed("traffic", true, "google embed");
+        return;
+      }
+      if (!String((getSet() || {}).gmapsKey || "").trim()) {
+        if (box) box.hidden = true;
+        if (frame) { frame.style.display = ""; frame.src = embed; }
+        if (typeof noteFeed === "function") noteFeed("traffic", true, "no key · google embed");
         return;
       }
       loadGmaps(function (ok) {
-        if (!ok || !window.google || !google.maps) {
-          box.hidden = true;
-          if (frame) frame.style.display = "";
-          if (typeof noteFeed === "function") noteFeed("traffic", true, "fl511 fallback");
+        if (!ok || typeof google.maps.Map !== "function") {
+          if (box) box.hidden = true;
+          if (frame) { frame.style.display = ""; frame.src = embed; }
+          if (typeof noteFeed === "function") noteFeed("traffic", false, "Maps JS not ready · embed");
           return;
         }
-        var qEmbed = encodeURIComponent(homeAddress() || "Englewood, FL");
-        if (frame) {
-          frame.style.display = "";
-          frame.src = "https://maps.google.com/maps?q=" + qEmbed + "&z=12&hl=en&layer=t&t=m&output=embed";
-        }
-        box.hidden = false;
-        var center = { lat: homeLat(), lng: homeLon() };
+        if (frame) frame.style.display = "";
+        if (box) box.hidden = false;
         if (window.__trafficMap && !force) {
           try {
-            if (window.google && google.maps && google.maps.event) google.maps.event.trigger(window.__trafficMap, "resize");
+            google.maps.event.trigger(window.__trafficMap, "resize");
             window.__trafficMap.panTo(center);
             if (window.__trafficPin) window.__trafficPin.setPosition(center);
-          } catch (e) {}
-          if (typeof noteFeed === "function") noteFeed("traffic", true, "reuse map");
+            if (window.__trafficLayer) window.__trafficLayer.setMap(window.__trafficMap);
+          } catch (eR) {}
+          if (typeof noteFeed === "function") noteFeed("traffic", true, "reuse google traffic");
           return;
         }
-        if (typeof google.maps.Map !== "function") {
-          box.hidden = true;
-          if (frame) {
-            frame.style.display = "";
-            var q = encodeURIComponent(homeAddress() || "Englewood FL");
-            frame.src = "https://maps.google.com/maps?q=" + q + "&z=11&hl=en&layer=t&output=embed";
-          }
-          if (typeof noteFeed === "function") noteFeed("traffic", true, "embed fallback · Map not ready");
-          return;
-        }
-        var map;
         try {
-          map = new google.maps.Map(box, { center: center, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
+          var map = new google.maps.Map(box, {
+            center: center,
+            zoom: 12,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: true,
+            gestureHandling: "greedy"
+          });
           window.__trafficMap = map;
           window.__trafficLayer = new google.maps.TrafficLayer();
           window.__trafficLayer.setMap(map);
           window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
-        } catch (eMap) {
-          box.hidden = true;
-          if (frame) {
-            frame.style.display = "";
-            var q2 = encodeURIComponent(homeAddress() || "Englewood FL");
-            frame.src = "https://maps.google.com/maps?q=" + q2 + "&z=11&hl=en&layer=t&output=embed";
-          }
-          if (typeof noteFeed === "function") noteFeed("traffic", true, "embed fallback · " + String(eMap && eMap.message || eMap));
-          return;
-        }
-        nudgeTrafficLayer();
-        setTimeout(function () {
-          try {
-            if (window.google && google.maps && google.maps.event) google.maps.event.trigger(map, "resize");
-            map.setCenter(center);
-          } catch (eR) {}
-        }, 80);
-        try {
+          window.__trafficTiles = false;
           google.maps.event.addListenerOnce(map, "tilesloaded", function () {
             window.__trafficTiles = true;
             if (frame) frame.style.display = "none";
-            if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps tiles " + center.lat.toFixed(3) + "," + center.lng.toFixed(3));
+            if (typeof noteFeed === "function") noteFeed("traffic", true, "google traffic " + center.lat.toFixed(3) + "," + center.lng.toFixed(3));
           });
-        } catch (eL) {}
-        setTimeout(function () {
-          if (!window.__trafficTiles) {
-            box.hidden = true;
-            if (frame) frame.style.display = "";
-            if (typeof noteFeed === "function") noteFeed("traffic", true, "embed · JS tiles late");
-          }
-        }, 4000);
-        if (typeof noteFeed === "function") noteFeed("traffic", true, "gmaps " + center.lat.toFixed(3) + "," + center.lng.toFixed(3));
+          setTimeout(function () {
+            if (!window.__trafficTiles) {
+              if (typeof noteFeed === "function") noteFeed("traffic", true, "google traffic pending tiles");
+            }
+          }, 5000);
+          if (typeof nudgeTrafficLayer === "function") nudgeTrafficLayer();
+        } catch (eMap) {
+          if (box) box.hidden = true;
+          if (frame) { frame.style.display = ""; frame.src = embed; }
+          if (typeof noteFeed === "function") noteFeed("traffic", false, String(eMap && eMap.message || eMap));
+        }
       });
     }
 
@@ -4828,6 +4803,7 @@ function currentRotation() {
         p.style.opacity = "";
       });
       if (id === "storms" && typeof paintStormPage === "function") paintStormPage();
+      if (id === "land" && typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
       if (jump) {
         requestAnimationFrame(function () {
           setTimeout(function () {
@@ -11042,7 +11018,10 @@ function currentRotation() {
         ];
         function one(i) {
           if (i >= tries.length) return Promise.resolve([]);
-          return fetch(tries[i]).then(function (r) { return r.text(); }).then(function (t) {
+          var ctrl = typeof AbortController === "function" ? new AbortController() : null;
+          var to = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (eA) {} }, 5000);
+          return fetch(tries[i], ctrl ? { signal: ctrl.signal } : {}).then(function (r) { return r.text(); }).then(function (t) {
+            clearTimeout(to);
             var items = [];
             try {
               var j = JSON.parse(t);
@@ -12834,7 +12813,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://ohmanda.com/api/horoscope/" + sign + "/"),
             "https://corsproxy.io/?" + encodeURIComponent("https://ohmanda.com/api/horoscope/" + sign + "/")
           ];
+          var horoDeadline = Date.now() + 8000;
           function next(i) {
+            if (Date.now() > horoDeadline) i = urls.length;
             if (i >= urls.length) {
               var el = document.getElementById(id);
               if (el && /Loading|unavailable/i.test(el.textContent)) el.textContent = "Quiet sky day — no daily note feed.";
@@ -14167,6 +14148,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       return !!(String(s.gmapsKey || "").trim() && s.gmapsOn !== "0");
     }
     function driveMinutesFor(e, cb) {
+      cb(null);
+      return;
       var pin = pinVenue(e);
       if (!pin) { cb(null); return; }
       if (typeof mapsPaidOn === "function" ? !mapsPaidOn() : !gmapsKey()) { cb(null); return; }
