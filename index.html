@@ -3272,6 +3272,10 @@ Cart shop:</textarea>
           </div>
         </div>
         <p class="hint">Off stops live traffic, drive minutes, and address lookup so you are not billed. The free embed map still works. Saved on this device.</p>
+        <div class="set-line"><label>Google cache</label>
+          <button type="button" id="set-gcache" class="ghost">Clear lookups</button>
+        </div>
+        <p class="hint">Places ratings and drive times are stored 24 hours on this device so the board does not keep billing Google. Clear after you change the home address.</p>
         <p class="hint" id="set-zip-hint">Weather, radar, tides, scanners, and maps pin here. Saved on this device.</p>
       </div>
       <div class="set-card">
@@ -3380,7 +3384,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 591;
+    window.BOARD_VER = 592;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3721,6 +3725,19 @@ Cart shop:</textarea>
       }
       return addr || (homeLat() + "," + homeLon());
     }
+    function gCacheKey(kind, extra) {
+      return "bw-g-" + kind + ":" + String(homeAddress() || (homeLat() + "," + homeLon())).slice(0, 60) + ":" + String(extra || "").slice(0, 80);
+    }
+    function gCacheGet(kind, extra, maxAge) {
+      try {
+        var row = JSON.parse(localStorage.getItem(gCacheKey(kind, extra)) || "null");
+        if (!row || !row.at || Date.now() - row.at > (maxAge || 24 * 3600 * 1000)) return null;
+        return row.data;
+      } catch (e) { return null; }
+    }
+    function gCacheSet(kind, extra, data) {
+      try { localStorage.setItem(gCacheKey(kind, extra), JSON.stringify({ at: Date.now(), data: data })); } catch (e) {}
+    }
     function communityName() {
       var n = String((getSet() || {}).community || "").trim();
       return n || "BeachWalk by Manasota Key";
@@ -3782,7 +3799,6 @@ Cart shop:</textarea>
         if (typeof refreshWeather === "function") refreshWeather();
         if (typeof loadWx === "function") loadWx();
         if (typeof fillZipRadio === "function") fillZipRadio();
-        if (typeof window.reloadEats === "function") try { window.reloadEats(); } catch (eR) {}
         if (typeof enrichEventDistances === "function" && window.__entAll) try { enrichEventDistances(window.__entAll); } catch (eE) {}
       }).catch(function () {
         finish(false, "Could not pin that address. Check the line and try again.");
@@ -3795,6 +3811,17 @@ Cart shop:</textarea>
         if (a && /\d/.test(a) && typeof geocodeHome === "function") geocodeHome(function () {});
       } catch (e) {}
     }, 900);
+    document.getElementById("set-gcache") && document.getElementById("set-gcache").addEventListener("click", function () {
+      Object.keys(localStorage).forEach(function (k) {
+        if (k.indexOf("bw-g-") === 0 || k === "bw-eats-live") localStorage.removeItem(k);
+      });
+      window.__eatEnrichAt = 0;
+      window.__eatBag = [];
+      if (typeof window.reloadEats === "function") window.reloadEats();
+      if (typeof enrichEventDistances === "function" && window.__entAll) enrichEventDistances(window.__entAll);
+      var hint = document.getElementById("set-zip-hint");
+      if (hint) hint.textContent = "Google lookups cleared. Fetching fresh ratings and drives.";
+    });
     function hideAddrSuggest() {
       var box = document.getElementById("addr-suggest");
       if (box) { box.hidden = true; box.innerHTML = ""; }
@@ -9871,8 +9898,11 @@ function currentRotation() {
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 200+ reviews in range.</b><span>Widen Around home in Settings.</span></div>';
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
-        enrichEatLive(list);
-        enrichGoogleRatings(list);
+        if (!window.__eatEnrichAt || Date.now() - window.__eatEnrichAt > 10 * 60 * 1000) {
+          window.__eatEnrichAt = Date.now();
+          enrichEatLive(list);
+          enrichGoogleRatings(list);
+        }
       }
       function enrichGoogleRatings(list) {
         var i = 0;
@@ -9893,6 +9923,16 @@ function currentRotation() {
             return;
           }
           var r = list[i++];
+          var cached = gCacheGet("place", r.name || "", 24 * 3600 * 1000);
+          if (cached && cached.rating != null) {
+            r.rating = cached.rating;
+            r.reviews = cached.reviews || r.reviews;
+            r.gRated = true;
+            if (cached.addr) r.addr = cached.addr;
+            if (cached.placeId) r.placeId = cached.placeId;
+            setTimeout(next, 20);
+            return;
+          }
           googlePlaceRate(r, function (g) {
             if (g && g.rating != null) {
               r.rating = g.rating;
@@ -9901,6 +9941,7 @@ function currentRotation() {
               if (g.addr) r.addr = g.addr;
               if (g.placeId) r.placeId = g.placeId;
               if (g.lat) { r.lat = g.lat; r.lon = g.lon; }
+              gCacheSet("place", r.name || "", { rating: r.rating, reviews: r.reviews, addr: r.addr, placeId: r.placeId, lat: r.lat, lon: r.lon });
             }
             setTimeout(next, 180);
           });
@@ -10073,11 +10114,7 @@ function currentRotation() {
         if (!key) return cb(null);
         var miles = Number((getSet() || {}).eventMiles || 15);
         var queries = [
-          "restaurants in Englewood FL",
-          "SandBar Tiki & Grille 1975 Beach Rd Englewood FL",
-          "Lighthouse Grill and Tiki Bar 260 Maryland Ave Englewood FL",
-          "best seafood Englewood FL",
-          "tiki bar Englewood FL"
+          "top restaurants near " + (homeAddress() || "Englewood FL")
         ];
         var all = [];
         var left = queries.length;
@@ -14584,6 +14621,15 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     }
     function matrixChunk(dests, done) {
       if (!dests.length) { done(); return; }
+      var fresh = [];
+      dests.forEach(function (d) {
+        var extra = (d.lat != null ? (d.lat + "," + d.lon) : String(d.q || ""));
+        var hit = gCacheGet("drive", extra, 6 * 3600 * 1000);
+        if (hit && hit.min) { try { d.on(hit); } catch (eC) {} }
+        else fresh.push(d);
+      });
+      dests = fresh;
+      if (!dests.length) { done(); return; }
       loadGmaps(function (ok) {
         if (!ok || !window.google || !google.maps || !google.maps.DistanceMatrixService) { done(); return; }
         try {
@@ -14604,7 +14650,10 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
                 var el = res && res.rows && res.rows[0] && res.rows[0].elements && res.rows[0].elements[i];
                 if (status !== "OK" || !el || el.status !== "OK") return;
                 var sec = (el.duration_in_traffic && el.duration_in_traffic.value) || (el.duration && el.duration.value) || 0;
-                d.on({ min: Math.max(1, Math.round(sec / 60)), miles: el.distance ? el.distance.value / 1609.34 : null });
+                var packed = { min: Math.max(1, Math.round(sec / 60)), miles: el.distance ? el.distance.value / 1609.34 : null };
+                var extra = (d.lat != null ? (d.lat + "," + d.lon) : String(d.q || ""));
+                gCacheSet("drive", extra, packed);
+                d.on(packed);
               } catch (e1) {}
             });
             done();
@@ -14619,16 +14668,29 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         if (e.inside) applyDriveToCards(e, { min: 0, miles: 0 });
       });
       var dests = [];
+      var seen = {};
       (list || []).forEach(function (e) {
         if (!e || e.inside) return;
         var pin = typeof pinVenue === "function" ? pinVenue(e) : null;
-        dests.push({
+        var q = (pin && pin.q) || (typeof venueQuery === "function" ? venueQuery(e) : "") || e.loc || e.sum;
+        var key = (pin && pin.lat != null) ? (Number(pin.lat).toFixed(3) + "," + Number(pin.lon).toFixed(3)) : String(q || "").toLowerCase();
+        if (!key || seen[key]) {
+          if (seen[key] && seen[key].mates) seen[key].mates.push(e);
+          return;
+        }
+        var row = {
           lat: pin && pin.lat,
           lon: pin && pin.lon,
-          q: (pin && pin.q) || (typeof venueQuery === "function" ? venueQuery(e) : "") || e.loc || e.sum,
-          on: function (d) { applyDriveToCards(e, d); }
-        });
+          q: q,
+          mates: [e],
+          on: function (d) {
+            (row.mates || [e]).forEach(function (ev) { applyDriveToCards(ev, d); });
+          }
+        };
+        seen[key] = row;
+        dests.push(row);
       });
+      dests = dests.slice(0, 25);
       function nextChunk() {
         if (!dests.length) {
           if (typeof noteFeed === "function") noteFeed("event-drive", true, "google drive · events");
