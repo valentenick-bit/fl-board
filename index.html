@@ -853,7 +853,7 @@
     .eat-rate-pill { display:inline-block; margin:0 6px 4px 0; padding:2px 8px; border-radius:999px; background:#f3e6c4; color:#7a5a12; font-size:11px; font-weight:800; }
     html.dark .eat-rate-pill { background:#3a3018; color:#f0e2b8; }
     #eat-list .ev-card { cursor:pointer; }
-    .eat-card { background:var(--card); border:1px solid var(--hair); border-radius:16px; padding:12px; margin:0 0 8px; }
+    .eat-card { background:var(--card); border:1px solid var(--hair); border-radius:16px; padding:10px 12px; margin:0 0 8px; }
     .eat-card b { display:block; font-family:"Fraunces",Georgia,serif; font-size:16px; margin:0 0 2px; color:var(--navy); }
     .eat-card .eat-meta { display:block; color:var(--muted); font-size:12px; margin:0 0 8px; }
     .eat-pills { display:flex; flex-wrap:wrap; gap:6px; }
@@ -880,7 +880,16 @@
     @media (orientation:portrait) {
       .fun-shell { grid-template-columns:1fr; }
     }
-    #ent-list .card { padding:8px 10px; margin-bottom:6px; }
+    #ent-list .ev-card,
+    #eat-list .ev-card {
+      padding:10px 12px;
+      margin:0 0 8px;
+      min-height:102px;
+      box-sizing:border-box;
+      display:flex;
+      align-items:stretch;
+    }
+    #ent-list .card { padding:10px 12px; margin-bottom:8px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
     .hourly { display:flex; flex-wrap:nowrap; gap:0; padding:8px 4px 6px; overflow:hidden; background:rgba(255,255,255,.55); border:1px solid var(--hair); border-radius:24px; margin-bottom:8px; }
@@ -3370,7 +3379,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 582;
+    window.BOARD_VER = 584;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9207,7 +9216,7 @@ function currentRotation() {
       if (!pill) {
         pill = document.createElement("span");
         pill.className = "busy-tag";
-        var first = card.querySelector(".place-tag, .music-tag");
+        var first = card.querySelector(".place-tag, .music-tag, .kind-tag, .eat-pills");
         if (first && first.parentNode) first.parentNode.insertBefore(pill, first.nextSibling);
         else card.insertBefore(pill, card.firstChild);
       }
@@ -9216,7 +9225,7 @@ function currentRotation() {
       pill.className = "busy-tag " + (info.level || "");
     }
     function loadBusyPills() {
-      var cards = document.querySelectorAll("#today-do .card[data-busy]");
+      var cards = document.querySelectorAll("#today-do .card[data-busy], #eat-list .card[data-busy], #ent-list .card[data-busy]");
       var n = 0;
       cards.forEach(function (card) {
         var q = card.getAttribute("data-busy") || "";
@@ -9720,9 +9729,9 @@ function currentRotation() {
         if (r.prevRating != null && r.rating != null && Number(r.prevRating) !== Number(r.rating)) {
           delta = Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
         }
-        return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '">' +
+        return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '" data-eat="' + String(r.name || "").replace(/"/g, "&quot;") + '">' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + delta + '</span><span class="ev-ico" aria-hidden="true">★</span></div>' +
-          '<div class="ev-body">' + pills +
+          '<div class="ev-body">' + pills.replace('class="dist-tag"', 'class="dist-tag eat-drive"') +
           "<b>" + (r.name || "Restaurant") + "</b>" +
           (addr ? '<span class="ev-when">' + addr + "</span>" : "") +
           "</div></div>";
@@ -9751,7 +9760,8 @@ function currentRotation() {
         var note = document.getElementById("eat-count");
         var miles = Number((getSet() || {}).eventMiles || 15);
         list = (list || []).filter(function (r) { return r.miles == null || r.miles <= miles + 0.2; });
-        list.sort(function (a, b) { return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (a.miles || 99) - (b.miles || 99); });
+        list = list.filter(function (r) { return Number(r.reviews) > 2500; });
+        list.sort(function (a, b) { return (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (Number(b.rating) || 0) - (Number(a.rating) || 0); });
         list = list.slice(0, 10);
         var prev = {};
         try { prev = JSON.parse(localStorage.getItem("bw-eat-ratings") || "{}") || {}; } catch (eP) { prev = {}; }
@@ -9768,10 +9778,38 @@ function currentRotation() {
           });
           localStorage.setItem("bw-eat-ratings", JSON.stringify(store));
         } catch (eS) {}
-        if (note) note.textContent = list.length ? ("Top rated · " + miles + " mi") : ("No restaurants inside " + miles + " mi");
-        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants in range.</b><span>Widen Around home in Settings.</span></div>';
+        if (note) note.textContent = list.length ? ("2,500+ reviews · " + miles + " mi") : ("No restaurants with 2,500+ reviews inside " + miles + " mi");
+        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with 2,500+ reviews in range.</b><span>Widen Around home in Settings, or wait for Google Places.</span></div>';
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
+        enrichEatLive(list);
+      }
+      function enrichEatLive(list) {
+        var i = 0;
+        function nextDrive() {
+          if (i >= (list || []).length) {
+            if (typeof noteFeed === "function") noteFeed("eat-drive", true, "google drive times");
+            return;
+          }
+          var r = list[i++];
+          if (typeof driveMinutesToLatLng !== "function") return;
+          driveMinutesToLatLng(r.lat, r.lon, function (d) {
+            if (d) {
+              r.driveMin = d.min;
+              if (d.miles != null) r.miles = d.miles;
+              var cards = document.querySelectorAll("#eat-list .eat-card");
+              for (var c = 0; c < cards.length; c++) {
+                if ((cards[c].getAttribute("data-eat") || "") === (r.name || "")) {
+                  var tag = cards[c].querySelector(".eat-drive");
+                  if (tag) tag.textContent = (d.miles != null ? d.miles.toFixed(d.miles >= 10 ? 0 : 1) + " mi · " : "") + d.min + " min";
+                }
+              }
+            }
+            setTimeout(nextDrive, 150);
+          });
+        }
+        nextDrive();
+        if (typeof loadBusyPills === "function") setTimeout(loadBusyPills, 200);
       }
       function eatCacheRead() {
         try { return JSON.parse(localStorage.getItem("bw-eats-live") || "[]") || []; } catch (e) { return []; }
@@ -9820,7 +9858,7 @@ function currentRotation() {
         var miles = Number((getSet() || {}).eventMiles || 15);
         var body = {
           includedTypes: ["restaurant"],
-          maxResultCount: 10,
+          maxResultCount: 20,
           rankPreference: "DISTANCE",
           locationRestriction: {
             circle: {
@@ -14146,6 +14184,37 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     function mapsPaidOn() {
       var s = typeof getSet === "function" ? getSet() : {};
       return !!(String(s.gmapsKey || "").trim() && s.gmapsOn !== "0");
+    }
+    function driveMinutesToLatLng(lat, lon, cb) {
+      if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon)) { cb(null); return; }
+      if (typeof gmapsKey === "function" ? !gmapsKey() : true) { cb(null); return; }
+      loadGmaps(function (ok) {
+        if (!ok || !window.google || !google.maps || !google.maps.DistanceMatrixService) { cb(null); return; }
+        try {
+          var svc = new google.maps.DistanceMatrixService();
+          svc.getDistanceMatrix({
+            origins: [new google.maps.LatLng(homeLat(), homeLon())],
+            destinations: [new google.maps.LatLng(Number(lat), Number(lon))],
+            travelMode: google.maps.TravelMode.DRIVING,
+            unitSystem: google.maps.UnitSystem.IMPERIAL,
+            drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
+          }, function (res, status) {
+            try {
+              var el = res && res.rows && res.rows[0] && res.rows[0].elements && res.rows[0].elements[0];
+              if (status !== "OK" || !el || el.status !== "OK") {
+                if (typeof noteFeed === "function") noteFeed("eat-drive", false, String(status || "no matrix"));
+                cb(null);
+                return;
+              }
+              var sec = (el.duration_in_traffic && el.duration_in_traffic.value) || (el.duration && el.duration.value) || 0;
+              cb({
+                min: Math.max(1, Math.round(sec / 60)),
+                miles: el.distance ? el.distance.value / 1609.34 : null
+              });
+            } catch (e2) { cb(null); }
+          });
+        } catch (e1) { cb(null); }
+      });
     }
     function driveMinutesFor(e, cb) {
       cb(null);
