@@ -601,8 +601,10 @@
     .go-saxis { display:grid; grid-template-columns:repeat(12,1fr); font-size:9px; letter-spacing:.04em; text-transform:uppercase; opacity:.7; margin:0 0 8px 5.6em; }
     main { position:relative; }
     .hdr-tools { display:flex; align-items:center; gap:6px; }
+    .hdr-setstack { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:1px; }
+    .hdr-setstack .hdr-ver { font-size:10px; letter-spacing:.06em; line-height:1; opacity:.85; margin:0; padding:1px 4px 0; }
     .hdr-act {
-      display:flex; align-items:center; gap:0;
+      display:flex; align-items:flex-end; gap:0;
       background:rgba(8,16,28,.62);
       border-radius:12px;
       padding:2px;
@@ -1033,6 +1035,16 @@
     .radar-tools { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:8px; }
     .radar-legend { margin:0; font-size:13px; opacity:.8; }
     .radar-tools .cam-pills { position:static; }
+    .storm-picks { margin:0 0 10px; }
+    .storm-frames { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; }
+    .storm-frame { position:relative; border-radius:14px; overflow:hidden; background:#111; aspect-ratio:1 / 1; }
+    .storm-frame img { width:100%; height:100%; object-fit:cover; display:block; }
+    .storm-frame b { position:absolute; left:8px; bottom:8px; color:#fff; font-size:11px; letter-spacing:.06em; text-transform:uppercase; text-shadow:0 1px 4px #000; }
+    .storm-frame.storm-wide { grid-column:1 / -1; aspect-ratio:16 / 9; max-height:32vh; }
+    @media (orientation:portrait) {
+      .storm-frames { grid-template-columns:1fr 1fr; }
+      .storm-frame.storm-wide { max-height:26vh; }
+    }
     .hurr-stage { position:relative; width:100%; height:52vh; overflow:hidden; border-radius:16px; background:#111; }
     .hurr-stage img { width:100%; height:100%; object-fit:contain; display:block; background:#111; }
     .hurr-cap { position:absolute; left:10px; bottom:10px; background:rgba(18,16,28,.72); color:#f7f1e6; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; padding:5px 9px; border-radius:999px; }
@@ -1841,10 +1853,12 @@
           <div id="when"><span id="when-date"></span><span id="when-time"></span></div>
           <div class="hdr-act">
             <button type="button" class="pausebtn" id="pausebtn" title="Pause rotation" aria-label="Pause rotation">❚❚</button>
+            <div class="hdr-setstack">
+            <span class="hdr-ver" id="hdr-ver">v558</span>
             <button type="button" class="setgear" id="hdr-setbtn" title="Settings" aria-label="Settings">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.81 8.48a.5.5 0 0 0 .12.64L4.96 10.7c-.04.31-.06.63-.06.94s.02.63.06.94L2.93 14.16a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.4.31.64.22l2.39-.96c.5.39 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.55 1.63-.94l2.39.96c.24.09.51 0 .64-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
             </button>
-            <span class="hdr-ver" id="hdr-ver">v557</span>
+            </div>
           </div>
         </div>
         <div class="clock-bits" id="hdr-pills">
@@ -2067,20 +2081,6 @@
         <div class="card wx-extra" id="volcano-card"><b>Volcano</b><span id="live-volcano">No advisory.</span></div>
         <p class="pill-key">USGS quakes within about 300 miles, plus the significant worldwide list. Fire weather follows NWS Red Flag. Pollen has no free national feed yet.</p>
       </section>
-      <section id="gulfsat" class="page">
-        <h2 data-k="Gulf">Gulf</h2>
-        <div class="radar-crop radar-stage">
-          <img id="gulfsat-view" alt="Gulf satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"/>
-        </div>
-        <p class="pill-key">GOES Gulf of America / East Gulf. Enters the rotation when a named storm is in the Gulf.</p>
-      </section>
-      <section id="tropics" class="page">
-        <h2 data-k="Atlantic">Tropics</h2>
-        <div class="radar-crop radar-stage">
-          <img id="tropics-view" alt="Atlantic tropics satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg"/>
-        </div>
-        <p class="pill-key">GOES Caribbean / Atlantic tropics. Enters the rotation when a named storm is in the Atlantic.</p>
-      </section>
       <section id="marine" class="page">
         <h2 data-k="Gulf and inlet">Sea</h2>
         <div class="marine-graphs">
@@ -2192,22 +2192,36 @@ Cart shop:</textarea>
         </div>
         <p class="pill-key" id="news-note">Headlines follow the home address.</p>
       </section>
-      <section id="cane" class="page">
-        <h2 data-k="Atlantic and Gulf">Tropical</h2>
-        <div class="card"><b>Atlantic / Gulf</b><span id="live-cane">Checking the National Hurricane Center</span></div>
-        <img id="cane-img-2d" alt="NHC Atlantic 2-day outlook" style="width:100%;border-radius:12px;background:#111;margin-bottom:8px" src="https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png"/>
-        <img id="cane-img" alt="NHC Atlantic 5-day outlook" style="width:100%;border-radius:12px;background:#111" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
-
-        <p class="pill-key" id="cane-refs"><a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener">NHC Atlantic / Gulf outlook</a></p>
-      </section>
-      <section id="hurr" class="page map-page">
-        <h2 data-k="Watch and warning">Hurricane</h2>
-        <div class="card" id="hurr-stats"><b>No hurricane watch or warning</b><span>This page joins the rotation when NWS posts a hurricane or tropical-storm watch or warning for the Key.</span></div>
+            <section id="storms" class="page">
+        <h2 data-k="Named storms">Storms</h2>
+        <p class="pill-key" id="storm-lead">This page only joins when a named storm can reach the home pin.</p>
+        <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
+        <div class="card" id="hurr-stats"><b>No named storm on this pin</b><span>Quiet until NHC lists a storm that can affect the address on Account.</span></div>
         <div class="card" id="hurr-disc"><b>NHC discussion</b><span>Waiting on the latest forecast discussion…</span></div>
-        <div class="hurr-stage">
-          <img id="hurr-frame" alt="Hurricane view" src="https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif"/>
-          <div class="hurr-cap" id="hurr-cap">Radar</div>
+        <div class="card"><b>Atlantic / Gulf</b><span id="live-cane">Checking the National Hurricane Center</span></div>
+        <div class="storm-frames">
+          <div class="storm-frame" id="storm-frame-gulf" hidden>
+            <img id="gulfsat-view" alt="Gulf satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"/>
+            <b>Gulf satellite</b>
+          </div>
+          <div class="storm-frame" id="storm-frame-atl" hidden>
+            <img id="tropics-view" alt="Atlantic tropics satellite" src="https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg"/>
+            <b>Atlantic satellite</b>
+          </div>
+          <div class="storm-frame storm-wide">
+            <img id="hurr-frame" alt="Hurricane view" src="https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif"/>
+            <b id="hurr-cap">Radar</b>
+          </div>
+          <div class="storm-frame">
+            <img id="cane-img-2d" alt="NHC Atlantic 2-day outlook" src="https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png"/>
+            <b>2-day outlook</b>
+          </div>
+          <div class="storm-frame">
+            <img id="cane-img" alt="NHC Atlantic 5-day outlook" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
+            <b>5-day outlook</b>
+          </div>
         </div>
+        <p class="pill-key" id="cane-refs"><a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener">NHC Atlantic / Gulf outlook</a></p>
       </section>
       <section id="villa" class="page">
         <h2 data-k="Season">Open / close</h2>
@@ -2762,15 +2776,13 @@ Cart shop:</textarea>
           <div class="menu-grid">
             <button type="button" data-p="cam">Views</button>
             <button type="button" data-p="wink">News</button>
-            <button type="button" data-p="gulfsat">Gulf</button>
-            <button type="button" data-p="tropics">Tropics</button>
+
           </div>
         </div>
         <div class="menu-block">
           <h3>Storm</h3>
           <div class="menu-grid">
-            <button type="button" data-p="cane">Tropical</button>
-            <button type="button" data-p="hurr">Hurricane</button>
+            <button type="button" data-p="storms">Storms</button>
             <button type="button" data-p="contacts">Emergency</button>
             <button type="button" data-p="prep">Prep</button>
             <button type="button" data-p="power">Power</button>
@@ -3137,7 +3149,7 @@ Cart shop:</textarea>
       <div class="set-card">
         <h3>When weather takes over</h3>
         <p class="hint">A watch or warning switches the board to this list. Pages marked “only when live” still sit out until that condition is true.</p>
-        <p class="hint">Lightning no longer has its own page — it swaps into the Weather radar frame when a strike is within 10 miles. Tropical joins when a named storm can affect this address. Hurricane joins on a hurricane or tropical-storm watch or warning. Gulf and Tropics join when a named storm is in that basin. Views drops out after dark unless Cam at night is on.</p>
+        <p class="hint">Lightning no longer has its own page — it swaps into the Weather radar frame when a strike is within 10 miles. Storms is one page for Tropical, Hurricane, Gulf, and Atlantic satellite. It only joins when a named storm can affect the home address. Two storms: pick the name at the top; closest to home is first. Views drops out after dark unless Cam at night is on.</p>
         <div id="set-rot-storm"></div>
       </div>
       <div class="set-card">
@@ -3225,10 +3237,8 @@ Cart shop:</textarea>
         <button type="button" data-p="cam">Views</button>
         <button type="button" data-p="wink">News</button>
         <p class="drawer-lab">Storms</p>
-        <button type="button" data-p="cane">Tropical</button>
-        <button type="button" data-p="hurr">Hurricane</button>
-        <button type="button" data-p="gulfsat">Gulf</button>
-        <button type="button" data-p="tropics">Tropics</button>
+        <button type="button" data-p="storms">Storms</button>
+
         <p class="drawer-lab">Safety</p>
         <button type="button" data-p="contacts">Emergency</button>
         <button type="button" data-p="prep">Prep</button>
@@ -3282,7 +3292,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 557;
+    window.BOARD_VER = 558;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3337,7 +3347,7 @@ Cart shop:</textarea>
     })();
     window.ROT_DEFAULTS = {
       normal: ["now","tenday","land","marine","sky","cam","ent"],
-      storm: ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
+      storm: ["tenday","storms","marine","contacts","prep","power"]
     };
     var ROT_DEFAULTS = window.ROT_DEFAULTS;
     var pages = ROT_DEFAULTS.normal.slice();
@@ -3835,6 +3845,77 @@ Cart shop:</textarea>
         return c.lon >= west && c.lon <= east && c.lat >= south && c.lat <= north;
       }
       return /^al|^at/.test(id);
+    }
+
+    function stormMiles(s) {
+      var c = typeof stormCoords === "function" ? stormCoords(s) : { lat: NaN, lon: NaN };
+      if (isNaN(c.lat) || isNaN(c.lon)) return 99999;
+      var R = 3958.8, toR = Math.PI / 180;
+      var dLat = (c.lat - homeLat()) * toR, dLon = (c.lon - homeLon()) * toR;
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(c.lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+    }
+    function pickClosestStorm() {
+      var list = window.__namedStorms || [];
+      var best = 0, bestM = 1e9;
+      list.forEach(function (s, i) {
+        var m = stormMiles(s);
+        if (m < bestM) { bestM = m; best = i; }
+      });
+      window.__stormPick = best;
+      return list[best] || null;
+    }
+    function selectedStorm() {
+      var list = window.__namedStorms || [];
+      if (!list.length) return null;
+      var i = window.__stormPick;
+      if (i == null || i < 0 || i >= list.length) return pickClosestStorm();
+      return list[i];
+    }
+    function paintStormPage() {
+      var list = window.__namedStorms || [];
+      if (window.__stormPick == null || window.__stormPick >= list.length) pickClosestStorm();
+      var lead = document.getElementById("storm-lead");
+      var picks = document.getElementById("storm-picks");
+      var stats = document.getElementById("hurr-stats");
+      var gulfF = document.getElementById("storm-frame-gulf");
+      var atlF = document.getElementById("storm-frame-atl");
+      var place = typeof homePlace === "function" ? homePlace() : "home";
+      if (lead) {
+        lead.textContent = list.length
+          ? (list.length + " named storm" + (list.length > 1 ? "s" : "") + " that can reach " + place + ". Closest is selected first.")
+          : ("No named storm on a path that can reach " + place + ".");
+      }
+      if (picks) {
+        picks.hidden = list.length < 2;
+        picks.innerHTML = list.map(function (s, i) {
+          var on = i === window.__stormPick;
+          var nm = s.name || s.Name || "Storm";
+          var cls = s.classification || s.intensity || "";
+          return '<button type="button" data-storm="' + i + '" class="' + (on ? "on" : "") + '">' + nm + (cls ? " · " + cls : "") + "</button>";
+        }).join("");
+        picks.onclick = function (e) {
+          var b = e.target.closest("[data-storm]");
+          if (!b) return;
+          window.__stormPick = Number(b.getAttribute("data-storm"));
+          paintStormPage();
+        };
+      }
+      var s = selectedStorm();
+      if (stats) {
+        if (!s) {
+          stats.innerHTML = "<b>No named storm on this pin</b><span>This page stays out of the loop until NHC lists a storm that can affect the Account address.</span>";
+        } else {
+          var c = stormCoords(s);
+          var mi = Math.round(stormMiles(s));
+          var loc = (!isNaN(c.lat) && !isNaN(c.lon)) ? (c.lat.toFixed(1) + "°, " + c.lon.toFixed(1) + "° · ") : "";
+          stats.innerHTML = "<b>" + (s.name || "Storm") + (s.classification ? " · " + s.classification : "") + "</b><span>" + loc + mi + " miles from home." + (list.length > 1 ? " Tap another name above to switch." : "") + "</span>";
+        }
+      }
+      var basins = window.__satBasins || {};
+      if (gulfF) gulfF.hidden = !basins.gulf;
+      if (atlF) atlF.hidden = !basins.atl;
+      if (typeof fetchHurrDisc === "function") fetchHurrDisc(s || null);
     }
     function relevantStorms(list) {
       return (list || []).filter(stormThreatensHome);
@@ -4576,7 +4657,7 @@ function currentRotation() {
       if (!id || id === "settings" || id === "account" || pageOnRotation(id)) return;
       var page = document.getElementById(id);
       if (!page) return;
-      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Fun", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Fun", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
       var subs = { health:"What is live, stale, or down", guide:"How Commons works", ideas:"Queued work", sources:"Where the numbers come from", triggers:"Test rotations and alerts", kioskpage:"Wall setup", villa:"Open and close the house", contacts:"Numbers and what to do", prep:"Kit and steps for this warning", power:"Outages near the house", business:"Clubhouse and HOA", wink:"Local headlines", menu:"All pages", welcome:"Start here" };
       var head = document.createElement("div");
       head.className = "settings-head page-off-head";
@@ -4598,6 +4679,7 @@ function currentRotation() {
         p.style.display = "";
         p.style.opacity = "";
       });
+      if (id === "storms" && typeof paintStormPage === "function") paintStormPage();
       if (jump) {
         requestAnimationFrame(function () {
           setTimeout(function () {
@@ -6933,7 +7015,7 @@ function currentRotation() {
     clock(); setInterval(clock, 15000);
     var ROT_DEFAULTS = window.ROT_DEFAULTS || {
       normal: ["now","tenday","land","marine","sky","cam","ent"],
-      storm: ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
+      storm: ["tenday","storms","marine","contacts","prep","power"]
     };
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
@@ -6948,8 +7030,8 @@ function currentRotation() {
           s.normal = (s.normal || []).filter(function (id) { return id !== "land"; });
           var atSea = s.normal.indexOf("marine");
           s.normal.splice(atSea >= 0 ? atSea : s.normal.length, 0, "land");
-          s.normal = (s.normal || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt" && id !== "traffic" && id !== "deliver"; });
-          s.storm = (s.storm || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt" && id !== "traffic" && id !== "deliver"; });
+          s.normal = (s.normal || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt" && id !== "traffic" && id !== "deliver" && id !== "cane" && id !== "hurr" && id !== "gulfsat" && id !== "tropics"; });
+          s.storm = (s.storm || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt" && id !== "traffic" && id !== "deliver" && id !== "cane" && id !== "hurr" && id !== "gulfsat" && id !== "tropics"; });
           function placeAfter(list, afterId, id) {
             if ((list || []).indexOf(id) >= 0) return list;
             list = (list || []).slice();
@@ -6975,10 +7057,8 @@ function currentRotation() {
       var ev = (window.__wxRisk && window.__wxRisk.warnTypes) || "";
       var basins = window.__satBasins || {};
       if (id === "bolt") return !!(typeof boltWanted === "function" && boltWanted());
-      if (id === "cane") return !!(window.__namedStorms && window.__namedStorms.length) || /hurricane|tropical|surge/.test(ev);
-      if (id === "hurr") return !!(window.__wxRisk && window.__wxRisk.hurr) || /hurricane|tropical storm|storm surge/.test(ev);
-      if (id === "gulfsat") return !!basins.gulf;
-      if (id === "tropics") return !!basins.atl;
+      if (id === "storms" || id === "cane" || id === "hurr" || id === "gulfsat" || id === "tropics")
+        return !!(window.__namedStorms && window.__namedStorms.length);
       return true;
     }
     function warnList() {
@@ -8320,7 +8400,7 @@ function currentRotation() {
     }
 
     function pageLabel(id) {
-      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Fun", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Fun", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
       return names[id] || id;
     }
     function rebuildDock() {
@@ -8353,10 +8433,7 @@ function currentRotation() {
         seen[id] = true;
       }
       if (typeof boltWanted === "function" && boltWanted()) 
-      if (rotVisible("cane")) insertAfter("tenday", "cane");
-      if (rotVisible("hurr")) insertAfter(list.indexOf("cane") >= 0 ? "cane" : "tenday", "hurr");
-      if (rotVisible("gulfsat")) insertAfter("tenday", "gulfsat");
-      if (rotVisible("tropics")) insertAfter(list.indexOf("gulfsat") >= 0 ? "gulfsat" : "radar", "tropics");
+      if (rotVisible("storms")) insertAfter("tenday", "storms");
       if (typeof noteFeed === "function") {
         noteFeed("bolt-rot", true, list.indexOf("bolt") >= 0 ? "in rotation" : "idle");
         noteFeed("cane-rot", true, list.indexOf("cane") >= 0 ? "in rotation" : "idle");
@@ -9715,16 +9792,13 @@ function currentRotation() {
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
     var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","cam","ent","wink","house"];
-    var ROT_STORM_POOL = ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"];
+    var ROT_STORM_POOL = ["tenday","storms","marine","contacts","prep","power"];
     var ROT_AUTO_NOTE = {
       tenday: "radar lives on this page; lightning swaps into that frame when it is close",
       land: "traffic map, quakes, AQI, heat, flood, fire weather",
       marine: "tides, surge, water, rip, red tide",
       bolt: "lightning now swaps into the Weather radar frame — no separate page",
-      cane: "only when a named storm can affect this address",
-      hurr: "only on a hurricane or tropical-storm watch or warning",
-      gulfsat: "only when a named storm is in the Gulf",
-      tropics: "only when a named storm is in the Atlantic",
+      storms: "only when a named storm can affect the home address — one page for all of them",
       cam: "drops out after dark unless Cam at night is on"
     };
     function paintRotSet() {
@@ -12316,6 +12390,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             if (gulf || (/^al|^at/.test(id) && !isNaN(lon) && lon <= -81)) window.__satBasins.gulf = true;
             if (atl) window.__satBasins.atl = true;
           });
+          if (typeof paintStormPage === "function") paintStormPage();
           if (typeof applyRadar === "function") applyRadar();
           if (typeof showRadarView === "function") showRadarView(0);
           if (typeof noteFeed === "function") noteFeed("sat", !!(window.__satBasins.gulf || window.__satBasins.atl), (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "radar only");
