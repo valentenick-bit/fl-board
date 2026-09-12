@@ -3380,7 +3380,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 588;
+    window.BOARD_VER = 589;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9787,11 +9787,11 @@ function currentRotation() {
         }
         var addr = r.addr || r.area || "";
         var mapQ = ((r.name || "") + (addr ? " " + addr : " Englewood FL")).trim();
-        var reviews = r.reviews ? (r.reviews + " ratings") : "";
+        var reviews = (r.gRated && r.reviews) ? (r.reviews + " ratings") : "";
         var pills = '<span class="kind-tag eat-' + kindCls(r.kind) + '">' + (r.kind || "Restaurant") + "</span>";
         if (dist) pills += '<span class="dist-tag">' + dist + "</span>";
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
-        var stars = (r.rating != null && r.rating !== "") ? Number(r.rating).toFixed(1) : "—";
+        var stars = r.gRated && r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var delta = "";
         if (r.prevRating != null && r.rating != null && Number(r.prevRating) !== Number(r.rating)) {
           delta = Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
@@ -9828,8 +9828,11 @@ function currentRotation() {
         var miles = Number((getSet() || {}).eventMiles || 15);
         list = dedupeEats((list || []).concat(mustEats()));
         list = list.filter(function (r) { return r.miles == null || r.miles <= miles + 0.2; });
-        list = list.filter(function (r) { return Number(r.rating) > 0; });
-        list.sort(function (a, b) { return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (a.miles || 99) - (b.miles || 99); });
+        list.sort(function (a, b) {
+          var ag = a.gRated ? 1 : 0, bg = b.gRated ? 1 : 0;
+          if (bg !== ag) return bg - ag;
+          return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0) || (a.miles || 99) - (b.miles || 99);
+        });
         list = list.slice(0, 10);
         var prev = {};
         try { prev = JSON.parse(localStorage.getItem("bw-eat-ratings") || "{}") || {}; } catch (eP) { prev = {}; }
@@ -9851,6 +9854,92 @@ function currentRotation() {
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
         enrichEatLive(list);
+        enrichGoogleRatings(list);
+      }
+      function enrichGoogleRatings(list) {
+        var i = 0;
+        function next() {
+          if (i >= (list || []).length) {
+            if (typeof noteFeed === "function") noteFeed("eat-rate", true, "google ratings");
+            list.sort(function (a, b) {
+              return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
+            });
+            var box = document.getElementById("eat-list");
+            if (box) box.innerHTML = list.map(card).join("");
+            enrichEatLive(list);
+            return;
+          }
+          var r = list[i++];
+          googlePlaceRate(r, function (g) {
+            if (g && g.rating != null) {
+              r.rating = g.rating;
+              r.reviews = g.reviews || r.reviews;
+              r.gRated = true;
+              if (g.addr) r.addr = g.addr;
+              if (g.placeId) r.placeId = g.placeId;
+              if (g.lat) { r.lat = g.lat; r.lon = g.lon; }
+            }
+            setTimeout(next, 180);
+          });
+        }
+        next();
+      }
+      function googlePlaceRate(r, cb) {
+        if (!r || !r.name) { cb(null); return; }
+        if (typeof gmapsKey === "function" && !gmapsKey()) { cb(null); return; }
+        loadGmaps(function (ok) {
+          if (!ok || !window.google || !google.maps || !google.maps.places) {
+            googlePlaceRateNew(r, cb);
+            return;
+          }
+          try {
+            var svc = new google.maps.places.PlacesService(document.createElement("div"));
+            svc.findPlaceFromQuery({
+              query: String(r.name) + " " + String(r.addr || "Englewood FL"),
+              fields: ["place_id", "name", "rating", "user_ratings_total", "formatted_address", "geometry"]
+            }, function (results, status) {
+              if (status !== "OK" || !results || !results[0]) { googlePlaceRateNew(r, cb); return; }
+              var p = results[0];
+              var loc = p.geometry && p.geometry.location;
+              cb({
+                rating: p.rating,
+                reviews: p.user_ratings_total || 0,
+                addr: p.formatted_address || "",
+                placeId: p.place_id,
+                lat: loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat),
+                lon: loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng)
+              });
+            });
+          } catch (e) { googlePlaceRateNew(r, cb); }
+        });
+      }
+      function googlePlaceRateNew(r, cb) {
+        var key = String((getSet() || {}).gmapsKey || "").trim();
+        if (!key) { cb(null); return; }
+        fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": key,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location"
+          },
+          body: JSON.stringify({
+            textQuery: String(r.name) + " " + String(r.addr || "Englewood FL"),
+            pageSize: 1,
+            locationBias: { circle: { center: { latitude: r.lat || homeLat(), longitude: r.lon || homeLon() }, radius: 12000 } }
+          })
+        }).then(function (res) { return res.json(); }).then(function (j) {
+          var pl = j && j.places && j.places[0];
+          if (!pl) { cb(null); return; }
+          cb({
+            rating: pl.rating,
+            reviews: pl.userRatingCount || 0,
+            addr: pl.formattedAddress || "",
+            placeId: pl.id,
+            lat: pl.location && pl.location.latitude,
+            lon: pl.location && pl.location.longitude
+          });
+        }).catch(function () { cb(null); });
       }
       function enrichEatLive(list) {
         var dests = (list || []).map(function (r) {
@@ -9952,8 +10041,8 @@ function currentRotation() {
           return o;
         }
         return [
-          row({ name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood, FL 34223", lat: 26.9248, lon: -82.3535, rating: 4.5, reviews: 5500, kind: "Seafood", key: "sandbar" }),
-          row({ name: "Lighthouse Grill and Tiki Bar", addr: "260 Maryland Ave, Englewood, FL 34224", lat: 26.9062, lon: -82.3278, rating: 4.4, reviews: 900, kind: "Seafood", key: "lighthouse" })
+          row({ name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood, FL 34223", lat: 26.9248, lon: -82.3535, rating: null, reviews: 0, kind: "Seafood", key: "sandbar" }),
+          row({ name: "Lighthouse Grill and Tiki Bar", addr: "260 Maryland Ave, Englewood, FL 34224", lat: 26.9062, lon: -82.3278, rating: null, reviews: 0, kind: "Seafood", key: "lighthouse" })
         ];
       }
       function fromPlacesText(cb) {
@@ -10234,7 +10323,9 @@ function currentRotation() {
               if (!tags.name || lat == null) return null;
               return {
                 name: tags.name,
-                rating: tags.stars ? Number(tags.stars) : null,
+                rating: null,
+                reviews: 0,
+                src: "osm",
                 kind: kindOf(tags.cuisine || tags.cuisine_1 || ""),
                 miles: milesOf(lat, lon),
                 lat: lat, lon: lon,
