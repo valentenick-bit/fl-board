@@ -3370,7 +3370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 579;
+    window.BOARD_VER = 580;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3875,6 +3875,16 @@ Cart shop:</textarea>
       var box = document.getElementById("traffic-gmap");
       var frame = document.getElementById("traffic-map");
       if (!box) return;
+      var qEmbed = encodeURIComponent((typeof homeAddress === "function" && homeAddress()) || "Englewood, FL");
+      if (frame) {
+        frame.style.display = "";
+        if (!frame.src || frame.src.indexOf("layer=t") < 0 || force) {
+          frame.src = "https://maps.google.com/maps?q=" + qEmbed + "&z=12&hl=en&layer=t&t=m&output=embed";
+        }
+      }
+      box.hidden = true;
+      if (typeof noteFeed === "function") noteFeed("traffic", true, "embed " + decodeURIComponent(qEmbed).slice(0, 40));
+      return;
       if (typeof mapsPaidOn === "function" ? !mapsPaidOn() : !String(getSet().gmapsKey || "").trim()) {
         try { if (window.__trafficLayer) window.__trafficLayer.setMap(null); } catch (e) {}
         clearTimeout(window.__trafficNudge);
@@ -10032,11 +10042,16 @@ function currentRotation() {
           "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q)
         ];
         var i = 0;
+        var doneOp = false;
+        setTimeout(function () { if (!doneOp) { doneOp = true; cb([]); } }, 8000);
         function next() {
-          if (i >= urls.length) return cb([]);
+          if (doneOp) return;
+          if (i >= urls.length) { doneOp = true; return cb([]); }
           fetch(urls[i++]).then(function (r) { return r.json(); }).then(function (d) {
+            if (doneOp) return;
             var rows = (d && d.elements) || [];
             if (!rows.length) return next();
+            doneOp = true;
             cb(rows.map(function (el) {
               var tags = el.tags || {};
               var lat = el.lat || (el.center && el.center.lat);
@@ -10079,10 +10094,10 @@ function currentRotation() {
           if (list && list.length) {
             if (typeof noteFeed === "function") noteFeed("eats-src", true, (rows && rows.length ? "OpenStreetMap" : "cache") + " · " + list.length);
             fillAddrs(list, paint);
-          }
-          fromPlaces(function (places) {
-            if (places && places.length) paint(mergeEatCache(places));
-          });
+          } else if (typeof noteFeed === "function") noteFeed("eats-src", false, "OpenStreetMap empty");
+        });
+        fromPlacesNew(function (places) {
+          if (places && places.length) paint(mergeEatCache(places));
         });
       }
       window.reloadEats = run;
