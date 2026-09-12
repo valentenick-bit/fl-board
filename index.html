@@ -120,7 +120,7 @@
       }, true);
       setTimeout(function () {
         if (window.__rotStarted) return;
-        var ids = ["now","tenday","land","marine","sky","ent","deliver"];
+        var ids = ["now","tenday","land","marine","sky","ent"];
         var n = 0;
         window.__fallbackRot = setInterval(function () {
           if (window.__rotStarted) { clearInterval(window.__fallbackRot); return; }
@@ -983,6 +983,24 @@
     .card span.place-tag.place-out { background:var(--gold); color:var(--navy); }
     iframe.full { width:100%; height:52vh; border:0; border-radius:16px; background:#111; }
     #radar.page { background:transparent; }
+    #land .land-top { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,46%); gap:12px 16px; align-items:start; }
+    #land .land-map-frame { grid-column:2; grid-row:1; margin:0; max-width:100%; }
+    #land .land-top-left { grid-column:1; grid-row:1; min-width:0; }
+    #land .land-map-frame .radar-crop { width:100%; height:auto; aspect-ratio:4 / 3; }
+    #land .land-map-frame #traffic-map,
+    #land .land-map-frame #traffic-gmap {
+      position:absolute; inset:0; width:100%; height:100% !important; min-height:0 !important; max-height:none !important;
+      border:0; border-radius:16px; display:block;
+    }
+    @media (max-width:900px) {
+      #land .land-top { grid-template-columns:1fr; }
+      #land .land-map-frame { grid-column:1; grid-row:1; width:100%; margin:0 0 12px; }
+      #land .land-map-frame .radar-crop { min-height:42vh; }
+      #land .land-top-left { grid-column:1; grid-row:2; }
+    }
+    @media (max-width:900px) and (orientation:portrait) {
+      #land .land-map-frame .radar-crop { min-height:48vh; }
+    }
     #tenday .wx-top { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,46%); gap:12px 16px; align-items:start; }
     #tenday .wx-map-frame { grid-column:2; grid-row:1; margin:0; max-width:100%; }
     #tenday .wx-top-left { grid-column:1; grid-row:1; min-width:0; }
@@ -1925,7 +1943,7 @@
             <div id="today-do"></div>
           </div>
           <div id="today-deliv-col">
-            <h3 class="ent-h">Boxes on the way</h3>
+            <h3 class="ent-h">Packages</h3>
             <div id="today-deliv"></div>
           </div>
         </div>
@@ -2012,6 +2030,15 @@
       </section>
       <section id="land" class="page">
         <h2 data-k="On the ground">Land</h2>
+        <div class="land-top">
+        <div class="land-map-frame" id="land-map-frame">
+          <div class="radar-crop radar-stage" id="land-traffic-stage">
+            <div id="traffic-gmap" class="lite gmap-box land-map-pane" hidden></div>
+            <iframe class="lite land-map-pane on" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
+          </div>
+          <p class="wx-map-cap"><b>Traffic</b><span id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></span></p>
+        </div>
+        <div class="land-top-left">
         <p class="pill-key" id="land-nowline">Ground, air you walk in, and the crust under the house.</p>
         <div class="tiles facts">
           <div class="tile"><label>Air quality</label><strong id="live-aqi">—</strong><small id="live-aqi-note"></small></div>
@@ -2024,6 +2051,8 @@
           <div class="tile wx-extra" id="tile-freeze"><label>Freeze</label><strong id="live-freeze">—</strong></div>
           <div class="tile wx-extra" id="tile-snow"><label>Snow 24h</label><strong id="live-snow">—</strong></div>
           <div class="tile wx-extra" id="tile-ice"><label>Ice</label><strong id="live-ice">—</strong></div>
+        </div>
+        </div>
         </div>
         <div class="card" id="quake-card"><b>Nearest quake</b><span id="live-quake">Checking USGS…</span></div>
         <div class="card" id="quake-sig-card"><b>Notable quakes</b><span id="live-quake-sig">Checking significant events…</span></div>
@@ -2148,12 +2177,6 @@ Pest:
 Cart shop:</textarea>
         </div>
       </section>
-      <section id="deliver" class="page">
-        <h2 data-k="From Gmail">Delivery</h2>
-        <div id="deliv-list"></div>
-        <p id="deliv-note" class="pill-key">Loading the delivery report…</p>
-      </section>
-      
       <section id="wink" class="page">
         <h2 data-k="Near home">News</h2>
         <div id="wink-list">
@@ -2177,12 +2200,6 @@ Cart shop:</textarea>
           <img id="hurr-frame" alt="Hurricane view" src="https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif"/>
           <div class="hurr-cap" id="hurr-cap">Radar</div>
         </div>
-      </section>
-      <section id="traffic" class="page map-page">
-        <h2 data-k="The drive">Traffic</h2>
-        <div id="traffic-gmap" class="lite gmap-box" hidden></div>
-        <iframe class="lite" id="traffic-map" title="Traffic" src="https://maps.google.com/maps?q=Englewood+FL&z=11&hl=en&t=m&output=embed" allowfullscreen></iframe>
-        <p class="pill-key" id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></p>
       </section>
       <section id="villa" class="page">
         <h2 data-k="Season">Open / close</h2>
@@ -2730,14 +2747,12 @@ Cart shop:</textarea>
             <button type="button" data-p="marine">Sea</button>
             <button type="button" data-p="sky">Sky</button>
             <button type="button" data-p="ent">Fun</button>
-            <button type="button" data-p="deliver">Delivery</button>
           </div>
         </div>
         <div class="menu-block">
           <h3>Outside</h3>
           <div class="menu-grid">
             <button type="button" data-p="cam">Views</button>
-            <button type="button" data-p="traffic">Traffic</button>
             <button type="button" data-p="wink">News</button>
             <button type="button" data-p="gulfsat">Gulf</button>
             <button type="button" data-p="tropics">Tropics</button>
@@ -2869,7 +2884,7 @@ Cart shop:</textarea>
           </div>
         </div>
         <p class="hint">Used when picking nearby teams. Already-checked teams stay until you change them.</p>
-        <p class="hint">Loop is Today, Weather, Land, Sea, Sky, then Views and the house pages. Radar and Lightning are not separate pages — radar sits on Weather, and lightning uses that same frame when it is close. Today and Cam stay a little longer than the other pages.</p>
+        <p class="hint">Loop is Today, Weather, Land, Sea, Sky, then Views and the house pages. Radar and Lightning are not separate pages — radar sits on Weather, and lightning uses that same frame when it is close. Traffic sits on Land. Packages only show on Today — everything still incoming, plus delivered in the last 5 days. Today and Cam stay a little longer than the other pages.</p>
       </div>
       <div class="set-card">
         <h3>Accessibility</h3>
@@ -3176,7 +3191,6 @@ Cart shop:</textarea>
       <button type="button" data-p="marine">Sea</button>
       <button type="button" data-p="sky">Sky</button>
       <button type="button" data-p="ent">Fun</button>
-      <button type="button" data-p="deliver">Delivery</button>
     </nav>
     </div>
     <div class="ticker-stack">
@@ -3199,10 +3213,8 @@ Cart shop:</textarea>
         <button type="button" data-p="marine">Sea</button>
         <button type="button" data-p="sky">Sky</button>
         <button type="button" data-p="ent">Fun</button>
-        <button type="button" data-p="deliver">Delivery</button>
         <p class="drawer-lab">Out</p>
         <button type="button" data-p="cam">Views</button>
-        <button type="button" data-p="traffic">Traffic</button>
         <button type="button" data-p="wink">News</button>
         <p class="drawer-lab">Storms</p>
         <button type="button" data-p="cane">Tropical</button>
@@ -3262,7 +3274,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 554;
+    window.BOARD_VER = 556;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3316,7 +3328,7 @@ Cart shop:</textarea>
       setTimeout(pad, 600);
     })();
     window.ROT_DEFAULTS = {
-      normal: ["now","tenday","land","marine","sky","cam","traffic","ent","deliver"],
+      normal: ["now","tenday","land","marine","sky","cam","ent"],
       storm: ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
     };
     var ROT_DEFAULTS = window.ROT_DEFAULTS;
@@ -6910,7 +6922,7 @@ function currentRotation() {
     })();
     clock(); setInterval(clock, 15000);
     var ROT_DEFAULTS = window.ROT_DEFAULTS || {
-      normal: ["now","tenday","land","marine","sky","cam","traffic","ent","deliver"],
+      normal: ["now","tenday","land","marine","sky","cam","ent"],
       storm: ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"]
     };
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
@@ -6926,8 +6938,8 @@ function currentRotation() {
           s.normal = (s.normal || []).filter(function (id) { return id !== "land"; });
           var atSea = s.normal.indexOf("marine");
           s.normal.splice(atSea >= 0 ? atSea : s.normal.length, 0, "land");
-          s.normal = (s.normal || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt"; });
-          s.storm = (s.storm || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt"; });
+          s.normal = (s.normal || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt" && id !== "traffic" && id !== "deliver"; });
+          s.storm = (s.storm || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt" && id !== "traffic" && id !== "deliver"; });
           function placeAfter(list, afterId, id) {
             if ((list || []).indexOf(id) >= 0) return list;
             list = (list || []).slice();
@@ -6940,7 +6952,7 @@ function currentRotation() {
           return s;
         }
       } catch (e) {}
-      var def = window.ROT_DEFAULTS || ROT_DEFAULTS || { normal: ["now","tenday","land","marine","sky","ent","deliver"], storm: ["radar"] };
+      var def = window.ROT_DEFAULTS || ROT_DEFAULTS || { normal: ["now","tenday","land","marine","sky","ent"], storm: ["radar"] };
       return { normal: (def.normal || []).slice(), storm: (def.storm || []).slice() };
     }
     function saveRots(r) {
@@ -9015,11 +9027,29 @@ function currentRotation() {
       var delCol = document.getElementById("today-deliv-col");
       var marks0 = window.__deliveredMarks || {};
       function delivKey(item) { return [item.who || "", item.title || "", item.when || ""].join("|").toLowerCase().replace(/\s+/g, " ").trim(); }
+      function delivAgeMs(item) {
+        var raw = (item && (item.when || item.at || item.date || item.delivered)) || "";
+        var t0 = Date.parse(raw);
+        if (item && item.marked && item.marked.at) t0 = Math.max(t0 || 0, Date.parse(item.marked.at) || 0);
+        var mark = marks0[delivKey(item)];
+        if (mark && mark.at) t0 = Math.max(t0 || 0, Date.parse(mark.at) || 0);
+        return t0 || 0;
+      }
+      var cut5 = Date.now() - 5 * 24 * 60 * 60 * 1000;
       var incomingAll = ((window.__delivData || {}).incoming || []).filter(function (x) { return !marks0[delivKey(x)]; });
+      var deliveredRecent = ((window.__delivData || {}).delivered || []).filter(function (x) {
+        var t0 = delivAgeMs(x);
+        return t0 >= cut5;
+      });
+      ((window.__delivData || {}).incoming || []).forEach(function (x) {
+        if (marks0[delivKey(x)] && delivAgeMs(x) >= cut5) {
+          deliveredRecent.push({ who: x.who, title: x.title, detail: (x.detail || "") + " · marked delivered", when: x.when, marked: marks0[delivKey(x)] });
+        }
+      });
       var waitingD = !window.__delivData;
-      var showBoxes = waitingD || incomingAll.length > 0;
-      if (delCol) delCol.hidden = !showBoxes;
-      var evLimit = showBoxes ? 2 : 4;
+      var showBoxes = true;
+      if (delCol) delCol.hidden = false;
+      var evLimit = 4;
       if (doBox) {
         var picked = (typeof pickTodayEvents === "function")
           ? pickTodayEvents(window.__entAll || [], evLimit)
@@ -9045,17 +9075,17 @@ function currentRotation() {
       if (delBox) {
         var marks = marks0;
         function key(item) { return delivKey(item); }
-        var inc = incomingAll.slice(0, 2);
-        if (!showBoxes) {
-          delBox.innerHTML = "";
-        } else if (!inc.length) {
+        var inc = incomingAll;
+        var rec = deliveredRecent;
+        if (!inc.length && !rec.length) {
           delBox.innerHTML = todayEmpty("box",
-            waitingD ? "Checking packages" : "Nothing on the way.",
-            waitingD ? "Reading the delivery scan." : "Nothing on the way."
+            waitingD ? "Checking packages" : "No packages in the last 5 days.",
+            waitingD ? "Reading the delivery scan." : "Nothing still incoming, and nothing delivered in the last 5 days."
           );
         }
         else if (window.delivCardHtml) {
-          delBox.innerHTML = inc.map(function (x) { return stampTodayArt(window.delivCardHtml(x, true), "box"); }).join("");
+          function wrapBox(html) { return typeof stampTodayArt === "function" ? stampTodayArt(html, "box") : html; }
+          delBox.innerHTML = inc.map(function (x) { return wrapBox(window.delivCardHtml(x, true)); }).join("") + rec.map(function (x) { return wrapBox(window.delivCardHtml(x, false)); }).join("");
           delBox.querySelectorAll("input[data-deliv]").forEach(function (cb) {
             cb.addEventListener("change", function () {
               if (!cb.checked) return;
@@ -9359,8 +9389,15 @@ function currentRotation() {
         if (data) window.__delivData = data;
         var src = window.__delivData || { incoming: [], delivered: [] };
         var view = split(src);
+        var cut5 = Date.now() - 5 * 24 * 60 * 60 * 1000;
+        view.delivered = (view.delivered || []).filter(function (x) {
+          var t0 = Date.parse(x.when || x.at || x.date || "") || 0;
+          if (x.marked && x.marked.at) t0 = Math.max(t0, Date.parse(x.marked.at) || 0);
+          return t0 >= cut5;
+        });
+        if (box) {
         if (!view.incoming.length && !view.delivered.length) {
-          box.innerHTML = '<div class="card quiet"><b>Nothing on the way.</b><span>No packages in the delivery scan.</span></div>';
+          box.innerHTML = '<div class="card quiet"><b>No packages in the last 5 days.</b><span>Nothing still incoming.</span></div>';
         } else {
           box.innerHTML = view.incoming.map(function (x) { return card(x, true); }).join("") + view.delivered.map(function (x) { return card(x, false); }).join("");
         }
@@ -9374,6 +9411,7 @@ function currentRotation() {
             if (typeof saveHouse === "function") saveHouse();
           });
         });
+        }
         var nIn = (view.incoming || []).length, nDel = (view.delivered || []).length;
         if (note) {
           var when = src.updated ? new Date(src.updated) : null;
@@ -9666,11 +9704,11 @@ function currentRotation() {
       if (n) n.innerHTML = rowHtml("normal", r.normal);
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
-    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","cam","traffic","ent","deliver","wink","house"];
+    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","cam","ent","wink","house"];
     var ROT_STORM_POOL = ["tenday","cane","hurr","gulfsat","tropics","marine","contacts","prep","power"];
     var ROT_AUTO_NOTE = {
       tenday: "radar lives on this page; lightning swaps into that frame when it is close",
-      land: "quakes, AQI, heat, flood, fire weather",
+      land: "traffic map, quakes, AQI, heat, flood, fire weather",
       marine: "tides, surge, water, rip, red tide",
       bolt: "lightning now swaps into the Weather radar frame — no separate page",
       cane: "only when a named storm can affect this address",
