@@ -1965,7 +1965,7 @@
           <div class="tile wx-extra" id="tile-snow"><label>Snow 24h</label><strong id="live-snow">—</strong></div>
           <div class="tile wx-extra" id="tile-ice"><label>Ice</label><strong id="live-ice">—</strong></div>
           <div class="tile wx-extra" id="tile-heatrisk"><label>Heat risk</label><strong id="live-heatrisk">—</strong></div>
-          <div class="tile wx-extra" id="tile-flood"><label>Street flooding</label><strong id="live-flood">—</strong></div>
+          <div class="tile wx-extra" id="tile-flood"><label>River / flood</label><strong id="live-flood">—</strong></div>
           <div class="tile wx-extra" id="tile-fog"><label>Dense fog</label><strong id="live-fog">—</strong></div>
         </div>
         <div class="tile wide" style="margin-bottom:8px">
@@ -2264,7 +2264,7 @@ Cart shop:</textarea>
             <li>Region chips under Today — live 11 Sep. Gulf Beach/Pool/Boat/Heat. North Roads/Pipes/Ice/Walk. Desert Heat/Dust/AQI. Good / fair / poor.</li>
             <li>Yesterday vs today — in the Today greeting after the current temp. Live 11 Sep. Only if it differs by 2° or more.</li>
             <li>Official NWS HeatRisk — live 11 Sep. Weather tile + Today strip when Moderate or higher. Gridpoint heatRisk layer.</li>
-            <li>River gauge flood only where a nearby gauge exists. NWS flood/flash-flood alerts already paint.</li>
+            <li>River gauge — live 11 Sep. Nearest USGS stage within ~20 miles. Tile only with a flood alert, and then it names the gauge and stage.</li>
           </ul>
         </div>
 
@@ -2273,7 +2273,7 @@ Cart shop:</textarea>
 
         <div class="card" data-idea="heading-out">
           <b>Heading out — door-close card on Today</b>
-          <span class="stamp">11 Sep 2026. Door-close lines live in the Today greeting — no second card. Rain, lightning, events, flights, and packages were already there. Outing go/wait/skip and trash-morning added 11 Sep. Still open: traffic one-liner, villa garage/AC checks.</span>
+          <span class="stamp">11 Sep 2026. Door-close lines live in the Today greeting — no second card. Rain, lightning, events, flights, and packages were already there. Outing go/wait/skip and trash-morning added 11 Sep. Villa garage/AC and traffic one-liner skipped 11 Sep. Door-close greeting is otherwise live.</span>
           <ul class="check-list">
             <li>One card, 3–5 sentences. Not a second hourly grid.</li>
             <li>Rain in the next 60–90 minutes, or “dry through late morning.” Same next-rain sentence already on the weather list.</li>
@@ -2281,12 +2281,12 @@ Cart shop:</textarea>
             <li>One outing line: beach / cart / truck / courts — go, wait, or skip. Driven by the go bars already on Today.</li>
             <li>UV only if they will be out more than a short errand.</li>
             <li>Rip / red tide / bacteria only when the outing is the beach.</li>
-            <li>Traffic one-liner on the pin (776 / 41 / bridges), not the full map.</li>
+            <li>Traffic one-liner — skipped 11 Sep. Map page stays.</li>
             <li>Next Fun item today plus when to leave if it starts soon.</li>
             <li>Flight today: on time / delayed / gate — only if there is one.</li>
             <li>Package on the porch or due today.</li>
             <li>Trash / recycle if that morning is set.</li>
-            <li>Two villa checks when leaving: garage / slider, AC set.</li>
+            <li>Two villa checks when leaving: garage / slider, AC set. Skipped 11 Sep. House close list and AC filter card stay.</li>
             <li>Skip at the door: 10-day, SPC, soundings, horoscope, markets.</li>
           </ul>
         </div>
@@ -3210,7 +3210,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 537;
+    window.BOARD_VER = 539;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4006,6 +4006,53 @@ Cart shop:</textarea>
         return '<div class="region-chip ' + r[1] + '"><b>' + r[0] + "</b><span>" + r[1] + "</span></div>";
       }).join("");
       if (typeof noteFeed === "function") noteFeed("region-chips", true, region + " " + rows.map(function (r) { return r[0] + ":" + r[1]; }).join(" "));
+    }
+    function milesBetween(aLat, aLon, bLat, bLon) {
+      var r = 3958.8;
+      var dLat = (bLat - aLat) * Math.PI / 180;
+      var dLon = (bLon - aLon) * Math.PI / 180;
+      var aa = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return 2 * r * Math.asin(Math.min(1, Math.sqrt(aa)));
+    }
+    function loadRiverGauge() {
+      var lat = homeLat(), lon = homeLon();
+      var pad = 0.30;
+      var bbox = [lon - pad, lat - pad, lon + pad, lat + pad].map(function (n) { return n.toFixed(4); }).join(",");
+      var url = "https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=" + bbox + "&parameterCd=00065&siteStatus=active&period=P1D";
+      fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var series = (((d || {}).value || {}).timeSeries) || [];
+        var best = null;
+        series.forEach(function (s) {
+          var src = s.sourceInfo || {};
+          var name = String(src.siteName || "");
+          if (!/river|creek|canal|slough|bayou|fork/i.test(name)) return;
+          var loc = ((src.geoLocation || {}).geogLocation) || {};
+          var glat = Number(loc.latitude), glon = Number(loc.longitude);
+          if (!isFinite(glat) || !isFinite(glon)) return;
+          var miles = milesBetween(lat, lon, glat, glon);
+          if (miles > 20) return;
+          var vals = ((s.values || [])[0] || {}).value || [];
+          var last = vals.length ? vals[vals.length - 1] : null;
+          var stage = last ? Number(last.value) : null;
+          if (stage == null || !isFinite(stage)) return;
+          var code = ((src.siteCode || [])[0] || {}).value || "";
+          if (!best || miles < best.miles) {
+            best = {
+              id: code,
+              name: name,
+              short: name.replace(/,?\s*FL$/i, "").replace(/\s+NEAR\s+.*/i, "").replace(/\s+AT\s+/i, " @ "),
+              stage: stage,
+              miles: Math.round(miles * 10) / 10,
+              when: last && last.dateTime
+            };
+          }
+        });
+        window.__riverGauge = best || { why: "no stream gauge within 20 miles" };
+        if (typeof paintWxExtras === "function") paintWxExtras();
+      }).catch(function () {
+        window.__riverGauge = { why: "USGS missed" };
+        if (typeof noteFeed === "function") noteFeed("river-gauge", false, "USGS missed");
+      });
     }
     function noaaCalls() {
       var s = getSet();
@@ -6000,7 +6047,12 @@ function currentRotation() {
             ? "Flood advisory. Urban flooding — standing water in streets and swales, not a river."
             : "";
       showWxStrip("wx-flood", floodOn, floodTxt);
-      showWxTile("tile-flood", floodOn, floodOn ? (hasAlert(/warning/) ? "Warning" : "Advisory") : "");
+      var g = window.__riverGauge;
+      var gTxt = "";
+      if (g && g.stage != null) gTxt = (g.short || "Gauge") + " " + Number(g.stage).toFixed(1) + " ft";
+      var floodTxt = floodOn ? ((hasAlert(/warning/) ? "Warning" : "Advisory") + (gTxt ? " · " + gTxt : "")) : "";
+      showWxTile("tile-flood", floodOn && !!(g || hasAlert(/flood/)), floodTxt);
+      if (typeof noteFeed === "function") noteFeed("river-gauge", !!(g && g.stage != null), gTxt || (g && g.why) || "no nearby gauge");
       var fogAlert = hasAlert(/dense fog|freezing fog/);
       var fogHours = (window.__hours || []).filter(function (h) {
         if (!h || !h.startTime) return false;
@@ -8033,6 +8085,7 @@ function currentRotation() {
       if (coast && /loading/i.test(coast.textContent)) { /* leave loading so Status can see it */ }
       if (typeof loadHistWx === "function") loadHistWx();
       if (typeof loadHeatRisk === "function") loadHeatRisk();
+      if (typeof loadRiverGauge === "function") loadRiverGauge();
       if (typeof noteFeed === "function") noteFeed("settle", true, "gaps filled");
     }
 
