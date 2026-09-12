@@ -1802,7 +1802,7 @@
         </div>
         <div class="clock-bits" id="hdr-pills">
           <div class="clock-pills">
-            <button type="button" class="hdr-chip heat" id="live-heat">Heat index</button>
+            <span class="hdr-chip heat" id="live-heat">Heat index</span>
             <button type="button" class="hdr-chip radio on" id="hdr-radio">Mute</button>
           </div>
           <button type="button" class="hdr-chip hdr-alert" id="hdr-alert" hidden></button>
@@ -2772,7 +2772,6 @@ Cart shop:</textarea>
           <div class="set-row" id="set-hdrwx">
             <button type="button" data-v="temp">Temp</button>
             <button type="button" data-v="feels">Real Feel</button>
-            <button type="button" data-v="heat">Heat Index</button>
           </div>
         </div>
         <div class="set-line"><label>Clock</label>
@@ -3212,7 +3211,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 542;
+    window.BOARD_VER = 543;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5288,32 +5287,13 @@ function currentRotation() {
 
     function applyHdrWx() {
       var mode = (typeof getSet === "function" ? getSet().hdrWx : "feels") || "feels";
+      if (mode === "heat") mode = "feels";
       var lab = document.getElementById("hdr-wx-lab");
       var temp = document.getElementById("live-temp");
       var feel = document.getElementById("live-feels");
-      var heatBtn = document.getElementById("live-heat");
-      if (mode === "temp") {
-        if (lab) lab.textContent = "Temp";
-        if (temp) temp.style.display = "block";
-        if (feel) feel.style.display = "none";
-      } else if (mode === "heat") {
-        if (lab) lab.textContent = "Heat Index";
-        if (temp) temp.style.display = "none";
-        if (feel) feel.style.display = "block";
-        if (feel && window.__nowHeatF != null && typeof fmtTempN === "function") {
-          feel.innerHTML = fmtTempN(window.__nowHeatF) + "&deg;";
-          if (typeof paintTemp === "function") paintTemp(feel, window.__nowHeatF);
-        }
-      } else {
-        if (lab) lab.textContent = "Real Feel";
-        if (temp) temp.style.display = "none";
-        if (feel) feel.style.display = "block";
-        if (feel && window.__nowFeelF != null && typeof fmtTempN === "function") {
-          feel.innerHTML = fmtTempN(window.__nowFeelF) + "&deg;";
-          if (typeof paintTemp === "function") paintTemp(feel, window.__nowFeelF);
-        }
-      }
-      if (heatBtn) heatBtn.classList.toggle("picked", mode === "heat");
+      if (lab) lab.textContent = mode === "temp" ? "Temp" : "Real Feel";
+      if (temp) temp.style.display = mode === "temp" ? "block" : "none";
+      if (feel) feel.style.display = mode === "temp" ? "none" : "block";
     }
     function compassFromDeg(d) {
       if (d == null || d === "" || isNaN(Number(d))) return "";
@@ -6891,20 +6871,6 @@ function currentRotation() {
       if (jump && typeof showPage === "function") {
         showPage("tenday");
         if (typeof holdThenRotate === "function") holdThenRotate(30000);
-        return;
-      }
-      if (e.target && (e.target.id === "live-heat" || (e.target.closest && e.target.closest("#live-heat")))) {
-        var s = typeof getSet === "function" ? getSet() : {};
-        var cur = s.hdrWx || "feels";
-        var next;
-        if (cur === "heat") {
-          next = s.hdrWxPrev || "feels";
-          if (next === "heat") next = "feels";
-          if (typeof putSet === "function") putSet({ hdrWx: next });
-        } else {
-          if (typeof putSet === "function") putSet({ hdrWxPrev: cur, hdrWx: "heat" });
-        }
-        if (typeof applyHdrWx === "function") applyHdrWx();
         return;
       }
       if (e.target && e.target.id === "hdr-radio") {
@@ -12668,7 +12634,6 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
               heatEl.classList.add("on");
             }
             window.__nowHeatF = hiVal;
-            if (typeof applyHdrWx === "function") applyHdrWx();
           }
           var windEl = document.getElementById("live-wind");
           var gustEl = document.getElementById("live-gusts");
