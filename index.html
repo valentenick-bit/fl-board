@@ -838,7 +838,7 @@
     }
     html.phone #today-do, html.phone #today-deliv, html.phone #today-fly-body, html.phone #today-bolt-body, html.phone #today-cane-body, html.phone #today-trash-body { grid-template-columns:1fr; }
 
-    .fun-shell { display:grid; grid-template-columns:minmax(0,1fr) minmax(250px,34%); gap:16px 18px; align-items:start; }
+    .fun-shell { display:grid; grid-template-columns:1fr 1fr; gap:16px 18px; align-items:stretch; }
 
     .fun-col-h {
       margin:0 0 4px;
@@ -848,12 +848,12 @@
       color:var(--navy);
     }
     html.dark .fun-col-h { color:#efe4c8; }
-    .fun-eats { min-width:0; }
+    .fun-main, .fun-eats { min-width:0; }
 
     .eat-rate-pill { display:inline-block; margin:0 6px 4px 0; padding:2px 8px; border-radius:999px; background:#f3e6c4; color:#7a5a12; font-size:11px; font-weight:800; }
     html.dark .eat-rate-pill { background:#3a3018; color:#f0e2b8; }
     #eat-list .ev-card { cursor:pointer; }
-    .eat-card { background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:10px 12px; margin:0 0 8px; }
+    .eat-card { background:var(--card); border:1px solid var(--hair); border-radius:16px; padding:12px; margin:0 0 8px; }
     .eat-card b { display:block; font-family:"Fraunces",Georgia,serif; font-size:16px; margin:0 0 2px; color:var(--navy); }
     .eat-card .eat-meta { display:block; color:var(--muted); font-size:12px; margin:0 0 8px; }
     .eat-pills { display:flex; flex-wrap:wrap; gap:6px; }
@@ -3370,7 +3370,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 572;
+    window.BOARD_VER = 574;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3835,6 +3835,26 @@ Cart shop:</textarea>
         window.__gmapsLoading = false;
         done(false);
       };
+      document.head.appendChild(s);
+    }
+    function loadGmapsLib(done) {
+      if (window.google && google.maps && google.maps.places) { done(true); return; }
+      var key = String((typeof getSet === "function" && getSet().gmapsKey) || "").trim();
+      if (!key) { done(false); return; }
+      if (window.__gmapsLoading) { window.__gmapsWait = window.__gmapsWait || []; window.__gmapsWait.push(done); return; }
+      if (window.google && google.maps && !google.maps.places) {
+        // JS API loaded without places — still try nearby via new script flag
+      }
+      window.__gmapsLoading = true;
+      var s = document.createElement("script");
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places";
+      s.onload = function () {
+        window.__gmapsLoading = false;
+        done(!!(window.google && google.maps && google.maps.places));
+        (window.__gmapsWait || []).forEach(function (fn) { try { fn(!!(window.google && google.maps && google.maps.places)); } catch (e) {} });
+        window.__gmapsWait = [];
+      };
+      s.onerror = function () { window.__gmapsLoading = false; done(false); };
       document.head.appendChild(s);
     }
 
@@ -9727,9 +9747,34 @@ function currentRotation() {
         enrichAddrs(list);
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list.length + " restaurants") : "none in range");
       }
+      function eatCacheRead() {
+        try { return JSON.parse(localStorage.getItem("bw-eats-live") || "[]") || []; } catch (e) { return []; }
+      }
+      function eatCacheWrite(list) {
+        try {
+          localStorage.setItem("bw-eats-live", JSON.stringify((list || []).map(function (r) {
+            return { name: r.name, rating: r.rating, reviews: r.reviews, addr: r.addr, area: r.area, kind: r.kind, miles: r.miles, placeId: r.placeId, at: Date.now() };
+          })));
+        } catch (eW) {}
+      }
+      function mergeEatCache(list) {
+        var cache = eatCacheRead();
+        var by = {};
+        cache.forEach(function (c) { if (c && c.name) by[String(c.name).toLowerCase()] = c; });
+        (list || []).forEach(function (r) {
+          var c = by[String(r.name || "").toLowerCase()];
+          if (!c) return;
+          if (r.rating == null && c.rating != null) r.rating = c.rating;
+          if (!r.reviews && c.reviews) r.reviews = c.reviews;
+          if ((!r.addr || r.addr.length < 12) && c.addr) r.addr = c.addr;
+          if (!r.kind && c.kind) r.kind = c.kind;
+        });
+        return list;
+      }
       function fromPlaces(cb) {
-        if (typeof loadGmaps !== "function") return cb(null);
-        loadGmaps(function (ok) {
+        var loader = (typeof loadGmapsLib === "function") ? loadGmapsLib : loadGmaps;
+        if (typeof loader !== "function") return cb(null);
+        loader(function (ok) {
           if (!ok || !(window.google && google.maps && google.maps.places)) return cb(null);
           var miles = Number((getSet() || {}).eventMiles || 15);
           var node = document.getElementById("eat-places-attr");
@@ -9743,8 +9788,8 @@ function currentRotation() {
             if (status !== google.maps.places.PlacesServiceStatus.OK || !results || !results.length) return cb(null);
             var list = results.map(function (p) {
               var loc = p.geometry && p.geometry.location;
-              var lat = loc && (loc.lat ? loc.lat() : loc.lat);
-              var lon = loc && (loc.lng ? loc.lng() : loc.lng);
+              var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
+              var lon = loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng);
               return {
                 name: p.name,
                 rating: p.rating,
@@ -9752,6 +9797,7 @@ function currentRotation() {
                 open: p.opening_hours ? p.opening_hours.open_now : null,
                 kind: kindOf(((p.types || []).join(" ")) + " " + (p.name || "")),
                 miles: (lat && lon) ? milesOf(lat, lon) : null,
+                lat: lat, lon: lon,
                 area: p.vicinity || "",
                 addr: p.vicinity || "",
                 placeId: p.place_id || ""
@@ -9759,7 +9805,7 @@ function currentRotation() {
             });
             var need = list.slice(0, 10);
             var left = need.length;
-            function finish() { cb(list); }
+            function finish() { eatCacheWrite(list); cb(list); }
             if (!left) return finish();
             need.forEach(function (r) {
               if (!r.placeId) { if (!--left) finish(); return; }
@@ -9802,6 +9848,7 @@ function currentRotation() {
                 rating: tags.stars ? Number(tags.stars) : null,
                 kind: kindOf(tags.cuisine || tags.cuisine_1 || ""),
                 miles: milesOf(lat, lon),
+                lat: lat, lon: lon,
                 area: tags["addr:city"] || tags["addr:suburb"] || "",
                 addr: [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"], tags["addr:state"], tags["addr:postcode"]].filter(Boolean).join(" ") || tags["addr:full"] || tags["addr:city"] || ""
               };
@@ -9810,10 +9857,30 @@ function currentRotation() {
         }
         next();
       }
+      function fillAddrs(list, done) {
+        var need = (list || []).filter(function (r) { return r && r.lat && r.lon && (!r.addr || r.addr.split(" ").length < 3); }).slice(0, 10);
+        if (!need.length) return done(list);
+        var i = 0;
+        function step() {
+          if (i >= need.length) return done(list);
+          var r = need[i++];
+          var raw = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + r.lat + "&lon=" + r.lon + "&zoom=18&addressdetails=1";
+          fetch("https://corsproxy.io/?" + encodeURIComponent(raw)).then(function (res) { return res.json(); }).then(function (d) {
+            if (d && d.contents) { try { d = JSON.parse(d.contents); } catch (eP) {} }
+            if (d && d.display_name) r.addr = d.display_name;
+            setTimeout(step, 200);
+          }).catch(function () { setTimeout(step, 200); });
+        }
+        step();
+      }
       function run() {
         fromPlaces(function (places) {
-          if (places && places.length) return paint(places);
-          fromOverpass(paint);
+          if (places && places.length) return paint(mergeEatCache(places));
+          var cached = eatCacheRead().filter(function (r) { return r && r.at && (Date.now() - r.at) < 7 * 24 * 3600 * 1000 && r.rating; });
+          fromOverpass(function (rows) {
+            var list = mergeEatCache(rows && rows.length ? rows : cached);
+            fillAddrs(list, paint);
+          });
         });
       }
       window.reloadEats = run;
