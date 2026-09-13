@@ -3524,7 +3524,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 649;
+    window.BOARD_VER = 650;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9520,9 +9520,8 @@ function currentRotation() {
       var lat = f.liveLat || (dest && dest[0]) || (orig && orig[0]);
       var lon = f.liveLon || (dest && dest[1]) || (orig && orig[1]);
       if (!lat || !lon) { box.hidden = true; box.innerHTML = ""; return; }
-      var pad = f.liveLat ? 2.4 : 4.2;
-      var bbox = [lon - pad, lat - pad, lon + pad, lat + pad].join("%2C");
-      var osm = "https://www.openstreetmap.org/export/embed.html?bbox=" + bbox + "&layer=mapnik&marker=" + lat + "%2C" + lon;
+      var osm = (typeof pinMapSrc === "function" && pinMapSrc(lat, lon)) ||
+        ("https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=8&t=m&hl=en&output=embed");
       var code = (parseFlightCode(f).codes[0] || String(f.flight || "").replace(/\s+/g, "")).toUpperCase();
       var fr = "https://www.flightradar24.com/" + code;
       var fa = "https://www.flightaware.com/live/flight/" + code;
@@ -9679,12 +9678,9 @@ function currentRotation() {
 
     function pinMapSrc(lat, lon) {
       lat = Number(lat); lon = Number(lon);
-      if (!isFinite(lat) || !isFinite(lon)) return "";
-      var dlat = 0.005, dlon = 0.007;
-      return "https://www.openstreetmap.org/export/embed.html?bbox=" +
-        (lon - dlon).toFixed(6) + "," + (lat - dlat).toFixed(6) + "," +
-        (lon + dlon).toFixed(6) + "," + (lat + dlat).toFixed(6) +
-        "&layer=mapnik&marker=" + lat.toFixed(6) + "," + lon.toFixed(6);
+      if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) < 1 || Math.abs(lon) < 1) return "";
+      return "https://maps.google.com/maps?q=" + lat.toFixed(6) + "," + lon.toFixed(6) +
+        "&ll=" + lat.toFixed(6) + "," + lon.toFixed(6) + "&z=16&t=m&hl=en&output=embed";
     }
     function googleDestLink(addr, lat, lon) {
       var q = addr || ((isFinite(Number(lat)) && isFinite(Number(lon))) ? (Number(lat) + "," + Number(lon)) : "");
@@ -9728,9 +9724,8 @@ function currentRotation() {
       var lat = f.liveLat || (dest && dest[0]) || (orig && orig[0]);
       var lon = f.liveLon || (dest && dest[1]) || (orig && orig[1]);
       if (!lat || !lon) return "";
-      var pad = f.liveLat ? 2.4 : 4.2;
-      var bbox = [lon - pad, lat - pad, lon + pad, lat + pad].join("%2C");
-      return "https://www.openstreetmap.org/export/embed.html?bbox=" + bbox + "&layer=mapnik&marker=" + lat + "%2C" + lon;
+      return (typeof pinMapSrc === "function" && pinMapSrc(lat, lon)) ||
+        ("https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=8&t=m&hl=en&output=embed");
     }
     function flyMapLinks(f) {
       if (!f) return "";
