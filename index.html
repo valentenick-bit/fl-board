@@ -3514,7 +3514,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 633;
+    window.BOARD_VER = 634;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9374,11 +9374,18 @@ function currentRotation() {
       }
       var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #ent-list .card, #eat-list .card");
       if (evCard) {
-        var q = eventMapQuery(evCard);
-        if ((!q || q === "Englewood FL") && evCard.getAttribute("data-map")) q = evCard.getAttribute("data-map");
-        var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
-        var link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
-        openMapPop(q, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+        var lat = evCard.getAttribute("data-lat");
+        var lon = evCard.getAttribute("data-lon");
+        var q = evCard.getAttribute("data-map") || eventMapQuery(evCard);
+        var src, link;
+        if (lat && lon && isFinite(Number(lat)) && isFinite(Number(lon))) {
+          src = "https://maps.google.com/maps?q=" + Number(lat) + "," + Number(lon) + "&ll=" + Number(lat) + "," + Number(lon) + "&z=16&hl=en&output=embed";
+          link = "https://www.google.com/maps/search/?api=1&query=" + Number(lat) + "," + Number(lon);
+        } else {
+          src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&output=embed";
+          link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+        }
+        openMapPop(q || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
       }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMapPop(); });
@@ -9878,8 +9885,8 @@ function currentRotation() {
           return h12 + (min ? ":" + (min < 10 ? "0" : "") + min : "") + " " + am;
         }
         when = clock(row.start) + "–" + clock(openEnd);
-        var mapQ = [row.name, row.addr].filter(Boolean).join(", ");
-        box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '">' +
+        var mapQ = [row.name, row.addr, "Englewood FL 34223"].filter(Boolean).join(", ");
+        box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-lat="' + row.lat + '" data-lon="' + row.lon + '">' +
           '<div class="ev-rail"><span class="ev-dow">Shop</span><span class="ev-num">' + tag + "</span></div>" +
           '<div class="ev-body">' + (dist ? '<span class="dist-tag">' + dist + "</span>" : "") +
           '<span class="kind-tag">' + String(row.kind || "Store") + "</span>" +
@@ -10299,8 +10306,7 @@ function currentRotation() {
         var detail = esc(item.detail || "");
         var key = esc(pkgKey(item));
         if (incoming) {
-          return '<div class="card ev-card">' +
-            '<div class="ev-rail"><span class="ev-dow">Pkg</span><span class="ev-num">Way</span></div>' +
+          return '<div class="card ev-card deliv-card">' +
             '<div class="ev-body">' +
               '<span class="place-tag place-out">On the way</span>' +
               (who ? '<span class="kind-tag">' + who + "</span>" : "") +
@@ -10310,8 +10316,7 @@ function currentRotation() {
             "</div></div>";
         }
         var how = item.marked ? "Marked here" : "Delivered";
-        return '<div class="card ev-card">' +
-          '<div class="ev-rail"><span class="ev-dow">Pkg</span><span class="ev-num">In</span></div>' +
+        return '<div class="card ev-card deliv-card">' +
           '<div class="ev-body">' +
             '<span class="place-tag place-bw">' + how + "</span>" +
             "<b>" + (who ? who + " · " : "") + title + "</b>" +
