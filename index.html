@@ -3524,7 +3524,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 647;
+    window.BOARD_VER = 649;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9775,13 +9775,14 @@ function currentRotation() {
         var slon = Number(shopCard.getAttribute("data-lon") || pick.lon);
         var saddr = shopCard.getAttribute("data-map") || pick.addr || "";
         var q = [pick.name, saddr].filter(Boolean).join(", ");
-        var src, link;
-        if (q) {
-          src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=17&hl=en&t=m&output=embed";
-          link = "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(saddr || q);
-        } else if (isFinite(slat) && isFinite(slon)) {
-          src = "https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=17&t=m&hl=en&iwloc=0&output=embed";
+        var src = "", link = "";
+        if (isFinite(slat) && isFinite(slon) && Math.abs(slat) > 1 && Math.abs(slon) > 1) {
+          src = (typeof pinMapSrc === "function" && pinMapSrc(slat, slon)) ||
+            ("https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=16&t=m&hl=en&output=embed");
           link = "https://www.google.com/maps/dir/?api=1&destination=" + slat + "," + slon;
+        } else if (saddr || q) {
+          src = "https://maps.google.com/maps?q=" + encodeURIComponent(saddr || q) + "&z=16&hl=en&output=embed";
+          link = "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(saddr || q);
         }
         openMapPop(pick.name || saddr || "Store", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
         return;
@@ -10305,6 +10306,7 @@ function currentRotation() {
         }
         when = clock(row.start) + "–" + clock(openEnd);
         var mapQ = row.addr || [row.name, "Englewood, FL"].join(", ");
+        window.__shopPick = row;
         box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-lat="' + row.lat + '" data-lon="' + row.lon + '">' +
           '<div class="ev-rail"><span class="ev-dow">Shop</span><span class="ev-num">' + tag + "</span></div>" +
           '<div class="ev-body">' + (dist ? '<span class="dist-tag">' + dist + "</span>" : "") +
@@ -12857,7 +12859,8 @@ function mustEats() {
       }
       function verdict(s) {
         s = String(s || "").replace(/\s+/g, " ").trim();
-        if (/did not load|timed out|not wired|video unavailable|no data was found|no live report|none upcoming|no upcoming flights|drive file blocked|gmail scan/i.test(s)) return "failed";
+        if (/none upcoming|no upcoming flights|none on calendar|none current|scan empty/i.test(s)) return "ok";
+        if (/did not load|timed out|not wired|video unavailable|no data was found|no live report|drive file blocked|gmail scan/i.test(s)) return "failed";
         if (/NHC list is quiet|no named|outlook maps below still update/i.test(s)) return "ok";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
         if (/\bG0\b|space weather|flare [A-Z]\d/i.test(s)) return "ok";
