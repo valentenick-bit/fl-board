@@ -1971,6 +1971,13 @@
     
     .radar-stage { position: relative; }
     #radar-home-pin { display: none; }
+
+    .wx-radar-stamp {
+      position:absolute; left:8px; bottom:8px; z-index:5;
+      background:rgba(15,28,44,.72); color:#fff; font:700 12px/1 ui-sans-serif,system-ui;
+      padding:4px 8px; border-radius:999px; pointer-events:none;
+    }
+    #wx-radar-view.wx-map-pane { width:100%; height:100%; object-fit:cover; background:#123; }
 </style>
 </head>
 <body>
@@ -2218,7 +2225,8 @@
         <div class="wx-top">
                 <div class="wx-map-frame" id="wx-map-frame">
           <div class="radar-crop radar-stage" id="wx-radar-stage">
-            <iframe class="wx-map-pane on" id="wx-radar-view" title="Radar pinned on home" src="about:blank" allowfullscreen></iframe>
+            <img class="wx-map-pane on" id="wx-radar-view" alt="Radar loop at home" />
+            <div id="wx-radar-stamp" class="wx-radar-stamp"></div>
             <div id="radar-home-pin" class="radar-home-pin" title="Home"></div>
             <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
           </div>
@@ -3533,7 +3541,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 658;
+    window.BOARD_VER = 659;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3944,6 +3952,7 @@ Cart shop:</textarea>
       }
       if (typeof resolveHomeGeo === "function") resolveHomeGeo();
       if (typeof applyRadar === "function") applyRadar();
+      if (!window.__radarRefresh) window.__radarRefresh = setInterval(function () { if (typeof applyRadar === "function") applyRadar(); }, 5 * 60 * 1000);
       if (typeof applyLocalMaps === "function") applyLocalMaps();
       if (typeof paintEmerg === "function") paintEmerg();
       if (typeof paintScanners === "function") paintScanners();
@@ -4947,6 +4956,65 @@ function gatorRange() {
     function stopRainviewerLoop() {
       if (window.__rvTimer) { clearInterval(window.__rvTimer); window.__rvTimer = 0; }
     }
+    function startHomeRadarLoop(lat, lon, pin, st) {
+      stopRainviewerLoop();
+      lat = Number(lat); lon = Number(lon);
+      if (!isFinite(lat) || !isFinite(lon)) return;
+      var pane = document.getElementById("wx-radar-view");
+      var stage = document.getElementById("wx-radar-stage");
+      if (pane && pane.tagName === "IFRAME") {
+        var img = document.createElement("img");
+        img.id = "wx-radar-view";
+        img.className = pane.className || "wx-map-pane on";
+        img.alt = "Radar loop";
+        pane.parentNode.replaceChild(img, pane);
+        pane = img;
+      }
+      if (!pane) return;
+      var stamp = document.getElementById("wx-radar-stamp");
+      if (!stamp && stage) {
+        stamp = document.createElement("div");
+        stamp.id = "wx-radar-stamp";
+        stamp.className = "wx-radar-stamp";
+        stage.appendChild(stamp);
+      }
+      var nws = st ? ("https://radar.weather.gov/ridge/standard/" + st + "_loop.gif?t=" + Date.now()) : "";
+      fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (d) {
+        var host = (d && d.host) || "https://tilecache.rainviewer.com";
+        var past = ((d && d.radar && d.radar.past) || []).slice();
+        if (!past.length) throw new Error("no frames");
+        var frames = past.map(function (f) {
+          return {
+            t: f.time,
+            url: host + f.path + "/512/6/" + lat.toFixed(4) + "/" + lon.toFixed(4) + "/2/1_1.png"
+          };
+        });
+        frames.forEach(function (fr) { var im = new Image(); im.src = fr.url; });
+        window.__rvFrames = frames;
+        var i = 0;
+        function show() {
+          var fr = frames[i];
+          if (!fr || !pane) return;
+          pane.src = fr.url;
+          if (stamp) {
+            var dt = new Date(fr.t * 1000);
+            stamp.textContent = dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          }
+        }
+        function tick() {
+          show();
+          var last = i === frames.length - 1;
+          i = (i + 1) % frames.length;
+          window.__rvTimer = setTimeout(tick, last ? 1400 : 380);
+        }
+        tick();
+        if (typeof noteFeed === "function") noteFeed("radar", true, frames.length + " frames · " + (pin || "home"));
+      }).catch(function () {
+        if (pane && nws) pane.src = nws;
+        if (stamp) stamp.textContent = "NWS loop";
+        if (typeof noteFeed === "function") noteFeed("radar", !!nws, nws ? ("nws " + st) : "radar fail");
+      });
+    }
     function applyRadar() {
       stopRainviewerLoop();
       var st = homeRadar();
@@ -4965,55 +5033,16 @@ function gatorRange() {
       var nws = "https://radar.weather.gov/ridge/standard/" + st + "_loop.gif";
       window.__radarLoopUrl = nws;
       window.__radarView = "loop";
-      var rv = rainviewerUrl(lat, lon, 10);
-      if (img) {
-        if (img.tagName === "IFRAME") {
-          if (img.getAttribute("data-pin") !== rv) {
-            img.src = rv;
-            img.setAttribute("data-pin", rv);
-          }
-          img.alt = "Radar pinned on " + pin;
-        } else {
-          img.hidden = false;
-          img.alt = st + " radar loop";
-          img.src = nws + "?t=" + Date.now();
-        }
-      }
-      var wxImg = document.getElementById("wx-radar-view");
-      if (wxImg) {
-        if (wxImg.tagName === "IFRAME") {
-          if (wxImg.getAttribute("data-pin") !== rv) {
-            wxImg.src = rv;
-            wxImg.setAttribute("data-pin", rv);
-          }
-          wxImg.title = "Radar pinned on " + pin;
-        } else {
-          wxImg.src = rv;
-        }
-      }
-      var pinMark = document.getElementById("radar-home-pin");
-      if (!pinMark) {
-        var stage = document.getElementById("wx-radar-stage");
-        if (stage) {
-          pinMark = document.createElement("div");
-          pinMark.id = "radar-home-pin";
-          pinMark.className = "radar-home-pin";
-          pinMark.title = pin;
-          stage.appendChild(pinMark);
-        }
-      }
+      startHomeRadarLoop(lat, lon, pin, st);
       if (typeof syncWxMapFrame === "function") syncWxMapFrame();
-      if (link) link.href = rainviewerUrl(lat, lon);
-      if (cap) cap.textContent = "Radar pinned on " + pin;
+      if (link) link.href = "https://radar.weather.gov/";
+      if (cap) cap.textContent = "Radar loop at " + pin;
       var mapNote = document.getElementById("wx-map-note");
-      if (mapNote) mapNote.textContent = pin || "home";
+      if (mapNote) mapNote.textContent = "Past 2 hours · " + (pin || "home");
       var mapLab = document.getElementById("wx-map-label");
       if (mapLab) mapLab.textContent = "Radar";
-      if (note) {
-        note.innerHTML = "Centered on " + pin + " (" + Number(lat).toFixed(3) + ", " + Number(lon).toFixed(3) + "). <a id=\"radar-link\" href=\"" + rv + "\" target=\"_blank\" rel=\"noopener\">Open looping radar</a>" + (st ? " · nearest NWS " + st : "");
-      }
-      window.__radarBase = nws;
-      if (typeof noteFeed === "function") noteFeed("radar", true, "pin " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3) + (st ? " · " + st : ""));
+      if (note) note.textContent = "Looping the last two hours of radar over " + pin + ".";
+      if (typeof noteFeed === "function") noteFeed("radar", true, "loop " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3));
       if (typeof paintPageRefs === "function") paintPageRefs();
     }
     function applyLocalMaps() {
@@ -8509,11 +8538,7 @@ function currentRotation() {
         return;
       }
       if (bolt) bolt.src = boltUrl();
-      var rad = document.getElementById("wx-radar-view");
-      if (rad && rad.tagName === "IFRAME") {
-        var rv = rainviewerUrl(homeLat(), homeLon());
-        if (rad.getAttribute("data-pin") !== rv) { rad.src = rv; rad.setAttribute("data-pin", rv); }
-      }
+      /* radar frames are owned by startHomeRadarLoop */
       var onBolt = false;
       wxMapShow("radar");
       window.__wxMapTimer = setInterval(function () {
@@ -11829,8 +11854,31 @@ function mustEats() {
           return true;
         });
       }
+      function golfMiles() {
+        return Math.max(25, Number((getSet() || {}).eventMiles || 15));
+      }
+      function seedGolf() {
+        return [
+          { name: "Lemon Bay Golf Club", lat: 26.9334, lon: -82.3531, kind: "Public", addr: "2215 Placida Rd, Englewood" },
+          { name: "Oyster Creek Golf & Country Club", lat: 26.9512, lon: -82.3234, kind: "Public", addr: "6250 Capri St, Englewood" },
+          { name: "Myakka Pines Golf Club", lat: 26.9685, lon: -82.2902, kind: "Public", addr: "3900 Winchester Blvd, Englewood" },
+          { name: "Boca Royale Golf & Country Club", lat: 26.9801, lon: -82.3255, kind: "Private", addr: "1601 Englewood Rd, Englewood" },
+          { name: "Twin Isles Country Club", lat: 26.9208, lon: -82.3502, kind: "Private", addr: "2100 Placida Rd, Englewood" },
+          { name: "Rotonda Golf & Country Club", lat: 26.8904, lon: -82.2711, kind: "Public", addr: "Rotonda West" },
+          { name: "Broadmoor Park Golf Club", lat: 26.8960, lon: -82.2680, kind: "Public", addr: "Rotonda West" },
+          { name: "Coral Creek Club", lat: 26.8610, lon: -82.2610, kind: "Private", addr: "Placida" },
+          { name: "Deep Creek Golf Club", lat: 27.0015, lon: -82.1808, kind: "Public", addr: "Port Charlotte" },
+          { name: "Kingsway Country Club", lat: 27.0210, lon: -82.1410, kind: "Public", addr: "Port Charlotte" },
+          { name: "Stump Pass Beach nearby — Cape Haze courses", lat: 26.9000, lon: -82.3400, kind: "Public", addr: "Cape Haze" }
+        ].map(function (r) {
+          r.src = "seed";
+          r.reviews = r.reviews || 0;
+          r.miles = milesOf(r.lat, r.lon);
+          return r;
+        });
+      }
       function rank(list) {
-        var cap = Number((getSet() || {}).eventMiles || 15) + 2;
+        var cap = golfMiles();
         return dedupe(list).filter(function (r) {
           if (r.miles == null && r.lat != null) r.miles = milesOf(r.lat, r.lon);
           return r.miles == null || r.miles <= cap;
@@ -11844,16 +11892,16 @@ function mustEats() {
       function draw(list) {
         var box = document.getElementById("golf-list");
         var note = document.getElementById("golf-count");
-        var miles = Number((getSet() || {}).eventMiles || 15);
+        var miles = golfMiles();
         list = rank(list || window.__golfPool || []);
         window.__golfs = list;
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Widen the event miles in Settings or check the pin.</span></div>';
-        if (note) note.textContent = list.length ? ("Google ratings · highest first · " + miles + " mi") : ("No courses within " + miles + " mi");
+        if (note) note.textContent = list.length ? ("Courses within " + miles + " mi · closest / highest rated") : ("No courses within " + miles + " mi");
         if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " courses · " + list[0].name) : "none");
       }
       function fromOverpass(cb) {
-        var miles = Number((getSet() || {}).eventMiles || 15);
-        var q = '[out:json][timeout:20];(nwr["leisure"="golf_course"](around:' + Math.round(miles * 1609.34) + "," + homeLat() + "," + homeLon() + '););out center 25;';
+        var miles = golfMiles();
+        var q = '[out:json][timeout:25];(nwr["leisure"="golf_course"](around:' + Math.round(miles * 1609.34) + "," + homeLat() + "," + homeLon() + ');nwr["sport"="golf"](around:' + Math.round(miles * 1609.34) + "," + homeLat() + "," + homeLon() + '););out center 40;';
         var urls = [
           "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q),
           "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q)
@@ -11893,7 +11941,7 @@ function mustEats() {
         function fail() { cb([]); }
         if (!window.google || !google.maps || !google.maps.places) return fail();
         try {
-          var miles = Number((getSet() || {}).eventMiles || 15);
+          var miles = golfMiles();
           var svc = new google.maps.places.PlacesService(document.createElement("div"));
           svc.nearbySearch({
             location: new google.maps.LatLng(homeLat(), homeLon()),
@@ -11949,9 +11997,11 @@ function mustEats() {
         });
       }
       function run() {
+        window.__golfPool = dedupe(seedGolf());
+        draw(window.__golfPool);
         fromPlaces(function (places) {
           fromOverpass(function (osm) {
-            window.__golfPool = dedupe((places || []).concat(osm || []));
+            window.__golfPool = dedupe((window.__golfPool || []).concat(places || []).concat(osm || []));
             draw(window.__golfPool);
             rateList(window.__golfPool.slice(), function (rated) {
               window.__golfPool = dedupe(rated.concat(window.__golfPool || []));
