@@ -1166,7 +1166,7 @@
     #land .land-top { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,46%); gap:12px 16px; align-items:start; }
     #land .land-map-frame { grid-column:2; grid-row:1; margin:0; max-width:100%; }
     #land .land-top-left { grid-column:1; grid-row:1; min-width:0; }
-    #land .land-map-frame .radar-crop { width:100%; height:auto; aspect-ratio:4 / 3; }
+    #land .land-map-frame .radar-crop { width:100%; height:auto; min-height:240px; aspect-ratio:4 / 3; }
     #land .land-map-frame #traffic-map,
     #land .land-map-frame #traffic-gmap {
       position:absolute; inset:0; width:100%; height:100% !important; min-height:0 !important; max-height:none !important;
@@ -3615,7 +3615,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 674;
+    window.BOARD_VER = 675;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5063,11 +5063,13 @@ function gatorRange() {
         return best;
       }
       var site = nearestRadarSite(lat, lon, st);
+      var code = String(site || "TBW").toUpperCase().replace(/^K/, "");
+      var kcode = "K" + code;
       var pane = document.getElementById("wx-radar-view");
       var loops = [
-        "https://radar.weather.gov/ridge/standard/" + site + "_loop.gif?t=" + Date.now(),
-        "https://radar.weather.gov/ridge/lite/K" + site + "_loop.gif?t=" + Date.now(),
-        "https://mesonet.agron.iastate.edu/data/gis/images/4326/ridge/" + site + "/N0B_loop.gif?t=" + Date.now()
+        "https://radar.weather.gov/ridge/standard/" + kcode + "_loop.gif?t=" + Date.now(),
+        "https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif?t=" + Date.now(),
+        "https://radar.weather.gov/ridge/standard/CONUS_loop.gif?t=" + Date.now()
       ];
       if (pane) {
         pane.style.display = "block";
@@ -5081,7 +5083,7 @@ function gatorRange() {
         pane.setAttribute("data-i", "0");
         pane.src = loops[0];
       }
-      if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + site + " loop");
+      if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + kcode + " loop");
       function nearestRadarSite(la, lo, given) {
         var g = String(given || "").toUpperCase().replace(/^K/, "");
         if (/^[A-Z]{3}$/.test(g)) return g;
