@@ -3450,7 +3450,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 623;
+    window.BOARD_VER = 624;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9586,7 +9586,7 @@ function currentRotation() {
         var by = {};
         all.forEach(function (r) {
           if (!r || !r.name) return;
-          r.miles = (r.lat != null) ? milesOf(r.lat, r.lon) : r.miles;
+          r.miles = (r.lat != null && typeof milesOf === "function") ? milesOf(r.lat, r.lon) : (r.lat != null && typeof window.milesOf === "function") ? window.milesOf(r.lat, r.lon) : r.miles;
           var k = String(r.name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
           if (!by[k] || r.fresh) by[k] = r;
         });
@@ -9623,7 +9623,7 @@ function currentRotation() {
           var now = recNowET();
           var miles = Number((getSet() || {}).eventMiles || 15);
           var inR = (list || []).filter(function (r) {
-            if (r.lat != null) r.miles = milesOf(r.lat, r.lon);
+            if (r.lat != null && typeof (typeof milesOf === "function" ? milesOf : window.milesOf) === "function") r.miles = (typeof milesOf === "function" ? milesOf : window.milesOf)(r.lat, r.lon);
             return r.miles != null && r.miles <= miles + 0.25;
           });
           inR.sort(function (a, b) { return hhScore(b, now) - hhScore(a, now); });
@@ -10210,6 +10210,7 @@ function currentRotation() {
         var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
       }
+      window.milesOf = milesOf;
       function inRange(r) {
         var cap = Number((getSet() || {}).eventMiles || 15) + 0.25;
         var m = r && r.miles;
