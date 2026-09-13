@@ -819,6 +819,20 @@
     .today-shell { display:grid; grid-template-columns:minmax(0,1fr) minmax(250px,32%); gap:16px 18px; align-items:start; }
     .today-main { min-width:0; }
     .today-side { min-width:0; display:flex; flex-direction:column; gap:14px; }
+    .next3-card { margin:10px 0 8px; }
+    .next3-card b { display:block; font-size:13px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:0 0 4px; }
+    .next3-card span { display:block; font-size:16px; line-height:1.4; }
+    .day-parts { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 12px; }
+    .day-parts .part { background:var(--card); border-radius:14px; padding:10px 10px 12px; min-height:76px; box-shadow:0 0 0 1px var(--hair); }
+    .day-parts .part em { display:block; font-style:normal; font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.55; font-weight:800; margin:0 0 4px; }
+    .day-parts .part span { display:block; font-size:15px; font-weight:700; line-height:1.3; }
+    .day-parts .part.go { box-shadow:0 0 0 2px #2a9d8f; }
+    .day-parts .part.win { box-shadow:0 0 0 2px #c4a35a; }
+    .day-parts .part.no { opacity:.72; }
+    .day-parts .part.now { background:#fff; }
+    html.dark .day-parts .part { background:#24302c; }
+    html.dark .day-parts .part.now { background:#1e4a44; }
+    #today-hot, #today-deal { display:flex; flex-direction:column; gap:8px; }
     .today-side .ent-h { margin:0 0 8px; }
     #today-do, #today-deliv, #today-eat-pick { display:flex; flex-direction:column; gap:8px; }
     #today-eat-pick { margin-top:10px; }
@@ -1997,6 +2011,15 @@
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for more</small>
         </div>
+        <div class="card next3-card" id="today-next3">
+          <b>Next three hours</b>
+          <span id="today-next3-body">Reading the next three hours…</span>
+        </div>
+        <div class="day-parts" id="today-parts">
+          <div class="part" id="part-am"><em>Morning</em><span id="part-am-b">—</span></div>
+          <div class="part" id="part-pm"><em>Afternoon</em><span id="part-pm-b">—</span></div>
+          <div class="part" id="part-eve"><em>Night</em><span id="part-eve-b">—</span></div>
+        </div>
 
         <div class="wx-strips" id="wx-strips">
           <div class="wx-strip stale" id="wx-stale"></div>
@@ -2069,9 +2092,17 @@
         </div>
         </div>
         <aside class="today-side" id="today-side">
+          <div id="today-hot-col">
+            <p class="today-sec-h" id="today-hot-h">Hottest ticket</p>
+            <div id="today-hot"></div>
+          </div>
           <div id="today-eat-col">
             <p class="today-sec-h" id="today-eat-h">Tonight’s table</p>
             <div id="today-eat-pick"></div>
+          </div>
+          <div id="today-deal-col">
+            <p class="today-sec-h" id="today-deal-h">Eat the deal</p>
+            <div id="today-deal"></div>
           </div>
           <div id="today-deliv-col">
             <p class="today-sec-h" id="today-deliv-h">Packages</p>
@@ -3413,7 +3444,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 618;
+    window.BOARD_VER = 619;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9352,7 +9383,165 @@ function currentRotation() {
       if (typeof noteFeed === "function") noteFeed("busy-pills", true, n ? ("checked " + n + " venues") : "no public venues");
     }
     window.loadBusyPills = loadBusyPills;
-    function paintToday() {
+    
+      function recNowET() {
+        return new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+      }
+      function recUpcoming(msAhead) {
+        var now = Date.now();
+        var until = now + (msAhead || 3 * 3600000);
+        return (window.__entAll || []).filter(function (e) {
+          if (!e || !e.when) return false;
+          var t = new Date(e.when).getTime();
+          if (isNaN(t)) return false;
+          var end = e.end ? new Date(e.end).getTime() : t + 2 * 3600000;
+          return end >= now - 30 * 60000 && t <= until;
+        }).sort(function (a, b) { return new Date(a.when) - new Date(b.when); });
+      }
+      function recSeasonHot() {
+        var now = Date.now();
+        var rows = [
+          { sum: "BYNGE at SandBar Tiki", loc: "SandBar Tiki & Grille, Englewood Beach", when: "2026-09-12T19:00:00-04:00", end: "2026-09-12T23:00:00-04:00", live: true, desc: "Dance rock 7–11 PM. Hottest room on the Key tonight." },
+          { sum: "Sullivan Street Craft Festival", loc: "Downtown Punta Gorda", when: "2026-09-12T10:00:00-04:00", end: "2026-09-13T17:00:00-04:00", desc: "Two-day juried art show — the busiest weekend draw nearby." },
+          { sum: "Englewood Sunday Drum Circle", loc: "Englewood Beach", when: "2026-09-13T17:00:00-04:00", end: "2026-09-13T20:00:00-04:00", live: true, desc: "Sunday 5 PM on the sand." }
+        ];
+        for (var i = 0; i < rows.length; i++) {
+          var s = Date.parse(rows[i].when), e = Date.parse(rows[i].end);
+          if (now <= e + 3600000 && now + 36 * 3600000 >= s) return rows[i];
+        }
+        return null;
+      }
+      function paintNext3() {
+        var el = document.getElementById("today-next3-body");
+        if (!el) return;
+        var hr = recNowET().getHours();
+        var wx = window.__nowWx || {};
+        var fx = String(wx.short || wx.sky || wx.text || "").toLowerCase();
+        var evs = recUpcoming(3 * 3600000);
+        var live = evs.filter(function (e) { return e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc)); });
+        var bits = [];
+        if (hr >= 22 || hr < 6) bits.push("Overnight is for home — not the beach, the boat, or the courts.");
+        else if (/thunder|severe/.test(fx)) bits.push("Storms in the area. Stay close to cover.");
+        else if (/rain|shower/.test(fx)) bits.push("Rain is in play. Keep plans short and near cover.");
+        else bits.push("The next three hours are usable if you stay near shade and water.");
+        if (live[0]) bits.push((live[0].sum || "Live music") + " is the room to be in.");
+        else if (evs[0]) bits.push((evs[0].sum || "The next event") + " is the next thing on the calendar.");
+        else bits.push("Nothing on the calendars in the next three hours.");
+        el.textContent = bits.join(" ");
+        if (typeof noteFeed === "function") noteFeed("next3", true, el.textContent.slice(0, 80));
+      }
+      function paintHotTicket() {
+        var box = document.getElementById("today-hot");
+        var col = document.getElementById("today-hot-col");
+        if (!box) return;
+        function score(e) {
+          if (!e) return 0;
+          var s = 0;
+          var txt = [e.sum, e.loc, e.desc].join(" ").toLowerCase();
+          if (e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc))) s += 50;
+          if (/sold out|rsvp|ticket|festival|fair|concert|party/.test(txt)) s += 18;
+          if (/sandbar|high tide|dear?born|capri|punta gorda/.test(txt)) s += 12;
+          if (typeof isTodayET === "function" && isTodayET(e.when)) s += 24;
+          var miles = Number(e.miles);
+          if (!isNaN(miles) && miles <= 20) s += 10;
+          return s;
+        }
+        var list = recUpcoming(36 * 3600000);
+        list.sort(function (a, b) { return score(b) - score(a); });
+        var top = list[0] && score(list[0]) >= 12 ? list[0] : recSeasonHot();
+        if (!top) {
+          if (col) col.hidden = true;
+          box.innerHTML = "";
+          if (typeof noteFeed === "function") noteFeed("hot-ticket", false, "none");
+          return;
+        }
+        if (col) col.hidden = false;
+        if (window.entCardHtml) box.innerHTML = window.entCardHtml(top);
+        else box.innerHTML = '<div class="card"><b>' + String(top.sum || "").replace(/</g, "") + "</b><span>" + String(top.desc || top.loc || "").replace(/</g, "") + "</span></div>";
+        if (typeof noteFeed === "function") noteFeed("hot-ticket", true, top.sum || "ok");
+      }
+      function paintEatDeal() {
+        var box = document.getElementById("today-deal");
+        var col = document.getElementById("today-deal-col");
+        if (!box) return;
+        var now = recNowET();
+        var y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate(), hr = now.getHours();
+        var deal = null;
+        if (y === 2026 && m === 9 && d >= 10 && d <= 24) {
+          deal = { name: "Let's Eat Englewood", kind: "Restaurant week", why: "2-course lunch $22 · 3-course dinner $42 through Sept 24. SandBar and Lock 'N Key are in." };
+        } else if (hr >= 14 && hr < 18) {
+          deal = { name: "Happy hour on the Key", kind: "Happy hour", why: "Typical 2–6 PM window at High Tide and Magnolias. Confirm the board at the bar." };
+        } else if ((window.__eats || [])[0]) {
+          var r = window.__eats[0];
+          deal = { name: r.name, kind: r.kind || "Table", why: "Highest Google-rated table in range until a dated special is posted." };
+        }
+        if (!deal) {
+          if (col) col.hidden = true;
+          box.innerHTML = "";
+          if (typeof noteFeed === "function") noteFeed("eat-deal", false, "none");
+          return;
+        }
+        if (col) col.hidden = false;
+        box.innerHTML = '<div class="card eat-card"><span class="kind-tag eat-brk">' + deal.kind + "</span><b>" + deal.name.replace(/</g, "") + '</b><span class="eat-why">' + deal.why.replace(/</g, "") + "</span></div>";
+        if (typeof noteFeed === "function") noteFeed("eat-deal", true, deal.name);
+      }
+      function paintDayParts() {
+        var hours = window.__hours || [];
+        function hoursIn(lo, hi) {
+          return hours.filter(function (h) {
+            if (!h || !h.startTime) return false;
+            var d = new Date(h.startTime);
+            var day = d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+            var today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+            if (day !== today) return false;
+            var hr = Number(d.toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }));
+            return hr >= lo && hr < hi;
+          });
+        }
+        function roll(arr) {
+          if (!arr.length) return "no";
+          var n = 0, w = 0, g = 0;
+          arr.forEach(function (h) {
+            var k = typeof hourOutlook === "function" ? hourOutlook(h, "beach") : "win";
+            if (k === "go") g++;
+            else if (k === "win") w++;
+            else n++;
+          });
+          if (g >= w && g >= n && g) return "go";
+          if (w >= n) return "win";
+          return "no";
+        }
+        function line(kind, block) {
+          if (block === "eve" && kind === "go") return "Good night out";
+          if (block === "eve") return kind === "win" ? "Keep it close" : "Stay in";
+          if (kind === "go") return block === "am" ? "Beach morning" : "Get outside";
+          if (kind === "win") return "Pick a window";
+          return block === "am" ? "Slow start" : "Stay cool inside";
+        }
+        var am = roll(hoursIn(6, 12));
+        var pm = roll(hoursIn(12, 18));
+        var eve = roll(hoursIn(18, 22));
+        var hr = recNowET().getHours();
+        [["am", am, hr >= 6 && hr < 12], ["pm", pm, hr >= 12 && hr < 18], ["eve", eve, hr >= 18 || hr < 6]].forEach(function (row) {
+          var el = document.getElementById("part-" + row[0]);
+          var b = document.getElementById("part-" + row[0] + "-b");
+          if (b) b.textContent = line(row[1], row[0]);
+          if (el) {
+            el.className = "part " + row[1] + (row[2] ? " now" : "");
+          }
+        });
+        if (typeof noteFeed === "function") noteFeed("day-parts", true, am + "/" + pm + "/" + eve);
+      }
+      function paintTodayRecs() {
+        try { paintNext3(); } catch (e) {}
+        try { paintHotTicket(); } catch (e2) {}
+        try { paintEatDeal(); } catch (e3) {}
+        try { paintDayParts(); } catch (e4) {}
+      }
+      setInterval(function () { if (typeof paintTodayRecs === "function") paintTodayRecs(); }, 15 * 60 * 1000);
+
+      function paintToday() {
+      if (typeof paintTodayRecs === "function") try { paintTodayRecs(); } catch (eRec) {}
       if (typeof paintTodayHours === "function") try { paintTodayHours(); } catch (e0) {}
       if (typeof paintTodayDays === "function") try { paintTodayDays(); } catch (e1) {}
       var doBox = document.getElementById("today-do");
