@@ -2147,7 +2147,7 @@
             <div id="today-eat-pick"></div>
           </div>
           <div id="today-deal-col">
-            <p class="today-sec-h" id="today-deal-h">Hottest happy hour</p>
+            <p class="today-sec-h" id="today-deal-h">Happy hour</p>
             <div id="today-deal"></div>
           </div>
           <div id="today-deliv-col">
@@ -3500,7 +3500,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 630;
+    window.BOARD_VER = 631;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9599,6 +9599,23 @@ function currentRotation() {
           box.innerHTML = '<div class="card ev-card"><div class="ev-body"><b>' + String(top.sum || "").replace(/</g, "") + '</b><span class="eat-why">' + why + "</span></div></div>";
         }
         if (typeof noteFeed === "function") noteFeed("hot-ticket", true, top.sum || "ok");
+        var pin = typeof pinVenue === "function" ? pinVenue(top) : null;
+        if (typeof driveMinutesToLatLng === "function" && pin && pin.lat != null && !top.inside) {
+          driveMinutesToLatLng(pin.lat, pin.lon, function (d) {
+            if (!d || d.min == null) return;
+            top.driveMin = d.min;
+            if (d.miles != null) top.miles = d.miles;
+            var tag = box.querySelector(".dist-tag");
+            var label = fmtDrivePill(top);
+            if (tag && label) tag.textContent = label;
+            else if (label && window.entCardHtml) {
+              var html = window.entCardHtml(top);
+              var why2 = String(top.desc || top.why || "").replace(/</g, "").trim();
+              if (why2 && html.indexOf("eat-why") < 0) html = html.replace("</div></div>", '<span class="eat-why">' + why2 + "</span></div></div>");
+              box.innerHTML = html;
+            }
+          });
+        }
       }
       function seedHappyHours() {
         return [
@@ -9709,20 +9726,42 @@ function currentRotation() {
           var on = hhOpenToday(row, now) && hr >= row.start && hr < row.end;
           var soon = hhOpenToday(row, now) && hr < row.start && row.start - hr <= 1.5;
           var later = hhOpenToday(row, now) && hr >= row.end;
+          if (row.lat != null && row.lon != null && typeof milesApart === "function") {
+            row.miles = milesApart(homeLat(), homeLon(), Number(row.lat), Number(row.lon));
+          }
           var tag = on ? "On now" : soon ? "Starts soon" : later ? "Tomorrow" : (row.kind || "Happy hour");
-          var dist = row.miles != null ? (Math.round(row.miles * 10) / 10 + " mi") : "";
+          var dist = "";
+          if (row.miles != null && !isNaN(row.miles)) dist = (Math.round(Number(row.miles) * 10) / 10) + " mi";
+          if (row.driveMin != null) dist += (dist ? " · " : "") + Math.max(1, Math.round(row.driveMin)) + " min";
           var when = hhClock(row.start) + "–" + hhClock(row.end);
           var why = row.deal || "";
           if (week && /sandbar|lock/.test(String(row.name).toLowerCase())) why += " Also on Let's Eat Englewood this month.";
           window.__hhPick = row;
           var mapQ = [row.name, row.addr].filter(Boolean).join(", ");
           box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '">' +
-            '<div class="ev-rail"><span class="ev-dow">' + tag + '</span><span class="ev-num">' + (dist || "—") + "</span></div>" +
-            '<div class="ev-body"><b>' + String(row.name).replace(/</g, "") + "</b>" +
+            '<div class="ev-rail"><span class="ev-dow">Today</span><span class="ev-num">' + tag.replace(/Happy hour/i, "HH") + "</span></div>" +
+            '<div class="ev-body">' + (dist ? '<span class="dist-tag">' + dist + "</span>" : "") +
+            "<b>" + String(row.name).replace(/</g, "") + "</b>" +
             '<span class="ev-when">' + when + (on ? " · happening now" : later ? " · next window" : "") + "</span>" +
             (why ? '<span class="eat-why">' + String(why).replace(/</g, "") + "</span>" : "") +
             "</div></div>";
           if (typeof noteFeed === "function") noteFeed("eat-deal", true, row.name + " " + (on ? "now" : when) + " · " + dist);
+          if (typeof driveMinutesToLatLng === "function" && row.lat != null && row.lon != null) {
+            driveMinutesToLatLng(row.lat, row.lon, function (d) {
+              if (!d || d.min == null) return;
+              row.driveMin = d.min;
+              if (d.miles != null) row.miles = d.miles;
+              var tagEl = box.querySelector(".dist-tag");
+              var label = "";
+              if (row.miles != null) label = (Math.round(Number(row.miles) * 10) / 10) + " mi";
+              label += (label ? " · " : "") + Math.max(1, Math.round(d.min)) + " min";
+              if (tagEl) tagEl.textContent = label;
+              else if (label) {
+                var body = box.querySelector(".ev-body");
+                if (body) body.insertAdjacentHTML("afterbegin", '<span class="dist-tag">' + label + "</span>");
+              }
+            });
+          }
         });
       }
       function paintDayParts() {
@@ -10315,12 +10354,12 @@ function currentRotation() {
         return map[k] || "rest";
       }
       function card(r) {
-        var dist = "";
-        if (r.driveMin != null) dist = Math.max(1, Math.round(r.driveMin)) + " min";
-        else if (r.miles != null && !isNaN(r.miles)) {
-          var guess = Math.max(2, Math.round(r.miles / 0.35));
-          dist = r.miles.toFixed(r.miles >= 10 ? 0 : 1) + " mi · ~" + guess + " min";
+        if ((r.miles == null || isNaN(r.miles)) && r.lat != null && r.lon != null && typeof milesOf === "function") {
+          r.miles = milesOf(r.lat, r.lon);
         }
+        var dist = "";
+        if (r.miles != null && !isNaN(r.miles)) dist = (Math.round(Number(r.miles) * 10) / 10) + " mi";
+        if (r.driveMin != null && !isNaN(r.driveMin)) dist += (dist ? " · " : "") + Math.max(1, Math.round(r.driveMin)) + " min";
         var rate = r.rating != null && r.rating !== ""
           ? (Number(r.rating).toFixed(1) + " Google" + (r.reviews ? " · " + Number(r.reviews).toLocaleString() + " reviews" : ""))
           : "";
@@ -15128,11 +15167,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     }
     function fmtDrivePill(e) {
       if (e && e.inside) return "On site";
-      if (e && e.driveMin != null) return Math.max(1, Math.round(e.driveMin)) + " min";
       var mi = eventMilesFromHome(e);
-      if (mi == null || isNaN(mi)) return "";
-      var guess = Math.max(2, Math.round(mi / 0.35));
-      return mi.toFixed(mi >= 10 ? 0 : 1) + " mi · ~" + guess + " min";
+      var parts = [];
+      if (mi != null && !isNaN(mi)) parts.push((Math.round(Number(mi) * 10) / 10) + " mi");
+      if (e && e.driveMin != null && !isNaN(e.driveMin)) parts.push(Math.max(1, Math.round(e.driveMin)) + " min");
+      return parts.join(" · ");
     }
     function gmapsKey() { return String((typeof getSet === "function" && getSet().gmapsKey) || "").trim(); }
     function mapsPaidOn() {
