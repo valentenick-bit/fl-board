@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Commons</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     try {
       if (localStorage.getItem("bw-kiosk") === "1") document.documentElement.classList.add("kiosk");
@@ -1978,6 +1980,16 @@
       padding:4px 8px; border-radius:999px; pointer-events:none;
     }
     #wx-radar-view.wx-map-pane { width:100%; height:100%; object-fit:cover; background:#123; }
+
+    #wx-radar-map { position:absolute; inset:0; z-index:1; }
+    #wx-radar-view { display:none; }
+    .kind-tag.golf-pub { background:#1b6b62; color:#fff; }
+    .kind-tag.golf-priv { background:#1e3a5f; color:#fff; }
+    .kind-tag.golf-res { background:#c45c4a; color:#fff; }
+    .kind-tag.golf-exec { background:#c4a35a; color:#1a1408; }
+    .kind-tag.golf-course { background:#3d6b1f; color:#fff; }
+    html.dark .kind-tag.golf-pub { background:#2a9d8f; }
+    html.dark .kind-tag.golf-priv { background:#4a6fa5; }
 </style>
 </head>
 <body>
@@ -3126,23 +3138,6 @@ Cart shop:</textarea>
           <select id="set-lang" style="max-width:220px"></select>
         </div>
         <p class="hint">Dates, times, and numbers follow the language. Board wording stays English for now. Time zone follows this device.</p>
-        <div class="set-line"><label>Around home</label>
-          <div class="set-row" id="set-eventmiles">
-            <button type="button" data-v="5">5 mi</button>
-            <button type="button" data-v="10">10 mi</button>
-            <button type="button" data-v="15">15 mi</button>
-            <button type="button" data-v="20">20 mi</button>
-          </div>
-        </div>
-        <p class="hint">Events and restaurants this far from the home pin. BeachWalk events always stay. Englewood listings and restaurant cards drop off outside the radius.</p>
-        <div class="set-line"><label>Sports radius</label>
-          <div class="set-row" id="set-sportmiles">
-            <button type="button" data-v="50">50 mi</button>
-            <button type="button" data-v="150">150 mi</button>
-            <button type="button" data-v="300">300 mi</button>
-          </div>
-        </div>
-        <p class="hint">Used when picking nearby teams. Already-checked teams stay until you change them.</p>
         <p class="hint">Loop is Today, Weather, Land, Sea, Sky, then Views and the house pages. Radar and Lightning are not separate pages — radar sits on Weather, and lightning uses that same frame when it is close. Traffic sits on Land. Packages only show on Today — everything still incoming, plus delivered in the last 5 days. Today and Cam stay a little longer than the other pages.</p>
       </div>
       <div class="set-card">
@@ -3541,7 +3536,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 659;
+    window.BOARD_VER = 661;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3758,7 +3753,7 @@ Cart shop:</textarea>
       brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
-      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "15", sportMiles: "150", lang: "device"
+      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device"
     };
     function getSet() {
       var s = {};
@@ -3766,12 +3761,8 @@ Cart shop:</textarea>
       Object.keys(SET_DEFAULTS).forEach(function (k) { if (s[k] == null) s[k] = SET_DEFAULTS[k]; });
       if (s.dateFmt === "iso" || s.dateFmt === "num-intl" || s.dateFmt === "long") s.dateFmt = "intl";
       if (s.dateFmt !== "us" && s.dateFmt !== "num-us" && s.dateFmt !== "intl") s.dateFmt = "us";
-      var em = Number(s.eventMiles);
-      if (!em || em < 5) s.eventMiles = "5";
-      else if (em <= 7) s.eventMiles = "5";
-      else if (em <= 12) s.eventMiles = "10";
-      else if (em <= 17) s.eventMiles = "15";
-      else s.eventMiles = "20";
+      s.eventMiles = "25";
+      s.sportMiles = "150";
       ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","briefToday","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
         if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
@@ -4960,59 +4951,81 @@ function gatorRange() {
       stopRainviewerLoop();
       lat = Number(lat); lon = Number(lon);
       if (!isFinite(lat) || !isFinite(lon)) return;
-      var pane = document.getElementById("wx-radar-view");
       var stage = document.getElementById("wx-radar-stage");
-      if (pane && pane.tagName === "IFRAME") {
-        var img = document.createElement("img");
-        img.id = "wx-radar-view";
-        img.className = pane.className || "wx-map-pane on";
-        img.alt = "Radar loop";
-        pane.parentNode.replaceChild(img, pane);
-        pane = img;
+      if (!stage) return;
+      if (typeof L === "undefined") {
+        var nws = st ? ("https://radar.weather.gov/ridge/standard/" + st + "_loop.gif?t=" + Date.now()) : "";
+        var pane = document.getElementById("wx-radar-view");
+        if (pane && nws) { pane.style.display = "block"; pane.src = nws; }
+        if (typeof noteFeed === "function") noteFeed("radar", !!nws, nws ? "nws gif" : "no leaflet");
+        return;
       }
-      if (!pane) return;
+      var hostEl = document.getElementById("wx-radar-map");
+      if (!hostEl) {
+        hostEl = document.createElement("div");
+        hostEl.id = "wx-radar-map";
+        stage.insertBefore(hostEl, stage.firstChild);
+      }
       var stamp = document.getElementById("wx-radar-stamp");
-      if (!stamp && stage) {
+      if (!stamp) {
         stamp = document.createElement("div");
         stamp.id = "wx-radar-stamp";
         stamp.className = "wx-radar-stamp";
         stage.appendChild(stamp);
       }
-      var nws = st ? ("https://radar.weather.gov/ridge/standard/" + st + "_loop.gif?t=" + Date.now()) : "";
+      var dark = document.documentElement.classList.contains("dark");
+      var baseUrl = dark
+        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+      if (window.__radarMap) {
+        try {
+          window.__radarMap.setView([lat, lon], window.__radarMap.getZoom() || 9);
+          if (window.__radarMarker) window.__radarMarker.setLatLng([lat, lon]);
+        } catch (eV) {}
+      } else {
+        window.__radarMap = L.map(hostEl, { zoomControl: true, attributionControl: false, scrollWheelZoom: true }).setView([lat, lon], 9);
+        window.__radarBase = L.tileLayer(baseUrl, { maxZoom: 16 }).addTo(window.__radarMap);
+        window.__radarMarker = L.circleMarker([lat, lon], {
+          radius: 7, color: "#fff", weight: 2, fillColor: "#e85d4c", fillOpacity: 1
+        }).addTo(window.__radarMap);
+        setTimeout(function () { try { window.__radarMap.invalidateSize(); } catch (eI) {} }, 400);
+      }
       fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (d) {
         var host = (d && d.host) || "https://tilecache.rainviewer.com";
         var past = ((d && d.radar && d.radar.past) || []).slice();
         if (!past.length) throw new Error("no frames");
-        var frames = past.map(function (f) {
-          return {
-            t: f.time,
-            url: host + f.path + "/512/6/" + lat.toFixed(4) + "/" + lon.toFixed(4) + "/2/1_1.png"
-          };
+        (window.__radarLayers || []).forEach(function (ly) {
+          try { window.__radarMap.removeLayer(ly); } catch (eR) {}
         });
-        frames.forEach(function (fr) { var im = new Image(); im.src = fr.url; });
-        window.__rvFrames = frames;
+        var layers = past.map(function (f) {
+          return L.tileLayer(host + f.path + "/256/{z}/{x}/{y}/2/1_1.png", {
+            opacity: 0, zIndex: 3, tileSize: 256
+          });
+        });
+        window.__radarLayers = layers;
+        window.__radarTimes = past.map(function (f) { return f.time; });
+        layers.forEach(function (ly) { ly.addTo(window.__radarMap); });
         var i = 0;
         function show() {
-          var fr = frames[i];
-          if (!fr || !pane) return;
-          pane.src = fr.url;
-          if (stamp) {
-            var dt = new Date(fr.t * 1000);
-            stamp.textContent = dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          layers.forEach(function (ly, j) { ly.setOpacity(j === i ? 0.72 : 0); });
+          if (stamp && window.__radarTimes[i]) {
+            var dt = new Date(window.__radarTimes[i] * 1000);
+            stamp.textContent = dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + " · " + (pin || "home");
           }
         }
         function tick() {
           show();
-          var last = i === frames.length - 1;
-          i = (i + 1) % frames.length;
-          window.__rvTimer = setTimeout(tick, last ? 1400 : 380);
+          var last = i === layers.length - 1;
+          i = (i + 1) % layers.length;
+          window.__rvTimer = setTimeout(tick, last ? 1400 : 420);
         }
         tick();
-        if (typeof noteFeed === "function") noteFeed("radar", true, frames.length + " frames · " + (pin || "home"));
+        if (typeof noteFeed === "function") noteFeed("radar", true, layers.length + " frame map · " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3));
       }).catch(function () {
-        if (pane && nws) pane.src = nws;
-        if (stamp) stamp.textContent = "NWS loop";
-        if (typeof noteFeed === "function") noteFeed("radar", !!nws, nws ? ("nws " + st) : "radar fail");
+        var nws = st ? ("https://radar.weather.gov/ridge/standard/" + st + "_loop.gif?t=" + Date.now()) : "";
+        var pane = document.getElementById("wx-radar-view");
+        if (pane && nws) { pane.style.display = "block"; pane.src = nws; }
+        if (typeof noteFeed === "function") noteFeed("radar", !!nws, "map fail");
       });
     }
     function applyRadar() {
@@ -10222,7 +10235,7 @@ function currentRotation() {
         if (!box) return;
         loadHappyHours(function (list) {
           var now = recNowET();
-          var miles = Number((getSet() || {}).eventMiles || 15);
+          var miles = Number((getSet() || {}).eventMiles || 25);
           var inR = (list || []).filter(function (r) {
             if (r.lat != null && typeof (typeof milesOf === "function" ? milesOf : window.milesOf) === "function") r.miles = (typeof milesOf === "function" ? milesOf : window.milesOf)(r.lat, r.lon);
             return r.miles != null && r.miles <= miles + 0.25;
@@ -10345,7 +10358,7 @@ function currentRotation() {
           if (col) col.hidden = true;
           return;
         }
-        var milesCap = Number((getSet() || {}).eventMiles || 15);
+        var milesCap = Number((getSet() || {}).eventMiles || 25);
         var now = (typeof recNowET === "function") ? recNowET() : new Date();
         var hr = now.getHours() + now.getMinutes() / 60;
         var dow = now.getDay();
@@ -10687,7 +10700,7 @@ function currentRotation() {
         window.paintEnt = paint;
         bag.bw = dedupeEnt(bag.bw);
         bag.eng = dedupeEnt(bag.eng);
-        var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 15);
+        var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 25);
         var all = bag.bw.concat(bag.local || [], bag.eng, bag.comedy || []).filter(function (e) {
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now();
@@ -11047,7 +11060,7 @@ function currentRotation() {
         setTimeout(function () { try { paint(cachedEats); } catch (eC) {} }, 0);
       }
       function inRange(r) {
-        var cap = Number((getSet() || {}).eventMiles || 15) + 0.25;
+        var cap = Number((getSet() || {}).eventMiles || 25) + 0.25;
         var m = r && r.miles;
         if (m == null && r && r.lat != null && r.lon != null) m = r.miles = milesOf(r.lat, r.lon);
         return m != null && !isNaN(m) && m <= cap;
@@ -11189,7 +11202,7 @@ function currentRotation() {
       function drawEats(list) {
         var box = document.getElementById("eat-list");
         var note = document.getElementById("eat-count");
-        var miles = Number((getSet() || {}).eventMiles || 15);
+        var miles = Number((getSet() || {}).eventMiles || 25);
         var prev = {};
         try { prev = JSON.parse(localStorage.getItem("bw-eat-ratings") || "{}") || {}; } catch (eP) { prev = {}; }
         list.forEach(function (r) {
@@ -11205,7 +11218,7 @@ function currentRotation() {
           localStorage.setItem("bw-eat-ratings", JSON.stringify(prev));
         } catch (eS) {}
         if (note) note.textContent = list.length ? ("Google ratings · highest first · " + miles + " mi") : ("Looking up Google ratings inside " + miles + " mi");
-        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with Google ratings in range.</b><span>Widen Around home in Settings.</span></div>';
+        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with Google ratings in range.</b><span>Nothing rated inside 25 miles of the pin.</span></div>';
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list[0].name + " " + (list[0].rating || "") + " first") : "none in range");
         eatCacheWrite(list);
         if (typeof window.paintEatPick === "function") window.paintEatPick();
@@ -11213,7 +11226,7 @@ function currentRotation() {
       function paint(list) {
         var box = document.getElementById("eat-list");
         var note = document.getElementById("eat-count");
-        var miles = Number((getSet() || {}).eventMiles || 15);
+        var miles = Number((getSet() || {}).eventMiles || 25);
         var incoming = list || [];
         var haveRated = (window.__eats || []).filter(function (r) { return Number(r.reviews) > 0; }).length;
         var incomingRated = incoming.filter(function (r) { return Number(r.reviews) > 0 && r.rating != null; }).length;
@@ -11475,7 +11488,7 @@ function mustEats() {
       function fromPlacesText(cb) {
         var key = String((getSet() || {}).gmapsKey || "").trim();
         if (!key) return cb(null);
-        var miles = Number((getSet() || {}).eventMiles || 15);
+        var miles = Number((getSet() || {}).eventMiles || 25);
         var queries = [
           "top restaurants near " + (homeAddress() || "Englewood FL")
         ];
@@ -11529,7 +11542,7 @@ function mustEats() {
       function fromPlacesNew(cb) {
         var key = String((getSet() || {}).gmapsKey || "").trim();
         if (!key || (typeof mapsPaidOn === "function" && !mapsPaidOn())) return cb(null);
-        var miles = Number((getSet() || {}).eventMiles || 15);
+        var miles = Number((getSet() || {}).eventMiles || 25);
         var body = {
           includedTypes: ["restaurant", "bar", "american_restaurant", "seafood_restaurant", "mexican_restaurant", "meal_takeaway"],
           maxResultCount: 20,
@@ -11648,7 +11661,7 @@ function mustEats() {
         if (typeof loader !== "function") return fromPlacesNew(cb);
         loader(function (ok) {
           if (!ok || !(window.google && google.maps && google.maps.places)) return fromPlacesNew(cb);
-          var miles = Number((getSet() || {}).eventMiles || 15);
+          var miles = Number((getSet() || {}).eventMiles || 25);
           var box = document.getElementById("eat-places-map");
           if (!box) {
             box = document.createElement("div");
@@ -11724,7 +11737,7 @@ function mustEats() {
         });
       }
       function fromOverpass(cb) {
-        var miles = Number((getSet() || {}).eventMiles || 15);
+        var miles = Number((getSet() || {}).eventMiles || 25);
         var q = "[out:json][timeout:20];(nwr[\"amenity\"=\"restaurant\"](around:" + Math.round(miles * 1609.34) + "," + homeLat() + "," + homeLon() + "););out center 30;";
         var urls = [
           "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q),
@@ -11833,13 +11846,14 @@ function mustEats() {
         if (r.miles != null && !isNaN(r.miles)) dist = (Math.round(Number(r.miles) * 10) / 10) + " mi";
         if (r.driveMin != null && !isNaN(r.driveMin)) dist += (dist ? " · " : "") + Math.max(1, Math.round(r.driveMin)) + " min";
         var reviews = r.reviews ? (r.reviews + " reviews") : "";
-        var pills = '<span class="kind-tag eat-rest">' + (r.kind || "Course") + "</span>";
+        var kcls = ({ Public:"golf-pub", Private:"golf-priv", Resort:"golf-res", Executive:"golf-exec" }[r.kind] || "golf-course");
+        var pills = '<span class="kind-tag ' + kcls + '">' + (r.kind || "Course") + "</span>";
         if (dist) pills += '<span class="dist-tag">' + dist + "</span>";
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var addr = r.addr || r.area || "";
         var mapQ = ((r.name || "") + (addr ? " " + addr : "")).trim() || (r.name + " golf");
-        return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '">' +
+        return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-golf="' + String(r.name || "").replace(/"/g, "&quot;") + '">' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + '</span><span class="ev-ico" aria-hidden="true">⛳</span></div>' +
           '<div class="ev-body"><b>' + String(r.name || "Golf").replace(/</g, "") + "</b>" +
           (addr ? "<span>" + String(addr).replace(/</g, "") + "</span>" : "") +
@@ -11855,7 +11869,7 @@ function mustEats() {
         });
       }
       function golfMiles() {
-        return Math.max(25, Number((getSet() || {}).eventMiles || 15));
+        return Math.max(25, Number((getSet() || {}).eventMiles || 25));
       }
       function seedGolf() {
         return [
@@ -11895,9 +11909,26 @@ function mustEats() {
         var miles = golfMiles();
         list = rank(list || window.__golfPool || []);
         window.__golfs = list;
-        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Widen the event miles in Settings or check the pin.</span></div>';
+        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Nothing inside 25 miles of the pin.</span></div>';
         if (note) note.textContent = list.length ? ("Courses within " + miles + " mi · closest / highest rated") : ("No courses within " + miles + " mi");
-        if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " courses · " + list[0].name) : "none");
+        if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " courses · " + (list[0].rating != null ? list[0].rating + " " : "") + list[0].name) : "none");
+        if (typeof matrixChunk === "function") {
+          var dests = list.filter(function (r) { return r.lat != null && r.lon != null; }).map(function (r) {
+            return {
+              lat: r.lat, lon: r.lon, q: (r.addr || r.name || "") + " FL",
+              on: function (d) {
+                r.driveMin = d.min;
+                if (d.miles != null) r.miles = d.miles;
+                document.querySelectorAll("#golf-list .eat-card").forEach(function (card) {
+                  if ((card.getAttribute("data-golf") || "") !== (r.name || "")) return;
+                  var tag = card.querySelector(".dist-tag");
+                  if (tag) tag.textContent = (r.miles != null ? (Math.round(r.miles * 10) / 10) + " mi · " : "") + d.min + " min";
+                });
+              }
+            };
+          });
+          if (dests.length) matrixChunk(dests, function () {});
+        }
       }
       function fromOverpass(cb) {
         var miles = golfMiles();
@@ -12006,6 +12037,10 @@ function mustEats() {
             rateList(window.__golfPool.slice(), function (rated) {
               window.__golfPool = dedupe(rated.concat(window.__golfPool || []));
               draw(window.__golfPool);
+              if (typeof noteFeed === "function") {
+                var withR = (window.__golfPool || []).filter(function (x) { return x.rating != null; }).length;
+                noteFeed("golf-rate", withR > 0, withR + " rated");
+              }
             });
           });
         });
@@ -12508,9 +12543,7 @@ function mustEats() {
         mark("set-units", s.units || "F");
         mark("set-greettone", s.greetTone || "full");
         mark("set-tickspeed", s.tickSpeed || "normal");
-        mark("set-eventmiles", String(s.eventMiles || "15"));
         mark("set-gmapson", s.gmapsOn !== "0" ? "1" : "0");
-        mark("set-sportmiles", String(s.sportMiles || "150"));
         (function fillLang() {
           var sel = document.getElementById("set-lang");
           if (!sel) return;
@@ -12714,24 +12747,8 @@ function mustEats() {
           if (el && typeof spinEl === "function") spinEl(el, tickSpeedPx(), true);
         });
       });
-      tap("set-eventmiles", "eventMiles", function () {
-        window.__eatEnrichAt = 0;
-        window.__eatBag = [];
-        if (typeof window.reloadEats === "function") window.reloadEats();
-        if (typeof window.reloadGolf === "function") window.reloadGolf();
-        if (typeof window.paintEnt === "function") window.paintEnt();
-        else if (typeof paintToday === "function") paintToday();
-      });
       tap("set-gmapson", "gmapsOn", function () {
         if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
-      });
-      tap("set-sportmiles", "sportMiles", function () {
-        try {
-          var ids = (typeof nearbyTeams === "function") ? nearbyTeams().map(teamId) : [];
-          putSet({ sportsOn: ids.join(",") });
-        } catch (eS) {}
-        if (typeof paintSportsPage === "function") paintSportsPage();
-        if (typeof loadSportsScores === "function") loadSportsScores();
       });
       tap("set-vol", "vol", function () {
         var audio = document.getElementById("radioPlayer");
@@ -16134,7 +16151,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       return null;
     }
     function eventInRange(e) {
-      var limit = Number((typeof getSet === "function" && getSet().eventMiles) || 15) || 15;
+      var limit = Number((typeof getSet === "function" && getSet().eventMiles) || 25) || 15;
       if (e && e.inside) return true;
       if (e && (e.src === "local" || e.src === "town")) return true;
       var mi = eventMilesFromHome(e);
