@@ -953,6 +953,7 @@
     #today-hot .ev-card,
     #today-deal .ev-card,
     #today-deal .eat-card,
+    #today-wear .ev-card,
     #today-shop .ev-card,
     #today-shop .eat-card,
     #today-deliv .ev-card,
@@ -3530,7 +3531,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 636;
+    window.BOARD_VER = 637;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6769,7 +6770,26 @@ function currentRotation() {
         if (!box) return;
         var d = clothesDetail(wx || window.__nowWx || {}, hours || window.__hours || [], hrNow, nearPop, nearStorm, uvN, windMph, rainStart, rainEnd);
         var parts = [d.outfit, d.sun, d.rain, d.extra].filter(Boolean);
-        box.innerHTML = '<div class="card ev-card wear-card"><div class="ev-body"><b>What to wear</b>' +
+        var feel = Number((wx && (wx.feel != null ? wx.feel : wx.temp)) || (window.__nowWx && window.__nowWx.feel) || 0);
+        var tag = "Calm";
+        if (nearStorm || nearPop >= 60) tag = "Rain";
+        else if (uvN >= 8) tag = "Sun";
+        else if (feel >= 90) tag = "Hot";
+        else if (windMph >= 18) tag = "Wind";
+        var shirt = '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 12 L14 8 L20 12 L26 8 L32 12 L28 16 V32 H12 V16 Z"/><path d="M16 16 H24"/></svg>';
+        var pills = "";
+        if (feel >= 90) pills += '<span class="kind-tag eat-mex">Heat</span>';
+        else if (feel >= 78) pills += '<span class="kind-tag music">Shorts</span>';
+        else if (feel && feel <= 68) pills += '<span class="place-tag place-out">Layer</span>';
+        else pills += '<span class="kind-tag music">Light</span>';
+        if (uvN >= 8) pills += '<span class="warn-tag">High UV</span>';
+        else if (uvN >= 6) pills += '<span class="place-tag place-out">Sunscreen</span>';
+        if (nearStorm) pills += '<span class="warn-tag">Thunder</span>';
+        else if (nearPop >= 40) pills += '<span class="kind-tag trivia">Rain shell</span>';
+        if (windMph >= 18) pills += '<span class="kind-tag eat-sea">Windy</span>';
+        box.innerHTML = '<div class="card ev-card wear-card">' +
+          '<div class="ev-rail"><span class="ev-dow">Wear</span><span class="ev-num">' + tag + '</span><span class="ev-ico" aria-hidden="true">' + shirt + "</span></div>" +
+          '<div class="ev-body">' + pills + "<b>What to wear</b>" +
           parts.map(function (p) { return '<span class="eat-why">' + p + "</span>"; }).join("") +
           "</div></div>";
         if (col) col.hidden = !parts.length;
