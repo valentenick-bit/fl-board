@@ -795,6 +795,11 @@
     html.dark .busy-tag.long { background:#5a2a22; color:#f3b6a8; }
     #map-pop { display:none; position:fixed; inset:0; z-index:80; align-items:center; justify-content:center; background:rgba(12,28,36,.55); padding:18px; }
     #map-pop.on { display:flex; }
+    .pop-note { padding:4px 16px 10px; font-size:15px; line-height:1.45; }
+    .pop-note[hidden] { display:none; }
+    .pop-note b { display:block; margin:0 0 4px; }
+    .pop-note em { display:block; font-style:normal; opacity:.75; margin:0 0 6px; font-size:13px; }
+    #today-deal .card { cursor:pointer; }
     #map-pop .pop-card { width:min(920px,100%); max-height:92vh; background:var(--sand,#f4efe4); color:var(--navy,#1b2a4a); border-radius:18px; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.28); display:flex; flex-direction:column; }
     html.dark #map-pop .pop-card { background:#1e3330; color:#efe4c8; }
     #map-pop .pop-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; font-weight:800; }
@@ -2101,7 +2106,7 @@
             <div id="today-eat-pick"></div>
           </div>
           <div id="today-deal-col">
-            <p class="today-sec-h" id="today-deal-h">Eat the deal</p>
+            <p class="today-sec-h" id="today-deal-h">Hottest happy hour</p>
             <div id="today-deal"></div>
           </div>
           <div id="today-deliv-col">
@@ -3349,6 +3354,7 @@ Cart shop:</textarea>
     <div id="map-pop" aria-hidden="true">
       <div class="pop-card" role="dialog" aria-modal="true">
         <div class="pop-bar"><span id="map-pop-title">Map</span><button type="button" id="map-pop-x" aria-label="Close">×</button></div>
+        <div class="pop-note" id="map-pop-note" hidden></div>
         <iframe id="map-pop-frame" title="Map"></iframe>
         <div class="pop-links" id="map-pop-links"></div>
       </div>
@@ -3444,7 +3450,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 619;
+    window.BOARD_VER = 623;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9171,15 +9177,73 @@ function currentRotation() {
       window.__holdPage = !!window.__paused;
       if (!window.__paused && typeof startRotate === "function") startRotate();
     }
-    function openMapPop(title, src, links) {
+
+    function eatPickNote(r) {
+      if (!r) return "";
+      var bits = [];
+      if (r.kind) bits.push(r.kind);
+      if (r.rating != null) bits.push(Number(r.rating).toFixed(1) + " Google" + (r.reviews ? " · " + Number(r.reviews).toLocaleString() + " reviews" : ""));
+      if (r.miles != null) bits.push((Math.round(Number(r.miles) * 10) / 10) + " mi from home");
+      else if (r.driveMin != null) bits.push("~" + Math.round(r.driveMin) + " min");
+      var line = bits.join(" · ");
+      var why = String(r.why || "").replace(/</g, "");
+      var addr = String(r.addr || r.area || "").replace(/</g, "");
+      return "<b>" + String(r.name || "").replace(/</g, "") + "</b>" +
+        (line ? "<em>" + line + "</em>" : "") +
+        (why ? "<span>" + why + "</span>" : "") +
+        (addr ? "<em>" + addr + "</em>" : "");
+    }
+    function openEatPop(r) {
+      if (!r) return;
+      var q = [r.name, r.addr || r.area].filter(Boolean).join(", ") || r.name;
+      var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
+      var maps = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+      var links = '<a href="' + maps + '" target="_blank" rel="noopener">Directions</a>';
+      if (r.phone) links += '<a href="tel:' + String(r.phone).replace(/[^\d+]/g, "") + '">Call</a>';
+      if (r.url || r.website) links += '<a href="' + String(r.url || r.website).replace(/"/g, "") + '" target="_blank" rel="noopener">Menu / site</a>';
+      openMapPop(r.name || "Tonight’s table", src, links, eatPickNote(r));
+    }
+    function openDealPop(row) {
+      if (!row) return;
+      var q = [row.name, row.addr].filter(Boolean).join(", ");
+      var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
+      var maps = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+      var now = (typeof recNowET === "function") ? recNowET() : new Date();
+      var hr = now.getHours() + now.getMinutes() / 60;
+      var on = typeof hhOpenToday === "function" && hhOpenToday(row, now) && hr >= row.start && hr < row.end;
+      var later = typeof hhOpenToday === "function" && hhOpenToday(row, now) && hr >= row.end;
+      var when = (typeof hhClock === "function" ? hhClock(row.start) + "–" + hhClock(row.end) : "") +
+        (on ? " · happening now" : later ? " · next window tomorrow" : "");
+      var miles = row.miles != null ? (Math.round(row.miles * 10) / 10 + " miles from home") : "";
+      var closed = "";
+      if (row.closed && row.closed.length) {
+        var names = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+        closed = "Closed " + row.closed.map(function (d) { return names[d]; }).join(", ") + ".";
+      }
+      var note = "<b>" + String(row.name || "").replace(/</g, "") + "</b>" +
+        "<em>" + [when, miles].filter(Boolean).join(" · ") + "</em>" +
+        "<span>" + String(row.deal || "").replace(/</g, "") + (closed ? " " + closed : "") + "</span>" +
+        (row.addr ? "<em>" + String(row.addr).replace(/</g, "") + "</em>" : "");
+      var links = '<a href="' + maps + '" target="_blank" rel="noopener">Directions</a>';
+      if (row.phone) links += '<a href="tel:' + String(row.phone).replace(/[^\d+]/g, "") + '">Call ' + String(row.phone).replace(/</g, "") + "</a>";
+      if (row.url) links += '<a href="' + String(row.url).replace(/"/g, "") + '" target="_blank" rel="noopener">Menu / site</a>';
+      openMapPop(row.name || "Happy hour", src, links, note);
+    }
+
+    function openMapPop(title, src, links, note) {
       var pop = document.getElementById("map-pop");
       var frame = document.getElementById("map-pop-frame");
       var ttl = document.getElementById("map-pop-title");
       var link = document.getElementById("map-pop-links");
+      var noteEl = document.getElementById("map-pop-note");
       if (!pop || !frame) return;
       if (ttl) ttl.textContent = title || "Map";
       frame.src = src || "about:blank";
       if (link) link.innerHTML = links || "";
+      if (noteEl) {
+        if (note) { noteEl.innerHTML = note; noteEl.hidden = false; }
+        else { noteEl.innerHTML = ""; noteEl.hidden = true; }
+      }
       pop.classList.add("on");
       pop.setAttribute("aria-hidden", "false");
       pauseRotForPop();
@@ -9192,6 +9256,8 @@ function currentRotation() {
       if (pop) wasOn = pop.classList.contains("on");
       clearPopTimer();
       if (frame) frame.src = "about:blank";
+      var noteEl = document.getElementById("map-pop-note");
+      if (noteEl) { noteEl.innerHTML = ""; noteEl.hidden = true; }
       if (pop) { pop.classList.remove("on"); pop.setAttribute("aria-hidden", "true"); }
       if (wasOn) resumeRotAfterPop();
     }
@@ -9242,7 +9308,17 @@ function currentRotation() {
         openMapPop("Lightning", boltMapSrc(), '<a href="' + boltMapSrc() + '" target="_blank" rel="noopener">Open live lightning map</a>');
         return;
       }
-      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #ent-list .card, #eat-list .card");
+      var dealCard = e.target.closest && e.target.closest("#today-deal .card");
+      if (dealCard && window.__hhPick) {
+        openDealPop(window.__hhPick);
+        return;
+      }
+      var eatCard = e.target.closest && e.target.closest("#today-eat-pick .card");
+      if (eatCard && window.__eatPick) {
+        openEatPop(window.__eatPick);
+        return;
+      }
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #ent-list .card, #eat-list .card");
       if (evCard) {
         var q = eventMapQuery(evCard);
         var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
@@ -9460,30 +9536,128 @@ function currentRotation() {
         else box.innerHTML = '<div class="card"><b>' + String(top.sum || "").replace(/</g, "") + "</b><span>" + String(top.desc || top.loc || "").replace(/</g, "") + "</span></div>";
         if (typeof noteFeed === "function") noteFeed("hot-ticket", true, top.sum || "ok");
       }
+      function seedHappyHours() {
+        return [
+          { name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood", lat: 26.9248, lon: -82.3535, start: 11, end: 18, deal: "Happy hour at the bar 11 AM–6 PM daily. Live music most afternoons and evenings on the dock.", phone: "941-474-1517", url: "https://sandbartiki.com/", closed: [] },
+          { name: "Lock 'N Key", addr: "1980 Beach Rd, Englewood", lat: 26.9252, lon: -82.3526, start: 11, end: 18, deal: "Happy hour at the bar 11 AM–6 PM daily. Weekly lunch and dinner specials on the specials board.", phone: "941-474-1517", url: "https://lockandkeyrestaurant.com/menus/specials/", closed: [] },
+          { name: "Magnolias on the Bay", addr: "Manasota Key", lat: 26.9685, lon: -82.3808, start: 14, end: 18, deal: "Drink and menu specials 2–6 PM at the bar and bay-view garden. Closed Mondays. Dinner for two $59.90 from the summer specials menu.", url: "https://www.magnoliasonthebay.com/", closed: [1] },
+          { name: "The Waverly", addr: "Englewood Beach", lat: 26.9264, lon: -82.3538, start: 11, end: 18, deal: "$7 house wine upstairs · $5 house wine downstairs, 11 AM–6 PM. Beach-facing two-story room.", closed: [] },
+          { name: "Rumours Wine Bar", addr: "South Venice / Englewood", lat: 27.0472, lon: -82.4388, start: 15, end: 18, deal: "$1 off 6 oz pours · $2 off 9 oz pours, 3–6 PM.", closed: [] }
+        ];
+      }
+      function hhOpenToday(row, now) {
+        var day = now.getDay();
+        if (row.closed && row.closed.indexOf(day) >= 0) return false;
+        if (row.days && row.days.length && row.days.indexOf(day) < 0) return false;
+        return true;
+      }
+      function hhScore(row, now) {
+        var hr = now.getHours() + now.getMinutes() / 60;
+        var miles = row.miles != null ? Number(row.miles) : 99;
+        var s = Math.max(0, 25 - miles * 1.4);
+        if (!hhOpenToday(row, now)) return s - 40;
+        if (hr >= row.start && hr < row.end) s += 50;
+        else if (hr < row.start && row.start - hr <= 1.5) s += 28;
+        else if (hr < row.start) s += 8;
+        else s += 6;
+        var eats = window.__eats || [];
+        var n = String(row.name || "").toLowerCase();
+        for (var i = 0; i < eats.length; i++) {
+          var en = String(eats[i].name || "").toLowerCase();
+          if (en.indexOf(n.slice(0, 10)) >= 0 || n.indexOf(en.slice(0, 10)) >= 0) {
+            s += (Number(eats[i].rating) || 0) * 4;
+            s += Math.min(12, (Number(eats[i].reviews) || 0) / 400);
+            break;
+          }
+        }
+        if (row.fresh) s += 15;
+        return s;
+      }
+      function hhClock(n) {
+        var h = Math.floor(n), m = Math.round((n - h) * 60);
+        var am = h >= 12 ? "PM" : "AM";
+        var hr = h % 12; if (!hr) hr = 12;
+        return hr + (m ? ":" + String(m).padStart(2, "0") : "") + " " + am;
+      }
+      function mergeHappyHours(live) {
+        var seed = seedHappyHours();
+        var extra = Array.isArray(live) ? live : [];
+        var all = extra.concat(seed);
+        var by = {};
+        all.forEach(function (r) {
+          if (!r || !r.name) return;
+          r.miles = (r.lat != null) ? milesOf(r.lat, r.lon) : r.miles;
+          var k = String(r.name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+          if (!by[k] || r.fresh) by[k] = r;
+        });
+        return Object.keys(by).map(function (k) { return by[k]; });
+      }
+      function loadHappyHours(cb) {
+        if (window.__hhDeals && window.__hhDeals.length) { if (cb) cb(window.__hhDeals); return; }
+        var urls = [
+          "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/deals.json?cb=" + Date.now(),
+          "/deals.json?cb=" + Date.now()
+        ];
+        function done(list) {
+          window.__hhDeals = mergeHappyHours(list);
+          if (cb) cb(window.__hhDeals);
+        }
+        (function next(i) {
+          if (i >= urls.length) return done([]);
+          fetch(urls[i], { cache: "no-store" }).then(function (res) {
+            if (!res.ok) throw new Error("no");
+            return res.json();
+          }).then(function (j) {
+            var list = (j && (j.deals || j.happyHours || j.items)) || [];
+            if (!list.length) throw new Error("empty");
+            list.forEach(function (r) { r.fresh = true; });
+            done(list);
+          }).catch(function () { next(i + 1); });
+        })(0);
+      }
       function paintEatDeal() {
         var box = document.getElementById("today-deal");
         var col = document.getElementById("today-deal-col");
         if (!box) return;
-        var now = recNowET();
-        var y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate(), hr = now.getHours();
-        var deal = null;
-        if (y === 2026 && m === 9 && d >= 10 && d <= 24) {
-          deal = { name: "Let's Eat Englewood", kind: "Restaurant week", why: "2-course lunch $22 · 3-course dinner $42 through Sept 24. SandBar and Lock 'N Key are in." };
-        } else if (hr >= 14 && hr < 18) {
-          deal = { name: "Happy hour on the Key", kind: "Happy hour", why: "Typical 2–6 PM window at High Tide and Magnolias. Confirm the board at the bar." };
-        } else if ((window.__eats || [])[0]) {
-          var r = window.__eats[0];
-          deal = { name: r.name, kind: r.kind || "Table", why: "Highest Google-rated table in range until a dated special is posted." };
-        }
-        if (!deal) {
-          if (col) col.hidden = true;
-          box.innerHTML = "";
-          if (typeof noteFeed === "function") noteFeed("eat-deal", false, "none");
-          return;
-        }
-        if (col) col.hidden = false;
-        box.innerHTML = '<div class="card eat-card"><span class="kind-tag eat-brk">' + deal.kind + "</span><b>" + deal.name.replace(/</g, "") + '</b><span class="eat-why">' + deal.why.replace(/</g, "") + "</span></div>";
-        if (typeof noteFeed === "function") noteFeed("eat-deal", true, deal.name);
+        loadHappyHours(function (list) {
+          var now = recNowET();
+          var miles = Number((getSet() || {}).eventMiles || 15);
+          var inR = (list || []).filter(function (r) {
+            if (r.lat != null) r.miles = milesOf(r.lat, r.lon);
+            return r.miles != null && r.miles <= miles + 0.25;
+          });
+          inR.sort(function (a, b) { return hhScore(b, now) - hhScore(a, now); });
+          var row = inR[0];
+          var y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
+          var week = (y === 2026 && m === 9 && d >= 10 && d <= 24);
+          if (!row) {
+            if (week) {
+              row = { name: "Let's Eat Englewood", miles: 0, start: 11, end: 21, deal: "2-course lunch $22 · 3-course dinner $42 through Sept 24.", kind: "Restaurant week" };
+            } else {
+              if (col) col.hidden = true;
+              box.innerHTML = "";
+              if (typeof noteFeed === "function") noteFeed("eat-deal", false, "none in " + miles + " mi");
+              return;
+            }
+          }
+          if (col) col.hidden = false;
+          var hr = now.getHours() + now.getMinutes() / 60;
+          var on = hhOpenToday(row, now) && hr >= row.start && hr < row.end;
+          var soon = hhOpenToday(row, now) && hr < row.start && row.start - hr <= 1.5;
+          var later = hhOpenToday(row, now) && hr >= row.end;
+          var tag = on ? "On now" : soon ? "Starts soon" : later ? "Tomorrow" : (row.kind || "Happy hour");
+          var dist = row.miles != null ? (Math.round(row.miles * 10) / 10 + " mi") : "";
+          var when = hhClock(row.start) + "–" + hhClock(row.end);
+          var why = row.deal || "";
+          if (week && /sandbar|lock/.test(String(row.name).toLowerCase())) why += " Also on Let's Eat Englewood this month.";
+          window.__hhPick = row;
+          box.innerHTML = '<div class="card eat-card map-hit"><span class="kind-tag eat-brk">' + tag + "</span>" +
+            (dist ? '<span class="kind-tag eat-amer">' + dist + "</span>" : "") +
+            "<b>" + String(row.name).replace(/</g, "") + "</b>" +
+            '<span class="eat-rate">' + when + (on ? " · happening now" : later ? " · next window" : "") + "</span>" +
+            '<span class="eat-why">' + String(why).replace(/</g, "") + '</span><span class="eat-why">Tap for hours, map, and directions.</span></div>';
+          if (typeof noteFeed === "function") noteFeed("eat-deal", true, row.name + " " + (on ? "now" : when) + " · " + dist);
+        });
       }
       function paintDayParts() {
         var hours = window.__hours || [];
@@ -10101,13 +10275,8 @@ function currentRotation() {
       window.eatCardHtml = card;
       function pickCard(r) {
         var html = card(r);
-        var why = r && String(r.why || "").trim();
-        if (why) {
-          var bit = '<span class="eat-why">' + why.replace(/</g, "") + "</span>";
-          if (html.indexOf("eat-why") < 0) {
-            html = html.replace(/<\/div><\/div>\s*$/, bit + "</div></div>");
-            if (html.indexOf("eat-why") < 0) html += bit;
-          }
+        if (html.indexOf("Tap for") < 0) {
+          html = html.replace(/<\/div>\s*$/, '<span class="eat-why">Tap for why this table, hours, and map.</span></div>');
         }
         return html;
       }
