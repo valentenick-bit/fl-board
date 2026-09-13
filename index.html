@@ -2150,6 +2150,10 @@
             <p class="today-sec-h" id="today-deal-h">Happy hour</p>
             <div id="today-deal"></div>
           </div>
+          <div id="today-shop-col">
+            <p class="today-sec-h" id="today-shop-h">Shopping</p>
+            <div id="today-shop"></div>
+          </div>
           <div id="today-deliv-col">
             <p class="today-sec-h" id="today-deliv-h">Packages</p>
             <p id="deliv-note" class="pill-key" hidden></p>
@@ -3500,7 +3504,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 631;
+    window.BOARD_VER = 632;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9600,13 +9604,12 @@ function currentRotation() {
         }
         if (typeof noteFeed === "function") noteFeed("hot-ticket", true, top.sum || "ok");
         var pin = typeof pinVenue === "function" ? pinVenue(top) : null;
-        if (typeof driveMinutesToLatLng === "function" && pin && pin.lat != null && !top.inside) {
-          driveMinutesToLatLng(pin.lat, pin.lon, function (d) {
-            if (!d || d.min == null) return;
-            top.driveMin = d.min;
-            if (d.miles != null) top.miles = d.miles;
+        if (typeof placeDrive === "function" && pin && pin.lat != null && !top.inside) {
+          placeDrive(top.loc || top.sum || "venue", pin.lat, pin.lon, function (d) {
+            if (!d) return;
+            top.miles = d.miles; top.driveMin = d.min;
             var tag = box.querySelector(".dist-tag");
-            var label = fmtDrivePill(top);
+            var label = typeof fmtPlaceDrive === "function" ? fmtPlaceDrive(d) : fmtDrivePill(top);
             if (tag && label) tag.textContent = label;
             else if (label && window.entCardHtml) {
               var html = window.entCardHtml(top);
@@ -9726,7 +9729,10 @@ function currentRotation() {
           var on = hhOpenToday(row, now) && hr >= row.start && hr < row.end;
           var soon = hhOpenToday(row, now) && hr < row.start && row.start - hr <= 1.5;
           var later = hhOpenToday(row, now) && hr >= row.end;
-          if (row.lat != null && row.lon != null && typeof milesApart === "function") {
+          if (typeof placeDrive === "function" && row.lat != null) {
+            var cached = placeDrive(row.name, row.lat, row.lon);
+            if (cached) { row.miles = cached.miles; row.driveMin = cached.min; }
+          } else if (row.lat != null && row.lon != null && typeof milesApart === "function") {
             row.miles = milesApart(homeLat(), homeLon(), Number(row.lat), Number(row.lon));
           }
           var tag = on ? "On now" : soon ? "Starts soon" : later ? "Tomorrow" : (row.kind || "Happy hour");
@@ -9746,20 +9752,13 @@ function currentRotation() {
             (why ? '<span class="eat-why">' + String(why).replace(/</g, "") + "</span>" : "") +
             "</div></div>";
           if (typeof noteFeed === "function") noteFeed("eat-deal", true, row.name + " " + (on ? "now" : when) + " · " + dist);
-          if (typeof driveMinutesToLatLng === "function" && row.lat != null && row.lon != null) {
-            driveMinutesToLatLng(row.lat, row.lon, function (d) {
-              if (!d || d.min == null) return;
-              row.driveMin = d.min;
-              if (d.miles != null) row.miles = d.miles;
+          if (typeof placeDrive === "function" && row.lat != null) {
+            placeDrive(row.name, row.lat, row.lon, function (d) {
+              if (!d) return;
+              row.miles = d.miles; row.driveMin = d.min;
               var tagEl = box.querySelector(".dist-tag");
-              var label = "";
-              if (row.miles != null) label = (Math.round(Number(row.miles) * 10) / 10) + " mi";
-              label += (label ? " · " : "") + Math.max(1, Math.round(d.min)) + " min";
-              if (tagEl) tagEl.textContent = label;
-              else if (label) {
-                var body = box.querySelector(".ev-body");
-                if (body) body.insertAdjacentHTML("afterbegin", '<span class="dist-tag">' + label + "</span>");
-              }
+              var label = typeof fmtPlaceDrive === "function" ? fmtPlaceDrive(d) : "";
+              if (tagEl && label) tagEl.textContent = label;
             });
           }
         });
@@ -9811,10 +9810,90 @@ function currentRotation() {
         });
         if (typeof noteFeed === "function") noteFeed("day-parts", true, am + "/" + pm + "/" + eve);
       }
+
+      function seedShopDeals() {
+        return [
+          { name: "Bealls Florida", addr: "1500 Placida Rd, Englewood", lat: 26.9612, lon: -82.3492, kind: "Clothing", start: 10, end: 21, sunEnd: 20, deal: "Merchants Crossing. Bealls Rewards: $5 back per $100, 20% off during your birthday month. Clearance running in-store.", url: "https://stores.beallsflorida.com/fl/englewood/1500-placida-rd" },
+          { name: "Grocery Outlet", addr: "606 Taywood Rd, Englewood", lat: 26.9624, lon: -82.3258, kind: "Grocery", start: 9, end: 21, deal: "Weekly circular, while supplies last. Local Englewood store — grocery and household finds below typical retail.", url: "https://groceryoutlet.app.link/StoreCircular" },
+          { name: "Publix Super Market", addr: "1500 Placida Rd, Englewood", lat: 26.9606, lon: -82.3506, kind: "Grocery", start: 7, end: 22, deal: "Weekly ad cycle. BOGO and sale tags change Wednesday. Use the app for this store's digital coupons.", url: "https://www.publix.com/savings/weekly-ad" },
+          { name: "Downtown Englewood", addr: "Dearborn St, Englewood", lat: 26.9619, lon: -82.3537, kind: "Shops", start: 10, end: 17, days: [6], deal: "Saturday morning shops and the Dearborn Street stroll. Boutiques and antique stops around the 400 block.", url: "https://www.englewoodchamber.com/" }
+        ];
+      }
+      function paintShopDeal() {
+        var box = document.getElementById("today-shop");
+        var col = document.getElementById("today-shop-col");
+        if (!box) return;
+        var milesCap = Number((getSet() || {}).eventMiles || 15);
+        var now = (typeof recNowET === "function") ? recNowET() : new Date();
+        var hr = now.getHours() + now.getMinutes() / 60;
+        var dow = now.getDay();
+        var list = seedShopDeals().map(function (r) {
+          if (r.lat != null && typeof milesApart === "function") r.miles = milesApart(homeLat(), homeLon(), r.lat, r.lon);
+          if (typeof placeDrive === "function") {
+            var c = placeDrive(r.name, r.lat, r.lon);
+            if (c) { r.miles = c.miles; r.driveMin = c.min; }
+          }
+          return r;
+        }).filter(function (r) {
+          if (r.days && r.days.indexOf(dow) < 0 && dow !== 6) return r.kind !== "Shops";
+          return r.miles == null || r.miles <= milesCap + 0.5;
+        });
+        function score(r) {
+          var s = 20 - Math.min(15, Number(r.miles) || 8);
+          var openEnd = (dow === 0 && r.sunEnd) ? r.sunEnd : r.end;
+          if (hr >= r.start && hr < openEnd) s += 18;
+          if (r.kind === "Grocery" && hr < 14) s += 8;
+          if (r.kind === "Shops" && dow === 6) s += 14;
+          if (dow === 0 && r.name.indexOf("Bealls") >= 0) s += 4;
+          return s;
+        }
+        list.sort(function (a, b) { return score(b) - score(a); });
+        var row = list[0];
+        if (!row) {
+          if (col) col.hidden = true;
+          box.innerHTML = "";
+          if (typeof noteFeed === "function") noteFeed("shop-deal", false, "none");
+          return;
+        }
+        if (col) col.hidden = false;
+        var openEnd = (dow === 0 && row.sunEnd) ? row.sunEnd : row.end;
+        var on = hr >= row.start && hr < openEnd && (!row.days || row.days.indexOf(dow) >= 0);
+        var tag = on ? "Open now" : (row.days && row.days.indexOf(dow) < 0 ? "This week" : "Today");
+        var dist = typeof fmtPlaceDrive === "function" ? fmtPlaceDrive({ miles: row.miles, min: row.driveMin }) : (row.miles != null ? (Math.round(row.miles * 10) / 10) + " mi" : "");
+        var when = (row.start != null) ? (Math.floor(row.start) + (row.start % 1 ? ":30" : "") + "–" + Math.floor(openEnd) + (openEnd % 1 ? ":30" : "")) : "";
+        function clock(h) {
+          var hr0 = Math.floor(h), min = Math.round((h - hr0) * 60);
+          var am = hr0 >= 12 ? "PM" : "AM";
+          var h12 = hr0 % 12; if (!h12) h12 = 12;
+          return h12 + (min ? ":" + (min < 10 ? "0" : "") + min : "") + " " + am;
+        }
+        when = clock(row.start) + "–" + clock(openEnd);
+        var mapQ = [row.name, row.addr].filter(Boolean).join(", ");
+        box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '">' +
+          '<div class="ev-rail"><span class="ev-dow">Shop</span><span class="ev-num">' + tag + "</span></div>" +
+          '<div class="ev-body">' + (dist ? '<span class="dist-tag">' + dist + "</span>" : "") +
+          '<span class="kind-tag">' + String(row.kind || "Store") + "</span>" +
+          "<b>" + String(row.name).replace(/</g, "") + "</b>" +
+          '<span class="ev-when">' + when + (on ? " · open now" : "") + "</span>" +
+          (row.deal ? '<span class="eat-why">' + String(row.deal).replace(/</g, "") + "</span>" : "") +
+          "</div></div>";
+        window.__shopPick = row;
+        if (typeof noteFeed === "function") noteFeed("shop-deal", true, row.name + " · " + dist);
+        if (typeof placeDrive === "function" && row.lat != null) {
+          placeDrive(row.name, row.lat, row.lon, function (d) {
+            if (!d) return;
+            row.miles = d.miles; row.driveMin = d.min;
+            var tagEl = box.querySelector(".dist-tag");
+            var label = fmtPlaceDrive(d);
+            if (tagEl && label) tagEl.textContent = label;
+          });
+        }
+      }
       function paintTodayRecs() {
         try { if (typeof layoutTodayBands === "function") layoutTodayBands(); paintNext3(); if (typeof writeBriefing === "function") writeBriefing(); } catch (e) {}
         try { paintHotTicket(); } catch (e2) {}
         try { paintEatDeal(); } catch (e3) {}
+        try { paintShopDeal(); } catch (eShop) {}
         try { paintDayParts(); } catch (e4) {}
       }
       setInterval(function () { if (typeof paintTodayRecs === "function") paintTodayRecs(); }, 15 * 60 * 1000);
@@ -15067,6 +15146,43 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var h=Math.sin(d/2)*Math.sin(d/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(l/2)*Math.sin(l/2);
       return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
     }
+    function placeKey(name, lat, lon) {
+      var n = String(name || "").toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, " ").replace(/\b(grille|grill|and|the|restaurant|bar)\b/g, " ").replace(/\s+/g, " ").trim();
+      if (/sandbar/.test(n)) return "sandbar tiki";
+      if (n) return n;
+      if (lat != null && lon != null) return Number(lat).toFixed(4) + "," + Number(lon).toFixed(4);
+      return "";
+    }
+    function fmtPlaceDrive(d) {
+      if (!d) return "";
+      var parts = [];
+      if (d.miles != null && !isNaN(d.miles)) parts.push((Math.round(Number(d.miles) * 10) / 10) + " mi");
+      if (d.min != null && !isNaN(d.min)) parts.push(Math.max(1, Math.round(d.min)) + " min");
+      return parts.join(" · ");
+    }
+    function placeDrive(name, lat, lon, cb) {
+      var key = placeKey(name, lat, lon);
+      window.__placeDrive = window.__placeDrive || {};
+      var hit = key && window.__placeDrive[key];
+      if (hit && Date.now() - hit.at < 30 * 60 * 1000) { if (cb) cb(hit); return hit; }
+      var bird = (lat != null && lon != null && isFinite(lat) && isFinite(lon)) ? milesApart(homeLat(), homeLon(), Number(lat), Number(lon)) : null;
+      var row = { miles: bird, min: hit && hit.min, at: Date.now() };
+      if (key) window.__placeDrive[key] = row;
+      function done(d) {
+        if (d) {
+          if (d.min != null) row.min = d.min;
+          if (d.miles != null) row.miles = d.miles;
+          row.at = Date.now();
+        }
+        if (cb) cb(row);
+      }
+      if (lat == null || lon == null || typeof driveMinutesToLatLng !== "function") { if (cb) cb(row); return row; }
+      driveMinutesToLatLng(lat, lon, done);
+      return row;
+    }
+    window.placeDrive = placeDrive;
+    window.fmtPlaceDrive = fmtPlaceDrive;
+    window.placeKey = placeKey;
     
         function scrollBoardTop() {
       var main = document.querySelector("main");
@@ -15101,7 +15217,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       { re: /boca grande/i, lat: 26.749, lon: -82.261 },
       { re: /rotonda/i, lat: 26.889, lon: -82.271 },
       { re: /moose/i, lat: 26.965, lon: -82.352 },
-      { re: /sandbar|tiki/i, lat: 26.934, lon: -82.353 },
+      { re: /sandbar tiki|sand bar tiki|sandbar/i, lat: 26.9248, lon: -82.3535 },
       { re: /englewood/i, lat: 26.962, lon: -82.352 }
     ];
     function venueQuery(e) {
@@ -15703,6 +15819,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             var evT = firstEv ? firstEv.textContent.replace(/\s+/g, " ").trim() : "";
             if (evT && (!hot || hot.toLowerCase().indexOf(evT.toLowerCase()) < 0)) today.push("On the calendar. " + evT);
           }
+          var shop = cardLine("today-shop");
+          if (shop) today.push("Shopping. " + shop);
           var pkg = document.getElementById("today-deliv");
           if (pkg) {
             var incoming = (pkg.textContent || "").replace(/\s+/g, " ").trim();
