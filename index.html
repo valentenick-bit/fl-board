@@ -3523,7 +3523,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 638;
+    window.BOARD_VER = 639;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9377,6 +9377,19 @@ function currentRotation() {
       openMapPop(row.name || "Happy hour", src, links, note);
     }
 
+    function pinMapSrc(lat, lon) {
+      lat = Number(lat); lon = Number(lon);
+      if (!isFinite(lat) || !isFinite(lon)) return "";
+      var dlat = 0.005, dlon = 0.007;
+      return "https://www.openstreetmap.org/export/embed.html?bbox=" +
+        (lon - dlon).toFixed(6) + "," + (lat - dlat).toFixed(6) + "," +
+        (lon + dlon).toFixed(6) + "," + (lat + dlat).toFixed(6) +
+        "&layer=mapnik&marker=" + lat.toFixed(6) + "," + lon.toFixed(6);
+    }
+    function googleDestLink(addr, lat, lon) {
+      var q = addr || ((isFinite(Number(lat)) && isFinite(Number(lon))) ? (Number(lat) + "," + Number(lon)) : "");
+      return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(q);
+    }
     function openMapPop(title, src, links, note) {
       var pop = document.getElementById("map-pop");
       var frame = document.getElementById("map-pop-frame");
@@ -9459,16 +9472,16 @@ function currentRotation() {
       if (shopCard) {
         var slat = Number(shopCard.getAttribute("data-lat"));
         var slon = Number(shopCard.getAttribute("data-lon"));
-        var sname = shopCard.getAttribute("data-map") || "Store";
-        var src, link;
-        if (isFinite(slat) && isFinite(slon)) {
-          src = "https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=18&t=m&hl=en&iwloc=0&output=embed";
-          link = "https://www.google.com/maps/dir/?api=1&destination=" + slat + "," + slon;
-        } else {
-          src = "https://maps.google.com/maps?q=" + encodeURIComponent(sname) + "&z=17&hl=en&output=embed";
-          link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(sname);
-        }
-        openMapPop(sname, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+        var saddr = shopCard.getAttribute("data-map") || "";
+        var pick = window.__shopPick || {};
+        if (!isFinite(slat) && pick.lat) slat = Number(pick.lat);
+        if (!isFinite(slon) && pick.lon) slon = Number(pick.lon);
+        if (!saddr && pick.addr) saddr = pick.addr;
+        var title = (pick.name || "Store") + (saddr ? " · " + saddr : "");
+        var src = pinMapSrc(slat, slon);
+        if (!src && saddr) src = "https://maps.google.com/maps?q=" + encodeURIComponent(saddr) + "&z=17&hl=en&output=embed";
+        var link = googleDestLink(saddr, slat, slon);
+        openMapPop(title, src, '<a href="' + link + '" target="_blank" rel="noopener">Directions in Google Maps</a>');
         return;
       }
       var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #ent-list .card, #eat-list .card");
@@ -9929,10 +9942,10 @@ function currentRotation() {
 
       function seedShopDeals() {
         return [
-          { name: "Bealls Florida", addr: "1500 Placida Rd, Englewood, FL 34223", lat: 26.96095, lon: -82.34935, kind: "Clothing", start: 10, end: 21, sunEnd: 20, deal: "Merchants Crossing. Bealls Rewards: $5 back per $100, 20% off during your birthday month. Clearance running in-store.", url: "https://stores.beallsflorida.com/fl/englewood/1500-placida-rd" },
-          { name: "Grocery Outlet", addr: "606 Taywood Rd, Englewood, FL 34224", lat: 26.96155, lon: -82.32595, kind: "Grocery", start: 9, end: 21, deal: "Weekly circular, while supplies last. Local Englewood store — grocery and household finds below typical retail.", url: "https://groceryoutlet.app.link/StoreCircular" },
-          { name: "Publix Super Market", addr: "2001 S McCall Rd, Englewood, FL 34223", lat: 26.94985, lon: -82.33955, kind: "Grocery", start: 7, end: 22, deal: "Weekly ad cycle. BOGO and sale tags change Wednesday. Use the app for this store's digital coupons.", url: "https://www.publix.com/savings/weekly-ad" },
-          { name: "Downtown Englewood", addr: "400 W Dearborn St, Englewood, FL 34223", lat: 26.96155, lon: -82.35385, kind: "Shops", start: 10, end: 17, days: [6], deal: "Saturday morning shops and the Dearborn Street stroll. Boutiques and antique stops around the 400 block.", url: "https://www.englewoodchamber.com/" }
+          { name: "Bealls Florida", addr: "1500 Placida Rd, Englewood, FL 34223", lat: 26.9357490, lon: -82.3389567, kind: "Clothing", start: 10, end: 21, sunEnd: 20, deal: "Merchants Crossing. Bealls Rewards: $5 back per $100, 20% off during your birthday month. Clearance running in-store.", url: "https://stores.beallsflorida.com/fl/englewood/1500-placida-rd" },
+          { name: "Walmart Supercenter", addr: "2931 S McCall Rd, Englewood, FL 34224", lat: 26.9321504, lon: -82.3103335, kind: "Grocery", start: 6, end: 23, deal: "Englewood Supercenter #1874. Groceries, household, pharmacy. Opens 6 a.m.", url: "https://www.walmart.com/store/1874-englewood-fl" },
+          { name: "Publix Super Market", addr: "1500 Placida Rd, Englewood, FL 34223", lat: 26.9368272, lon: -82.3388602, kind: "Grocery", start: 7, end: 22, deal: "Merchants Crossing Publix. Weekly ad cycle. BOGO and sale tags change Wednesday. Use the app for this store's digital coupons.", url: "https://www.publix.com/savings/weekly-ad" },
+          { name: "Downtown Englewood", addr: "400 W Dearborn St, Englewood, FL 34223", lat: 26.9622880, lon: -82.3613480, kind: "Shops", start: 10, end: 17, days: [6], deal: "Saturday morning shops and the Dearborn Street stroll. Boutiques and antique stops around the 400 block.", url: "https://www.englewoodchamber.com/" }
         ];
       }
       function paintShopDeal() {
