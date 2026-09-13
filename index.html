@@ -2364,7 +2364,7 @@
         <p class="pill-key" id="ent-refs">
           <a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">BeachWalk calendar</a>
           ·
-          <a href="https://calendar.google.com/calendar/embed?src=a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">Englewood calendar</a>
+          <span>Town list = BeachWalk calendar + local research for this pin (live music, bingo, comedy, markets) + ticketed shows near the address.</span>
         </p>
         </div>
         <aside class="fun-eats" id="fun-eats">
@@ -2684,7 +2684,7 @@ Cart shop:</textarea>
         </div>
         <div class="card">
           <b>Address and events</b>
-          <span class="stamp">How calendars attach so a second HOA does not inherit BeachWalk’s mixer.</span>
+          <span class="stamp">13 Sep 2026. BeachWalk calendar stays. Englewood Google calendar is off. Town concerts, sports, comedy, fairs, and theater load from the home pin (Ticketmaster). Moose/tiki nights that only lived on the Englewood calendar are gone until a community bulletin exists.</span>
           <ul class="check-list">
             <li>Community is a record, not a ZIP. Look up which HOA or club that address sits in (or the desk picks it once). Events the desk publishes belong to that community ID.</li>
             <li>Two calendars: community calendar (BeachWalk mixer, trash, office closed) and area calendar (Englewood / Moose / live music within X miles of the pin). Do not dump both into one untagged list.</li>
@@ -3524,7 +3524,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 650;
+    window.BOARD_VER = 653;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3829,10 +3829,33 @@ Cart shop:</textarea>
         return "<div class='card'><b>" + name + "</b><span id='live-horo-" + sign + "'>Loading…</span></div>";
       }).join("");
     }
+    function publishHomePin(s) {
+      s = s || (typeof getSet === "function" && getSet()) || {};
+      var pin = {
+        updated: new Date().toISOString(),
+        address: String(s.address || "").trim(),
+        place: String(s.place || "").trim(),
+        zip: String(s.zip || "").trim(),
+        lat: Number(s.lat) || null,
+        lon: Number(s.lon) || null,
+        miles: Number(s.eventMiles) || 20
+      };
+      try { localStorage.setItem("bw-pin", JSON.stringify(pin)); } catch (e) {}
+      window.__homePin = pin;
+      if (!pin.lat || !pin.lon) return pin;
+      var body = JSON.stringify(pin);
+      ["/pin", location.origin + "/pin"].forEach(function (url) {
+        try { fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body }).catch(function () {}); } catch (e2) {}
+      });
+      return pin;
+    }
     function putSet(part) {
       var s = getSet();
+      var before = [s.address, s.lat, s.lon, s.zip, s.place, s.eventMiles].join("|");
       Object.keys(part || {}).forEach(function (k) { s[k] = part[k]; });
       try { localStorage.setItem("bw-set", JSON.stringify(s)); } catch (e) {}
+      var after = [s.address, s.lat, s.lon, s.zip, s.place, s.eventMiles].join("|");
+      if (after !== before && typeof publishHomePin === "function") publishHomePin(s);
       if (typeof applyA11y === "function") applyA11y();
       return s;
     }
@@ -3895,6 +3918,8 @@ Cart shop:</textarea>
       return z.indexOf("342") === 0 || z.indexOf("339") === 0 || (/FL/i.test(st) && /englewood|venice|north port|port charlotte|rotonda/i.test(a + " " + (getSet().place || "")));
     }
     function applyHomeFeeds() {
+      if (typeof publishHomePin === "function") publishHomePin();
+      if (typeof window.reloadTown === "function") window.reloadTown();
       paintHomeChrome();
       var st = document.getElementById("addr-pin-status");
       var s = getSet();
@@ -10499,8 +10524,12 @@ function currentRotation() {
   
     function eventKind(sum, loc, desc) {
       var s = [sum, loc, desc].join(" ").toLowerCase();
-      if (/comedy|stand-?up|open mic|improv|mccurdy/.test(s)) return { label: "Comedy", cls: "comedy" };
+      if (/\b(nfl|nba|mlb|nhl|ncaa)\b|bulls and bands/.test(s)) return { label: "Sports", cls: "sports" };
+      if (/county fair|fairgrounds|carnival|\brodeo\b|circus/.test(s)) return { label: "Fair", cls: "fair" };
+      if (/comedy|stand-?up|open mic|improv|\bmccurdy\b/.test(s)) return { label: "Comedy", cls: "comedy" };
       if (/bingo/.test(s)) return { label: "Bingo", cls: "bingo" };
+      if (/\bconcert\b|amphitheatre|amphitheater/.test(s)) return { label: "Concert", cls: "concert" };
+      if (/theatre|theater|broadway/.test(s)) return { label: "Theater", cls: "theater" };
       if (/farmer.?s?\s*market|farmers market|flea market/.test(s)) return { label: "Farmers market", cls: "market" };
       if (/car show|cruise.?in|truck show|cars and coffee|auto show/.test(s)) return { label: "Car show", cls: "cars" };
       if (/karaoke/.test(s)) return { label: "Karaoke", cls: "karaoke" };
@@ -10570,7 +10599,7 @@ function currentRotation() {
         if (!box || !events.length) return;
         box.innerHTML = events.map(window.entCardHtml).join("");
       }
-      var bag = { bw: [], eng: [], comedy: [] };
+      var bag = { bw: [], eng: [], local: [], comedy: [] };
       try {
         var cached = JSON.parse(localStorage.getItem("bw-ent-cache") || "{}");
         if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = true; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
@@ -10594,12 +10623,12 @@ function currentRotation() {
         bag.bw = dedupeEnt(bag.bw);
         bag.eng = dedupeEnt(bag.eng);
         var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 15);
-        var all = bag.bw.concat(bag.eng, bag.comedy || []).filter(function (e) {
+        var all = bag.bw.concat(bag.local || [], bag.eng, bag.comedy || []).filter(function (e) {
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
         all.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
-        var upcoming = bag.bw.concat(bag.eng, bag.comedy || []).filter(function (e) {
+        var upcoming = bag.bw.concat(bag.local || [], bag.eng, bag.comedy || []).filter(function (e) {
           if (!e || !e.when) return false;
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now() - 30 * 60 * 1000;
@@ -10663,10 +10692,117 @@ function currentRotation() {
         }
         next(0);
       }
+      function tmKey() {
+        var s = typeof getSet === "function" ? getSet() : {};
+        return String(s.tmKey || "").trim() || "pLOeuGq2JL05uEGrZG7DuGWu6sh2OnMz";
+      }
+      function parseTown(d) {
+        var ev = (d && d._embedded && d._embedded.events) || [];
+        var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 40);
+        var out = [];
+        ev.forEach(function (e) {
+          var start = (e.dates && e.dates.start) || {};
+          var day = start.localDate || "";
+          var tim = start.localTime || "19:00:00";
+          if (!day) return;
+          var when = new Date(day + "T" + tim);
+          if (isNaN(when.getTime())) when = new Date(day + "T19:00:00");
+          var ven = ((e._embedded && e._embedded.venues) || [])[0] || {};
+          var loc = [ven.name, ven.city && ven.city.name, ven.state && ven.state.stateCode].filter(Boolean).join(", ");
+          var lat = ven.location && Number(ven.location.latitude);
+          var lon = ven.location && Number(ven.location.longitude);
+          if (isFinite(lat) && isFinite(lon) && typeof milesApart === "function" && milesApart(homeLat(), homeLon(), lat, lon) > miles + 1) return;
+          var cls = (e.classifications && e.classifications[0]) || {};
+          var seg = (cls.segment && cls.segment.name) || "";
+          var gen = (cls.genre && cls.genre.name) || "";
+          var desc = [seg, gen, e.info || "", e.pleaseNote || ""].filter(Boolean).join(" · ");
+          var end = new Date(when.getTime() + 3 * 3600 * 1000);
+          out.push({
+            sum: e.name || "Event",
+            loc: loc,
+            desc: desc,
+            when: when,
+            end: end,
+            allDay: !start.localTime,
+            lat: lat,
+            lon: lon,
+            url: (e.url || ""),
+            inside: false,
+            src: "town"
+          });
+        });
+        return out;
+      }
+      window.reloadTown = function loadTown(done) {
+        var lat = (typeof homeLat === "function" && homeLat()) || 0;
+        var lon = (typeof homeLon === "function" && homeLon()) || 0;
+        if (!lat || !lon) { if (done) done(); return; }
+        var miles = Math.min(100, Number((typeof getSet === "function" && getSet().eventMiles) || 40));
+        var start = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+        var api = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" + encodeURIComponent(tmKey()) +
+          "&latlong=" + lat + "," + lon + "&radius=" + miles + "&unit=miles&size=80&sort=date,asc&startDateTime=" + encodeURIComponent(start);
+        var urls = [
+          (location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles),
+          "https://corsproxy.io/?" + encodeURIComponent(api),
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(api),
+          api
+        ];
+        function next(i) {
+          if (i >= urls.length) {
+            if (typeof noteFeed === "function") noteFeed("town-events", !!(bag.eng && bag.eng.length), (bag.eng && bag.eng.length ? bag.eng.length + " ticketed" : "no town feed"));
+            if (done) done();
+            return;
+          }
+          fetch(urls[i]).then(function (r) { return r.text(); }).then(function (txt) {
+            var d = null;
+            try { d = JSON.parse(txt); } catch (e) {
+              try { var w = JSON.parse(txt); if (w && w.contents) d = JSON.parse(w.contents); } catch (e2) {}
+            }
+            var parsed = parseTown(d);
+            if (parsed.length) {
+              bag.eng = parsed;
+              if (typeof noteFeed === "function") noteFeed("town-events", true, parsed.length + " ticketed near " + (typeof homePlace === "function" ? homePlace() : "home"));
+              try { paint(); } catch (eP) {}
+              if (done) done();
+            } else next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
+      }
+      function loadLocal(done) {
+        var urls = [
+          "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/events.json?cb=" + Date.now(),
+          "/events.json?cb=" + Date.now(),
+          "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/events.json"
+        ];
+        function next(i) {
+          if (i >= urls.length) {
+            if (typeof noteFeed === "function") noteFeed("local-events", !!(bag.local && bag.local.length), (bag.local && bag.local.length ? bag.local.length + " researched" : "no events.json"));
+            if (done) done();
+            return;
+          }
+          fetch(urls[i]).then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (d) {
+            var rows = (d && d.events) || [];
+            var parsed = rows.map(function (e) {
+              var when = new Date(e.when);
+              var end = e.end ? new Date(e.end) : new Date(when.getTime() + 3 * 3600 * 1000);
+              return { sum: e.sum || e.title || "", loc: e.loc || e.location || "", desc: e.desc || e.detail || "", when: when, end: end, allDay: !!e.allDay, inside: false, src: "local" };
+            }).filter(function (e) { return e.sum && e.when && !isNaN(e.when.getTime()) && e.end.getTime() >= Date.now() - 30 * 60 * 1000; });
+            if (parsed.length) {
+              bag.local = parsed;
+              if (typeof noteFeed === "function") noteFeed("local-events", true, parsed.length + " researched · " + ((d && d.updated) || ""));
+              try { paint(); } catch (eP) {}
+              if (done) done();
+            } else next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
+      }
       try { paint(); } catch (ePaint) { try { console.warn(ePaint); } catch (e0) {} }
-      load(ENG, "eng", false);
+      loadLocal();
+      loadTown();
       load(BW, "bw", true);
-      setInterval(function () { load(ENG, "eng", false); load(BW, "bw", true); }, 15 * 60 * 1000);
+      setInterval(function () { loadLocal(); loadTown(); load(BW, "bw", true); }, 15 * 60 * 1000);
     })();
 
     window.__deliveredMarks = window.__deliveredMarks || {};
