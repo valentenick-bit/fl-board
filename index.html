@@ -893,6 +893,12 @@
       .fun-shell { grid-template-columns:1fr; }
     }
     html.phone .fun-shell { grid-template-columns:1fr; }
+    html.phone .fun-eats { order:-1; }
+    html.phone #eat-list, html.phone #eat-list .eat-card, html.phone #eat-list .ev-card,
+    html.phone #today-eat-pick .eat-card, html.phone #today-deal .ev-card {
+      max-width:100%; min-width:0; overflow:visible;
+    }
+    html.phone #eat-list .ev-body, html.phone #eat-list .eat-why { overflow-wrap:anywhere; word-break:break-word; }
     #eat-list { min-width:0; }
     html.phone #eat-list .eat-card, html.phone #eat-list .ev-card { max-width:100%; }
 
@@ -2146,7 +2152,9 @@
           </div>
           <div id="today-deliv-col">
             <p class="today-sec-h" id="today-deliv-h">Packages</p>
+            <p id="deliv-note" class="pill-key" hidden></p>
             <div id="today-deliv"></div>
+            <div id="deliv-list" hidden></div>
           </div>
           </div>
           <div id="today-do-col">
@@ -3302,7 +3310,13 @@ Cart shop:</textarea>
               <button type="button" data-v="1">On</button>
             </div>
           </div>
-          <p class="hint">Weather is the Today greeting plus lightning and named-storm chips. Sports is scores for the teams you pick below.</p>
+          <div class="set-line"><label>Today</label>
+            <div class="set-row" id="set-brieftoday">
+              <button type="button" data-v="0">Off</button>
+              <button type="button" data-v="1">On</button>
+            </div>
+          </div>
+          <p class="hint">Weather is the greeting, NWS advisories (not watches or warnings), and lightning or rip only when the orange bar is off. Today is go / ticket / table / packages / trash / flights. Sports is the teams below. Empty topics are skipped.</p>
         </div>
         <div class="set-line"><label>Breaking news ticker</label>
           <div class="set-row" id="set-break">
@@ -3486,7 +3500,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 626;
+    window.BOARD_VER = 630;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3700,7 +3714,7 @@ Cart shop:</textarea>
       zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1",
       community: "BeachWalk by Manasota Key",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
-      brief: "1", briefWx: "1", briefSports: "1", briefPrevWx: "1", briefPrevSports: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
+      brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
       horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "15", sportMiles: "150", lang: "device"
@@ -3717,7 +3731,7 @@ Cart shop:</textarea>
       else if (em <= 12) s.eventMiles = "10";
       else if (em <= 17) s.eventMiles = "15";
       else s.eventMiles = "20";
-      ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
+      ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","briefToday","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
         if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
         else if (v === false || v === 0 || v === "off" || v === "false") s[k] = "0";
@@ -9759,7 +9773,7 @@ function currentRotation() {
         if (typeof noteFeed === "function") noteFeed("day-parts", true, am + "/" + pm + "/" + eve);
       }
       function paintTodayRecs() {
-        try { if (typeof layoutTodayBands === "function") layoutTodayBands(); paintNext3(); } catch (e) {}
+        try { if (typeof layoutTodayBands === "function") layoutTodayBands(); paintNext3(); if (typeof writeBriefing === "function") writeBriefing(); } catch (e) {}
         try { paintHotTicket(); } catch (e2) {}
         try { paintEatDeal(); } catch (e3) {}
         try { paintDayParts(); } catch (e4) {}
@@ -10132,8 +10146,8 @@ function currentRotation() {
     (function loadDeliveries() {
       window.__delivStarted = Date.now();
       var note = document.getElementById("deliv-note");
-      var box = document.getElementById("deliv-list");
-      if (!box) return;
+      var box = document.getElementById("deliv-list") || document.getElementById("today-deliv");
+      if (!box) box = document.body.appendChild(document.createElement("div"));
       if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
       var DELIV_ID = "10ZVNK2VP1eH7EuBMOds5jUMiBg7U0lyb";
       var drive = "https://drive.google.com/uc?export=download&id=" + DELIV_ID;
@@ -10219,6 +10233,8 @@ function currentRotation() {
           var live = !!(src.updated && src.updated !== "");
           noteFeed("deliveries", live || nIn + nDel > 0, live ? (nIn + " incoming · " + nDel + " delivered · " + src.updated) : "no live report");
         }
+        var todayBox = document.getElementById("today-deliv");
+        if (todayBox && box && todayBox !== box) todayBox.innerHTML = box.innerHTML;
         if (typeof paintToday === "function") paintToday();
         if (typeof paintHealth === "function") paintHealth();
       }
@@ -10263,6 +10279,11 @@ function currentRotation() {
         return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
       }
       window.milesOf = milesOf;
+      var cachedEats = eatCacheRead();
+      if (cachedEats.length) {
+        window.__eatPool = dedupeEats((window.__eatPool || []).concat(cachedEats));
+        setTimeout(function () { try { paint(cachedEats); } catch (eC) {} }, 0);
+      }
       function inRange(r) {
         var cap = Number((getSet() || {}).eventMiles || 15) + 0.25;
         var m = r && r.miles;
@@ -10394,12 +10415,8 @@ function currentRotation() {
       }
       function rankEats(pool) {
         var list = dedupeEats((pool || []).concat(mustEats())).filter(inRange);
-        var rated = list.filter(function (r) { return r.rating != null && Number(r.rating) > 0 && Number(r.reviews) > 0; });
-        var known = rated.filter(function (r) { return Number(r.reviews) >= 2500; });
-        var mid = rated.filter(function (r) { return Number(r.reviews) >= 2000; });
-        if (known.length >= 8) list = known;
-        else if (mid.length >= 6) list = mid;
-        else if (rated.length) list = rated;
+        var rated = list.filter(function (r) { return r.rating != null && Number(r.rating) > 0; });
+        if (rated.length >= 8) list = rated;
         list.sort(function (a, b) {
           var ra = Number(a.rating) || 0, rb = Number(b.rating) || 0;
           if (rb !== ra) return rb - ra;
@@ -10691,16 +10708,7 @@ function currentRotation() {
       }
       
 function mustEats() {
-        function row(o) {
-          o.miles = (typeof milesOf === "function") ? milesOf(o.lat, o.lon) : o.miles;
-          o.area = o.addr;
-          o.pin = true;
-          return o;
-        }
-        return [
-          row({ name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood, FL 34223", lat: 26.9248, lon: -82.3535, rating: null, reviews: 0, kind: "Seafood", key: "sandbar" }),
-          row({ name: "Lighthouse Grill and Tiki Bar", addr: "260 Maryland Ave, Englewood, FL 34224", lat: 26.9062, lon: -82.3278, rating: null, reviews: 0, kind: "Seafood", key: "lighthouse" })
-        ];
+        return [];
       }
       function fromPlacesText(cb) {
         var key = String((getSet() || {}).gmapsKey || "").trim();
@@ -11568,6 +11576,7 @@ function mustEats() {
         mark("set-brief", s.brief);
         mark("set-briefwx", s.briefWx);
         mark("set-briefsports", s.briefSports);
+        mark("set-brieftoday", s.briefToday);
         mark("set-break", s.breakOn);
         mark("set-breaknat", s.breakNat);
         mark("set-breakloc", s.breakLoc);
@@ -11769,8 +11778,8 @@ function mustEats() {
       tap("set-chiptrash", "chipTrash", function () { if (typeof writeTodayChips === "function") writeTodayChips(); });
       tap("set-brief", "brief", function (v) {
         var s = getSet();
-        if (v === "0") putSet({ briefPrevWx: s.briefWx, briefPrevSports: s.briefSports, briefWx: "0", briefSports: "0" });
-        else putSet({ briefWx: s.briefPrevWx || "1", briefSports: s.briefPrevSports || "1" });
+        if (v === "0") putSet({ briefPrevWx: s.briefWx, briefPrevSports: s.briefSports, briefPrevToday: s.briefToday, briefWx: "0", briefSports: "0", briefToday: "0" });
+        else putSet({ briefWx: s.briefPrevWx || "1", briefSports: s.briefPrevSports || "1", briefToday: s.briefPrevToday || "1" });
         paint();
         if (typeof writeBriefing === "function") writeBriefing();
       });
@@ -11780,6 +11789,11 @@ function mustEats() {
         if (typeof writeBriefing === "function") writeBriefing();
       });
       tap("set-briefsports", "briefSports", function (v) {
+        if (v === "1") putSet({ brief: "1" });
+        paint();
+        if (typeof writeBriefing === "function") writeBriefing();
+      });
+      tap("set-brieftoday", "briefToday", function (v) {
         if (v === "1") putSet({ brief: "1" });
         paint();
         if (typeof writeBriefing === "function") writeBriefing();
@@ -14801,6 +14815,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         foxHits.concat(localHits).forEach(function (h) {
           var k = keyOf(h.title);
           if (!k || seen[k]) return;
+          if (typeof overlapsWarn === "function" && overlapsWarn(h.title)) return;
           seen[k] = true;
           hits.push(h);
         });
@@ -15512,6 +15527,39 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         }).catch(function () { finish([]); });
       } catch (e) { finish([]); }
     }
+    function warnKeys() {
+      var bag = [];
+      (window.__nwsHigh || []).forEach(function (f) {
+        var p = (f && f.properties) || {};
+        var ev = String(p.event || "") + " " + String(p.headline || "");
+        ev.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).forEach(function (w) {
+          if (w.length > 3 && bag.indexOf(w) < 0) bag.push(w);
+        });
+      });
+      return bag;
+    }
+    function overlapsWarn(text) {
+      var t0 = String(text || "").toLowerCase();
+      if (!t0) return false;
+      var keys = warnKeys();
+      var hits = 0;
+      keys.forEach(function (k) {
+        if (/watch|warning|advisory|statement|alert|issued|until/.test(k)) return;
+        if (t0.indexOf(k) >= 0) hits++;
+      });
+      return hits >= 2;
+    }
+    function cardLine(id) {
+      var box = document.getElementById(id);
+      if (!box) return "";
+      var b = box.querySelector("b");
+      var why = box.querySelector(".eat-why, .ev-when, span");
+      var title = (b && b.textContent || "").replace(/\s+/g, " ").trim();
+      var extra = (why && why.textContent || "").replace(/\s+/g, " ").trim();
+      if (!title) title = (box.textContent || "").replace(/\s+/g, " ").trim();
+      if (!title || /loading|checking|none/i.test(title)) return "";
+      return extra && extra !== title ? title + ". " + extra : title;
+    }
     function writeBriefing() {
       try {
         var tick = document.getElementById("ticktext");
@@ -15523,39 +15571,127 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         }
         var GAP = "\u00a0".repeat(160);
         var bits = [];
-        if (s.briefWx !== "0") {
+        var hr = (typeof recNowET === "function" ? recNowET() : new Date()).getHours();
+        var night = hr >= 20 || hr < 6;
+        function highHas(re) {
+          return (window.__nwsHigh || []).some(function (f) {
+            return re.test(String(((f && f.properties) || {}).event || ""));
+          });
+        }
+        function nwsAdvisoryLine(f) {
+          var p = (f && f.properties) || {};
+          var ev = String(p.event || "Advisory").replace(/\s+/g, " ").trim();
+          var until = "";
+          try {
+            if (p.expires) until = new Date(p.expires).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+          } catch (eU) {}
+          var inst = String(p.instruction || "").replace(/\s+/g, " ").trim();
+          if (inst.length > 140) inst = inst.slice(0, 137).replace(/\s+\S*$/, "") + "…";
+          var line = "NWS " + ev + (until ? " until " + until : "");
+          if (inst && inst.toLowerCase().indexOf(ev.toLowerCase()) < 0) line += ". " + inst;
+          if (!/[.!?]$/.test(line)) line += ".";
+          return line;
+        }
+        function chipText(id) {
+          var el = document.getElementById(id);
+          if (!el || el.hidden || (el.classList && !el.classList.contains("on") && el.getAttribute("hidden") !== null)) {
+            if (!el || el.hidden) return "";
+          }
+          var raw = (el.textContent || "").replace(/\s+/g, " ").trim();
+          if (!raw || /off|none|hidden/i.test(raw) && raw.length < 12) return "";
+          return raw;
+        }
+        function weatherBit() {
+          if (s.briefWx === "0") return "";
           var greet = ((document.getElementById("live-sky") || {}).textContent || "").replace(/\s+/g, " ").trim();
           var wx = [];
-          if (greet) wx.push(greet);
+          if (greet && !/^checking|^updating/i.test(greet)) wx.push(greet);
           (window.__nwsLow || []).forEach(function (f) {
-            var line = nwsLine(f);
-            if (line) wx.push(line);
+            var ev = String(((f && f.properties) || {}).event || "");
+            if (!ev) return;
+            if (highHas(new RegExp(ev.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"))) return;
+            var line = nwsAdvisoryLine(f);
+            var blob = wx.join(" ").toLowerCase();
+            if (line && blob.indexOf(ev.toLowerCase()) < 0) wx.push(line);
           });
-          var bolt = document.getElementById("chip-bolt");
-          if (bolt && bolt.classList.contains("on")) {
-            var bs = ((bolt.querySelector("span") || {}).textContent || "").replace(/\s+/g, " ").trim();
-            if (bs) wx.push(bs);
+          if (!highHas(/thunder|lightning|severe/i)) {
+            var bolt = chipText("chip-bolt") || chipText("today-bolt");
+            if (bolt && !/no lightning|none/i.test(bolt)) wx.push(bolt);
           }
-          var cane = document.getElementById("chip-cane");
-          if (cane && cane.classList.contains("on")) {
-            var cs = ((cane.querySelector("span") || {}).textContent || "").replace(/\s+/g, " ").trim();
-            if (cs) wx.push(cs);
+          if (!highHas(/hurricane|tropical|storm surge/i)) {
+            var cane = chipText("chip-cane") || chipText("today-cane");
+            if (cane && !/no named|none/i.test(cane)) wx.push(cane);
           }
-          if (!wx.length) wx.push("Weather for " + homePlace() + " is updating.");
-          bits.push("<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(wx.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" ")));
+          var rip = document.getElementById("rip-banner");
+          if (rip && rip.offsetParent !== null && !highHas(/rip/i)) {
+            var ripT = (rip.textContent || "").replace(/\s+/g, " ").trim();
+            if (ripT && /moderate|high|danger/i.test(ripT)) wx.push(ripT);
+          }
+          if (!wx.length) return "";
+          return "<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(wx.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" "));
         }
-        if (s.briefSports !== "0") {
-          var blocks = window.__sportsBlocks || [];
-          if (blocks.length) {
-            bits.push(blocks.map(function (b) {
-              return "<b>" + b.title + ".</b>" + "\u00a0".repeat(18) + spaceSentences((b.lines || []).join(" "));
-            }).join("\u00a0".repeat(72)));
+        function todayBit() {
+          if (s.briefToday === "0") return "";
+          var today = [];
+          var stay = document.getElementById("go-night");
+          if (stay && !stay.hidden) {
+            var stayT = (stay.textContent || "").replace(/\s+/g, " ").trim();
+            if (stayT) today.push(stayT);
           } else {
-            var games = window.__sportsLines || ["Checking nearby scores."];
-            bits.push("<b>Sports.</b>" + "\u00a0".repeat(24) + spaceSentences(games.join(" ")));
+            var best = document.getElementById("best-window");
+            var bestT = best && !best.hidden ? (best.textContent || "").replace(/\s+/g, " ").trim() : "";
+            if (bestT) today.push(bestT);
           }
+          var trash = document.getElementById("today-trash");
+          if (trash && !trash.hidden) {
+            var tr = ((document.getElementById("today-trash-body") || trash).textContent || "").replace(/\s+/g, " ").trim();
+            if (tr) today.push(tr);
+          }
+          var fly = document.getElementById("today-fly");
+          if (fly && !fly.hidden) {
+            var fl = ((document.getElementById("today-fly-body") || fly).textContent || "").replace(/\s+/g, " ").trim();
+            if (fl && !/none upcoming|no flight/i.test(fl)) today.push(fl);
+          }
+          var hot = cardLine("today-hot");
+          if (hot) today.push("Hottest ticket. " + hot);
+          var table = cardLine("today-eat-pick");
+          if (table) today.push("Tonight's table. " + table);
+          var deal = cardLine("today-deal");
+          if (deal) today.push("Happy hour. " + deal);
+          var doBox = document.getElementById("today-do");
+          if (doBox) {
+            var firstEv = doBox.querySelector("b, .ev-title");
+            var evT = firstEv ? firstEv.textContent.replace(/\s+/g, " ").trim() : "";
+            if (evT && (!hot || hot.toLowerCase().indexOf(evT.toLowerCase()) < 0)) today.push("On the calendar. " + evT);
+          }
+          var pkg = document.getElementById("today-deliv");
+          if (pkg) {
+            var incoming = (pkg.textContent || "").replace(/\s+/g, " ").trim();
+            if (incoming && /on the way/i.test(incoming)) today.push("Packages on the way.");
+          }
+          if (!today.length) return "";
+          return "<b>Today.</b>" + "\u00a0".repeat(24) + spaceSentences(today.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" "));
         }
-        if (!bits.length) bits.push(spaceSentences("Briefing is on. Pick Weather or Sports in Settings."));
+        function sportsBit() {
+          if (s.briefSports === "0") return "";
+          var blocks = window.__sportsBlocks || [];
+          if (!blocks.length) return "";
+          return blocks.map(function (b) {
+            return "<b>" + b.title + ".</b>" + "\u00a0".repeat(18) + spaceSentences((b.lines || []).join(" "));
+          }).join("\u00a0".repeat(72));
+        }
+        var wxB = weatherBit();
+        var tdB = todayBit();
+        var spB = sportsBit();
+        if (night) {
+          if (tdB) bits.push(tdB);
+          if (wxB) bits.push(wxB);
+        } else {
+          if (wxB) bits.push(wxB);
+          if (tdB) bits.push(tdB);
+        }
+        if (spB) bits.push(spB);
+        if (!bits.length) bits.push(spaceSentences("Briefing is on. Pick Weather, Today, or Sports in Settings."));
         if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), tickSpeedPx());
       } catch (e) {}
     }
