@@ -1981,7 +1981,7 @@
     }
     #wx-radar-view.wx-map-pane { width:100%; height:100%; object-fit:cover; background:#123; }
 
-    #wx-radar-map { position:absolute; inset:0; z-index:2; }
+    #wx-radar-map { position:absolute; inset:0; z-index:8; background:#d7e6ef; }
     #wx-radar-view { display:block !important; object-fit:cover; z-index:2; }
     #wx-radar-windy { display:none !important; }
     #golf-list .kind-tag.golf-pub, .kind-tag.golf-pub { background:#1b6b62 !important; color:#fff !important; }
@@ -3615,7 +3615,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 675;
+    window.BOARD_VER = 676;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3891,14 +3891,18 @@ Cart shop:</textarea>
     function fmtClockDate(d) {
       var kind = (typeof getSet === "function" ? getSet().dateFmt : "us") || "us";
       var x = new Date(d);
-      var loc = boardLocale();
       var tz = boardTZ();
-      if (kind === "iso") return x.toLocaleDateString("en-CA", { timeZone: tz });
-      if (kind === "num-us") return x.toLocaleDateString("en-US", { timeZone: tz });
-      if (kind === "num-intl") return x.toLocaleDateString("en-GB", { timeZone: tz });
-      if (kind === "long") return x.toLocaleDateString(loc, { day: "numeric", month: "long", year: "numeric", timeZone: tz });
-      if (kind === "intl") return x.toLocaleDateString(loc, { weekday: "short", day: "numeric", month: "short", timeZone: tz });
-      return x.toLocaleDateString(loc, { weekday: "short", month: "short", day: "numeric", timeZone: tz });
+      var parts = new Intl.DateTimeFormat("en-US", {
+        weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: tz
+      }).formatToParts(x);
+      var get = function (t) {
+        var hit = parts.filter(function (p) { return p.type === t; })[0];
+        return hit ? hit.value : "";
+      };
+      var wd = get("weekday"), mo = get("month"), day = get("day"), yr = get("year");
+      if (kind === "num-us") return (x.getMonth() + 1) + "/" + x.getDate() + "/" + yr;
+      if (kind === "intl") return wd + " " + day + " " + mo;
+      return wd + ", " + mo + " " + day;
     }
     function hourNowBoard() {
       return parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: boardTZ() }), 10);
@@ -5112,10 +5116,11 @@ function gatorRange() {
         pane.src = nws;
       }
       if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + site + " loop");
-      var hostKill = document.getElementById("wx-radar-map");
-      if (hostKill) hostKill.style.display = "none";
-      return;
-      if (typeof L === "undefined") return;
+      if (typeof L === "undefined") {
+        if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + kcode + " loop");
+        return;
+      }
+      if (pane) pane.style.display = "none";
       var hostEl = document.getElementById("wx-radar-map");
       if (!hostEl) {
         hostEl = document.createElement("div");
@@ -5135,11 +5140,11 @@ function gatorRange() {
         : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
       if (window.__radarMap) {
         try {
-          window.__radarMap.setView([lat, lon], window.__radarMap.getZoom() || 9);
+          window.__radarMap.setView([lat, lon], 10);
           if (window.__radarMarker) window.__radarMarker.setLatLng([lat, lon]);
         } catch (eV) {}
       } else {
-        window.__radarMap = L.map(hostEl, { zoomControl: true, attributionControl: false, scrollWheelZoom: true }).setView([lat, lon], 9);
+        window.__radarMap = L.map(hostEl, { zoomControl: true, attributionControl: false, scrollWheelZoom: true }).setView([lat, lon], 10);
         window.__radarBase = L.tileLayer(baseUrl, { maxZoom: 16 }).addTo(window.__radarMap);
         window.__radarMarker = L.circleMarker([lat, lon], {
           radius: 7, color: "#fff", weight: 2, fillColor: "#e85d4c", fillOpacity: 1
@@ -6577,7 +6582,7 @@ function currentRotation() {
         if (when) when.textContent = dateTxt + " · " + timeTxt;
       }
       var stamp = document.getElementById("today-stamp");
-      if (stamp) stamp.textContent = new Date().toLocaleString("en-US", { weekday:"long", month:"long", day:"numeric", timeZone:"America/New_York" }) + " on the Key";
+      if (stamp) stamp.textContent = fmtClockDate(now) + " on the Key";
       paintSkyHeader();
       if (typeof paintHdrRadio === "function") paintHdrRadio();
       if (typeof layoutPalms === "function") layoutPalms();
@@ -7999,7 +8004,7 @@ function currentRotation() {
     clock(); setInterval(clock, 15000);
     var ROT_DEFAULTS = window.ROT_DEFAULTS || {
       normal: ["now","tenday","land","marine","sky","ent","eats","golf"],
-      storm: ["tenday","storms","marine","contacts","prep","power"]
+      storm: ["tenday","storms","marine","contacts"]
     };
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
@@ -8696,15 +8701,17 @@ function currentRotation() {
         bolt.style.display = which === "bolt" ? "block" : "none";
         bolt.style.zIndex = which === "bolt" ? "6" : "0";
       }
-      if (map) map.style.display = "none";
       if (which === "bolt") {
+        if (map) map.style.display = "none";
         if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
         if (pin) pin.style.display = "none";
         if (stamp) stamp.style.display = "none";
       } else {
-        if (rad) { rad.classList.add("on"); rad.style.display = "block"; rad.style.zIndex = "8"; }
+        if (map) { map.style.display = "block"; map.style.zIndex = "8"; }
+        if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
         if (pin) pin.style.display = "";
         if (stamp) stamp.style.display = "";
+        if (window.__radarMap) setTimeout(function () { try { window.__radarMap.invalidateSize(); window.__radarMap.setView([homeLat(), homeLon()], 10); } catch (eZ) {} }, 80);
       }
       if (lab) lab.textContent = which === "bolt" ? "Lightning" : "Radar";
       if (note) note.textContent = which === "bolt" ? "Strikes near the house" : "Looping last 2 hours at home";
@@ -10373,30 +10380,27 @@ function currentRotation() {
       function buzzCardHtml(row, kind) {
         if (!row || !row.name) return "";
         kind = kind || row.kind || "hot";
+        if ((row.miles == null || isNaN(row.miles)) && row.lat != null && row.lon != null && typeof milesOf === "function") {
+          row.miles = milesOf(row.lat, row.lon);
+        }
         var meta = {
-          hot: { pill: "Ticket", cls: "buzz-hot", ico: "🎟", rail: "LIVE" },
-          table: { pill: "Dining", cls: "buzz-table", ico: "🍽", rail: "TABLE" },
-          hh: { pill: "Happy hour", cls: "buzz-hh", ico: "🍹", rail: "DEALS" },
-          shop: { pill: "Sale", cls: "buzz-shop", ico: "🛍", rail: "SHOP" }
-        }[kind] || { pill: "Near home", cls: "buzz-hot", ico: "📍", rail: "NEAR" };
+          hot: { pill: "Live music", cls: "music", rail: "LIVE", num: "♪", ico: "🎟" },
+          table: { pill: "Restaurant", cls: "eat-sea", rail: "Rating", num: (row.rating != null ? Number(row.rating).toFixed(1) : "—"), ico: "★" },
+          hh: { pill: "Happy hour", cls: "eat-bar", rail: "DEAL", num: "HH", ico: "★" },
+          shop: { pill: "Shopping", cls: "eat-cafe", rail: "SALE", num: "%", ico: "★" }
+        }[kind] || { pill: "Near home", cls: "music", rail: "NEAR", num: "•", ico: "★" };
         var pills = '<span class="kind-tag ' + meta.cls + '">' + meta.pill + "</span>";
-        pills += '<span class="kind-tag ' + meta.cls + '">25 mi</span>';
-        if (row.rating != null) pills += '<span class="eat-rate-pill">' + Number(row.rating).toFixed(1) + " Google</span>";
-        if (row.miles != null && isFinite(row.miles)) pills += '<span class="dist-tag">' + Number(row.miles).toFixed(1) + " mi</span>";
-        var mapQ = [row.name, row.where, (typeof homePlace === "function" && homePlace()) || "FL"].filter(Boolean).join(" ");
-        var key = (typeof gmapsKey === "function" && gmapsKey()) || "";
-        var thumb = key
-          ? '<img class="ev-thumb" alt="" src="https://maps.googleapis.com/maps/api/streetview?size=160x160&location=' + encodeURIComponent(mapQ) + "&key=" + encodeURIComponent(key) + '"/>'
-          : '<span class="buzz-ico" aria-hidden="true">' + meta.ico + "</span>";
-        var rate = (row.rating != null) ? Number(row.rating).toFixed(1) : meta.ico;
-        return '<div class="card ev-card eat-card buzz-card map-hit" data-map="' + escBuzz(mapQ).replace(/"/g, "&quot;") + '">' +
-          '<div class="ev-rail">' + thumb + '<span class="ev-dow">' + meta.rail + "</span>" +
-          (row.rating != null ? '<span class="ev-num">' + rate + "</span>" : "") + "</div>" +
+        if (row.miles != null && isFinite(row.miles)) pills += '<span class="dist-tag">' + (Math.round(Number(row.miles) * 10) / 10) + " mi</span>";
+        if (row.driveMin != null && isFinite(row.driveMin)) pills += '<span class="dist-tag eat-drive">' + Math.max(1, Math.round(row.driveMin)) + " min</span>";
+        if (row.rating != null && kind === "table") pills += '<span class="eat-rate-pill">' + Number(row.reviews || 0).toLocaleString() + " reviews</span>";
+        var mapQ = [row.name, row.where, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(" ");
+        var why = String(row.why || "").replace(/\s*This card refreshes[\s\S]*$/i, "").replace(/\s*Used as today[\s\S]*$/i, "").replace(/\s*Used while sale[\s\S]*$/i, "").replace(/\s*Picked for the posted[\s\S]*$/i, "").trim();
+        return '<div class="card ev-card eat-card buzz-card map-hit" data-map="' + escBuzz(mapQ).replace(/"/g, "&quot;") + '" data-buzz="' + escBuzz(row.name).replace(/"/g, "&quot;") + '">' +
+          '<div class="ev-rail"><span class="ev-dow">' + meta.rail + '</span><span class="ev-num">' + meta.num + '</span><span class="ev-ico" aria-hidden="true">' + meta.ico + '</span></div>' +
           '<div class="ev-body">' + pills +
           "<b>" + escBuzz(row.name) + "</b>" +
           (row.where ? '<span class="ev-when">' + escBuzz(row.where) + "</span>" : "") +
-          (row.whenTxt ? "<span>" + escBuzz(row.whenTxt) + "</span>" : "") +
-          (row.why ? '<span class="eat-why">' + escBuzz(row.why) + "</span>" : "") +
+          (why ? '<span class="eat-why">' + escBuzz(why) + "</span>" : "") +
           "</div></div>";
       }
       function parseRssItems(xml) {
@@ -10508,7 +10512,7 @@ function currentRotation() {
           var live = (typeof recUpcoming === "function") ? recUpcoming(7 * 24 * 3600000) : [];
           live.slice(0, 6).forEach(function (e) {
             pack.hot.push(asItem(e.sum || "Local event",
-              "Nearby listing while ticket buzz is quiet online. Still inside 25 miles of home and it rotates daily.",
+              "On the local calendar near home.",
               { where: e.loc, whenTxt: e.when }));
           });
         }
@@ -10521,21 +10525,21 @@ function currentRotation() {
           eats.forEach(function (r) {
             pack.table.push(asItem(r.name,
               (r.rating ? (r.name + " is " + Number(r.rating).toFixed(1) + " from " + (r.reviews || 0).toLocaleString() + " Google reviews") : r.name) +
-              " within 25 miles of home. Used as today’s table while dining headlines are thin.",
+              " near home.",
               { where: r.addr || r.area, rating: r.rating, reviews: r.reviews, miles: r.miles }));
           });
         }
         if (!(pack.hh && pack.hh.length) && typeof seedHappyHours === "function") {
           seedHappyHours().forEach(function (r) {
             pack.hh.push(asItem(r.name + " happy hour",
-              (r.deal || "Happy hour near home.") + " Picked for the posted deal inside 25 miles of the home pin.",
+              (r.deal || "Happy hour near home.") + " near home.",
               { where: r.addr }));
           });
         }
         if (!(pack.shop && pack.shop.length) && typeof seedShopDeals === "function") {
           seedShopDeals().forEach(function (r) {
             pack.shop.push(asItem(r.name,
-              (r.deal || "Store near home.") + " Used while sale headlines are quiet. Still tied to the home address and it changes by day.",
+              (r.deal || "Store near home.") + " near home.",
               { where: r.addr }));
           });
         }
@@ -10555,7 +10559,7 @@ function currentRotation() {
           name: name,
           where: extra.where || homePlace() || homeTownQuery(),
           whenTxt: extra.whenTxt || ("Today’s pick · " + buzzDayKey()),
-          why: (row.why || whyFromNews(it, kind, extra.miles)) + " This card refreshes every morning so a different nearby story can take the slot.",
+          why: row.why || whyFromNews(it, kind, extra.miles),
           link: it.link,
           rating: extra.rating,
           reviews: extra.reviews,
@@ -10588,6 +10592,38 @@ function currentRotation() {
         if (col) col.hidden = false;
         box.innerHTML = buzzCardHtml(row, kind);
         if (typeof noteFeed === "function") noteFeed(feedId, true, row.name);
+        if (typeof matrixChunk === "function" && row.name) {
+          matrixChunk([{
+            lat: row.lat, lon: row.lon,
+            q: [row.name, row.where, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(" "),
+            on: function (d) {
+              row.driveMin = d.min;
+              if (d.miles != null) row.miles = d.miles;
+              var card = box.querySelector(".buzz-card");
+              if (!card) return;
+              var mi = card.querySelector(".dist-tag:not(.eat-drive)");
+              var dr = card.querySelector(".dist-tag.eat-drive");
+              if (row.miles != null) {
+                if (mi) mi.textContent = (Math.round(row.miles * 10) / 10) + " mi";
+                else {
+                  var p1 = document.createElement("span");
+                  p1.className = "dist-tag";
+                  p1.textContent = (Math.round(row.miles * 10) / 10) + " mi";
+                  var first = card.querySelector(".kind-tag");
+                  if (first) first.insertAdjacentElement("afterend", p1);
+                }
+              }
+              if (dr) dr.textContent = d.min + " min";
+              else {
+                var p2 = document.createElement("span");
+                p2.className = "dist-tag eat-drive";
+                p2.textContent = d.min + " min";
+                var after = card.querySelector(".dist-tag") || card.querySelector(".kind-tag");
+                if (after) after.insertAdjacentElement("afterend", p2);
+              }
+            }
+          }], function () {});
+        }
       }
       function paintHotTicket() {
         loadBuzzPack(function () {
@@ -12173,13 +12209,15 @@ function mustEats() {
       }
       function card(r) {
         if ((r.miles == null || isNaN(r.miles)) && r.lat != null && r.lon != null) r.miles = milesOf(r.lat, r.lon);
-        var dist = "";
-        if (r.miles != null && !isNaN(r.miles)) dist = (Math.round(Number(r.miles) * 10) / 10) + " mi";
-        if (r.driveMin != null && !isNaN(r.driveMin)) dist += (dist ? " · " : "") + Math.max(1, Math.round(r.driveMin)) + " min";
+        if (r.lat != null && r.lon != null) {
+          var hm = milesOf(r.lat, r.lon);
+          if (hm != null && isFinite(hm)) r.miles = hm;
+        }
         var reviews = r.reviews ? (r.reviews + " reviews") : "";
         var kcls = ({ Public:"golf-pub", Private:"golf-priv", Resort:"golf-res", Executive:"golf-exec" }[r.kind] || "golf-course");
         var pills = '<span class="kind-tag ' + kcls + '">' + (r.kind || "Course") + "</span>";
-        if (dist) pills += '<span class="dist-tag">' + dist + "</span>";
+        if (r.miles != null && !isNaN(r.miles)) pills += '<span class="dist-tag">' + (Math.round(Number(r.miles) * 10) / 10) + " mi</span>";
+        if (r.driveMin != null && !isNaN(r.driveMin)) pills += '<span class="dist-tag eat-drive">' + Math.max(1, Math.round(r.driveMin)) + " min</span>";
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var addr = r.addr || r.area || "";
@@ -12247,14 +12285,22 @@ function mustEats() {
         if (typeof matrixChunk === "function") {
           var dests = list.filter(function (r) { return r.lat != null && r.lon != null; }).map(function (r) {
             return {
-              lat: r.lat, lon: r.lon, q: (r.addr || r.name || "") + " FL",
+              lat: r.lat, lon: r.lon, q: [r.name, r.addr, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(" "),
               on: function (d) {
                 r.driveMin = d.min;
                 if (d.miles != null) r.miles = d.miles;
                 document.querySelectorAll("#golf-list .eat-card").forEach(function (card) {
                   if ((card.getAttribute("data-golf") || "") !== (r.name || "")) return;
-                  var tag = card.querySelector(".dist-tag");
-                  if (tag) tag.textContent = (r.miles != null ? (Math.round(r.miles * 10) / 10) + " mi · " : "") + d.min + " min";
+                  var mi = card.querySelector(".dist-tag:not(.eat-drive)");
+                  var dr = card.querySelector(".dist-tag.eat-drive");
+                  if (r.miles != null && mi) mi.textContent = (Math.round(r.miles * 10) / 10) + " mi";
+                  if (dr) dr.textContent = d.min + " min";
+                  else if (mi) {
+                    var pill = document.createElement("span");
+                    pill.className = "dist-tag eat-drive";
+                    pill.textContent = d.min + " min";
+                    mi.insertAdjacentElement("afterend", pill);
+                  }
                 });
               }
             };
@@ -12648,7 +12694,7 @@ function mustEats() {
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
     var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","ent","eats","golf","wink","house"];
-    var ROT_STORM_POOL = ["tenday","storms","marine","contacts","prep","power"];
+    var ROT_STORM_POOL = ["tenday","storms","marine","contacts"];
     var ROT_AUTO_NOTE = {
       tenday: "radar lives on this page; lightning swaps into that frame when it is close",
       land: "traffic map, quakes, AQI, heat, flood, fire weather",
