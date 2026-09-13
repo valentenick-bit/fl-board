@@ -824,7 +824,7 @@
     .today-shell { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(280px,1fr); gap:16px 18px; align-items:start; }
     .today-main { min-width:0; }
     .today-side { min-width:0; display:flex; flex-direction:column; gap:14px; }
-    .today-out-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; align-items:start; }
+    .today-out-grid { display:grid; grid-template-columns:1fr; gap:12px; align-items:start; }
     .today-out-grid > div { min-width:0; }
     #today-do-col { min-width:0; }
     #go-night { margin:0 0 12px; }
@@ -949,15 +949,25 @@
     #today-eat-pick .eat-card,
     #today-hot .ev-card,
     #today-deal .ev-card,
-    #today-deal .eat-card {
+    #today-deal .eat-card,
+    #today-shop .ev-card,
+    #today-shop .eat-card,
+    #today-deliv .ev-card,
+    #today-deliv .card,
+    #deliv-list .ev-card,
+    #deliv-list .card {
       padding:10px 12px;
       margin:0 0 8px;
       min-height:102px;
       box-sizing:border-box;
       display:flex;
       align-items:stretch;
+      gap:12px;
+      background:var(--card);
+      border:1px solid var(--hair);
+      border-radius:16px;
     }
-    #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card { cursor:pointer; }
+    #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card { cursor:pointer; }
     #today-hot .ev-body,
     #today-deal .ev-body,
     #today-eat-pick .ev-body,
@@ -3504,7 +3514,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 632;
+    window.BOARD_VER = 633;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9362,7 +9372,7 @@ function currentRotation() {
         openMapPop("Lightning", boltMapSrc(), '<a href="' + boltMapSrc() + '" target="_blank" rel="noopener">Open live lightning map</a>');
         return;
       }
-      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #ent-list .card, #eat-list .card");
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #ent-list .card, #eat-list .card");
       if (evCard) {
         var q = eventMapQuery(evCard);
         if ((!q || q === "Englewood FL") && evCard.getAttribute("data-map")) q = evCard.getAttribute("data-map");
@@ -10289,16 +10299,24 @@ function currentRotation() {
         var detail = esc(item.detail || "");
         var key = esc(pkgKey(item));
         if (incoming) {
-          return '<div class="card">' +
-            '<div class="deliv-top">' +
+          return '<div class="card ev-card">' +
+            '<div class="ev-rail"><span class="ev-dow">Pkg</span><span class="ev-num">Way</span></div>' +
+            '<div class="ev-body">' +
               '<span class="place-tag place-out">On the way</span>' +
-              '<span class="kind-tag">' + who + "</span>" +
+              (who ? '<span class="kind-tag">' + who + "</span>" : "") +
+              "<b>" + title + "</b>" +
+              (detail ? '<span class="ev-when">' + detail + "</span>" : "") +
               '<label class="deliv-mark"><input type="checkbox" data-deliv="' + key + '"> Delivered</label>' +
-            "</div>" +
-            "<b>" + title + "</b><span>" + detail + "</span></div>";
+            "</div></div>";
         }
         var how = item.marked ? "Marked here" : "Delivered";
-        return '<div class="card"><span class="place-tag place-bw">' + how + "</span><b>" + who + " · " + title + "</b><span>" + detail + "</span></div>";
+        return '<div class="card ev-card">' +
+          '<div class="ev-rail"><span class="ev-dow">Pkg</span><span class="ev-num">In</span></div>' +
+          '<div class="ev-body">' +
+            '<span class="place-tag place-bw">' + how + "</span>" +
+            "<b>" + (who ? who + " · " : "") + title + "</b>" +
+            (detail ? '<span class="ev-when">' + detail + "</span>" : "") +
+          "</div></div>";
       }
       window.delivCardHtml = card;
       function split(data) {
@@ -15163,20 +15181,29 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     function placeDrive(name, lat, lon, cb) {
       var key = placeKey(name, lat, lon);
       window.__placeDrive = window.__placeDrive || {};
+      window.__placeWait = window.__placeWait || {};
       var hit = key && window.__placeDrive[key];
-      if (hit && Date.now() - hit.at < 30 * 60 * 1000) { if (cb) cb(hit); return hit; }
+      if (hit && hit.min != null && Date.now() - hit.at < 30 * 60 * 1000) { if (cb) cb(hit); return hit; }
+      if (hit && hit.min == null && hit.pending) {
+        if (cb) (window.__placeWait[key] = window.__placeWait[key] || []).push(cb);
+        return hit;
+      }
       var bird = (lat != null && lon != null && isFinite(lat) && isFinite(lon)) ? milesApart(homeLat(), homeLon(), Number(lat), Number(lon)) : null;
-      var row = { miles: bird, min: hit && hit.min, at: Date.now() };
+      var row = { miles: (hit && hit.miles) || bird, min: hit && hit.min, at: Date.now(), pending: true };
       if (key) window.__placeDrive[key] = row;
+      if (cb) (window.__placeWait[key] = window.__placeWait[key] || []).push(cb);
       function done(d) {
         if (d) {
           if (d.min != null) row.min = d.min;
           if (d.miles != null) row.miles = d.miles;
-          row.at = Date.now();
         }
-        if (cb) cb(row);
+        row.pending = false;
+        row.at = Date.now();
+        var wait = window.__placeWait[key] || [];
+        window.__placeWait[key] = [];
+        wait.forEach(function (fn) { try { fn(row); } catch (e) {} });
       }
-      if (lat == null || lon == null || typeof driveMinutesToLatLng !== "function") { if (cb) cb(row); return row; }
+      if (lat == null || lon == null || typeof driveMinutesToLatLng !== "function") { done(null); return row; }
       driveMinutesToLatLng(lat, lon, done);
       return row;
     }
