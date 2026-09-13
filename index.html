@@ -2043,8 +2043,9 @@
     #wx-radar-windy { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:2; background:#123; }
 
 
-    #wx-radar-live { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:4; background:#16324a; }
-    #wx-radar-view, #wx-radar-windy { display:none !important; }
+    #wx-radar-live { display:none !important; }
+    #wx-radar-windy { display:none !important; }
+    #wx-radar-view { display:block !important; width:100%; height:100%; object-fit:cover; z-index:4; background:#16324a; }
     .buzz-card { display:flex; gap:10px; align-items:stretch; }
     .buzz-card .ev-rail { flex:0 0 76px; }
     .buzz-card .ev-thumb { width:76px; height:76px; object-fit:cover; border-radius:14px; display:block; }
@@ -3614,7 +3615,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 672;
+    window.BOARD_VER = 673;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5043,13 +5044,44 @@ function gatorRange() {
       }
       var rv = "https://www.rainviewer.com/map.html?loc=" + lat.toFixed(4) + "," + lon.toFixed(4) +
         ",8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&c=1&o=83&lm=1&th=0&sm=1&sn=1";
-      if (live.getAttribute("data-src") !== rv) {
-        live.src = rv;
-        live.setAttribute("data-src", rv);
+      live.style.display = "none";
+      function nearestRadarSite(la, lo, given) {
+        var g = String(given || "").toUpperCase().replace(/^K/, "");
+        if (/^[A-Z]{3}$/.test(g)) return g;
+        var sites = [
+          { id:"TBW", lat:27.7055, lon:-82.4018 },
+          { id:"MIA", lat:25.6111, lon:-80.4127 },
+          { id:"MLB", lat:28.1133, lon:-80.6540 },
+          { id:"JAX", lat:30.4847, lon:-81.7019 },
+          { id:"TLH", lat:30.3975, lon:-84.3289 }
+        ];
+        var best = "TBW", bestD = 1e9;
+        sites.forEach(function (s) {
+          var d = Math.hypot(la - s.lat, lo - s.lon);
+          if (d < bestD) { bestD = d; best = s.id; }
+        });
+        return best;
       }
-      var hidePane = document.getElementById("wx-radar-view");
-      if (hidePane) hidePane.style.display = "none";
-      if (typeof noteFeed === "function") noteFeed("radar", true, "rainviewer loop");
+      var site = nearestRadarSite(lat, lon, st);
+      var pane = document.getElementById("wx-radar-view");
+      var loops = [
+        "https://radar.weather.gov/ridge/standard/" + site + "_loop.gif?t=" + Date.now(),
+        "https://radar.weather.gov/ridge/lite/K" + site + "_loop.gif?t=" + Date.now(),
+        "https://mesonet.agron.iastate.edu/data/gis/images/4326/ridge/" + site + "/N0B_loop.gif?t=" + Date.now()
+      ];
+      if (pane) {
+        pane.style.display = "block";
+        pane.onerror = function () {
+          var n = Number(pane.getAttribute("data-i") || 0) + 1;
+          if (n < loops.length) {
+            pane.setAttribute("data-i", String(n));
+            pane.src = loops[n];
+          }
+        };
+        pane.setAttribute("data-i", "0");
+        pane.src = loops[0];
+      }
+      if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + site + " loop");
       function nearestRadarSite(la, lo, given) {
         var g = String(given || "").toUpperCase().replace(/^K/, "");
         if (/^[A-Z]{3}$/.test(g)) return g;
@@ -11100,14 +11132,13 @@ function currentRotation() {
         var api = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" + encodeURIComponent(tmKey()) +
           "&latlong=" + lat + "," + lon + "&radius=" + miles + "&unit=miles&size=80&sort=date,asc&startDateTime=" + encodeURIComponent(start);
         var urls = [
-          (location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles),
-          "https://corsproxy.io/?" + encodeURIComponent(api),
-          "https://api.allorigins.win/raw?url=" + encodeURIComponent(api),
-          api
+          (location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles)
         ];
         function next(i) {
           if (i >= urls.length) {
-            if (typeof noteFeed === "function") noteFeed("town-events", !!(bag.eng && bag.eng.length), (bag.eng && bag.eng.length ? bag.eng.length + " ticketed" : "no town feed"));
+            var localN = (window.__localEvents && window.__localEvents.length) || (window.__entAll && window.__entAll.length) || 0;
+            var ok = !!(bag.eng && bag.eng.length) || localN > 0;
+            if (typeof noteFeed === "function") noteFeed("town-events", ok, (bag.eng && bag.eng.length ? bag.eng.length + " ticketed" : (localN ? localN + " local" : "no town feed")));
             if (done) done();
             return;
           }
