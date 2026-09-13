@@ -2038,6 +2038,9 @@
       #eats .land-map-frame .radar-crop, #golf .land-map-frame .radar-crop { width:100%; min-height:0; max-height:34vh; }
     }
 
+
+    #wx-radar-windy { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:2; background:#123; }
+
 </style>
 </head>
 <body>
@@ -3597,7 +3600,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 668;
+    window.BOARD_VER = 670;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5014,6 +5017,23 @@ function gatorRange() {
       if (!isFinite(lat) || !isFinite(lon)) return;
       var stage = document.getElementById("wx-radar-stage");
       if (!stage) return;
+      var windy = document.getElementById("wx-radar-windy");
+      if (!windy) {
+        windy = document.createElement("iframe");
+        windy.id = "wx-radar-windy";
+        windy.title = "Radar at home";
+        windy.setAttribute("allowfullscreen", "true");
+        stage.insertBefore(windy, stage.firstChild);
+      }
+      var wsrc = (typeof windyRadarUrl === "function") ? windyRadarUrl(lat, lon, 8) : "";
+      if (wsrc && windy.getAttribute("data-src") !== wsrc) {
+        windy.src = wsrc;
+        windy.setAttribute("data-src", wsrc);
+      }
+      var paneHide = document.getElementById("wx-radar-view");
+      if (paneHide) paneHide.style.display = "none";
+      if (typeof noteFeed === "function") noteFeed("radar", !!wsrc, wsrc ? "windy radar" : "no windy");
+      if (wsrc) return;
       if (typeof L === "undefined") {
         var nws = st ? ("https://radar.weather.gov/ridge/standard/" + st + "_loop.gif?t=" + Date.now()) : "";
         var pane = document.getElementById("wx-radar-view");
@@ -9861,7 +9881,7 @@ function currentRotation() {
     }
     function placeMapSrc(name, addr) {
       var q = [name, addr].filter(Boolean).join(", ");
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=14&hl=en&iwloc=A&output=embed";
     }
     function placeMapLink(name, addr) {
       var q = [name, addr].filter(Boolean).join(", ");
@@ -10262,57 +10282,168 @@ function currentRotation() {
         if (typeof noteFeed === "function") noteFeed("next3", true, txt.slice(0, 80));
         if (typeof layoutTodayBands === "function") layoutTodayBands();
       }
-      function paintHotTicket() {
-        var box = document.getElementById("today-hot");
-        var col = document.getElementById("today-hot-col");
-        if (!box) return;
-        function score(e) {
-          if (!e) return 0;
-          var s = 0;
-          var txt = [e.sum, e.loc, e.desc].join(" ").toLowerCase();
-          if (e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc))) s += 50;
-          if (/sold out|rsvp|ticket|festival|fair|concert|party/.test(txt)) s += 18;
-          if (/sandbar|high tide|dear?born|capri|punta gorda/.test(txt)) s += 12;
-          if (typeof isTodayET === "function" && isTodayET(e.when)) s += 24;
-          var miles = Number(e.miles);
-          if (!isNaN(miles) && miles <= 20) s += 10;
-          return s;
-        }
-        var list = recUpcoming(36 * 3600000);
-        list.sort(function (a, b) { return score(b) - score(a); });
-        var top = list[0] && score(list[0]) >= 12 ? list[0] : recSeasonHot();
-        if (!top) {
-          if (col) col.hidden = true;
-          box.innerHTML = "";
-          if (typeof noteFeed === "function") noteFeed("hot-ticket", false, "none");
+
+      function homeTownQuery() {
+        var addr = (typeof homeAddress === "function" && homeAddress()) || "";
+        var place = (typeof homePlace === "function" && homePlace()) || "";
+        var zip = (getSet() && getSet().zip) || "";
+        return [place, zip, addr].filter(Boolean).join(" ") || "Englewood FL";
+      }
+      function escBuzz(s) {
+        return String(s || "").replace(/[<>]/g, "");
+      }
+      function buzzCardHtml(row) {
+        if (!row || !row.name) return "";
+        var bits = [];
+        bits.push("<b>" + escBuzz(row.name) + "</b>");
+        if (row.where) bits.push("<span>" + escBuzz(row.where) + "</span>");
+        if (row.whenTxt) bits.push("<span>" + escBuzz(row.whenTxt) + "</span>");
+        if (row.miles != null && isFinite(row.miles)) bits.push("<span>" + Number(row.miles).toFixed(1) + " mi from home</span>");
+        if (row.rating != null) bits.push("<span>" + Number(row.rating).toFixed(1) + " Google · " + (row.reviews || 0).toLocaleString() + " reviews</span>");
+        if (row.why) bits.push('<span class="eat-why">' + escBuzz(row.why) + "</span>");
+        return '<div class="card ev-card"><div class="ev-body">' + bits.join("") + "</div></div>";
+      }
+      function parseRssItems(xml) {
+        var out = [];
+        if (!xml) return out;
+        var parts = String(xml).split(/<item[\s>]/i);
+        parts.slice(1).forEach(function (chunk) {
+          var title = (chunk.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i) || [])[1] || "";
+          var link = (chunk.match(/<link[^>]*>([\s\S]*?)<\/link>/i) || [])[1] || "";
+          var desc = (chunk.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i) || [])[1] || "";
+          title = title.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+          desc = desc.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+          if (title) out.push({ title: title, link: link.trim(), desc: desc.slice(0, 240) });
+        });
+        return out;
+      }
+      function fetchNewsQuery(q, cb) {
+        var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
+        var urls = [
+          rss,
+          "https://corsproxy.io/?" + encodeURIComponent(rss),
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(rss)
+        ];
+        (function next(i) {
+          if (i >= urls.length) { cb([]); return; }
+          fetch(urls[i], { cache: "no-store" }).then(function (res) {
+            if (!res.ok) throw new Error("http");
+            return res.text();
+          }).then(function (txt) {
+            var items = parseRssItems(txt);
+            if (!items.length) throw new Error("empty");
+            cb(items);
+          }).catch(function () { next(i + 1); });
+        })(0);
+      }
+      function scoreBuzzItem(item, words) {
+        var blob = ((item.title || "") + " " + (item.desc || "")).toLowerCase();
+        var s = 4;
+        (words || []).forEach(function (w) { if (blob.indexOf(w) >= 0) s += 8; });
+        if (/sold out|buzz|viral|packed|lines out|must[- ]see|don't miss|dont miss/.test(blob)) s += 10;
+        if (/% off|half off|bogo|happy hour|\$[0-9]/.test(blob)) s += 8;
+        return s;
+      }
+      function whyFromNews(item, kind, miles) {
+        var t = item && item.title ? item.title : "";
+        var near = (miles != null && isFinite(miles)) ? (" It's about " + Number(miles).toFixed(1) + " miles from the home pin.") : " It's inside the 25-mile ring around home.";
+        if (kind === "hot") return (t ? ("This is getting local attention: “" + t + ".”") : "Promoted event near home this week.") + near + " Picked for tickets, live music, or festival buzz — not because it is on the community calendar.";
+        if (kind === "table") return (t ? ("People are talking about it: “" + t + ".”") : "Strong local dining chatter plus reviews.") + near + " Chosen for buzz and ratings, not because it topped the Restaurants page.";
+        if (kind === "hh") return (t ? ("Deal chatter: “" + t + ".”") : "A happy-hour special near home is being pushed right now.") + near + " The deal itself is the reason this card is up.";
+        if (kind === "shop") return (t ? ("Sale talk: “" + t + ".”") : "A nearby store is promoting a sale.") + near + " Picked for advertised savings, not a standing store list.";
+        return t || "Selected because it is close to home and showing up in local coverage.";
+      }
+      window.__buzz = window.__buzz || {};
+      function buzzDayKey() {
+        var n = (typeof recNowET === "function") ? recNowET() : new Date();
+        return n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
+      }
+      function buzzPickIndex(kind, n) {
+        if (n <= 1) return 0;
+        var s = buzzDayKey() + "|" + kind + "|" + homeTownQuery();
+        var h = 2166136261;
+        for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+        return Math.abs(h) % n;
+      }
+      function loadBuzzPack(cb) {
+        var pin = homeTownQuery();
+        var key = buzzDayKey() + "|" + pin + "|" + (getSet() && getSet().lat) + "|" + (getSet() && getSet().lon);
+        if (window.__buzz.key === key && window.__buzz.at && Date.now() - window.__buzz.at < 6 * 60 * 60 * 1000) {
+          if (cb) cb(window.__buzz);
           return;
         }
-        if (col) col.hidden = false;
-        var why = String(top.desc || top.why || "").replace(/</g, "").trim();
-        if (window.entCardHtml) {
-          var html = window.entCardHtml(top);
-          if (why && html.indexOf("eat-why") < 0) html = html.replace("</div></div>", '<span class="eat-why">' + why + "</span></div></div>");
-          box.innerHTML = html;
-        } else {
-          box.innerHTML = '<div class="card ev-card"><div class="ev-body"><b>' + String(top.sum || "").replace(/</g, "") + '</b><span class="eat-why">' + why + "</span></div></div>";
-        }
-        if (typeof noteFeed === "function") noteFeed("hot-ticket", true, top.sum || "ok");
-        var pin = typeof pinVenue === "function" ? pinVenue(top) : null;
-        if (typeof placeDrive === "function" && pin && pin.lat != null && !top.inside) {
-          placeDrive(top.loc || top.sum || "venue", pin.lat, pin.lon, function (d) {
-            if (!d) return;
-            top.miles = d.miles; top.driveMin = d.min;
-            var tag = box.querySelector(".dist-tag");
-            var label = typeof fmtPlaceDrive === "function" ? fmtPlaceDrive(d) : fmtDrivePill(top);
-            if (tag && label) tag.textContent = label;
-            else if (label && window.entCardHtml) {
-              var html = window.entCardHtml(top);
-              var why2 = String(top.desc || top.why || "").replace(/</g, "").trim();
-              if (why2 && html.indexOf("eat-why") < 0) html = html.replace("</div></div>", '<span class="eat-why">' + why2 + "</span></div></div>");
-              box.innerHTML = html;
+        var left = 4;
+        var pack = { key: key, hot: [], table: [], hh: [], shop: [] };
+        function one(kind, q, words) {
+          fetchNewsQuery(q + " when:7d " + buzzDayKey(), function (items) {
+            pack[kind] = (items || []).map(function (it) {
+              return { item: it, score: scoreBuzzItem(it, words) };
+            }).sort(function (a, b) { return b.score - a.score; });
+            if (--left <= 0) {
+              window.__buzz = pack;
+              window.__buzz.at = Date.now();
+              window.__buzz.key = key;
+              if (cb) cb(pack);
             }
           });
         }
+        one("hot", "(concert OR festival OR \"live music\" OR tickets OR \"sold out\" OR comedy) (" + pin + ")", ["concert","festival","ticket","music","comedy","fair"]);
+        one("table", "(restaurant OR dining OR brunch OR \"best restaurant\" OR chef) (" + pin + ")", ["restaurant","dining","brunch","chef","reservation"]);
+        one("hh", "(\"happy hour\" OR \"hour specials\" OR \"$5\" OR \"$6\") (" + pin + ")", ["happy hour","specials","draft","appetizer"]);
+        one("shop", "(sale OR clearance OR \"percent off\" OR bogo OR \"warehouse sale\") (" + pin + ")", ["sale","clearance","off","bogo","deal"]);
+      }
+      function firstBuzz(kind) {
+        var list = (window.__buzz && window.__buzz[kind]) || [];
+        if (!list.length) return null;
+        var pool = list.slice(0, Math.min(8, list.length));
+        var row = pool[buzzPickIndex(kind, pool.length)];
+        if (!row || !row.item) row = pool[0];
+        if (!row || !row.item) return null;
+        var it = row.item;
+        var name = it.title.split(" - ")[0].split(" | ")[0].split(" – ")[0];
+        if (name.length > 72) name = name.slice(0, 70) + "…";
+        return {
+          name: name,
+          where: homePlace() || homeTownQuery(),
+          whenTxt: "Today’s pick · " + buzzDayKey(),
+          why: whyFromNews(it, kind, null) + " This card refreshes every morning so a different nearby story can take the slot.",
+          link: it.link,
+          miles: null
+        };
+      }
+      function scheduleBuzzRollover() {
+        if (window.__buzzRoll) clearTimeout(window.__buzzRoll);
+        var n = (typeof recNowET === "function") ? recNowET() : new Date();
+        var next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 7, 0);
+        window.__buzzRoll = setTimeout(function () {
+          window.__buzz = {};
+          if (typeof paintTodayRecs === "function") paintTodayRecs();
+          if (typeof window.paintEatPick === "function") window.paintEatPick();
+          scheduleBuzzRollover();
+        }, Math.max(15000, next.getTime() - n.getTime()));
+      }
+      scheduleBuzzRollover();
+      function paintBuzzBox(id, colId, kind, emptyTxt, feedId) {
+        var box = document.getElementById(id);
+        var col = document.getElementById(colId);
+        if (!box) return;
+        var row = firstBuzz(kind);
+        if (!row) {
+          if (col) col.hidden = false;
+          box.innerHTML = '<div class="card ev-card"><div class="ev-body"><b>Watching local chatter</b><span class="eat-why">' + escBuzz(emptyTxt) + "</span></div></div>";
+          if (typeof noteFeed === "function") noteFeed(feedId, false, "no headline");
+          return;
+        }
+        if (col) col.hidden = false;
+        box.innerHTML = buzzCardHtml(row);
+        if (typeof noteFeed === "function") noteFeed(feedId, true, row.name);
+      }
+      function paintHotTicket() {
+        loadBuzzPack(function () {
+          paintBuzzBox("today-hot", "today-hot-col", "hot",
+            "No ticketed show or festival near home is drawing clear online buzz in the last two weeks. This card follows the home address, not the Events calendar.",
+            "hot-ticket");
+        });
       }
       function seedHappyHours() {
         return [
@@ -10394,67 +10525,10 @@ function currentRotation() {
         })(0);
       }
       function paintEatDeal() {
-        var box = document.getElementById("today-deal");
-        var col = document.getElementById("today-deal-col");
-        if (!box) return;
-        loadHappyHours(function (list) {
-          var now = recNowET();
-          var miles = Number((getSet() || {}).eventMiles || 25);
-          var inR = (list || []).filter(function (r) {
-            if (r.lat != null && typeof (typeof milesOf === "function" ? milesOf : window.milesOf) === "function") r.miles = (typeof milesOf === "function" ? milesOf : window.milesOf)(r.lat, r.lon);
-            return r.miles != null && r.miles <= miles + 0.25;
-          });
-          inR.sort(function (a, b) { return hhScore(b, now) - hhScore(a, now); });
-          var row = inR[0];
-          var y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
-          var week = (y === 2026 && m === 9 && d >= 10 && d <= 24);
-          if (!row) {
-            if (week) {
-              row = { name: "Let's Eat Englewood", miles: 0, start: 11, end: 21, deal: "2-course lunch $22 · 3-course dinner $42 through Sept 24.", kind: "Restaurant week" };
-            } else {
-              if (col) col.hidden = true;
-              box.innerHTML = "";
-              if (typeof noteFeed === "function") noteFeed("eat-deal", false, "none in " + miles + " mi");
-              return;
-            }
-          }
-          if (col) col.hidden = false;
-          var hr = now.getHours() + now.getMinutes() / 60;
-          var on = hhOpenToday(row, now) && hr >= row.start && hr < row.end;
-          var soon = hhOpenToday(row, now) && hr < row.start && row.start - hr <= 1.5;
-          var later = hhOpenToday(row, now) && hr >= row.end;
-          if (typeof placeDrive === "function" && row.lat != null) {
-            var cached = placeDrive(row.name, row.lat, row.lon);
-            if (cached) { row.miles = cached.miles; row.driveMin = cached.min; }
-          } else if (row.lat != null && row.lon != null && typeof milesApart === "function") {
-            row.miles = milesApart(homeLat(), homeLon(), Number(row.lat), Number(row.lon));
-          }
-          var tag = on ? "On now" : soon ? "Starts soon" : later ? "Tomorrow" : (row.kind || "Happy hour");
-          var dist = "";
-          if (row.miles != null && !isNaN(row.miles)) dist = (Math.round(Number(row.miles) * 10) / 10) + " mi";
-          if (row.driveMin != null) dist += (dist ? " · " : "") + Math.max(1, Math.round(row.driveMin)) + " min";
-          var when = hhClock(row.start) + "–" + hhClock(row.end);
-          var why = row.deal || "";
-          if (week && /sandbar|lock/.test(String(row.name).toLowerCase())) why += " Also on Let's Eat Englewood this month.";
-          window.__hhPick = row;
-          var mapQ = [row.name, row.addr].filter(Boolean).join(", ");
-          box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '">' +
-            '<div class="ev-rail"><span class="ev-dow">Today</span><span class="ev-num">' + tag.replace(/Happy hour/i, "HH") + "</span></div>" +
-            '<div class="ev-body">' + (dist ? '<span class="dist-tag">' + dist + "</span>" : "") +
-            "<b>" + String(row.name).replace(/</g, "") + "</b>" +
-            '<span class="ev-when">' + when + (on ? " · happening now" : later ? " · next window" : "") + "</span>" +
-            (why ? '<span class="eat-why">' + String(why).replace(/</g, "") + "</span>" : "") +
-            "</div></div>";
-          if (typeof noteFeed === "function") noteFeed("eat-deal", true, row.name + " " + (on ? "now" : when) + " · " + dist);
-          if (typeof placeDrive === "function" && row.lat != null) {
-            placeDrive(row.name, row.lat, row.lon, function (d) {
-              if (!d) return;
-              row.miles = d.miles; row.driveMin = d.min;
-              var tagEl = box.querySelector(".dist-tag");
-              var label = typeof fmtPlaceDrive === "function" ? fmtPlaceDrive(d) : "";
-              if (tagEl && label) tagEl.textContent = label;
-            });
-          }
+        loadBuzzPack(function () {
+          paintBuzzBox("today-deal", "today-deal-col", "hh",
+            "No happy-hour deal within 25 miles of home is getting advertised chatter right now. When the pin moves, this search moves with it.",
+            "eat-deal");
         });
       }
       function paintDayParts() {
@@ -10514,80 +10588,11 @@ function currentRotation() {
         ];
       }
       function paintShopDeal() {
-        var box = document.getElementById("today-shop");
-        var col = document.getElementById("today-shop-col");
-        if (!box) return;
-        if (typeof homeIsSWFL === "function" && !homeIsSWFL()) {
-          box.innerHTML = "";
-          if (col) col.hidden = true;
-          return;
-        }
-        var milesCap = Number((getSet() || {}).eventMiles || 25);
-        var now = (typeof recNowET === "function") ? recNowET() : new Date();
-        var hr = now.getHours() + now.getMinutes() / 60;
-        var dow = now.getDay();
-        var list = seedShopDeals().map(function (r) {
-          if (r.lat != null && typeof milesApart === "function") r.miles = milesApart(homeLat(), homeLon(), r.lat, r.lon);
-          if (typeof placeDrive === "function") {
-            var c = placeDrive(r.name, r.lat, r.lon);
-            if (c) { r.miles = c.miles; r.driveMin = c.min; }
-          }
-          return r;
-        }).filter(function (r) {
-          if (r.days && r.days.indexOf(dow) < 0 && dow !== 6) return r.kind !== "Shops";
-          return r.miles == null || r.miles <= milesCap + 0.5;
+        loadBuzzPack(function () {
+          paintBuzzBox("today-shop", "today-shop-col", "shop",
+            "No store within 25 miles of home is pushing a loud sale in local coverage this week.",
+            "shop-deal");
         });
-        function score(r) {
-          var s = 20 - Math.min(15, Number(r.miles) || 8);
-          var openEnd = (dow === 0 && r.sunEnd) ? r.sunEnd : r.end;
-          if (hr >= r.start && hr < openEnd) s += 18;
-          if (r.kind === "Grocery" && hr < 14) s += 8;
-          if (r.kind === "Shops" && dow === 6) s += 14;
-          if (dow === 0 && r.name.indexOf("Bealls") >= 0) s += 4;
-          return s;
-        }
-        list.sort(function (a, b) { return score(b) - score(a); });
-        var row = list[0];
-        if (!row) {
-          if (col) col.hidden = true;
-          box.innerHTML = "";
-          if (typeof noteFeed === "function") noteFeed("shop-deal", false, "none");
-          return;
-        }
-        if (col) col.hidden = false;
-        var openEnd = (dow === 0 && row.sunEnd) ? row.sunEnd : row.end;
-        var on = hr >= row.start && hr < openEnd && (!row.days || row.days.indexOf(dow) >= 0);
-        var tag = on ? "Open now" : (row.days && row.days.indexOf(dow) < 0 ? "This week" : "Today");
-        var dist = typeof fmtPlaceDrive === "function" ? fmtPlaceDrive({ miles: row.miles, min: row.driveMin }) : (row.miles != null ? (Math.round(row.miles * 10) / 10) + " mi" : "");
-        var when = (row.start != null) ? (Math.floor(row.start) + (row.start % 1 ? ":30" : "") + "–" + Math.floor(openEnd) + (openEnd % 1 ? ":30" : "")) : "";
-        function clock(h) {
-          var hr0 = Math.floor(h), min = Math.round((h - hr0) * 60);
-          var am = hr0 >= 12 ? "PM" : "AM";
-          var h12 = hr0 % 12; if (!h12) h12 = 12;
-          return h12 + (min ? ":" + (min < 10 ? "0" : "") + min : "") + " " + am;
-        }
-        when = clock(row.start) + "–" + clock(openEnd);
-        var mapQ = row.addr || [row.name, "Englewood, FL"].join(", ");
-        window.__shopPick = row;
-        box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-lat="' + row.lat + '" data-lon="' + row.lon + '">' +
-          '<div class="ev-rail"><span class="ev-dow">Shop</span><span class="ev-num">' + tag + "</span></div>" +
-          '<div class="ev-body">' + (dist ? '<span class="dist-tag">' + dist + "</span>" : "") +
-          '<span class="kind-tag">' + String(row.kind || "Store") + "</span>" +
-          "<b>" + String(row.name).replace(/</g, "") + "</b>" +
-          '<span class="ev-when">' + when + (on ? " · open now" : "") + "</span>" +
-          (row.deal ? '<span class="eat-why">' + String(row.deal).replace(/</g, "") + "</span>" : "") +
-          "</div></div>";
-        window.__shopPick = row;
-        if (typeof noteFeed === "function") noteFeed("shop-deal", true, row.name + " · " + dist);
-        if (typeof placeDrive === "function" && row.lat != null) {
-          placeDrive(row.name, row.lat, row.lon, function (d) {
-            if (!d) return;
-            row.miles = d.miles; row.driveMin = d.min;
-            var tagEl = box.querySelector(".dist-tag");
-            var label = fmtPlaceDrive(d);
-            if (tagEl && label) tagEl.textContent = label;
-          });
-        }
       }
       function paintTodayRecs() {
         try { if (typeof layoutTodayBands === "function") layoutTodayBands(); paintNext3(); if (typeof writeBriefing === "function") writeBriefing(); } catch (e) {}
@@ -11988,6 +11993,13 @@ function mustEats() {
         });
       }
       window.reloadEats = run;
+      window.paintEatPick = function () {
+        loadBuzzPack(function () {
+          paintBuzzBox("today-eat-pick", "today-eat-col", "table",
+            "No restaurant within 25 miles of home is both well-reviewed and showing up in local dining chatter right now.",
+            "eat-pick");
+        });
+      };
       setTimeout(run, 1200);
       setInterval(run, 15 * 60 * 1000);
     })();
