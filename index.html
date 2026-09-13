@@ -2058,10 +2058,21 @@
         <p class="today-stamp" id="today-stamp" hidden></p>
         <div class="today-shell" id="today-shell">
         <div class="today-main">
+        <div class="wx-strips" id="wx-strips">
+          <div class="wx-strip stale" id="wx-stale"></div>
+          <div class="wx-strip spc" id="wx-spc"></div>
+          <div class="wx-strip fire" id="wx-redflag"></div>
+          <div class="wx-strip flood" id="wx-flood"></div>
+          <div class="wx-strip fog" id="wx-fog"></div>
+          <div class="wx-strip smoke" id="wx-smoke"></div>
+          <div class="wx-strip quake" id="wx-quake"></div>
+          <div class="wx-strip tsunami" id="wx-tsunami"></div>
+          <div class="wx-strip volcano" id="wx-volcano"></div>
+          <div class="wx-strip heat" id="wx-heatrisk"></div>
+        </div>
         <div class="card greet-card" id="greet-card" aria-live="polite">
           <b id="greet-hi">Good evening</b>
           <span id="live-sky">Checking the day…</span>
-          <span id="greet-wear"></span>
           <span id="greet-next"></span>
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for more</small>
@@ -2076,18 +2087,6 @@
           <div class="part" id="part-eve"><em>Night</em><span id="part-eve-b">—</span></div>
         </div>
 
-        <div class="wx-strips" id="wx-strips">
-          <div class="wx-strip stale" id="wx-stale"></div>
-          <div class="wx-strip spc" id="wx-spc"></div>
-          <div class="wx-strip fire" id="wx-redflag"></div>
-          <div class="wx-strip flood" id="wx-flood"></div>
-          <div class="wx-strip fog" id="wx-fog"></div>
-          <div class="wx-strip smoke" id="wx-smoke"></div>
-          <div class="wx-strip quake" id="wx-quake"></div>
-          <div class="wx-strip tsunami" id="wx-tsunami"></div>
-          <div class="wx-strip volcano" id="wx-volcano"></div>
-          <div class="wx-strip heat" id="wx-heatrisk"></div>
-        </div>
         <div class="region-chips" id="region-chips"></div>
         <div class="rip-banner" id="rip-banner">Rip current: High — swim near a lifeguard.</div>
         <div class="best-chip" id="best-window" hidden></div>
@@ -2152,6 +2151,10 @@
         </div>
         <aside class="today-side" id="today-side">
           <div class="today-out-grid" id="today-out-grid">
+          <div id="today-wear-col">
+            <p class="today-sec-h" id="today-wear-h">What to wear</p>
+            <div id="today-wear"></div>
+          </div>
           <div id="today-hot-col">
             <p class="today-sec-h" id="today-hot-h">Hottest ticket</p>
             <div id="today-hot"></div>
@@ -3527,7 +3530,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 635;
+    window.BOARD_VER = 636;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6735,29 +6738,42 @@ function currentRotation() {
         });
     }
     function writeGreetingCard() {
-      function clothesLine(wx, hours, hrNow, nearPop, nearStorm, uvN, windMph) {
+      function clothesDetail(wx, hours, hrNow, nearPop, nearStorm, uvN, windMph, rainStart, rainEnd) {
         var t = Number(wx.feel != null ? wx.feel : wx.temp);
         if (!isFinite(t) && wx.temp != null) t = Number(wx.temp);
         var night = hrNow >= 20 || hrNow < 6;
-        var bits = [];
+        var outfit, sun = "", rain = "", extra = "";
         if (night) {
-          if (isFinite(t) && t >= 82) bits.push("Sleep in whatever is coolest — it's still sticky after dark");
-          else if (isFinite(t) && t <= 72) bits.push("A light layer on the lanai is enough after dark");
-          else bits.push("Evening clothes can stay light");
-        } else if (isFinite(t) && t >= 96) bits.push("Linen or the thinnest shirt you have — heat index is up");
-        else if (isFinite(t) && t >= 90) bits.push("Shorts and a light shirt");
-        else if (isFinite(t) && t >= 78) bits.push("Shorts weather");
-        else if (isFinite(t) && t <= 68) bits.push("A long sleeve for the morning, you'll peel it by noon");
-        else bits.push("Light clothes");
-        if (!night && uvN >= 8) bits.push("hat and sunscreen");
-        else if (!night && uvN >= 6) bits.push("sunscreen");
-        if (nearStorm || nearPop >= 60) bits.push("pack a light rain layer");
-        else if (nearPop >= 40) bits.push("keep a rain shell in the cart");
-        if (windMph >= 18) bits.push("skip the loose hat on the beach");
-        var line = bits.join(", ");
-        if (line) line = line.charAt(0).toUpperCase() + line.slice(1);
-        if (line && line.indexOf(".") < 0) line += ".";
-        return line;
+          if (isFinite(t) && t >= 82) outfit = "It's still sticky after dark. Sleep in the lightest cotton or linen you have, and skip a heavy robe on the lanai.";
+          else if (isFinite(t) && t <= 72) outfit = "Cooler than a typical Key night. A light layer on the lanai is enough; you will not need a jacket in the house.";
+          else outfit = "Evening clothes can stay light — shorts or a sundress, bare feet on the tile.";
+        } else if (isFinite(t) && t >= 96) outfit = "Heat index is up. Linen or the thinnest short-sleeve you own, light color. Dark shirts will feel worse by noon.";
+        else if (isFinite(t) && t >= 90) outfit = "Shorts and a light shirt. If you are walking Dearborn or the beach, pack a cover-up — shade is thin after 11.";
+        else if (isFinite(t) && t >= 78) outfit = "Straight shorts weather. A breathable shirt is plenty until the sun drops.";
+        else if (isFinite(t) && t <= 68) outfit = "Cool snap. Long sleeve for the morning errand, peel it by lunch.";
+        else outfit = "Light clothes. Nothing heavy.";
+        if (!night && uvN >= 8) sun = "UV is harsh through mid-afternoon. Hat, sunglasses, and sunscreen before you leave the villa.";
+        else if (!night && uvN >= 6) sun = "Sunscreen on any long stretch outside. A hat helps on the sand.";
+        else if (!night && uvN >= 3) sun = "Sun is moderate. Sunscreen if you will be out more than a short walk.";
+        if (nearStorm) rain = "Thunder is in the next few hours. A packable rain layer in the cart beats getting soaked between stores.";
+        else if (nearPop >= 60) rain = "Rain looks likely nearby. Toss a light shell in the bag even if it is dry right now.";
+        else if (nearPop >= 40) rain = "A shower can sneak in. Keep a rain shell in the cart, not in the villa.";
+        else if (rainStart != null) rain = "Later rain is on the book. Dry for now; bring the shell if you will still be out.";
+        if (windMph >= 18) extra = "Wind is up. Skip the loose hat on the beach and hold the umbrella or it will invert.";
+        else if (windMph >= 12 && !night) extra = "A bit of breeze. Fine for the cart; a brim hat stays on.";
+        return { outfit: outfit, sun: sun, rain: rain, extra: extra };
+      }
+      function paintWearCard(wx, hours, hrNow, nearPop, nearStorm, uvN, windMph, rainStart, rainEnd) {
+        var box = document.getElementById("today-wear");
+        var col = document.getElementById("today-wear-col");
+        if (!box) return;
+        var d = clothesDetail(wx || window.__nowWx || {}, hours || window.__hours || [], hrNow, nearPop, nearStorm, uvN, windMph, rainStart, rainEnd);
+        var parts = [d.outfit, d.sun, d.rain, d.extra].filter(Boolean);
+        box.innerHTML = '<div class="card ev-card wear-card"><div class="ev-body"><b>What to wear</b>' +
+          parts.map(function (p) { return '<span class="eat-why">' + p + "</span>"; }).join("") +
+          "</div></div>";
+        if (col) col.hidden = !parts.length;
+        if (typeof noteFeed === "function") noteFeed("wear", !!parts.length, parts[0] ? parts[0].slice(0, 48) : "none");
       }
       var el = document.getElementById("live-sky");
       var hi = document.getElementById("greet-hi");
@@ -6832,12 +6848,6 @@ function currentRotation() {
       var uv = feedTxt("live-uv");
       var uvN = parseInt(uv.replace(/[^\d]/g, ""), 10);
       if (hrNow >= 10 && hrNow <= 16 && uvN >= 6) bits.push("UV is " + uv + " — shade or a shirt if you're out long.");
-      var wear = document.getElementById("greet-wear");
-      if (wear) {
-        var windMph2 = parseInt(feedTxt("live-wind").replace(/[^\d]/g, ""), 10) || Number(wx.wind) || 0;
-        wear.textContent = clothesLine(wx, hours, hrNow, nearPop, nearStorm, uvN, windMph2);
-      }
-
       var rainStart = null, rainEnd = null;
       hours.forEach(function (h) {
         if (!h || !h.startTime) return;
@@ -6852,6 +6862,10 @@ function currentRotation() {
         if (rainStart == null) rainStart = hh;
         rainEnd = hh;
       });
+      var windMph2 = parseInt(feedTxt("live-wind").replace(/[^\d]/g, ""), 10) || Number(wx.wind) || 0;
+      if (typeof paintWearCard === "function") {
+        paintWearCard(wx, hours, hrNow, nearPop, nearStorm, isFinite(uvN) ? uvN : 0, windMph2, rainStart, rainEnd);
+      }
       function clock12(h) {
         var x = ((h + 11) % 12) + 1;
         return x + (h >= 12 ? " p.m." : " a.m.");
@@ -9414,15 +9428,31 @@ function currentRotation() {
         openMapPop("Lightning", boltMapSrc(), '<a href="' + boltMapSrc() + '" target="_blank" rel="noopener">Open live lightning map</a>');
         return;
       }
-      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #ent-list .card, #eat-list .card");
+      var shopCard = e.target.closest && e.target.closest("#today-shop .card");
+      if (shopCard) {
+        var slat = Number(shopCard.getAttribute("data-lat"));
+        var slon = Number(shopCard.getAttribute("data-lon"));
+        var sname = shopCard.getAttribute("data-map") || "Store";
+        var src, link;
+        if (isFinite(slat) && isFinite(slon)) {
+          src = "https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=18&t=m&hl=en&iwloc=0&output=embed";
+          link = "https://www.google.com/maps/dir/?api=1&destination=" + slat + "," + slon;
+        } else {
+          src = "https://maps.google.com/maps?q=" + encodeURIComponent(sname) + "&z=17&hl=en&output=embed";
+          link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(sname);
+        }
+        openMapPop(sname, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+        return;
+      }
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #ent-list .card, #eat-list .card");
       if (evCard) {
         var lat = evCard.getAttribute("data-lat");
         var lon = evCard.getAttribute("data-lon");
         var q = evCard.getAttribute("data-map") || eventMapQuery(evCard);
         var src, link;
         if (lat && lon && isFinite(Number(lat)) && isFinite(Number(lon))) {
-          src = "https://maps.google.com/maps?q=" + Number(lat) + "," + Number(lon) + "&ll=" + Number(lat) + "," + Number(lon) + "&z=16&hl=en&output=embed";
-          link = "https://www.google.com/maps/search/?api=1&query=" + Number(lat) + "," + Number(lon);
+          src = "https://maps.google.com/maps?q=" + Number(lat) + "," + Number(lon) + "&ll=" + Number(lat) + "," + Number(lon) + "&z=17&t=m&hl=en&iwloc=0&output=embed";
+          link = "https://www.google.com/maps/dir/?api=1&destination=" + Number(lat) + "," + Number(lon);
         } else {
           src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&output=embed";
           link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
@@ -9872,10 +9902,10 @@ function currentRotation() {
 
       function seedShopDeals() {
         return [
-          { name: "Bealls Florida", addr: "1500 Placida Rd, Englewood", lat: 26.9612, lon: -82.3492, kind: "Clothing", start: 10, end: 21, sunEnd: 20, deal: "Merchants Crossing. Bealls Rewards: $5 back per $100, 20% off during your birthday month. Clearance running in-store.", url: "https://stores.beallsflorida.com/fl/englewood/1500-placida-rd" },
-          { name: "Grocery Outlet", addr: "606 Taywood Rd, Englewood", lat: 26.9624, lon: -82.3258, kind: "Grocery", start: 9, end: 21, deal: "Weekly circular, while supplies last. Local Englewood store — grocery and household finds below typical retail.", url: "https://groceryoutlet.app.link/StoreCircular" },
-          { name: "Publix Super Market", addr: "1500 Placida Rd, Englewood", lat: 26.9606, lon: -82.3506, kind: "Grocery", start: 7, end: 22, deal: "Weekly ad cycle. BOGO and sale tags change Wednesday. Use the app for this store's digital coupons.", url: "https://www.publix.com/savings/weekly-ad" },
-          { name: "Downtown Englewood", addr: "Dearborn St, Englewood", lat: 26.9619, lon: -82.3537, kind: "Shops", start: 10, end: 17, days: [6], deal: "Saturday morning shops and the Dearborn Street stroll. Boutiques and antique stops around the 400 block.", url: "https://www.englewoodchamber.com/" }
+          { name: "Bealls Florida", addr: "1500 Placida Rd, Englewood, FL 34223", lat: 26.96095, lon: -82.34935, kind: "Clothing", start: 10, end: 21, sunEnd: 20, deal: "Merchants Crossing. Bealls Rewards: $5 back per $100, 20% off during your birthday month. Clearance running in-store.", url: "https://stores.beallsflorida.com/fl/englewood/1500-placida-rd" },
+          { name: "Grocery Outlet", addr: "606 Taywood Rd, Englewood, FL 34224", lat: 26.96155, lon: -82.32595, kind: "Grocery", start: 9, end: 21, deal: "Weekly circular, while supplies last. Local Englewood store — grocery and household finds below typical retail.", url: "https://groceryoutlet.app.link/StoreCircular" },
+          { name: "Publix Super Market", addr: "2001 S McCall Rd, Englewood, FL 34223", lat: 26.94985, lon: -82.33955, kind: "Grocery", start: 7, end: 22, deal: "Weekly ad cycle. BOGO and sale tags change Wednesday. Use the app for this store's digital coupons.", url: "https://www.publix.com/savings/weekly-ad" },
+          { name: "Downtown Englewood", addr: "400 W Dearborn St, Englewood, FL 34223", lat: 26.96155, lon: -82.35385, kind: "Shops", start: 10, end: 17, days: [6], deal: "Saturday morning shops and the Dearborn Street stroll. Boutiques and antique stops around the 400 block.", url: "https://www.englewoodchamber.com/" }
         ];
       }
       function paintShopDeal() {
@@ -9927,7 +9957,7 @@ function currentRotation() {
           return h12 + (min ? ":" + (min < 10 ? "0" : "") + min : "") + " " + am;
         }
         when = clock(row.start) + "–" + clock(openEnd);
-        var mapQ = [row.name, row.addr, "Englewood FL 34223"].filter(Boolean).join(", ");
+        var mapQ = row.addr || [row.name, "Englewood, FL"].join(", ");
         box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-lat="' + row.lat + '" data-lon="' + row.lon + '">' +
           '<div class="ev-rail"><span class="ev-dow">Shop</span><span class="ev-num">' + tag + "</span></div>" +
           '<div class="ev-body">' + (dist ? '<span class="dist-tag">' + dist + "</span>" : "") +
