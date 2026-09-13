@@ -1968,7 +1968,16 @@
     html.band-wall #now .greet-card b { font-size:22px; }
     #today-hourly, #today-daily { display:block; }
 
-    </style>
+    
+    .radar-stage { position: relative; }
+    .radar-home-pin {
+      position: absolute; left: 50%; top: 50%; width: 12px; height: 12px;
+      margin: -18px 0 0 -6px; pointer-events: none; z-index: 4;
+      background: #e85d4c; border: 2px solid #fff; border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+    }
+</style>
 </head>
 <body>
   <a class="skip-a11y" href="#now">Skip to Today</a>
@@ -2215,10 +2224,11 @@
         <div class="wx-top">
                 <div class="wx-map-frame" id="wx-map-frame">
           <div class="radar-crop radar-stage" id="wx-radar-stage">
-            <iframe class="wx-map-pane on" id="wx-radar-view" title="Radar" src="about:blank" allowfullscreen></iframe>
+            <iframe class="wx-map-pane on" id="wx-radar-view" title="Radar pinned on home" src="about:blank" allowfullscreen></iframe>
+            <div id="radar-home-pin" class="radar-home-pin" title="Home"></div>
             <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
           </div>
-          <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">NWS loop</span></p>
+          <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">Pinned on home</span></p>
         </div>
         <div class="wx-top-left">
         <p class="wx-nowline" id="wx-nowline">Updating…</p>
@@ -3524,7 +3534,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 655;
+    window.BOARD_VER = 656;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4917,8 +4927,14 @@ function gatorRange() {
       setBtn(pd, pdN, pack && pack.pd, "Police");
       setBtn(fd, fdN, pack && pack.fd, "Fire");
     }
-    function rainviewerUrl(lat, lon) {
-      return "https://www.rainviewer.com/map.html?loc=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + ",9";
+    function rainviewerUrl(lat, lon, zoom) {
+      lat = Number(lat); lon = Number(lon);
+      if (!isFinite(lat) || !isFinite(lon)) {
+        lat = (typeof homeLat === "function" && homeLat()) || 26.9595;
+        lon = (typeof homeLon === "function" && homeLon()) || -82.3543;
+      }
+      zoom = zoom || 10;
+      return "https://www.rainviewer.com/map.html?loc=" + lat.toFixed(4) + "," + lon.toFixed(4) + "," + zoom;
     }
     function stopRainviewerLoop() {
       if (window.__rvTimer) { clearInterval(window.__rvTimer); window.__rvTimer = 0; }
@@ -4941,39 +4957,55 @@ function gatorRange() {
       var nws = "https://radar.weather.gov/ridge/standard/" + st + "_loop.gif";
       window.__radarLoopUrl = nws;
       window.__radarView = "loop";
+      var rv = rainviewerUrl(lat, lon, 10);
       if (img) {
-        img.hidden = false;
-        img.alt = st + " radar loop";
-        img.src = nws + "?t=" + Date.now();
+        if (img.tagName === "IFRAME") {
+          if (img.getAttribute("data-pin") !== rv) {
+            img.src = rv;
+            img.setAttribute("data-pin", rv);
+          }
+          img.alt = "Radar pinned on " + pin;
+        } else {
+          img.hidden = false;
+          img.alt = st + " radar loop";
+          img.src = nws + "?t=" + Date.now();
+        }
       }
       var wxImg = document.getElementById("wx-radar-view");
       if (wxImg) {
-        var rv = rainviewerUrl(lat, lon);
         if (wxImg.tagName === "IFRAME") {
           if (wxImg.getAttribute("data-pin") !== rv) {
             wxImg.src = rv;
             wxImg.setAttribute("data-pin", rv);
           }
+          wxImg.title = "Radar pinned on " + pin;
         } else {
-          wxImg.src = nws + "?t=" + Date.now();
+          wxImg.src = rv;
         }
-        wxImg.alt = st + " radar loop";
-        wxImg.onload = function () {
-          var box = document.getElementById("wx-radar-stage");
-          if (box && wxImg.naturalWidth && wxImg.naturalHeight) {
-            box.style.aspectRatio = wxImg.naturalWidth + " / " + wxImg.naturalHeight;
-          }
-        };
-        wxImg.src = nws + "?t=" + Date.now();
+      }
+      var pinMark = document.getElementById("radar-home-pin");
+      if (!pinMark) {
+        var stage = document.getElementById("wx-radar-stage");
+        if (stage) {
+          pinMark = document.createElement("div");
+          pinMark.id = "radar-home-pin";
+          pinMark.className = "radar-home-pin";
+          pinMark.title = pin;
+          stage.appendChild(pinMark);
+        }
       }
       if (typeof syncWxMapFrame === "function") syncWxMapFrame();
       if (link) link.href = rainviewerUrl(lat, lon);
-      if (cap) cap.textContent = "NWS " + st + " loop near " + pin;
+      if (cap) cap.textContent = "Radar pinned on " + pin;
+      var mapNote = document.getElementById("wx-map-note");
+      if (mapNote) mapNote.textContent = pin || "home";
+      var mapLab = document.getElementById("wx-map-label");
+      if (mapLab) mapLab.textContent = "Radar";
       if (note) {
-        note.innerHTML = "Official NWS loop for the nearest site to " + pin + ". <a id=\"radar-link\" href=\"" + rainviewerUrl(lat, lon) + "\" target=\"_blank\" rel=\"noopener\">RainViewer at this address</a> · <a href=\"https://radar.weather.gov/station/" + st + "/standard\" target=\"_blank\" rel=\"noopener\">NWS " + st + "</a>";
+        note.innerHTML = "Centered on " + pin + " (" + Number(lat).toFixed(3) + ", " + Number(lon).toFixed(3) + "). <a id=\"radar-link\" href=\"" + rv + "\" target=\"_blank\" rel=\"noopener\">Open full map</a>" + (st ? " · nearest NWS " + st : "");
       }
       window.__radarBase = nws;
-      if (typeof noteFeed === "function") noteFeed("radar", true, "nws " + st);
+      if (typeof noteFeed === "function") noteFeed("radar", true, "pin " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3) + (st ? " · " + st : ""));
       if (typeof paintPageRefs === "function") paintPageRefs();
     }
     function applyLocalMaps() {
