@@ -2043,7 +2043,7 @@
     #wx-radar-windy { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:2; background:#123; }
 
 
-    #wx-radar-live { display:none !important; }
+    #wx-radar-live { display:block !important; position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:9; background:#d7e6ef; }
     #wx-radar-windy { display:none !important; }
     #wx-radar-view { display:block !important; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:8 !important; background:#0b1220; }
     .buzz-card { display:flex; gap:10px; align-items:stretch; }
@@ -3615,7 +3615,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 676;
+    window.BOARD_VER = 677;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5046,8 +5046,23 @@ function gatorRange() {
         live.setAttribute("allowfullscreen", "true");
         stage.insertBefore(live, stage.firstChild);
       }
-      var rv = "https://www.rainviewer.com/map.html?loc=" + lat.toFixed(4) + "," + lon.toFixed(4) +
-        ",8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&c=1&o=83&lm=1&th=0&sm=1&sn=1";
+      var rv = "https://embed.windy.com/embed2.html?lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) +
+        "&detailLat=" + lat.toFixed(4) + "&detailLon=" + lon.toFixed(4) +
+        "&zoom=12&overlay=radar&product=radar&level=surface&marker=true&message=false&calendar=now&pressure=false&type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph";
+      live.style.display = "block";
+      live.style.position = "absolute";
+      live.style.inset = "0";
+      live.style.zIndex = "9";
+      if (live.getAttribute("data-src") !== rv) {
+        live.src = rv;
+        live.setAttribute("data-src", rv);
+      }
+      var hideGif = document.getElementById("wx-radar-view");
+      if (hideGif) hideGif.style.display = "none";
+      var hideMap = document.getElementById("wx-radar-map");
+      if (hideMap) hideMap.style.display = "none";
+      if (typeof noteFeed === "function") noteFeed("radar", true, "windy z12 " + lat.toFixed(3) + "," + lon.toFixed(3));
+      return;
       live.style.display = "none";
       function nearestRadarSite(la, lo, given) {
         var g = String(given || "").toUpperCase().replace(/^K/, "");
@@ -8707,11 +8722,12 @@ function currentRotation() {
         if (pin) pin.style.display = "none";
         if (stamp) stamp.style.display = "none";
       } else {
-        if (map) { map.style.display = "block"; map.style.zIndex = "8"; }
+        var live = document.getElementById("wx-radar-live");
+        if (live) { live.style.display = "block"; live.style.zIndex = "9"; }
+        if (map) map.style.display = "none";
         if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
-        if (pin) pin.style.display = "";
+        if (pin) pin.style.display = "none";
         if (stamp) stamp.style.display = "";
-        if (window.__radarMap) setTimeout(function () { try { window.__radarMap.invalidateSize(); window.__radarMap.setView([homeLat(), homeLon()], 10); } catch (eZ) {} }, 80);
       }
       if (lab) lab.textContent = which === "bolt" ? "Lightning" : "Radar";
       if (note) note.textContent = which === "bolt" ? "Strikes near the house" : "Looping last 2 hours at home";
@@ -12231,12 +12247,18 @@ function mustEats() {
       }
       function dedupe(list) {
         var seen = {};
-        return (list || []).filter(function (r) {
+        var out = [];
+        (list || []).forEach(function (r) {
           var k = String(r.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-          if (!k || seen[k]) return false;
-          seen[k] = 1;
-          return true;
+          if (!k) return;
+          if (!seen[k]) { seen[k] = r; out.push(r); return; }
+          var cur = seen[k];
+          if (r.src === "places" && r.lat != null) { cur.lat = r.lat; cur.lon = r.lon; cur.src = "places"; }
+          if (r.rating != null) { cur.rating = r.rating; cur.reviews = r.reviews || cur.reviews; }
+          if (r.addr && String(r.addr).length > String(cur.addr || "").length) cur.addr = r.addr;
+          if (r.kind && (cur.kind === "Course" || !cur.kind)) cur.kind = r.kind;
         });
+        return out;
       }
       function golfMiles() {
         return Math.max(25, Number((getSet() || {}).eventMiles || 25));
@@ -12283,9 +12305,9 @@ function mustEats() {
         if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " courses · " + (list[0].rating != null ? list[0].rating + " " : "") + list[0].name) : "none");
         if (list && list[0] && typeof selectGolf === "function") selectGolf(window.__golfPick && list.some(function (x) { return x.name === window.__golfPick.name; }) ? window.__golfPick : list[0]);
         if (typeof matrixChunk === "function") {
-          var dests = list.filter(function (r) { return r.lat != null && r.lon != null; }).map(function (r) {
+          var dests = list.map(function (r) {
             return {
-              lat: r.lat, lon: r.lon, q: [r.name, r.addr, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(" "),
+              q: [r.name, r.addr, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(", "),
               on: function (d) {
                 r.driveMin = d.min;
                 if (d.miles != null) r.miles = d.miles;
@@ -12412,11 +12434,10 @@ function mustEats() {
         });
       }
       function run() {
-        window.__golfPool = dedupe(seedGolf());
-        draw(window.__golfPool);
+        window.__golfPool = [];
         fromPlaces(function (places) {
           fromOverpass(function (osm) {
-            window.__golfPool = dedupe((window.__golfPool || []).concat(places || []).concat(osm || []));
+            window.__golfPool = dedupe((places || []).concat(seedGolf()).concat(osm || []));
             draw(window.__golfPool);
             rateList(window.__golfPool.slice(), function (rated) {
               window.__golfPool = dedupe(rated.concat(window.__golfPool || []));
