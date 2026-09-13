@@ -1982,7 +1982,8 @@
     #wx-radar-view.wx-map-pane { width:100%; height:100%; object-fit:cover; background:#123; }
 
     #wx-radar-map { position:absolute; inset:0; z-index:2; }
-    #wx-radar-view { display:none; }
+    #wx-radar-view { display:block !important; object-fit:cover; z-index:2; }
+    #wx-radar-windy { display:none !important; }
     #golf-list .kind-tag.golf-pub, .kind-tag.golf-pub { background:#1b6b62 !important; color:#fff !important; }
     #golf-list .kind-tag.golf-priv, .kind-tag.golf-priv { background:#1e3a5f !important; color:#fff !important; }
     #golf-list .kind-tag.golf-res, .kind-tag.golf-res { background:#c45c4a !important; color:#fff !important; }
@@ -3600,7 +3601,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 670;
+    window.BOARD_VER = 671;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5018,29 +5019,36 @@ function gatorRange() {
       var stage = document.getElementById("wx-radar-stage");
       if (!stage) return;
       var windy = document.getElementById("wx-radar-windy");
-      if (!windy) {
-        windy = document.createElement("iframe");
-        windy.id = "wx-radar-windy";
-        windy.title = "Radar at home";
-        windy.setAttribute("allowfullscreen", "true");
-        stage.insertBefore(windy, stage.firstChild);
+      if (windy) windy.remove();
+      function nearestRadarSite(la, lo, given) {
+        var g = String(given || "").toUpperCase().replace(/^K/, "");
+        if (/^[A-Z]{3}$/.test(g)) return g;
+        var sites = [
+          { id:"TBW", lat:27.7055, lon:-82.4018 },
+          { id:"MIA", lat:25.6111, lon:-80.4127 },
+          { id:"MLB", lat:28.1133, lon:-80.6540 },
+          { id:"JAX", lat:30.4847, lon:-81.7019 },
+          { id:"TLH", lat:30.3975, lon:-84.3289 },
+          { id:"EVX", lat:30.5644, lon:-85.9214 },
+          { id:"BYX", lat:24.5975, lon:-81.7031 },
+          { id:"AMX", lat:25.6111, lon:-80.4128 }
+        ];
+        var best = "TBW", bestD = 1e9;
+        sites.forEach(function (s) {
+          var d = Math.hypot(la - s.lat, lo - s.lon);
+          if (d < bestD) { bestD = d; best = s.id; }
+        });
+        return best;
       }
-      var wsrc = (typeof windyRadarUrl === "function") ? windyRadarUrl(lat, lon, 8) : "";
-      if (wsrc && windy.getAttribute("data-src") !== wsrc) {
-        windy.src = wsrc;
-        windy.setAttribute("data-src", wsrc);
+      var site = nearestRadarSite(lat, lon, st);
+      var pane = document.getElementById("wx-radar-view");
+      var nws = "https://radar.weather.gov/ridge/standard/" + site + "_loop.gif?t=" + Date.now();
+      if (pane) {
+        pane.style.display = "block";
+        pane.src = nws;
       }
-      var paneHide = document.getElementById("wx-radar-view");
-      if (paneHide) paneHide.style.display = "none";
-      if (typeof noteFeed === "function") noteFeed("radar", !!wsrc, wsrc ? "windy radar" : "no windy");
-      if (wsrc) return;
-      if (typeof L === "undefined") {
-        var nws = st ? ("https://radar.weather.gov/ridge/standard/" + st + "_loop.gif?t=" + Date.now()) : "";
-        var pane = document.getElementById("wx-radar-view");
-        if (pane && nws) { pane.style.display = "block"; pane.src = nws; }
-        if (typeof noteFeed === "function") noteFeed("radar", !!nws, nws ? "nws gif" : "no leaflet");
-        return;
-      }
+      if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + site + " loop");
+      if (typeof L === "undefined") return;
       var hostEl = document.getElementById("wx-radar-map");
       if (!hostEl) {
         hostEl = document.createElement("div");
@@ -10320,9 +10328,10 @@ function currentRotation() {
       function fetchNewsQuery(q, cb) {
         var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
         var urls = [
-          rss,
+          "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss),
           "https://corsproxy.io/?" + encodeURIComponent(rss),
-          "https://api.allorigins.win/raw?url=" + encodeURIComponent(rss)
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(rss),
+          rss
         ];
         (function next(i) {
           if (i >= urls.length) { cb([]); return; }
@@ -10330,7 +10339,16 @@ function currentRotation() {
             if (!res.ok) throw new Error("http");
             return res.text();
           }).then(function (txt) {
-            var items = parseRssItems(txt);
+            var items = [];
+            try {
+              var j = JSON.parse(txt);
+              if (j && Array.isArray(j.items)) {
+                items = j.items.map(function (it) {
+                  return { title: it.title || "", link: it.link || it.url || "", desc: String(it.description || it.content || "").replace(/<[^>]+>/g, " ").slice(0, 240) };
+                }).filter(function (it) { return it.title; });
+              }
+            } catch (eJ) {}
+            if (!items.length) items = parseRssItems(txt);
             if (!items.length) throw new Error("empty");
             cb(items);
           }).catch(function () { next(i + 1); });
@@ -10380,6 +10398,7 @@ function currentRotation() {
               return { item: it, score: scoreBuzzItem(it, words) };
             }).sort(function (a, b) { return b.score - a.score; });
             if (--left <= 0) {
+              fillBuzzFallbacks(pack);
               window.__buzz = pack;
               window.__buzz.at = Date.now();
               window.__buzz.key = key;
@@ -10392,6 +10411,47 @@ function currentRotation() {
         one("hh", "(\"happy hour\" OR \"hour specials\" OR \"$5\" OR \"$6\") (" + pin + ")", ["happy hour","specials","draft","appetizer"]);
         one("shop", "(sale OR clearance OR \"percent off\" OR bogo OR \"warehouse sale\") (" + pin + ")", ["sale","clearance","off","bogo","deal"]);
       }
+
+      function fillBuzzFallbacks(pack) {
+        function asItem(name, why, extra) {
+          return { score: 20, item: { title: name, desc: why, link: "" }, why: why, extra: extra || {} };
+        }
+        if (!(pack.hot && pack.hot.length)) {
+          var live = (typeof recUpcoming === "function") ? recUpcoming(7 * 24 * 3600000) : [];
+          live.slice(0, 6).forEach(function (e) {
+            pack.hot.push(asItem(e.sum || "Local event",
+              "Nearby listing while ticket buzz is quiet online. Still inside 25 miles of home and it rotates daily.",
+              { where: e.loc, whenTxt: e.when }));
+          });
+        }
+        if (!(pack.table && pack.table.length)) {
+          var eats = (window.__eatPool || window.__eats || []).filter(function (r) {
+            return r && r.name && (r.miles == null || r.miles <= 25);
+          }).sort(function (a, b) {
+            return (Number(b.rating) || 0) - (Number(a.rating) || 0) || (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
+          }).slice(0, 8);
+          eats.forEach(function (r) {
+            pack.table.push(asItem(r.name,
+              (r.rating ? (r.name + " is " + Number(r.rating).toFixed(1) + " from " + (r.reviews || 0).toLocaleString() + " Google reviews") : r.name) +
+              " within 25 miles of home. Used as today’s table while dining headlines are thin.",
+              { where: r.addr || r.area, rating: r.rating, reviews: r.reviews, miles: r.miles }));
+          });
+        }
+        if (!(pack.hh && pack.hh.length) && typeof seedHappyHours === "function") {
+          seedHappyHours().forEach(function (r) {
+            pack.hh.push(asItem(r.name + " happy hour",
+              (r.deal || "Happy hour near home.") + " Picked for the posted deal inside 25 miles of the home pin.",
+              { where: r.addr }));
+          });
+        }
+        if (!(pack.shop && pack.shop.length) && typeof seedShopDeals === "function") {
+          seedShopDeals().forEach(function (r) {
+            pack.shop.push(asItem(r.name,
+              (r.deal || "Store near home.") + " Used while sale headlines are quiet. Still tied to the home address and it changes by day.",
+              { where: r.addr }));
+          });
+        }
+      }
       function firstBuzz(kind) {
         var list = (window.__buzz && window.__buzz[kind]) || [];
         if (!list.length) return null;
@@ -10402,13 +10462,16 @@ function currentRotation() {
         var it = row.item;
         var name = it.title.split(" - ")[0].split(" | ")[0].split(" – ")[0];
         if (name.length > 72) name = name.slice(0, 70) + "…";
+        var extra = row.extra || {};
         return {
           name: name,
-          where: homePlace() || homeTownQuery(),
-          whenTxt: "Today’s pick · " + buzzDayKey(),
-          why: whyFromNews(it, kind, null) + " This card refreshes every morning so a different nearby story can take the slot.",
+          where: extra.where || homePlace() || homeTownQuery(),
+          whenTxt: extra.whenTxt || ("Today’s pick · " + buzzDayKey()),
+          why: (row.why || whyFromNews(it, kind, extra.miles)) + " This card refreshes every morning so a different nearby story can take the slot.",
           link: it.link,
-          miles: null
+          rating: extra.rating,
+          reviews: extra.reviews,
+          miles: extra.miles
         };
       }
       function scheduleBuzzRollover() {
