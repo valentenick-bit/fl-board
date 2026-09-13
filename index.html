@@ -3524,7 +3524,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 646;
+    window.BOARD_VER = 647;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4318,8 +4318,8 @@ Cart shop:</textarea>
       window.__gmapsLoading = false;
       var good = !!(ok && gmapsReady());
       if (typeof noteFeed === "function") {
-        noteFeed("gmaps", good, good ? (placesReady() ? "maps + places" : "maps, no places") : "script not ready");
-        noteFeed("places", placesReady(), placesReady() ? "PlacesService" : "off");
+        noteFeed("gmaps", good, good ? "maps js" : "script not ready");
+        noteFeed("places", !!String((getSet() || {}).gmapsKey || "").trim(), String((getSet() || {}).gmapsKey || "").trim() ? "autocomplete + details" : "no key");
       }
       var fns = window.__gmapsWait || [];
       window.__gmapsWait = [];
@@ -4538,16 +4538,25 @@ Cart shop:</textarea>
       return (list || []).filter(stormThreatensHome);
     }
     function homePoint() { return homeLat() + "," + homeLon(); }
+    function looksLikeStreet(name) {
+      return /\b(drive|dr|road|rd|street|st|lane|ln|court|ct|way|circle|cir|blvd|avenue|ave|terrace|place|pl|trail|parkway|pkwy|harbour|harbor)\b/i.test(String(name || ""));
+    }
     function homePlace() {
       var s = getSet();
       var parsed = parseAddrLine(s.address || homeAddress());
-      var p = String(s.place || parsed.city || "").replace(/\s+(FL|CT|NY|GA|AL|TX|NC|SC|VA|PA|OH|MI|IL|CA|AZ)$/i, "").trim();
-      if (/^(florida|fl|united states|usa)$/i.test(p)) p = parsed.city || "";
+      var zip = String(s.zip || parsed.zip || "").slice(0, 5);
+      if (zip && typeof ZIP_CITY !== "undefined" && ZIP_CITY[zip]) return ZIP_CITY[zip].split(",")[0];
+      var p = String(parsed.city || s.place || "").replace(/\s+(FL|CT|NY|GA|AL|TX|NC|SC|VA|PA|OH|MI|IL|CA|AZ)$/i, "").trim();
+      if (looksLikeStreet(p) || /^(florida|fl|united states|usa|home)$/i.test(p)) p = "";
       if (p) return p;
-      if (parsed.city) return parsed.city;
-      return "Home";
+      return zip || "Home";
     }
-    function homeTide() { return getSet().tide || ""; }
+    function homeTide() {
+      var id = String((getSet() || {}).tide || "").trim();
+      if (id) return id;
+      if (typeof homeIsSWFL === "function" && homeIsSWFL()) return "8725520";
+      return "";
+    }
     function homeRadar() { return getSet().radar || ""; }
     window.watchSource = function (row) {
       if (!row || !row.id) return;
@@ -5193,13 +5202,20 @@ function gatorRange() {
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var list = (d && (d.stations || d)) || [];
-          if (!Array.isArray(list) || !list.length) return;
-          var pick = list[0];
+          if (!Array.isArray(list) || !list.length) {
+            if (typeof homeIsSWFL === "function" && homeIsSWFL()) {
+              putSet({ tide: "8725520", tideName: "Venice, FL" });
+              if (typeof refreshMarineSky === "function") refreshMarineSky();
+            }
+            return;
+          }
+          var pick = list.find(function (x) { return x.id || x.stationId; }) || list[0];
           putSet({ tide: pick.id || pick.stationId || "", tideName: pick.name || pick.id || "Tide" });
           var title = document.getElementById("tide-title");
-          if (title) title.textContent = "Tide";
+          if (title) title.textContent = "Tide · " + (getSet().tideName || "");
           var cap = document.getElementById("live-tide-station");
           if (cap) cap.textContent = getSet().tideName || homePlace();
+          if (typeof refreshMarineSky === "function") refreshMarineSky();
         }).catch(function () {
           var title = document.getElementById("tide-title");
           if (title) title.textContent = "Tide";
