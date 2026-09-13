@@ -891,7 +891,7 @@
     }
     html.phone #today-do, html.phone #today-deliv, html.phone #today-fly-body, html.phone #today-bolt-body, html.phone #today-cane-body, html.phone #today-trash-body { grid-template-columns:1fr; }
 
-    .fun-shell { display:grid; grid-template-columns:1fr 1fr; gap:16px 18px; align-items:start; }
+    .fun-shell { display:grid; grid-template-columns:1.15fr 1fr 1fr; gap:16px 18px; align-items:start; }
     @media (max-width:900px) {
       .fun-shell { grid-template-columns:1fr; }
     }
@@ -902,7 +902,7 @@
       max-width:100%; min-width:0; overflow:visible;
     }
     html.phone #eat-list .ev-body, html.phone #eat-list .eat-why { overflow-wrap:anywhere; word-break:break-word; }
-    #eat-list { min-width:0; }
+    #eat-list, #golf-list { min-width:0; }
     html.phone #eat-list .eat-card, html.phone #eat-list .ev-card { max-width:100%; }
 
     .fun-col-h {
@@ -913,7 +913,7 @@
       color:var(--navy);
     }
     html.dark .fun-col-h { color:#efe4c8; }
-    .fun-main, .fun-eats { min-width:0; }
+    .fun-main, .fun-eats, .fun-golf { min-width:0; }
 
     .eat-rate-pill { display:inline-block; margin:0 6px 4px 0; padding:2px 8px; border-radius:999px; background:#f3e6c4; color:#7a5a12; font-size:11px; font-weight:800; }
     html.dark .eat-rate-pill { background:#3a3018; color:#f0e2b8; }
@@ -1970,13 +1970,7 @@
 
     
     .radar-stage { position: relative; }
-    .radar-home-pin {
-      position: absolute; left: 50%; top: 50%; width: 12px; height: 12px;
-      margin: -18px 0 0 -6px; pointer-events: none; z-index: 4;
-      background: #e85d4c; border: 2px solid #fff; border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      box-shadow: 0 1px 4px rgba(0,0,0,.35);
-    }
+    #radar-home-pin { display: none; }
 </style>
 </head>
 <body>
@@ -2228,7 +2222,7 @@
             <div id="radar-home-pin" class="radar-home-pin" title="Home"></div>
             <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
           </div>
-          <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">Pinned on home</span></p>
+          <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">Looping radar · home pin</span></p>
         </div>
         <div class="wx-top-left">
         <p class="wx-nowline" id="wx-nowline">Updating…</p>
@@ -2381,6 +2375,11 @@
           <h3 class="fun-col-h">Top restaurants</h3>
           <p class="pill-key" id="eat-count">Restaurants near home…</p>
           <div id="eat-list"></div>
+        </aside>
+        <aside class="fun-golf" id="fun-golf">
+          <h3 class="fun-col-h">Golf courses</h3>
+          <p class="pill-key" id="golf-count">Courses near home…</p>
+          <div id="golf-list"></div>
         </aside>
         </div>
       </section>
@@ -3534,7 +3533,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 656;
+    window.BOARD_VER = 658;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4153,6 +4152,7 @@ Cart shop:</textarea>
       window.__eatEnrichAt = 0;
       window.__eatBag = [];
       if (typeof window.reloadEats === "function") window.reloadEats();
+        if (typeof window.reloadGolf === "function") window.reloadGolf();
       if (typeof enrichEventDistances === "function" && window.__entAll) enrichEventDistances(window.__entAll);
       var hint = document.getElementById("set-zip-hint");
       if (hint) hint.textContent = "Google lookups cleared. Fetching fresh ratings and drives.";
@@ -4928,13 +4928,21 @@ function gatorRange() {
       setBtn(fd, fdN, pack && pack.fd, "Fire");
     }
     function rainviewerUrl(lat, lon, zoom) {
+      return windyRadarUrl(lat, lon, zoom);
+    }
+    function windyRadarUrl(lat, lon, zoom) {
       lat = Number(lat); lon = Number(lon);
       if (!isFinite(lat) || !isFinite(lon)) {
         lat = (typeof homeLat === "function" && homeLat()) || 26.9595;
         lon = (typeof homeLon === "function" && homeLon()) || -82.3543;
       }
-      zoom = zoom || 10;
-      return "https://www.rainviewer.com/map.html?loc=" + lat.toFixed(4) + "," + lon.toFixed(4) + "," + zoom;
+      zoom = zoom || 9;
+      return "https://embed.windy.com/embed2.html?lat=" + lat.toFixed(4) +
+        "&lon=" + lon.toFixed(4) +
+        "&detailLat=" + lat.toFixed(4) +
+        "&detailLon=" + lon.toFixed(4) +
+        "&zoom=" + zoom +
+        "&level=surface&overlay=radar&product=radar&menu=&message=true&marker=true&calendar=now&pressure=false&type=map&location=coordinates&detail=false&metricWind=mph&metricTemp=default&radarRange=-1";
     }
     function stopRainviewerLoop() {
       if (window.__rvTimer) { clearInterval(window.__rvTimer); window.__rvTimer = 0; }
@@ -5002,7 +5010,7 @@ function gatorRange() {
       var mapLab = document.getElementById("wx-map-label");
       if (mapLab) mapLab.textContent = "Radar";
       if (note) {
-        note.innerHTML = "Centered on " + pin + " (" + Number(lat).toFixed(3) + ", " + Number(lon).toFixed(3) + "). <a id=\"radar-link\" href=\"" + rv + "\" target=\"_blank\" rel=\"noopener\">Open full map</a>" + (st ? " · nearest NWS " + st : "");
+        note.innerHTML = "Centered on " + pin + " (" + Number(lat).toFixed(3) + ", " + Number(lon).toFixed(3) + "). <a id=\"radar-link\" href=\"" + rv + "\" target=\"_blank\" rel=\"noopener\">Open looping radar</a>" + (st ? " · nearest NWS " + st : "");
       }
       window.__radarBase = nws;
       if (typeof noteFeed === "function") noteFeed("radar", true, "pin " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3) + (st ? " · " + st : ""));
@@ -11776,6 +11784,187 @@ function mustEats() {
       setTimeout(run, 1200);
       setInterval(run, 15 * 60 * 1000);
     })();
+    (function loadGolf() {
+      function milesOf(lat, lon) {
+        if (typeof window.milesOf === "function") return window.milesOf(lat, lon);
+        if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) return null;
+        var R = 3958.8, toR = Math.PI / 180;
+        var dLat = (lat - homeLat()) * toR, dLon = (lon - homeLon()) * toR;
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+      }
+      function kindOf(tags) {
+        var t = tags || {};
+        var blob = String(t.golf || t.access || t.leisure || t.description || "").toLowerCase();
+        if (/resort/.test(blob) || /resort/.test(String(t.name || "").toLowerCase())) return "Resort";
+        if (t.access === "private" || /private|members/.test(blob)) return "Private";
+        if (t.access === "yes" || t.access === "public" || /public/.test(blob)) return "Public";
+        if (/executive|par.?3/.test(blob + " " + String(t.name || "").toLowerCase())) return "Executive";
+        return "Course";
+      }
+      function card(r) {
+        if ((r.miles == null || isNaN(r.miles)) && r.lat != null && r.lon != null) r.miles = milesOf(r.lat, r.lon);
+        var dist = "";
+        if (r.miles != null && !isNaN(r.miles)) dist = (Math.round(Number(r.miles) * 10) / 10) + " mi";
+        if (r.driveMin != null && !isNaN(r.driveMin)) dist += (dist ? " · " : "") + Math.max(1, Math.round(r.driveMin)) + " min";
+        var reviews = r.reviews ? (r.reviews + " reviews") : "";
+        var pills = '<span class="kind-tag eat-rest">' + (r.kind || "Course") + "</span>";
+        if (dist) pills += '<span class="dist-tag">' + dist + "</span>";
+        if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
+        var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
+        var addr = r.addr || r.area || "";
+        var mapQ = ((r.name || "") + (addr ? " " + addr : "")).trim() || (r.name + " golf");
+        return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '">' +
+          '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + '</span><span class="ev-ico" aria-hidden="true">⛳</span></div>' +
+          '<div class="ev-body"><b>' + String(r.name || "Golf").replace(/</g, "") + "</b>" +
+          (addr ? "<span>" + String(addr).replace(/</g, "") + "</span>" : "") +
+          '<div class="eat-why">' + pills + "</div></div></div>";
+      }
+      function dedupe(list) {
+        var seen = {};
+        return (list || []).filter(function (r) {
+          var k = String(r.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+          if (!k || seen[k]) return false;
+          seen[k] = 1;
+          return true;
+        });
+      }
+      function rank(list) {
+        var cap = Number((getSet() || {}).eventMiles || 15) + 2;
+        return dedupe(list).filter(function (r) {
+          if (r.miles == null && r.lat != null) r.miles = milesOf(r.lat, r.lon);
+          return r.miles == null || r.miles <= cap;
+        }).sort(function (a, b) {
+          var ra = a.rating != null ? Number(a.rating) : 0;
+          var rb = b.rating != null ? Number(b.rating) : 0;
+          if (rb !== ra) return rb - ra;
+          return (a.miles || 99) - (b.miles || 99);
+        }).slice(0, 12);
+      }
+      function draw(list) {
+        var box = document.getElementById("golf-list");
+        var note = document.getElementById("golf-count");
+        var miles = Number((getSet() || {}).eventMiles || 15);
+        list = rank(list || window.__golfPool || []);
+        window.__golfs = list;
+        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Widen the event miles in Settings or check the pin.</span></div>';
+        if (note) note.textContent = list.length ? ("Google ratings · highest first · " + miles + " mi") : ("No courses within " + miles + " mi");
+        if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " courses · " + list[0].name) : "none");
+      }
+      function fromOverpass(cb) {
+        var miles = Number((getSet() || {}).eventMiles || 15);
+        var q = '[out:json][timeout:20];(nwr["leisure"="golf_course"](around:' + Math.round(miles * 1609.34) + "," + homeLat() + "," + homeLon() + '););out center 25;';
+        var urls = [
+          "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q),
+          "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q)
+        ];
+        var i = 0, done = false;
+        setTimeout(function () { if (!done) { done = true; cb([]); } }, 8000);
+        function next() {
+          if (done) return;
+          if (i >= urls.length) { done = true; return cb([]); }
+          fetch(urls[i++]).then(function (r) { return r.json(); }).then(function (d) {
+            if (done) return;
+            var rows = (d && d.elements) || [];
+            if (!rows.length) return next();
+            done = true;
+            cb(rows.map(function (el) {
+              var tags = el.tags || {};
+              var lat = el.lat || (el.center && el.center.lat);
+              var lon = el.lon || (el.center && el.center.lon);
+              if (!tags.name || lat == null) return null;
+              return {
+                name: tags.name,
+                kind: kindOf(tags),
+                rating: null,
+                reviews: 0,
+                src: "osm",
+                miles: milesOf(lat, lon),
+                lat: lat, lon: lon,
+                area: tags["addr:city"] || "",
+                addr: [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"], tags["addr:state"]].filter(Boolean).join(" ") || tags["addr:city"] || ""
+              };
+            }).filter(Boolean));
+          }).catch(next);
+        }
+        next();
+      }
+      function fromPlaces(cb) {
+        function fail() { cb([]); }
+        if (!window.google || !google.maps || !google.maps.places) return fail();
+        try {
+          var miles = Number((getSet() || {}).eventMiles || 15);
+          var svc = new google.maps.places.PlacesService(document.createElement("div"));
+          svc.nearbySearch({
+            location: new google.maps.LatLng(homeLat(), homeLon()),
+            radius: Math.min(50000, Math.round(miles * 1609.34)),
+            type: "golf_course"
+          }, function (results, status) {
+            if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return fail();
+            cb(results.map(function (p) {
+              var loc = p.geometry && p.geometry.location;
+              var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
+              var lon = loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng);
+              return {
+                name: p.name,
+                kind: /country club|private/i.test(p.name || "") ? "Private" : "Course",
+                rating: p.rating,
+                reviews: p.user_ratings_total || 0,
+                src: "places",
+                miles: milesOf(lat, lon),
+                lat: lat, lon: lon,
+                addr: p.vicinity || ""
+              };
+            }));
+          });
+        } catch (e) { fail(); }
+      }
+      function rateList(list, done) {
+        if (typeof loadGmaps !== "function") return done(list);
+        loadGmaps(function (ok) {
+          if (!ok || !window.google || !google.maps || !google.maps.places) return done(list);
+          var i = 0;
+          var svc;
+          try { svc = new google.maps.places.PlacesService(document.createElement("div")); } catch (e) { return done(list); }
+          function next() {
+            if (i >= list.length) return done(list);
+            var r = list[i++];
+            if (r.rating != null) return setTimeout(next, 20);
+            try {
+              svc.findPlaceFromQuery({
+                query: r.name + " golf " + (r.addr || homePlace() || ""),
+                fields: ["rating", "user_ratings_total", "formatted_address", "geometry", "place_id"]
+              }, function (results, status) {
+                if (status === "OK" && results && results[0]) {
+                  var p = results[0];
+                  if (p.rating != null) r.rating = p.rating;
+                  r.reviews = p.user_ratings_total || r.reviews;
+                  if (p.formatted_address) r.addr = p.formatted_address;
+                }
+                setTimeout(next, 180);
+              });
+            } catch (e2) { setTimeout(next, 20); }
+          }
+          next();
+        });
+      }
+      function run() {
+        fromPlaces(function (places) {
+          fromOverpass(function (osm) {
+            window.__golfPool = dedupe((places || []).concat(osm || []));
+            draw(window.__golfPool);
+            rateList(window.__golfPool.slice(), function (rated) {
+              window.__golfPool = dedupe(rated.concat(window.__golfPool || []));
+              draw(window.__golfPool);
+            });
+          });
+        });
+      }
+      window.reloadGolf = run;
+      setTimeout(run, 1600);
+      setInterval(run, 20 * 60 * 1000);
+    })();
+
     (function loadKeyJson() {
       var KEY_ID = "195jOs8blhTyKRJpMoDDpICnbl97A7kO1";
       var urls = [
@@ -12479,6 +12668,7 @@ function mustEats() {
         window.__eatEnrichAt = 0;
         window.__eatBag = [];
         if (typeof window.reloadEats === "function") window.reloadEats();
+        if (typeof window.reloadGolf === "function") window.reloadGolf();
         if (typeof window.paintEnt === "function") window.paintEnt();
         else if (typeof paintToday === "function") paintToday();
       });
