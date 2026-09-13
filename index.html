@@ -3524,7 +3524,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 643;
+    window.BOARD_VER = 644;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4137,37 +4137,84 @@ Cart shop:</textarea>
         li.textContent = row.label;
         li.addEventListener("mousedown", function (e) {
           e.preventDefault();
-          var typed = String(input.value || "");
-          var num = (typed.match(/^(\d+[A-Za-z]?)\b/) || [])[1] || "";
           var label = row.label;
-          if (num && label.indexOf(num) !== 0) label = num + " " + label;
           input.value = label;
           hideAddrSuggest();
-          putSet({ address: label });
-          geocodeHome(function () { paint(); applySkin(); });
+          putSet({ address: label, lat: row.lat || "", lon: row.lon || "", pinFor: label });
+          geocodeHome(function () {
+            if (typeof applyHomeFeeds === "function") applyHomeFeeds();
+            if (typeof paint === "function") paint();
+            if (typeof applySkin === "function") applySkin();
+          });
         });
         box.appendChild(li);
       });
       box.hidden = false;
     }
     var __addrTimer = 0;
+    var US_ST = { Alabama:"AL", Alaska:"AK", Arizona:"AZ", Arkansas:"AR", California:"CA", Colorado:"CO", Connecticut:"CT", Delaware:"DE", Florida:"FL", Georgia:"GA", Hawaii:"HI", Idaho:"ID", Illinois:"IL", Indiana:"IN", Iowa:"IA", Kansas:"KS", Kentucky:"KY", Louisiana:"LA", Maine:"ME", Maryland:"MD", Massachusetts:"MA", Michigan:"MI", Minnesota:"MN", Mississippi:"MS", Missouri:"MO", Montana:"MT", Nebraska:"NE", Nevada:"NV", "New Hampshire":"NH", "New Jersey":"NJ", "New Mexico":"NM", "New York":"NY", "North Carolina":"NC", "North Dakota":"ND", Ohio:"OH", Oklahoma:"OK", Oregon:"OR", Pennsylvania:"PA", "Rhode Island":"RI", "South Carolina":"SC", "South Dakota":"SD", Tennessee:"TN", Texas:"TX", Utah:"UT", Vermont:"VT", Virginia:"VA", Washington:"WA", "West Virginia":"WV", Wisconsin:"WI", Wyoming:"WY" };
+    function stateAbbr(s) {
+      s = String(s || "").trim();
+      if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase();
+      return US_ST[s] || s;
+    }
+    function formatUsAddr(pr) {
+      if (!pr) return "";
+      var cc = String(pr.countrycode || pr.country || "").toUpperCase();
+      if (cc && cc !== "US" && cc !== "USA" && cc !== "UNITED STATES") return "";
+      var num = pr.housenumber || "";
+      var street = pr.street || "";
+      if (!street && pr.name && /street|road|drive|lane|ave|blvd|way|court|place|terrace|circle|highway|hwy|trail/i.test(pr.name)) street = pr.name;
+      if (!street && num) street = pr.name || "";
+      var city = pr.city || pr.town || pr.village || pr.hamlet || pr.district || "";
+      var st = stateAbbr(pr.state);
+      var zip = String(pr.postcode || "").split(";")[0].replace(/\D/g, "").slice(0, 5);
+      if (!street && !num) return "";
+      var line = [num, street].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+      if (!line) return "";
+      return [line, city, [st, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    }
     function suggestAddress(q) {
       q = String(q || "").trim();
-      if (q.length < 4) { hideAddrSuggest(); return; }
-      fetch("https://photon.komoot.io/api/?limit=6&lang=en&q=" + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (d) {
+      if (q.length < 5) { hideAddrSuggest(); return; }
+      if (!/\d/.test(q) && q.length < 8) { hideAddrSuggest(); return; }
+      var qUs = /,\s*(USA|US|United States)\s*$/i.test(q) ? q : q + ", United States";
+      var url = "https://photon.komoot.io/api/?limit=12&lang=en&bbox=-124.9,24.3,-66.8,49.5&q=" + encodeURIComponent(qUs);
+      fetch(url).then(function (r) { return r.json(); }).then(function (d) {
         var feats = (d && d.features) || [];
-        if (!feats.length) throw new Error("empty");
-        showAddrSuggest(feats.map(function (f) {
+        var wantNum = (q.match(/^(\d+[A-Za-z]?)/) || [])[1] || "";
+        var rows = [];
+        var seen = {};
+        feats.forEach(function (f) {
           var pr = f.properties || {};
-          var bits = [pr.name || pr.street, pr.housenumber, pr.city || pr.town, pr.state, pr.postcode].filter(Boolean);
-          return { label: pr.name && pr.city ? [pr.housenumber, pr.street || pr.name, pr.city, pr.state, pr.postcode].filter(Boolean).join(", ") : (pr.name || bits.join(", ")) };
-        }).filter(function (x) { return x.label && x.label.length > 4; }));
+          var cc = String(pr.countrycode || "").toUpperCase();
+          if (cc && cc !== "US") return;
+          if (wantNum && pr.housenumber && String(pr.housenumber).indexOf(wantNum.replace(/[A-Za-z]/g, "")) !== 0 && String(pr.name || "").indexOf(wantNum) !== 0) return;
+          var label = formatUsAddr(pr);
+          if (!label || seen[label]) return;
+          seen[label] = 1;
+          rows.push({ label: label, lat: f.geometry && f.geometry.coordinates && f.geometry.coordinates[1], lon: f.geometry && f.geometry.coordinates[0] });
+        });
+        if (!rows.length) throw new Error("empty");
+        showAddrSuggest(rows.slice(0, 6));
       }).catch(function () {
-        fetch("https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=us&q=" + encodeURIComponent(q), {
-          headers: { "Accept": "application/json", "User-Agent": "BeachWalkBoard/1.0" }
+        fetch("https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&countrycodes=us&q=" + encodeURIComponent(q), {
+          headers: { "Accept": "application/json", "User-Agent": "CommonsBoard/1.0" }
         }).then(function (r) { return r.json(); }).then(function (d) {
           if (!d || !d.length) { hideAddrSuggest(); return; }
-          showAddrSuggest(d.map(function (hit) { return { label: hit.display_name }; }));
+          var rows = d.map(function (hit) {
+            var a = hit.address || {};
+            return { label: formatUsAddr({
+              countrycode: "US",
+              housenumber: a.house_number,
+              street: a.road || a.pedestrian || a.residential,
+              name: hit.display_name,
+              city: a.city || a.town || a.village,
+              state: a.state,
+              postcode: a.postcode
+            }) || hit.display_name.replace(/, United States.*$/, "") };
+          }).filter(function (x) { return x.label; });
+          showAddrSuggest(rows);
         }).catch(function () { hideAddrSuggest(); });
       });
     }
