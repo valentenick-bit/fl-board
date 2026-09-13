@@ -924,7 +924,10 @@
     #eat-list .ev-card,
     #today-do .ev-card,
     #today-eat-pick .ev-card,
-    #today-eat-pick .eat-card {
+    #today-eat-pick .eat-card,
+    #today-hot .ev-card,
+    #today-deal .ev-card,
+    #today-deal .eat-card {
       padding:10px 12px;
       margin:0 0 8px;
       min-height:102px;
@@ -932,7 +935,17 @@
       display:flex;
       align-items:stretch;
     }
-    #today-do .card, #today-eat-pick .card { cursor:pointer; }
+    #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card { cursor:pointer; }
+    #today-hot .ev-body,
+    #today-deal .ev-body,
+    #today-eat-pick .ev-body,
+    #today-hot .eat-why,
+    #today-deal .eat-why,
+    #today-eat-pick .eat-why {
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      min-width:0;
+    }
     #ent-list .card { padding:10px 12px; margin-bottom:8px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
@@ -3450,7 +3463,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 624;
+    window.BOARD_VER = 625;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9308,19 +9321,10 @@ function currentRotation() {
         openMapPop("Lightning", boltMapSrc(), '<a href="' + boltMapSrc() + '" target="_blank" rel="noopener">Open live lightning map</a>');
         return;
       }
-      var dealCard = e.target.closest && e.target.closest("#today-deal .card");
-      if (dealCard && window.__hhPick) {
-        openDealPop(window.__hhPick);
-        return;
-      }
-      var eatCard = e.target.closest && e.target.closest("#today-eat-pick .card");
-      if (eatCard && window.__eatPick) {
-        openEatPop(window.__eatPick);
-        return;
-      }
-      var evCard = e.target.closest && e.target.closest("#today-do .card, #ent-list .card, #eat-list .card");
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #ent-list .card, #eat-list .card");
       if (evCard) {
         var q = eventMapQuery(evCard);
+        if ((!q || q === "Englewood FL") && evCard.getAttribute("data-map")) q = evCard.getAttribute("data-map");
         var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
         var link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
         openMapPop(q, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
@@ -9532,8 +9536,14 @@ function currentRotation() {
           return;
         }
         if (col) col.hidden = false;
-        if (window.entCardHtml) box.innerHTML = window.entCardHtml(top);
-        else box.innerHTML = '<div class="card"><b>' + String(top.sum || "").replace(/</g, "") + "</b><span>" + String(top.desc || top.loc || "").replace(/</g, "") + "</span></div>";
+        var why = String(top.desc || top.why || "").replace(/</g, "").trim();
+        if (window.entCardHtml) {
+          var html = window.entCardHtml(top);
+          if (why && html.indexOf("eat-why") < 0) html = html.replace("</div></div>", '<span class="eat-why">' + why + "</span></div></div>");
+          box.innerHTML = html;
+        } else {
+          box.innerHTML = '<div class="card ev-card"><div class="ev-body"><b>' + String(top.sum || "").replace(/</g, "") + '</b><span class="eat-why">' + why + "</span></div></div>";
+        }
         if (typeof noteFeed === "function") noteFeed("hot-ticket", true, top.sum || "ok");
       }
       function seedHappyHours() {
@@ -9651,11 +9661,13 @@ function currentRotation() {
           var why = row.deal || "";
           if (week && /sandbar|lock/.test(String(row.name).toLowerCase())) why += " Also on Let's Eat Englewood this month.";
           window.__hhPick = row;
-          box.innerHTML = '<div class="card eat-card map-hit"><span class="kind-tag eat-brk">' + tag + "</span>" +
-            (dist ? '<span class="kind-tag eat-amer">' + dist + "</span>" : "") +
-            "<b>" + String(row.name).replace(/</g, "") + "</b>" +
-            '<span class="eat-rate">' + when + (on ? " · happening now" : later ? " · next window" : "") + "</span>" +
-            '<span class="eat-why">' + String(why).replace(/</g, "") + '</span><span class="eat-why">Tap for hours, map, and directions.</span></div>';
+          var mapQ = [row.name, row.addr].filter(Boolean).join(", ");
+          box.innerHTML = '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '">' +
+            '<div class="ev-rail"><span class="ev-dow">' + tag + '</span><span class="ev-num">' + (dist || "—") + "</span></div>" +
+            '<div class="ev-body"><b>' + String(row.name).replace(/</g, "") + "</b>" +
+            '<span class="ev-when">' + when + (on ? " · happening now" : later ? " · next window" : "") + "</span>" +
+            (why ? '<span class="eat-why">' + String(why).replace(/</g, "") + "</span>" : "") +
+            "</div></div>";
           if (typeof noteFeed === "function") noteFeed("eat-deal", true, row.name + " " + (on ? "now" : when) + " · " + dist);
         });
       }
@@ -10276,8 +10288,9 @@ function currentRotation() {
       window.eatCardHtml = card;
       function pickCard(r) {
         var html = card(r);
-        if (html.indexOf("Tap for") < 0) {
-          html = html.replace(/<\/div>\s*$/, '<span class="eat-why">Tap for why this table, hours, and map.</span></div>');
+        var why = r && String(r.why || "").trim();
+        if (why && html.indexOf("eat-why") < 0) {
+          html = html.replace("</div></div>", '<span class="eat-why">' + why.replace(/</g, "") + "</span></div></div>");
         }
         return html;
       }
