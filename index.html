@@ -122,7 +122,7 @@
       }, true);
       setTimeout(function () {
         if (window.__rotStarted) return;
-        var ids = ["now","tenday","land","marine","sky","ent"];
+        var ids = ["now","tenday","land","marine","sky","ent","eats","golf"];
         var n = 0;
         window.__fallbackRot = setInterval(function () {
           if (window.__rotStarted) { clearInterval(window.__fallbackRot); return; }
@@ -1981,15 +1981,34 @@
     }
     #wx-radar-view.wx-map-pane { width:100%; height:100%; object-fit:cover; background:#123; }
 
-    #wx-radar-map { position:absolute; inset:0; z-index:1; }
+    #wx-radar-map { position:absolute; inset:0; z-index:2; }
     #wx-radar-view { display:none; }
-    .kind-tag.golf-pub { background:#1b6b62; color:#fff; }
-    .kind-tag.golf-priv { background:#1e3a5f; color:#fff; }
-    .kind-tag.golf-res { background:#c45c4a; color:#fff; }
-    .kind-tag.golf-exec { background:#c4a35a; color:#1a1408; }
-    .kind-tag.golf-course { background:#3d6b1f; color:#fff; }
-    html.dark .kind-tag.golf-pub { background:#2a9d8f; }
-    html.dark .kind-tag.golf-priv { background:#4a6fa5; }
+    #golf-list .kind-tag.golf-pub, .kind-tag.golf-pub { background:#1b6b62 !important; color:#fff !important; }
+    #golf-list .kind-tag.golf-priv, .kind-tag.golf-priv { background:#1e3a5f !important; color:#fff !important; }
+    #golf-list .kind-tag.golf-res, .kind-tag.golf-res { background:#c45c4a !important; color:#fff !important; }
+    #golf-list .kind-tag.golf-exec, .kind-tag.golf-exec { background:#c4a35a !important; color:#1a1408 !important; }
+    #golf-list .kind-tag.golf-course, .kind-tag.golf-course { background:#3d6b1f !important; color:#fff !important; }
+    #wx-radar-map { background:#d7e3ea; }
+    html.dark #wx-radar-map { background:#1a2430; }
+    #radar-home-pin { display:none !important; }
+
+    .split-board { display:grid; grid-template-columns:minmax(230px,34%) 1fr; gap:12px; align-items:stretch; min-height:calc(100dvh - 230px); }
+    .split-list { overflow:auto; max-height:calc(100dvh - 230px); padding-right:4px; }
+    .split-frames { display:grid; grid-template-rows:1fr 1fr; gap:10px; min-height:280px; }
+    .split-frame { display:flex; flex-direction:column; min-height:0; background:rgba(255,255,255,.55); border:1px solid rgba(26,58,82,.12); border-radius:16px; overflow:hidden; }
+    html.dark .split-frame { background:rgba(12,22,34,.55); border-color:rgba(255,255,255,.1); }
+    .split-frame header { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 10px; font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+    .split-frame header a { font-weight:700; text-transform:none; letter-spacing:0; color:var(--teal); }
+    .split-frame iframe { flex:1; width:100%; border:0; min-height:140px; background:#d7e3ea; }
+    .eat-card.on, #golf-list .eat-card.on { outline:2px solid var(--teal); outline-offset:-2px; }
+    @media (max-width:820px) {
+      .split-board { grid-template-columns:1fr; min-height:0; }
+      .split-list { max-height:34vh; }
+      .split-frames { min-height:50vh; }
+    }
+    html.phone .split-board { grid-template-columns:1fr; min-height:0; }
+    html.phone .split-list { max-height:32vh; }
+
 </style>
 </head>
 <body>
@@ -2379,10 +2398,7 @@
         <p class="pill-key" id="sky-refs">Sky times follow the home address.</p>
       </section>
       <section id="ent" class="page">
-        <h2 data-k="On and off the Key">Fun</h2>
-        <div class="fun-shell">
-        <div class="fun-main">
-        <h3 class="fun-col-h">Events</h3>
+        <h2 data-k="On and off the Key">Events</h2>
         <p id="ent-count" class="pill-key">Loading calendars…</p>
         <div id="ent-list"></div>
         <p class="pill-key" id="ent-refs">
@@ -2390,17 +2406,39 @@
           ·
           <span>Town list = BeachWalk calendar + local research for this pin (live music, bingo, comedy, markets) + ticketed shows near the address.</span>
         </p>
+      </section>
+      <section id="eats" class="page">
+        <h2 data-k="Near the pin">Restaurants</h2>
+        <p class="pill-key" id="eat-count">Restaurants near home…</p>
+        <div class="split-board">
+          <div class="split-list" id="eat-list"></div>
+          <div class="split-frames">
+            <div class="split-frame">
+              <header><span>Location</span><a id="eat-map-open" href="#" target="_blank" rel="noopener">Open map</a></header>
+              <iframe id="eat-map-frame" title="Restaurant map" src="about:blank"></iframe>
+            </div>
+            <div class="split-frame">
+              <header><span>Menu</span><a id="eat-menu-open" href="#" target="_blank" rel="noopener">Open menu</a></header>
+              <iframe id="eat-menu-frame" title="Restaurant menu" src="about:blank"></iframe>
+            </div>
+          </div>
         </div>
-        <aside class="fun-eats" id="fun-eats">
-          <h3 class="fun-col-h">Top restaurants</h3>
-          <p class="pill-key" id="eat-count">Restaurants near home…</p>
-          <div id="eat-list"></div>
-        </aside>
-        <aside class="fun-golf" id="fun-golf">
-          <h3 class="fun-col-h">Golf courses</h3>
-          <p class="pill-key" id="golf-count">Courses near home…</p>
-          <div id="golf-list"></div>
-        </aside>
+      </section>
+      <section id="golf" class="page">
+        <h2 data-k="Near the pin">Golf</h2>
+        <p class="pill-key" id="golf-count">Courses near home…</p>
+        <div class="split-board">
+          <div class="split-list" id="golf-list"></div>
+          <div class="split-frames">
+            <div class="split-frame">
+              <header><span>Location</span><a id="golf-map-open" href="#" target="_blank" rel="noopener">Open map</a></header>
+              <iframe id="golf-map-frame" title="Course location" src="about:blank"></iframe>
+            </div>
+            <div class="split-frame">
+              <header><span>Course map</span><a id="golf-course-open" href="#" target="_blank" rel="noopener">Open satellite</a></header>
+              <iframe id="golf-course-frame" title="Course satellite" src="about:blank"></iframe>
+            </div>
+          </div>
         </div>
       </section>
       <section id="house" class="page">
@@ -3023,7 +3061,9 @@ Cart shop:</textarea>
             <button type="button" data-p="land">Land</button>
             <button type="button" data-p="marine">Sea</button>
             <button type="button" data-p="sky">Sky</button>
-            <button type="button" data-p="ent">Fun</button>
+            <button type="button" data-p="ent">Events</button>
+        <button type="button" data-p="eats">Restaurants</button>
+        <button type="button" data-p="golf">Golf</button>
           </div>
         </div>
         <div class="menu-block">
@@ -3456,7 +3496,9 @@ Cart shop:</textarea>
       <button type="button" data-p="land">Land</button>
       <button type="button" data-p="marine">Sea</button>
       <button type="button" data-p="sky">Sky</button>
-      <button type="button" data-p="ent">Fun</button>
+      <button type="button" data-p="ent">Events</button>
+        <button type="button" data-p="eats">Restaurants</button>
+        <button type="button" data-p="golf">Golf</button>
     </nav>
     </div>
     <div class="ticker-stack">
@@ -3478,7 +3520,9 @@ Cart shop:</textarea>
         <button type="button" data-p="land">Land</button>
         <button type="button" data-p="marine">Sea</button>
         <button type="button" data-p="sky">Sky</button>
-        <button type="button" data-p="ent">Fun</button>
+        <button type="button" data-p="ent">Events</button>
+        <button type="button" data-p="eats">Restaurants</button>
+        <button type="button" data-p="golf">Golf</button>
         <p class="drawer-lab">Out</p>
         <button type="button" data-p="cam">Views</button>
         <button type="button" data-p="wink">News</button>
@@ -3536,7 +3580,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 662;
+    window.BOARD_VER = 664;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3590,7 +3634,7 @@ Cart shop:</textarea>
       setTimeout(pad, 600);
     })();
     window.ROT_DEFAULTS = {
-      normal: ["now","tenday","land","marine","sky","cam","ent"],
+      normal: ["now","tenday","land","marine","sky","cam","ent","eats","golf"],
       storm: ["tenday","storms","marine","contacts"]
     };
     var ROT_DEFAULTS = window.ROT_DEFAULTS;
@@ -5424,7 +5468,7 @@ function currentRotation() {
       if (!id || id === "settings" || id === "account" || pageOnRotation(id)) return;
       var page = document.getElementById(id);
       if (!page) return;
-      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Fun", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Events", eats:"Restaurants", golf:"Golf", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
       var subs = { health:"What is live, stale, or down", guide:"How Commons works", ideas:"Queued work", sources:"Where the numbers come from", triggers:"Test rotations and alerts", kioskpage:"Wall setup", villa:"Open and close the house", contacts:"Numbers and what to do", prep:"Kit and steps for this warning", power:"Outages near the house", business:"Clubhouse and HOA", wink:"Local headlines", menu:"All pages", welcome:"Start here" };
       var head = document.createElement("div");
       head.className = "settings-head page-off-head";
@@ -7842,7 +7886,7 @@ function currentRotation() {
     })();
     clock(); setInterval(clock, 15000);
     var ROT_DEFAULTS = window.ROT_DEFAULTS || {
-      normal: ["now","tenday","land","marine","sky","cam","ent"],
+      normal: ["now","tenday","land","marine","sky","cam","ent","eats","golf"],
       storm: ["tenday","storms","marine","contacts","prep","power"]
     };
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
@@ -7872,7 +7916,7 @@ function currentRotation() {
           return s;
         }
       } catch (e) {}
-      var def = window.ROT_DEFAULTS || ROT_DEFAULTS || { normal: ["now","tenday","land","marine","sky","ent"], storm: ["radar"] };
+      var def = window.ROT_DEFAULTS || ROT_DEFAULTS || { normal: ["now","tenday","land","marine","sky","ent","eats","golf"], storm: ["radar"] };
       return { normal: (def.normal || []).slice(), storm: (def.storm || []).slice() };
     }
     function saveRots(r) {
@@ -8528,20 +8572,33 @@ function currentRotation() {
       return homeBoltEmbed();
     }
     function wxMapShow(which) {
+      var map = document.getElementById("wx-radar-map");
       var rad = document.getElementById("wx-radar-view");
       var bolt = document.getElementById("wx-bolt-view");
       var lab = document.getElementById("wx-map-label");
       var note = document.getElementById("wx-map-note");
-      if (rad) rad.classList.toggle("on", which !== "bolt");
-      if (bolt) bolt.classList.toggle("on", which === "bolt");
+      var stamp = document.getElementById("wx-radar-stamp");
+      var pin = document.getElementById("radar-home-pin");
+      if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
+      if (pin) pin.style.display = "none";
+      if (map) map.style.display = which === "bolt" ? "none" : "block";
+      if (stamp) stamp.style.display = which === "bolt" ? "none" : "";
+      if (bolt) {
+        bolt.classList.toggle("on", which === "bolt");
+        bolt.style.display = which === "bolt" ? "block" : "none";
+        bolt.style.zIndex = which === "bolt" ? "6" : "0";
+      }
+      if (which !== "bolt" && window.__radarMap) {
+        setTimeout(function () { try { window.__radarMap.invalidateSize(); } catch (eI) {} }, 80);
+      }
       if (lab) lab.textContent = which === "bolt" ? "Lightning" : "Radar";
-      if (note) note.textContent = which === "bolt" ? "Strikes near the house" : ((window.__radarLoopUrl || "NWS loop").replace(/^https:\/\/radar\.weather\.gov\/ridge\/standard\//, "NWS ").replace("_loop.gif", " loop"));
+      if (note) note.textContent = which === "bolt" ? "Strikes near the house" : "Looping last 2 hours at home";
     }
     function syncWxMapFrame() {
       var set = typeof getSet === "function" ? getSet() : {};
       var frame = document.getElementById("wx-map-frame");
       if (frame) frame.style.display = set.wxradar === "0" ? "none" : "";
-      var want = set.wxbolt !== "0" && typeof boltWanted === "function" && boltWanted();
+      var want = set.wxbolt !== "0";
       var bolt = document.getElementById("wx-bolt-view");
       if (window.__wxMapTimer) { clearInterval(window.__wxMapTimer); window.__wxMapTimer = 0; }
       if (!want) {
@@ -8550,7 +8607,7 @@ function currentRotation() {
         if (typeof noteFeed === "function") noteFeed("wx-map-frame", true, "radar");
         return;
       }
-      if (bolt) bolt.src = boltUrl();
+      if (bolt && (!bolt.src || bolt.src === "about:blank" || bolt.src.indexOf("blitzortung") < 0)) bolt.src = boltUrl();
       /* radar frames are owned by startHomeRadarLoop */
       var onBolt = false;
       wxMapShow("radar");
@@ -9229,7 +9286,7 @@ function currentRotation() {
     }
 
     function pageLabel(id) {
-      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Fun", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Events", eats:"Restaurants", golf:"Golf", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
       return names[id] || id;
     }
     function rebuildDock() {
@@ -9779,6 +9836,84 @@ function currentRotation() {
       openMapPop(row.name || "Happy hour", src, links, note);
     }
 
+    function pinSrc(lat, lon, z, sat) {
+      lat = Number(lat); lon = Number(lon);
+      if (!isFinite(lat) || !isFinite(lon)) return "";
+      return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon +
+        "&z=" + (z || 16) + (sat ? "&t=k" : "&t=m") + "&hl=en&output=embed";
+    }
+    function selectEat(r) {
+      window.__eatPick = r || null;
+      document.querySelectorAll("#eat-list .eat-card").forEach(function (c) {
+        c.classList.toggle("on", !!(r && c.getAttribute("data-eat") === (r.name || "")));
+      });
+      if (!r) return;
+      var map = document.getElementById("eat-map-frame");
+      var menu = document.getElementById("eat-menu-frame");
+      var mapA = document.getElementById("eat-map-open");
+      var menuA = document.getElementById("eat-menu-open");
+      var src = (r.lat && r.lon) ? pinSrc(r.lat, r.lon, 16, false) :
+        ("https://maps.google.com/maps?q=" + encodeURIComponent((r.name || "") + " " + (r.addr || "")) + "&z=16&output=embed");
+      if (map) map.src = src;
+      if (mapA) mapA.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((r.name || "") + " " + (r.addr || "") || (r.lat + "," + r.lon));
+      var menuSrc = r.menuUrl || r.website || ("https://www.google.com/search?igu=1&q=" + encodeURIComponent((r.name || "") + " menu " + (r.addr || "")));
+      if (menu) menu.src = menuSrc;
+      if (menuA) menuA.href = r.website || r.menuUrl || ("https://www.google.com/search?q=" + encodeURIComponent((r.name || "") + " menu"));
+      if (r.website || r.placeId) return;
+      if (typeof loadGmaps === "function") loadGmaps(function (ok) {
+        if (!ok || !window.google || !google.maps || !google.maps.places) return;
+        try {
+          var svc = new google.maps.places.PlacesService(document.createElement("div"));
+          svc.findPlaceFromQuery({
+            query: (r.name || "") + " " + (r.addr || ""),
+            fields: ["place_id", "website", "rating", "geometry", "formatted_address"]
+          }, function (res, st) {
+            if (st !== "OK" || !res || !res[0]) return;
+            var p = res[0];
+            r.placeId = p.place_id;
+            if (p.website) r.website = p.website;
+            if (p.rating != null) r.rating = p.rating;
+            if (p.formatted_address) r.addr = p.formatted_address;
+            var loc = p.geometry && p.geometry.location;
+            if (loc) {
+              r.lat = typeof loc.lat === "function" ? loc.lat() : loc.lat;
+              r.lon = typeof loc.lng === "function" ? loc.lng() : loc.lng;
+            }
+            if (p.place_id) {
+              svc.getDetails({ placeId: p.place_id, fields: ["website", "url"] }, function (d, st2) {
+                if (st2 === "OK" && d && d.website) r.website = d.website;
+                if (r.website && menu) menu.src = r.website;
+                if (r.website && menuA) menuA.href = r.website;
+              });
+            }
+          });
+        } catch (eS) {}
+      });
+    }
+    function selectGolf(r) {
+      window.__golfPick = r || null;
+      document.querySelectorAll("#golf-list .eat-card").forEach(function (c) {
+        c.classList.toggle("on", !!(r && c.getAttribute("data-golf") === (r.name || "")));
+      });
+      if (!r) return;
+      var map = document.getElementById("golf-map-frame");
+      var course = document.getElementById("golf-course-frame");
+      var mapA = document.getElementById("golf-map-open");
+      var courseA = document.getElementById("golf-course-open");
+      var loc = (r.lat && r.lon) ? pinSrc(r.lat, r.lon, 16, false) :
+        ("https://maps.google.com/maps?q=" + encodeURIComponent((r.name || "") + " golf") + "&z=16&output=embed");
+      var sat = (r.lat && r.lon) ? pinSrc(r.lat, r.lon, 17, true) :
+        ("https://maps.google.com/maps?q=" + encodeURIComponent((r.name || "") + " golf course") + "&t=k&z=17&output=embed");
+      if (map) map.src = loc;
+      if (course) course.src = sat;
+      var q = encodeURIComponent((r.name || "") + " " + (r.addr || ""));
+      if (mapA) mapA.href = "https://www.google.com/maps/search/?api=1&query=" + q;
+      if (courseA) courseA.href = (r.lat && r.lon)
+        ? ("https://www.google.com/maps/@?api=1&map_action=map&center=" + r.lat + "," + r.lon + "&zoom=17&basemap=satellite")
+        : ("https://www.google.com/maps/search/?api=1&query=" + q);
+    }
+    window.selectEat = selectEat;
+    window.selectGolf = selectGolf;
     function pinMapSrc(lat, lon) {
       lat = Number(lat); lon = Number(lon);
       if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) < 1 || Math.abs(lon) < 1) return "";
@@ -9885,20 +10020,42 @@ function currentRotation() {
         openMapPop(pick.name || saddr || "Store", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
         return;
       }
-      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #ent-list .card, #eat-list .card, #golf-list .card");
+      var eatCard = e.target.closest && e.target.closest("#eat-list .eat-card");
+      if (eatCard) {
+        var name = eatCard.getAttribute("data-eat");
+        var row = (window.__eats || []).filter(function (x) { return x.name === name; })[0];
+        if (!row) {
+          row = { name: name, addr: eatCard.getAttribute("data-map"), lat: Number(eatCard.getAttribute("data-lat")), lon: Number(eatCard.getAttribute("data-lon")) };
+        }
+        if (typeof selectEat === "function") selectEat(row);
+        return;
+      }
+      var golfCard = e.target.closest && e.target.closest("#golf-list .eat-card");
+      if (golfCard) {
+        var gname = golfCard.getAttribute("data-golf");
+        var grow = (window.__golfs || []).filter(function (x) { return x.name === gname; })[0];
+        if (!grow) {
+          grow = { name: gname, addr: golfCard.getAttribute("data-map"), lat: Number(golfCard.getAttribute("data-lat")), lon: Number(golfCard.getAttribute("data-lon")) };
+        }
+        if (typeof selectGolf === "function") selectGolf(grow);
+        return;
+      }
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #ent-list .card");
       if (evCard) {
-        var lat = evCard.getAttribute("data-lat");
-        var lon = evCard.getAttribute("data-lon");
-        var q = evCard.getAttribute("data-map") || eventMapQuery(evCard);
+        var lat = Number(evCard.getAttribute("data-lat"));
+        var lon = Number(evCard.getAttribute("data-lon"));
+        var q = evCard.getAttribute("data-map") || eventMapQuery(evCard) || "";
+        var title = evCard.getAttribute("data-golf") || evCard.getAttribute("data-eat") || q || "Map";
         var src, link;
-        if (lat && lon && isFinite(Number(lat)) && isFinite(Number(lon))) {
-          src = "https://maps.google.com/maps?q=" + Number(lat) + "," + Number(lon) + "&ll=" + Number(lat) + "," + Number(lon) + "&z=17&t=m&hl=en&iwloc=0&output=embed";
-          link = "https://www.google.com/maps/dir/?api=1&destination=" + Number(lat) + "," + Number(lon);
+        if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+          src = (typeof pinMapSrc === "function" && pinMapSrc(lat, lon)) ||
+            ("https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=16&t=m&hl=en&output=embed");
+          link = "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
         } else {
           src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&output=embed";
           link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
         }
-        openMapPop(q || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+        openMapPop(title, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
       }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMapPop(); });
@@ -11222,6 +11379,7 @@ function currentRotation() {
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list[0].name + " " + (list[0].rating || "") + " first") : "none in range");
         eatCacheWrite(list);
         if (typeof window.paintEatPick === "function") window.paintEatPick();
+        if (list && list[0] && typeof selectEat === "function") selectEat(window.__eatPick && list.some(function (x) { return x.name === window.__eatPick.name; }) ? window.__eatPick : list[0]);
       }
       function paint(list) {
         var box = document.getElementById("eat-list");
@@ -11874,16 +12032,16 @@ function mustEats() {
       }
       function seedGolf() {
         return [
-          { name: "Lemon Bay Golf Club", lat: 26.9334, lon: -82.3531, kind: "Public", addr: "2215 Placida Rd, Englewood" },
-          { name: "Oyster Creek Golf & Country Club", lat: 26.9512, lon: -82.3234, kind: "Public", addr: "6250 Capri St, Englewood" },
-          { name: "Myakka Pines Golf Club", lat: 26.9685, lon: -82.2902, kind: "Public", addr: "3900 Winchester Blvd, Englewood" },
-          { name: "Boca Royale Golf & Country Club", lat: 26.9801, lon: -82.3255, kind: "Private", addr: "1601 Englewood Rd, Englewood" },
-          { name: "Twin Isles Country Club", lat: 26.9208, lon: -82.3502, kind: "Private", addr: "2100 Placida Rd, Englewood" },
-          { name: "Rotonda Golf & Country Club", lat: 26.8904, lon: -82.2711, kind: "Public", addr: "Rotonda West" },
-          { name: "Broadmoor Park Golf Club", lat: 26.8960, lon: -82.2680, kind: "Public", addr: "Rotonda West" },
-          { name: "Coral Creek Club", lat: 26.8610, lon: -82.2610, kind: "Private", addr: "Placida" },
-          { name: "Deep Creek Golf Club", lat: 27.0015, lon: -82.1808, kind: "Public", addr: "Port Charlotte" },
-          { name: "Kingsway Country Club", lat: 27.0210, lon: -82.1410, kind: "Public", addr: "Port Charlotte" },
+          { name: "Lemon Bay Golf Club", lat: 26.9348, lon: -82.3516, kind: "Public", rating: 4.3, reviews: 210, addr: "2215 Placida Rd, Englewood, FL" },
+          { name: "Oyster Creek Golf & Country Club", lat: 26.9618, lon: -82.3162, kind: "Public", rating: 4.1, reviews: 180, addr: "6250 Capri St, Englewood, FL" },
+          { name: "Myakka Pines Golf Club", lat: 26.9746, lon: -82.2848, kind: "Public", rating: 4.2, reviews: 160, addr: "3900 Winchester Blvd, Englewood, FL" },
+          { name: "Boca Royale Golf & Country Club", lat: 26.9882, lon: -82.3228, kind: "Private", rating: 4.5, reviews: 95, addr: "1601 Englewood Rd, Englewood, FL" },
+          { name: "Twin Isles Country Club", lat: 26.9176, lon: -82.3479, kind: "Private", rating: 4.4, reviews: 70, addr: "2100 Placida Rd, Englewood, FL" },
+          { name: "Rotonda Golf & Country Club", lat: 26.8934, lon: -82.2718, kind: "Public", rating: 4.0, reviews: 140, addr: "100 Rotonda Cir, Rotonda West, FL" },
+          { name: "Broadmoor Park Golf Club", lat: 26.8968, lon: -82.2655, kind: "Public", rating: 3.9, reviews: 85, addr: "Rotonda Blvd E, Rotonda West, FL" },
+          { name: "Coral Creek Club", lat: 26.8688, lon: -82.2614, kind: "Private", rating: 4.6, reviews: 40, addr: "10949 W Placida Rd, Placida, FL" },
+          { name: "Deep Creek Golf Club", lat: 27.0022, lon: -82.1816, kind: "Public", rating: 4.0, reviews: 220, addr: "1260 San Cristobal Ave, Port Charlotte, FL" },
+          { name: "Kingsway Country Club", lat: 27.0198, lon: -82.1406, kind: "Public", rating: 4.1, reviews: 150, addr: "14505 S Tamiami Trl, Port Charlotte, FL" },
           { name: "Stump Pass Beach nearby — Cape Haze courses", lat: 26.9000, lon: -82.3400, kind: "Public", addr: "Cape Haze" }
         ].map(function (r) {
           r.src = "seed";
@@ -11913,6 +12071,7 @@ function mustEats() {
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Nothing inside 25 miles of the pin.</span></div>';
         if (note) note.textContent = list.length ? ("Courses within " + miles + " mi · closest / highest rated") : ("No courses within " + miles + " mi");
         if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " courses · " + (list[0].rating != null ? list[0].rating + " " : "") + list[0].name) : "none");
+        if (list && list[0] && typeof selectGolf === "function") selectGolf(window.__golfPick && list.some(function (x) { return x.name === window.__golfPick.name; }) ? window.__golfPick : list[0]);
         if (typeof matrixChunk === "function") {
           var dests = list.filter(function (r) { return r.lat != null && r.lon != null; }).map(function (r) {
             return {
@@ -12020,6 +12179,12 @@ function mustEats() {
                   if (p.rating != null) r.rating = p.rating;
                   r.reviews = p.user_ratings_total || r.reviews;
                   if (p.formatted_address) r.addr = p.formatted_address;
+                  var loc = p.geometry && p.geometry.location;
+                  if (loc) {
+                    r.lat = typeof loc.lat === "function" ? loc.lat() : loc.lat;
+                    r.lon = typeof loc.lng === "function" ? loc.lng() : loc.lng;
+                    r.miles = milesOf(r.lat, r.lon);
+                  }
                 }
                 setTimeout(next, 180);
               });
@@ -12310,7 +12475,7 @@ function mustEats() {
       if (n) n.innerHTML = rowHtml("normal", r.normal);
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
-    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","cam","ent","wink","house"];
+    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","cam","ent","eats","golf","wink","house"];
     var ROT_STORM_POOL = ["tenday","storms","marine","contacts","prep","power"];
     var ROT_AUTO_NOTE = {
       tenday: "radar lives on this page; lightning swaps into that frame when it is close",
