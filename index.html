@@ -3523,7 +3523,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 639;
+    window.BOARD_VER = 640;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -3734,7 +3734,7 @@ Cart shop:</textarea>
     var SET_DEFAULTS = {
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
       station: "", vol: "whisper", noaa: "1", radioauto: "1",
-      zip: "34223", lat: 26.9595, lon: -82.3543, place: "Englewood FL", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1",
+      zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1",
       community: "BeachWalk by Manasota Key",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
       brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
@@ -3851,13 +3851,37 @@ Cart shop:</textarea>
         putSet({ community: s.community || "BeachWalk by Manasota Key" });
       }
     })();
-    function homeLat() { return Number(getSet().lat) || 26.9595; }
-    function homeLon() { return Number(getSet().lon) || -82.3543; }
+    function parseAddrLine(line) {
+      var raw = String(line || "").replace(/\s+/g, " ").trim();
+      var zip = (raw.match(/(\d{5})(?:-\d{4})?/) || [])[1] || "";
+      var st = (raw.match(/,\s*([A-Za-z]{2})\s+\d{5}/) || raw.match(/\s([A-Za-z]{2})\s+\d{5}/) || raw.match(/,\s*([A-Za-z]{2})\s*$/) || [])[1] || "";
+      st = st.toUpperCase();
+      var parts = raw.split(",").map(function (p) { return p.trim(); }).filter(Boolean);
+      var city = "";
+      parts.forEach(function (p) {
+        if (/^[A-Z]{2}$/.test(p)) return;
+        if (/^\d{5}/.test(p)) return;
+        if (/^\d/.test(p) && /\d{5}/.test(p) === false && parts.indexOf(p) === 0) return;
+        if (!/^\d/.test(p) || /[A-Za-z]{3,}/.test(p.replace(/\d/g, ""))) {
+          var c = p.replace(/\s+[A-Z]{2}$/i, "").replace(/\s+\d{5}(?:-\d{4})?$/, "").trim();
+          if (c && !/^[A-Z]{2}$/.test(c)) city = c;
+        }
+      });
+      return { raw: raw, zip: zip, state: st, city: city };
+    }
+    function homeLat() {
+      var n = Number(getSet().lat);
+      return isFinite(n) && n !== 0 ? n : 26.9595;
+    }
+    function homeLon() {
+      var n = Number(getSet().lon);
+      return isFinite(n) && n !== 0 ? n : -82.3543;
+    }
     function homeAddress() {
       var s = getSet();
       var box = document.getElementById("set-address");
       var typed = box && box.value ? String(box.value).trim() : "";
-      return String(typed || s.address || s.place || "").trim();
+      return String(typed || s.address || "").trim();
     }
     function homePinQuery() {
       var addr = homeAddress();
@@ -3914,12 +3938,18 @@ Cart shop:</textarea>
         try { if (done) done(ok); } catch (e) {}
       }
       if (!addr) { finish(false, "Enter a street address."); return; }
+      var parsed = parseAddrLine(addr);
+      putSet({
+        address: addr,
+        zip: parsed.zip || getSet().zip || "",
+        place: parsed.city ? (parsed.city + (parsed.state ? " " + parsed.state : "")) : (getSet().place || ""),
+        state: parsed.state || getSet().state || ""
+      });
       var url, hdr = { "Accept": "application/json" };
       if (key) {
         url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + encodeURIComponent(addr) + "&key=" + encodeURIComponent(key);
       } else {
-        url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=" + encodeURIComponent(addr);
-        hdr["User-Agent"] = "BeachWalkBoard/1.0";
+        url = "https://photon.komoot.io/api/?limit=1&q=" + encodeURIComponent(addr);
       }
       fetch(url, { headers: hdr }).then(function (r) { return r.json(); }).then(function (d) {
         var lat, lon, zip, place, state;
@@ -3934,15 +3964,27 @@ Cart shop:</textarea>
             if (tps.indexOf("administrative_area_level_1") >= 0) state = c.short_name;
           });
           place = (place || "") + (state ? " " + state : "");
+        } else if (d && d.features && d.features[0]) {
+          var f = d.features[0];
+          lon = parseFloat(f.geometry.coordinates[0]);
+          lat = parseFloat(f.geometry.coordinates[1]);
+          var pr = f.properties || {};
+          zip = pr.postcode || parsed.zip || getSet().zip;
+          var city = pr.city || pr.name || parsed.city || "";
+          state = pr.state || parsed.state || "";
+          if (String(state).length > 2) {
+            var ST = { Florida:"FL", Connecticut:"CT", Georgia:"GA", Alabama:"AL", "New York":"NY", "North Carolina":"NC", "South Carolina":"SC" };
+            state = ST[state] || state;
+          }
+          place = (city + (state ? " " + state : "")).trim();
         } else if (d && d[0]) {
           lat = parseFloat(d[0].lat);
           lon = parseFloat(d[0].lon);
           var a = d[0].address || {};
-          zip = a.postcode || getSet().zip;
-          var city = a.city || a.town || a.village || a.hamlet || a.municipality || "";
-          if (!city || /^(florida|fl)$/i.test(city)) city = /englewood/i.test(addr) ? "Englewood" : (String(zip).indexOf("34223") === 0 ? "Englewood" : city);
-          place = (city + " " + (a.state || "")).trim();
-          state = a.state;
+          zip = a.postcode || parsed.zip || getSet().zip;
+          var city = a.city || a.town || a.village || a.hamlet || a.municipality || parsed.city || "";
+          place = (city + " " + (a.state || parsed.state || "")).trim();
+          state = a.state || parsed.state;
         }
         if (isNaN(lat) || isNaN(lon)) throw new Error("no pin");
         putSet({ address: addr, lat: lat, lon: lon, zip: String(zip || getSet().zip || "").replace(/\D/g, "").slice(0, 5), place: String(place || "").trim(), state: state || getSet().state || "" });
@@ -3963,7 +4005,11 @@ Cart shop:</textarea>
     setTimeout(function () {
       try {
         var a = homeAddress();
-        if (a && /\d/.test(a) && typeof geocodeHome === "function") geocodeHome(function () {});
+        if (a && /\d/.test(a) && typeof geocodeHome === "function") geocodeHome(function () {
+          if (typeof resolveHomeGeo === "function") resolveHomeGeo();
+          if (typeof applyLocalMaps === "function") applyLocalMaps();
+          if (typeof paint === "function") paint();
+        });
       } catch (e) {}
     }, 900);
     document.getElementById("set-gcache") && document.getElementById("set-gcache").addEventListener("click", function () {
@@ -4259,14 +4305,12 @@ Cart shop:</textarea>
     function homePoint() { return homeLat() + "," + homeLon(); }
     function homePlace() {
       var s = getSet();
-      var p = String(s.place || "").replace(/\s+FL$/i, "").trim();
-      if (!p || /^(florida|fl|united states)$/i.test(p)) {
-        var z = String(s.zip || "").replace(/\D/g, "").slice(0, 5);
-        if (z === "34223" || z === "34224") return "Englewood";
-        if (s.address && /englewood/i.test(s.address)) return "Englewood";
-        return "Englewood";
-      }
-      return p;
+      var parsed = parseAddrLine(s.address || homeAddress());
+      var p = String(s.place || parsed.city || "").replace(/\s+(FL|CT|NY|GA|AL|TX|NC|SC|VA|PA|OH|MI|IL|CA|AZ)$/i, "").trim();
+      if (/^(florida|fl|united states|usa)$/i.test(p)) p = parsed.city || "";
+      if (p) return p;
+      if (parsed.city) return parsed.city;
+      return "Home";
     }
     function homeTide() { return getSet().tide || "8725809"; }
     function homeRadar() { return getSet().radar || "KTBW"; }
@@ -9470,18 +9514,20 @@ function currentRotation() {
       }
       var shopCard = e.target.closest && e.target.closest("#today-shop .card");
       if (shopCard) {
-        var slat = Number(shopCard.getAttribute("data-lat"));
-        var slon = Number(shopCard.getAttribute("data-lon"));
-        var saddr = shopCard.getAttribute("data-map") || "";
         var pick = window.__shopPick || {};
-        if (!isFinite(slat) && pick.lat) slat = Number(pick.lat);
-        if (!isFinite(slon) && pick.lon) slon = Number(pick.lon);
-        if (!saddr && pick.addr) saddr = pick.addr;
-        var title = (pick.name || "Store") + (saddr ? " · " + saddr : "");
-        var src = pinMapSrc(slat, slon);
-        if (!src && saddr) src = "https://maps.google.com/maps?q=" + encodeURIComponent(saddr) + "&z=17&hl=en&output=embed";
-        var link = googleDestLink(saddr, slat, slon);
-        openMapPop(title, src, '<a href="' + link + '" target="_blank" rel="noopener">Directions in Google Maps</a>');
+        var slat = Number(shopCard.getAttribute("data-lat") || pick.lat);
+        var slon = Number(shopCard.getAttribute("data-lon") || pick.lon);
+        var saddr = shopCard.getAttribute("data-map") || pick.addr || "";
+        var q = [pick.name, saddr].filter(Boolean).join(", ");
+        var src, link;
+        if (q) {
+          src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=17&hl=en&t=m&output=embed";
+          link = "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(saddr || q);
+        } else if (isFinite(slat) && isFinite(slon)) {
+          src = "https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=17&t=m&hl=en&iwloc=0&output=embed";
+          link = "https://www.google.com/maps/dir/?api=1&destination=" + slat + "," + slon;
+        }
+        openMapPop(pick.name || saddr || "Store", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
         return;
       }
       var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #ent-list .card, #eat-list .card");
@@ -12098,8 +12144,12 @@ function mustEats() {
       if (addrGo) addrGo.addEventListener("click", function () {
         var line = document.getElementById("set-address");
         hideAddrSuggest();
-        putSet({ address: line ? line.value.trim() : "" });
+        var typed = line ? line.value.trim() : "";
+        var bits = parseAddrLine(typed);
+        putSet({ address: typed, lat: "", lon: "", zip: bits.zip || "", place: bits.city ? (bits.city + (bits.state ? " " + bits.state : "")) : "", state: bits.state || "" });
         geocodeHome(function () {
+          if (typeof resolveHomeGeo === "function") resolveHomeGeo();
+          if (typeof applyLocalMaps === "function") applyLocalMaps();
           paint();
           applySkin();
         });
