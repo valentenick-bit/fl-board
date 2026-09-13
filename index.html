@@ -2042,6 +2042,19 @@
 
     #wx-radar-windy { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:2; background:#123; }
 
+
+    #wx-radar-live { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:4; background:#16324a; }
+    #wx-radar-view, #wx-radar-windy { display:none !important; }
+    .buzz-card { display:flex; gap:10px; align-items:stretch; }
+    .buzz-card .ev-rail { flex:0 0 76px; }
+    .buzz-card .ev-thumb { width:76px; height:76px; object-fit:cover; border-radius:14px; display:block; }
+    .buzz-card .buzz-ico { font-size:28px; line-height:1; }
+    .kind-tag.buzz-hot { background:#c45c4a; color:#fff; }
+    .kind-tag.buzz-table { background:#1b6b62; color:#fff; }
+    .kind-tag.buzz-hh { background:#c4a35a; color:#1b2a22; }
+    .kind-tag.buzz-shop { background:#2a7d8f; color:#fff; }
+    html.dark .kind-tag.buzz-hh { color:#1b2a22; }
+
 </style>
 </head>
 <body>
@@ -3601,7 +3614,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 671;
+    window.BOARD_VER = 672;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5018,8 +5031,25 @@ function gatorRange() {
       if (!isFinite(lat) || !isFinite(lon)) return;
       var stage = document.getElementById("wx-radar-stage");
       if (!stage) return;
-      var windy = document.getElementById("wx-radar-windy");
-      if (windy) windy.remove();
+      var oldWindy = document.getElementById("wx-radar-windy");
+      if (oldWindy) oldWindy.remove();
+      var live = document.getElementById("wx-radar-live");
+      if (!live) {
+        live = document.createElement("iframe");
+        live.id = "wx-radar-live";
+        live.title = "Radar loop at home";
+        live.setAttribute("allowfullscreen", "true");
+        stage.insertBefore(live, stage.firstChild);
+      }
+      var rv = "https://www.rainviewer.com/map.html?loc=" + lat.toFixed(4) + "," + lon.toFixed(4) +
+        ",8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&c=1&o=83&lm=1&th=0&sm=1&sn=1";
+      if (live.getAttribute("data-src") !== rv) {
+        live.src = rv;
+        live.setAttribute("data-src", rv);
+      }
+      var hidePane = document.getElementById("wx-radar-view");
+      if (hidePane) hidePane.style.display = "none";
+      if (typeof noteFeed === "function") noteFeed("radar", true, "rainviewer loop");
       function nearestRadarSite(la, lo, given) {
         var g = String(given || "").toUpperCase().replace(/^K/, "");
         if (/^[A-Z]{3}$/.test(g)) return g;
@@ -10300,16 +10330,34 @@ function currentRotation() {
       function escBuzz(s) {
         return String(s || "").replace(/[<>]/g, "");
       }
-      function buzzCardHtml(row) {
+      function buzzCardHtml(row, kind) {
         if (!row || !row.name) return "";
-        var bits = [];
-        bits.push("<b>" + escBuzz(row.name) + "</b>");
-        if (row.where) bits.push("<span>" + escBuzz(row.where) + "</span>");
-        if (row.whenTxt) bits.push("<span>" + escBuzz(row.whenTxt) + "</span>");
-        if (row.miles != null && isFinite(row.miles)) bits.push("<span>" + Number(row.miles).toFixed(1) + " mi from home</span>");
-        if (row.rating != null) bits.push("<span>" + Number(row.rating).toFixed(1) + " Google · " + (row.reviews || 0).toLocaleString() + " reviews</span>");
-        if (row.why) bits.push('<span class="eat-why">' + escBuzz(row.why) + "</span>");
-        return '<div class="card ev-card"><div class="ev-body">' + bits.join("") + "</div></div>";
+        kind = kind || row.kind || "hot";
+        var meta = {
+          hot: { pill: "Ticket", cls: "buzz-hot", ico: "🎟", rail: "LIVE" },
+          table: { pill: "Dining", cls: "buzz-table", ico: "🍽", rail: "TABLE" },
+          hh: { pill: "Happy hour", cls: "buzz-hh", ico: "🍹", rail: "DEALS" },
+          shop: { pill: "Sale", cls: "buzz-shop", ico: "🛍", rail: "SHOP" }
+        }[kind] || { pill: "Near home", cls: "buzz-hot", ico: "📍", rail: "NEAR" };
+        var pills = '<span class="kind-tag ' + meta.cls + '">' + meta.pill + "</span>";
+        pills += '<span class="kind-tag ' + meta.cls + '">25 mi</span>';
+        if (row.rating != null) pills += '<span class="eat-rate-pill">' + Number(row.rating).toFixed(1) + " Google</span>";
+        if (row.miles != null && isFinite(row.miles)) pills += '<span class="dist-tag">' + Number(row.miles).toFixed(1) + " mi</span>";
+        var mapQ = [row.name, row.where, (typeof homePlace === "function" && homePlace()) || "FL"].filter(Boolean).join(" ");
+        var key = (typeof gmapsKey === "function" && gmapsKey()) || "";
+        var thumb = key
+          ? '<img class="ev-thumb" alt="" src="https://maps.googleapis.com/maps/api/streetview?size=160x160&location=' + encodeURIComponent(mapQ) + "&key=" + encodeURIComponent(key) + '"/>'
+          : '<span class="buzz-ico" aria-hidden="true">' + meta.ico + "</span>";
+        var rate = (row.rating != null) ? Number(row.rating).toFixed(1) : meta.ico;
+        return '<div class="card ev-card eat-card buzz-card map-hit" data-map="' + escBuzz(mapQ).replace(/"/g, "&quot;") + '">' +
+          '<div class="ev-rail">' + thumb + '<span class="ev-dow">' + meta.rail + "</span>" +
+          (row.rating != null ? '<span class="ev-num">' + rate + "</span>" : "") + "</div>" +
+          '<div class="ev-body">' + pills +
+          "<b>" + escBuzz(row.name) + "</b>" +
+          (row.where ? '<span class="ev-when">' + escBuzz(row.where) + "</span>" : "") +
+          (row.whenTxt ? "<span>" + escBuzz(row.whenTxt) + "</span>" : "") +
+          (row.why ? '<span class="eat-why">' + escBuzz(row.why) + "</span>" : "") +
+          "</div></div>";
       }
       function parseRssItems(xml) {
         var out = [];
@@ -10498,7 +10546,7 @@ function currentRotation() {
           return;
         }
         if (col) col.hidden = false;
-        box.innerHTML = buzzCardHtml(row);
+        box.innerHTML = buzzCardHtml(row, kind);
         if (typeof noteFeed === "function") noteFeed(feedId, true, row.name);
       }
       function paintHotTicket() {
@@ -17370,6 +17418,16 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       if (typeof refreshWeather === "function") {
         try { refreshWeather(); } catch (e) { fillOm(); }
       }
+
+    window.paintEatPick = function () {
+      if (typeof loadBuzzPack === "function") {
+        loadBuzzPack(function () {
+          if (typeof paintBuzzBox === "function") paintBuzzBox("today-eat-pick", "today-eat-col", "table",
+            "No restaurant within 25 miles of home is both well-reviewed and showing up in local dining chatter right now.",
+            "eat-pick");
+        });
+      }
+    };
     })();
   </script>
 </body>
