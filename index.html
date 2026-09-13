@@ -3597,7 +3597,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 667;
+    window.BOARD_VER = 668;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -11352,10 +11352,11 @@ function currentRotation() {
           }).catch(function () {});
         });
       }
+      function enoughReviews(r) {
+        return Number(r && r.reviews) > 2500;
+      }
       function rankEats(pool) {
-        var list = dedupeEats((pool || []).concat(mustEats())).filter(inRange);
-        var rated = list.filter(function (r) { return r.rating != null && Number(r.rating) > 0; });
-        if (rated.length >= 8) list = rated;
+        var list = dedupeEats((pool || []).concat(mustEats())).filter(inRange).filter(enoughReviews);
         list.sort(function (a, b) {
           var ra = Number(a.rating) || 0, rb = Number(b.rating) || 0;
           if (rb !== ra) return rb - ra;
@@ -11654,10 +11655,14 @@ function mustEats() {
         var key = String((getSet() || {}).gmapsKey || "").trim();
         if (!key) return cb(null);
         var miles = Number((getSet() || {}).eventMiles || 25);
+        var pin = homeAddress() || homePlace() || "Englewood FL";
         var queries = [
-          "top restaurants near " + (homeAddress() || "Englewood FL")
+          "top restaurants near " + pin,
+          "best restaurants near " + pin,
+          "popular restaurants Englewood FL",
+          "popular restaurants Venice FL",
+          "popular restaurants Port Charlotte FL"
         ];
-        if (miles >= 20) queries.push("top restaurants in Venice FL");
         var all = [];
         var left = queries.length;
         function parse(j) {
@@ -11957,29 +11962,28 @@ function mustEats() {
         step();
       }
       function run() {
-        var warm = eatCacheRead();
+        window.__eatBag = window.__eatBag || [];
+        var warm = eatCacheRead().filter(enoughReviews);
         if (warm.length) {
+          if (typeof noteFeed === "function") noteFeed("eats-src", true, "Google cache · " + warm.length);
           paint(mergeEatCache(warm));
         }
-        fromOverpass(function (rows) {
-          var cached = eatCacheRead().filter(function (r) { return r && r.at && (Date.now() - r.at) < 7 * 24 * 3600 * 1000 && r.rating; });
-          var list = mergeEatCache(rows && rows.length ? rows : cached);
-          if (list && list.length) {
-            if (typeof noteFeed === "function") noteFeed("eats-src", true, (rows && rows.length ? "OpenStreetMap" : "cache") + " · " + list.length);
-            fillAddrs(list, paint);
-          } else if (!(window.__eatBag && window.__eatBag.length) && typeof noteFeed === "function") {
-            noteFeed("eats-src", false, "OpenStreetMap empty");
-          }
-        });
-        window.__eatBag = window.__eatBag || [];
         function ingestEats(rows) {
-          window.__eatBag = dedupeEats(window.__eatBag.concat(rows || []));
+          var keep = (rows || []).filter(function (r) { return r && (enoughReviews(r) || r.reviews == null); });
+          window.__eatBag = dedupeEats(window.__eatBag.concat(keep));
           paint(mergeEatCache(window.__eatBag));
+          if (typeof noteFeed === "function") {
+            var n = rankEats(window.__eatBag).length;
+            noteFeed("eats-src", n > 0, "Google · " + n + " with 2,500+ reviews");
+          }
         }
         fromPlacesNew(function (places) {
           if (places && places.length) ingestEats(places);
         });
         fromPlacesText(function (places) {
+          if (places && places.length) ingestEats(places);
+        });
+        if (typeof fromPlaces === "function") fromPlaces(function (places) {
           if (places && places.length) ingestEats(places);
         });
       }
