@@ -2444,10 +2444,6 @@
             <p class="wx-map-cap"><b>Location</b><a id="eat-map-open" href="#" target="_blank" rel="noopener">Open map</a></p>
           </div>
         </div>
-        <div class="mid-frame">
-          <header><span>Menu</span><a id="eat-menu-open" href="#" target="_blank" rel="noopener">Open menu</a></header>
-          <iframe id="eat-menu-frame" title="Restaurant menu" src="about:blank"></iframe>
-        </div>
       </section>
       <section id="golf" class="page">
         <h2 data-k="Near the pin">Golf</h2>
@@ -2462,10 +2458,6 @@
             </div>
             <p class="wx-map-cap"><b>Location</b><a id="golf-map-open" href="#" target="_blank" rel="noopener">Open map</a></p>
           </div>
-        </div>
-        <div class="mid-frame">
-          <header><span>Course map</span><a id="golf-course-open" href="#" target="_blank" rel="noopener">Open satellite</a></header>
-          <iframe id="golf-course-frame" title="Course satellite" src="about:blank"></iframe>
         </div>
       </section>
       <section id="house" class="page">
@@ -3605,7 +3597,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 666;
+    window.BOARD_VER = 667;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9867,6 +9859,14 @@ function currentRotation() {
       return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon +
         "&z=" + (z || 16) + (sat ? "&t=k" : "&t=m") + "&hl=en&output=embed";
     }
+    function placeMapSrc(name, addr) {
+      var q = [name, addr].filter(Boolean).join(", ");
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
+    }
+    function placeMapLink(name, addr) {
+      var q = [name, addr].filter(Boolean).join(", ");
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+    }
     function selectEat(r) {
       window.__eatPick = r || null;
       document.querySelectorAll("#eat-list .eat-card").forEach(function (c) {
@@ -9874,16 +9874,9 @@ function currentRotation() {
       });
       if (!r) return;
       var map = document.getElementById("eat-map-frame");
-      var menu = document.getElementById("eat-menu-frame");
       var mapA = document.getElementById("eat-map-open");
-      var menuA = document.getElementById("eat-menu-open");
-      var src = (r.lat && r.lon) ? pinSrc(r.lat, r.lon, 16, false) :
-        ("https://maps.google.com/maps?q=" + encodeURIComponent((r.name || "") + " " + (r.addr || "")) + "&z=16&output=embed");
-      if (map) map.src = src;
-      if (mapA) mapA.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((r.name || "") + " " + (r.addr || "") || (r.lat + "," + r.lon));
-      var menuSrc = r.menuUrl || r.website || ("https://www.google.com/search?igu=1&q=" + encodeURIComponent((r.name || "") + " menu " + (r.addr || "")));
-      if (menu) menu.src = menuSrc;
-      if (menuA) menuA.href = r.website || r.menuUrl || ("https://www.google.com/search?q=" + encodeURIComponent((r.name || "") + " menu"));
+      if (map) map.src = placeMapSrc(r.name, r.addr);
+      if (mapA) mapA.href = placeMapLink(r.name, r.addr);
       if (r.website || r.placeId) return;
       if (typeof loadGmaps === "function") loadGmaps(function (ok) {
         if (!ok || !window.google || !google.maps || !google.maps.places) return;
@@ -9922,20 +9915,9 @@ function currentRotation() {
       });
       if (!r) return;
       var map = document.getElementById("golf-map-frame");
-      var course = document.getElementById("golf-course-frame");
       var mapA = document.getElementById("golf-map-open");
-      var courseA = document.getElementById("golf-course-open");
-      var loc = (r.lat && r.lon) ? pinSrc(r.lat, r.lon, 16, false) :
-        ("https://maps.google.com/maps?q=" + encodeURIComponent((r.name || "") + " golf") + "&z=16&output=embed");
-      var sat = (r.lat && r.lon) ? pinSrc(r.lat, r.lon, 17, true) :
-        ("https://maps.google.com/maps?q=" + encodeURIComponent((r.name || "") + " golf course") + "&t=k&z=17&output=embed");
-      if (map) map.src = loc;
-      if (course) course.src = sat;
-      var q = encodeURIComponent((r.name || "") + " " + (r.addr || ""));
-      if (mapA) mapA.href = "https://www.google.com/maps/search/?api=1&query=" + q;
-      if (courseA) courseA.href = (r.lat && r.lon)
-        ? ("https://www.google.com/maps/@?api=1&map_action=map&center=" + r.lat + "," + r.lon + "&zoom=17&basemap=satellite")
-        : ("https://www.google.com/maps/search/?api=1&query=" + q);
+      if (map) map.src = placeMapSrc(r.name, r.addr);
+      if (mapA) mapA.href = placeMapLink(r.name, r.addr);
     }
     window.selectEat = selectEat;
     window.selectGolf = selectGolf;
@@ -12057,17 +12039,16 @@ function mustEats() {
       }
       function seedGolf() {
         return [
-          { name: "Lemon Bay Golf Club", lat: 26.9348, lon: -82.3516, kind: "Public", rating: 4.3, reviews: 210, addr: "2215 Placida Rd, Englewood, FL" },
-          { name: "Oyster Creek Golf & Country Club", lat: 26.9618, lon: -82.3162, kind: "Public", rating: 4.1, reviews: 180, addr: "6250 Capri St, Englewood, FL" },
-          { name: "Myakka Pines Golf Club", lat: 26.9746, lon: -82.2848, kind: "Public", rating: 4.2, reviews: 160, addr: "3900 Winchester Blvd, Englewood, FL" },
+          { name: "Lemon Bay Golf Club", lat: 26.8887, lon: -82.3128, kind: "Private", rating: 4.3, reviews: 210, addr: "9600 Eagle Preserve Dr, Englewood, FL 34224" },
+          { name: "Oyster Creek Golf Club", lat: 26.9272, lon: -82.3082, kind: "Public", rating: 4.1, reviews: 180, addr: "6651 Oriole Blvd, Englewood, FL 34224" },
+          { name: "Myakka Pines Golf Club", lat: 27.0020, lon: -82.3530, kind: "Public", rating: 4.2, reviews: 160, addr: "2550 S River Rd, Englewood, FL 34223" },
           { name: "Boca Royale Golf & Country Club", lat: 26.9882, lon: -82.3228, kind: "Private", rating: 4.5, reviews: 95, addr: "1601 Englewood Rd, Englewood, FL" },
           { name: "Twin Isles Country Club", lat: 26.9176, lon: -82.3479, kind: "Private", rating: 4.4, reviews: 70, addr: "2100 Placida Rd, Englewood, FL" },
           { name: "Rotonda Golf & Country Club", lat: 26.8934, lon: -82.2718, kind: "Public", rating: 4.0, reviews: 140, addr: "100 Rotonda Cir, Rotonda West, FL" },
           { name: "Broadmoor Park Golf Club", lat: 26.8968, lon: -82.2655, kind: "Public", rating: 3.9, reviews: 85, addr: "Rotonda Blvd E, Rotonda West, FL" },
           { name: "Coral Creek Club", lat: 26.8688, lon: -82.2614, kind: "Private", rating: 4.6, reviews: 40, addr: "10949 W Placida Rd, Placida, FL" },
           { name: "Deep Creek Golf Club", lat: 27.0022, lon: -82.1816, kind: "Public", rating: 4.0, reviews: 220, addr: "1260 San Cristobal Ave, Port Charlotte, FL" },
-          { name: "Kingsway Country Club", lat: 27.0198, lon: -82.1406, kind: "Public", rating: 4.1, reviews: 150, addr: "14505 S Tamiami Trl, Port Charlotte, FL" },
-          { name: "Stump Pass Beach nearby — Cape Haze courses", lat: 26.9000, lon: -82.3400, kind: "Public", addr: "Cape Haze" }
+          { name: "Kingsway Country Club", lat: 27.0486, lon: -82.0528, kind: "Private", rating: 4.1, reviews: 150, addr: "13625 SW Kingsway Cir, Lake Suzy, FL 34269" }
         ].map(function (r) {
           r.src = "seed";
           r.reviews = r.reviews || 0;
