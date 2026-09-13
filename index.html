@@ -2045,7 +2045,7 @@
 
     #wx-radar-live { display:none !important; }
     #wx-radar-windy { display:none !important; }
-    #wx-radar-view { display:block !important; width:100%; height:100%; object-fit:cover; z-index:4; background:#16324a; }
+    #wx-radar-view { display:block !important; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:8 !important; background:#0b1220; }
     .buzz-card { display:flex; gap:10px; align-items:stretch; }
     .buzz-card .ev-rail { flex:0 0 76px; }
     .buzz-card .ev-thumb { width:76px; height:76px; object-fit:cover; border-radius:14px; display:block; }
@@ -3615,7 +3615,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 673;
+    window.BOARD_VER = 674;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5110,6 +5110,9 @@ function gatorRange() {
         pane.src = nws;
       }
       if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + site + " loop");
+      var hostKill = document.getElementById("wx-radar-map");
+      if (hostKill) hostKill.style.display = "none";
+      return;
       if (typeof L === "undefined") return;
       var hostEl = document.getElementById("wx-radar-map");
       if (!hostEl) {
@@ -8686,17 +8689,20 @@ function currentRotation() {
       var note = document.getElementById("wx-map-note");
       var stamp = document.getElementById("wx-radar-stamp");
       var pin = document.getElementById("radar-home-pin");
-      if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
-      if (pin) pin.style.display = "none";
-      if (map) map.style.display = which === "bolt" ? "none" : "block";
-      if (stamp) stamp.style.display = which === "bolt" ? "none" : "";
       if (bolt) {
         bolt.classList.toggle("on", which === "bolt");
         bolt.style.display = which === "bolt" ? "block" : "none";
         bolt.style.zIndex = which === "bolt" ? "6" : "0";
       }
-      if (which !== "bolt" && window.__radarMap) {
-        setTimeout(function () { try { window.__radarMap.invalidateSize(); } catch (eI) {} }, 80);
+      if (map) map.style.display = "none";
+      if (which === "bolt") {
+        if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
+        if (pin) pin.style.display = "none";
+        if (stamp) stamp.style.display = "none";
+      } else {
+        if (rad) { rad.classList.add("on"); rad.style.display = "block"; rad.style.zIndex = "8"; }
+        if (pin) pin.style.display = "";
+        if (stamp) stamp.style.display = "";
       }
       if (lab) lab.textContent = which === "bolt" ? "Lightning" : "Radar";
       if (note) note.textContent = which === "bolt" ? "Strikes near the house" : "Looping last 2 hours at home";
