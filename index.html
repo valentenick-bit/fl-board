@@ -3832,7 +3832,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 689;
+    window.BOARD_VER = 692;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -10618,6 +10618,45 @@ function currentRotation() {
       function escBuzz(s) {
         return String(s || "").replace(/[<>]/g, "");
       }
+      
+      function funFactFor(row, kind) {
+        var s = [row && row.name, row && row.where, row && row.addr, row && row.why].join(" ").toLowerCase();
+        var pairs = [
+          [/sandbar/, "The dock sits so close to Lemon Bay you can eat with the tide moving under the boards."],
+          [/lock\s*'?n?\s*key|lock and key/, "It faces the SandBar across Beach Road — locals treat the two as one night out."],
+          [/magnolia/, "Garden tables look over the bay toward Stump Pass, so sunset is the floor show."],
+          [/waverly/, "Two stories on Englewood Beach: flip-flops downstairs, the better wine pour upstairs."],
+          [/rumour/, "A tucked-away Venice wine bar — regulars skip the 6 oz pour and go straight to the 9."],
+          [/moose/, "Moose lodges on this coast still run bingo, queen of hearts, and Friday fish fry like a second town hall."],
+          [/sharky/, "Sharky's is the rare room built out over the Gulf itself, not just near it."],
+          [/crow'?s nest/, "The Crow's Nest has watched the Venice inlet since the 1970s — incoming boats pass the window."],
+          [/farlow/, "Farlow's still fills with the same Englewood breakfast crowd it has had for years."],
+          [/barnacle/, "Barnacle Bill's is a Gulf-front fish house — the smoked fish spread is how you tell a regular."],
+          [/stump pass/, "Stump Pass is the cut between the Gulf and Lemon Bay; tarpon roll through here in season."],
+          [/manasota/, "Manasota Key is a barrier island with one road in and out, so dinner here is already a slow night."],
+          [/venice theatre|venice theater/, "Venice Theatre is one of the largest community theaters in the country, odd for a town this size."],
+          [/mccurdy/, "McCurdy's is the Sarasota comedy room touring acts still treat as a real date, not a filler."],
+          [/bingo/, "Bingo nights here are a social calendar. Arrive early or you are in the back row."],
+          [/oyster/, "Raw bars on this coast time Gulf oysters to the cooler months; summer menus lean cooked."],
+          [/tiki/, "Tiki decks last on Lemon Bay because the water stays warm enough to eat outside most of the year."],
+          [/pier/, "A Gulf pier supper means you are watching the same water the boats just left."]
+        ];
+        for (var i = 0; i < pairs.length; i++) if (pairs[i][0].test(s)) return pairs[i][1];
+        if (kind === "table") {
+          if (/sea|fish|grouper|snapper|oyster/.test(s)) return "Gulf fish houses this close to home usually buy off the same boats that unload in Cortez and Placida.";
+          if (/steak/.test(s)) return "A steakhouse on this stretch is a shoes-on night, not a quick bite.";
+          if (/mex|taco/.test(s)) return "The better Mexican rooms fill after the beach crowd showers off.";
+          if (/ital|pizza|pasta/.test(s)) return "Italian rooms around here still do the red-sauce family table — plan on leftovers.";
+          return "It earned this card from ratings near home — the kind of room you actually leave the villa for.";
+        }
+        if (kind === "hot") {
+          if (/concert|band|music|tribute|live/.test(s)) return "Live music on this coast is usually a patio or a lodge hall, not an arena.";
+          if (/festival|fair|parade/.test(s)) return "Local festival nights here are park-and-walk — the crowd is half the show.";
+          if (/comedy/.test(s)) return "Comedy rooms within a drive of the key still book touring acts, not just open-mic.";
+          return "If it is drawing ticket chatter this week, it is one of the nights people on the key actually go out.";
+        }
+        return "";
+      }
       function buzzCardHtml(row, kind) {
         if (!row || !row.name) return "";
         kind = kind || row.kind || "hot";
@@ -10660,7 +10699,11 @@ function currentRotation() {
         if (row.rating != null && kind === "table") pills += '<span class="eat-rate-pill">' + Number(row.reviews || 0).toLocaleString() + " reviews</span>";
         pills += "</div>";
         var mapQ = [row.name, row.where, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(" ");
-        var why = String(row.why || "").replace(/\s*This card refreshes[\s\S]*$/i, "").replace(/\s*Used as today[\s\S]*$/i, "").replace(/\s*Used while sale[\s\S]*$/i, "").replace(/\s*Picked for the posted[\s\S]*$/i, "").trim();
+        var why = String(row.why || "").replace(/\s*This card refreshes[\s\S]*$/i, "").replace(/\s*Used as today[\s\S]*$/i, "").replace(/\s*Used while sale[\s\S]*$/i, "").replace(/\s*Picked for the posted[\s\S]*$/i, "").replace(/\s*Picked for tickets[\s\S]*$/i, "").replace(/\s*Chosen for buzz[\s\S]*$/i, "").trim();
+        if (kind === "hot" || kind === "table") {
+          var fact = funFactFor(row, kind);
+          if (fact) why = why ? (why + " Fun fact: " + fact) : ("Fun fact: " + fact);
+        }
         var locFull = (typeof enrichLoc === "function") ? enrichLoc(row.addr || row.where || mapQ || row.name) : (row.addr || mapQ || "");
         return '<div class="card ev-card eat-card buzz-card map-hit buzz-' + kind + '" data-map="' + escBuzz(mapQ).replace(/"/g, "&quot;") + '" data-buzz="' + escBuzz(row.name).replace(/"/g, "&quot;") + '"' +
           (row.lat != null ? ' data-lat="' + row.lat + '" data-lon="' + row.lon + '"' : "") +
@@ -10668,7 +10711,7 @@ function currentRotation() {
           '<div class="ev-rail' + ((rail.dow || rail.num) ? "" : " rail-solo") + '"><span class="ev-dow">' + (rail.dow || "") + '</span><span class="ev-num">' + (rail.num || "") + '</span><span class="ev-ico" aria-hidden="true">' + rail.ico + '</span></div>' +
           '<div class="ev-body">' + pills +
           "<b>" + escBuzz(row.name) + "</b>" +
-          (row.where ? '<span class="ev-when">' + escBuzz(row.where) + "</span>" : "") +
+          ((kind === "hot" ? (row.addr || row.where) : row.where) ? '<span class="ev-when">' + escBuzz(kind === "hot" ? (row.addr || row.where) : row.where) + "</span>" : "") +
           (why ? '<span class="eat-why">' + escBuzz(why) + "</span>" : "") +
           "</div></div>";
       }
@@ -10726,8 +10769,8 @@ function currentRotation() {
       function whyFromNews(item, kind, miles) {
         var t = item && item.title ? item.title : "";
         var near = (miles != null && isFinite(miles)) ? (" It's about " + Number(miles).toFixed(1) + " miles from the home pin.") : " It's inside the 25-mile ring around home.";
-        if (kind === "hot") return (t ? ("This is getting local attention: “" + t + ".”") : "Promoted event near home this week.") + near + " Picked for tickets, live music, or festival buzz — not because it is on the community calendar.";
-        if (kind === "table") return (t ? ("People are talking about it: “" + t + ".”") : "Strong local dining chatter plus reviews.") + near + " Chosen for buzz and ratings, not because it topped the Restaurants page.";
+        if (kind === "hot") return t ? ("Local buzz: “" + t + ".”") : "";
+        if (kind === "table") return t ? ("People keep mentioning it: “" + t + ".”") : "";
         if (kind === "hh") return (t ? ("Deal chatter: “" + t + ".”") : "A happy-hour special near home is being pushed right now.") + near + " The deal itself is the reason this card is up.";
         if (kind === "shop") return (t ? ("Sale talk: “" + t + ".”") : "A nearby store is promoting a sale.") + near + " Picked for advertised savings, not a standing store list.";
         return t || "Selected because it is close to home and showing up in local coverage.";
@@ -10785,9 +10828,13 @@ function currentRotation() {
             return am - bm;
           });
           live.slice(0, 6).forEach(function (e) {
-            pack.hot.push(asItem(e.sum || "Local event",
-              "On the local calendar near home.",
-              { where: e.loc, whenTxt: e.when }));
+            (function (ev) {
+              var pin = typeof pinVenue === "function" ? pinVenue(ev) : null;
+              var addr = (pin && pin.addr) || (typeof enrichLoc === "function" ? enrichLoc(ev.loc || ev.sum || "") : (ev.loc || ""));
+              pack.hot.push(asItem(ev.sum || "Local event",
+                "On the local calendar near home.",
+                { where: addr, addr: addr, whenTxt: ev.when, lat: pin && pin.lat, lon: pin && pin.lon }));
+            })(e);
           });
         }
         if (!(pack.table && pack.table.length)) {
@@ -10829,9 +10876,9 @@ function currentRotation() {
         var name = it.title.split(" - ")[0].split(" | ")[0].split(" – ")[0];
         if (name.length > 72) name = name.slice(0, 70) + "…";
         var extra = row.extra || {};
-        return {
+        var out = {
           name: name,
-          where: extra.where || homePlace() || homeTownQuery(),
+          where: extra.where || extra.addr || "",
           whenTxt: extra.whenTxt || ("Today’s pick · " + buzzDayKey()),
           why: row.why || whyFromNews(it, kind, extra.miles),
           link: it.link,
@@ -10843,6 +10890,20 @@ function currentRotation() {
           lon: extra.lon,
           addr: extra.addr || extra.where || ""
         };
+        if (kind === "hot") {
+          var pinH = typeof pinVenue === "function" ? pinVenue({ sum: name, loc: out.addr || out.where || name }) : null;
+          if (pinH && pinH.addr) {
+            out.addr = pinH.addr;
+            out.where = pinH.addr;
+            if (out.lat == null) { out.lat = pinH.lat; out.lon = pinH.lon; }
+          } else if (typeof enrichLoc === "function") {
+            out.addr = enrichLoc(out.addr || out.where || name);
+            out.where = out.addr;
+          }
+        } else if (!out.where) {
+          out.where = (typeof homePlace === "function" && homePlace()) || "";
+        }
+        return out;
       }
       function scheduleBuzzRollover() {
         if (window.__buzzRoll) clearTimeout(window.__buzzRoll);
@@ -10858,6 +10919,43 @@ function currentRotation() {
         }, Math.max(15000, next.getTime() - n.getTime()));
       }
       scheduleBuzzRollover();
+      
+      function looksStreetAddr(s) {
+        s = String(s || "");
+        return /\d/.test(s) && /\b(rd|dr|ave|st|blvd|ln|way|ct|hwy|road|drive|street|lane|parkway|pkwy|terrace|ter|circle|cir)\b/i.test(s);
+      }
+      function fillHotStreetAddr(row, box) {
+        if (!row) return;
+        if (looksStreetAddr(row.addr || row.where)) {
+          var line = box && box.querySelector(".ev-when");
+          if (line) line.textContent = row.addr || row.where;
+          return;
+        }
+        var q = (typeof enrichLoc === "function" ? enrichLoc(row.addr || row.where || row.name) : (row.name || ""));
+        if (!q || typeof loadGmaps !== "function") return;
+        loadGmaps(function (ok) {
+          if (!ok || !window.google || !google.maps || !google.maps.Geocoder) return;
+          try {
+            new google.maps.Geocoder().geocode({ address: q }, function (res, status) {
+              if (status !== "OK" || !res || !res[0]) return;
+              row.addr = res[0].formatted_address;
+              row.where = row.addr;
+              if (res[0].geometry && res[0].geometry.location) {
+                row.lat = res[0].geometry.location.lat();
+                row.lon = res[0].geometry.location.lng();
+              }
+              var line = box && box.querySelector(".ev-when");
+              if (line) line.textContent = row.addr;
+              var card = box && box.querySelector(".buzz-card, .card");
+              if (card) {
+                card.setAttribute("data-loc", row.addr);
+                if (row.lat != null) { card.setAttribute("data-lat", row.lat); card.setAttribute("data-lon", row.lon); }
+              }
+              if (typeof stampLocPills === "function") stampLocPills(box);
+            });
+          } catch (eG) {}
+        });
+      }
       function paintBuzzBox(id, colId, kind, emptyTxt, feedId) {
         var box = document.getElementById(id);
         var col = document.getElementById(colId);
@@ -10872,6 +10970,7 @@ function currentRotation() {
         if (col) col.hidden = false;
         box.innerHTML = buzzCardHtml(row, kind);
         if (typeof noteFeed === "function") noteFeed(feedId, true, row.name);
+        if (kind === "hot") fillHotStreetAddr(row, box);
         if (typeof stampLocPills === "function") stampLocPills(box);
       }
       function paintHotTicket() {
@@ -12510,14 +12609,15 @@ function mustEats() {
         }
         var reviews = r.reviews ? (r.reviews + " reviews") : "";
         var kcls = ({ Public:"golf-pub", Private:"golf-priv", Resort:"golf-res", Executive:"golf-exec" }[r.kind] || "golf-course");
+        var addr = r.addr || r.area || "";
         var pills = '<span class="kind-tag ' + kcls + '">' + (r.kind || "Course") + "</span>";
-        pills += (typeof locPillHtml === "function" ? locPillHtml(r) : "");
+        pills += (typeof window.locPillHtml === "function" ? window.locPillHtml(r) : "");
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
-        var addr = r.addr || r.area || "";
         var mapQ = ((r.name || "") + (addr ? " " + addr : "")).trim() || (r.name + " golf");
         return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-golf="' + String(r.name || "").replace(/"/g, "&quot;") + '"' +
-          (r.lat != null && r.lon != null ? ' data-lat="' + r.lat + '" data-lon="' + r.lon + '"' : "") + '>' +
+          (r.lat != null && r.lon != null ? ' data-lat="' + r.lat + '" data-lon="' + r.lon + '"' : "") +
+          (addr ? ' data-loc="' + String(addr).replace(/"/g, "&quot;") + '"' : "") + '>' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + '</span><span class="ev-ico" aria-hidden="true">⛳</span></div>' +
           '<div class="ev-body"><b>' + String(r.name || "Golf").replace(/</g, "") + "</b>" +
           (addr ? "<span>" + String(addr).replace(/</g, "") + "</span>" : "") +
@@ -12582,25 +12682,31 @@ function mustEats() {
         if (note) note.textContent = list.length ? ("Courses within " + miles + " mi · closest / highest rated") : ("No courses within " + miles + " mi");
         if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " courses · " + (list[0].rating != null ? list[0].rating + " " : "") + list[0].name) : "none");
         if (list && list[0] && typeof selectGolf === "function") selectGolf(window.__golfPick && list.some(function (x) { return x.name === window.__golfPick.name; }) ? window.__golfPick : list[0]);
+        var box = document.getElementById("golf-list");
+        if (typeof window.stampLocPills === "function") window.stampLocPills(box || document);
         if (typeof matrixChunk === "function") {
           var dests = list.map(function (r) {
             return {
+              lat: r.lat, lon: r.lon,
               q: [r.name, r.addr, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(", "),
               on: function (d) {
                 r.driveMin = d.min;
                 if (d.miles != null) r.miles = d.miles;
+                var label = (typeof locLabelFromDrive === "function")
+                  ? locLabelFromDrive(d, false)
+                  : ((d.miles != null ? (d.miles >= 10 ? Math.round(d.miles) : Math.round(d.miles * 10) / 10) + " mi · " : "") + d.min + " min");
                 document.querySelectorAll("#golf-list .eat-card").forEach(function (card) {
                   if ((card.getAttribute("data-golf") || "") !== (r.name || "")) return;
-                  var mi = card.querySelector(".dist-tag:not(.eat-drive)");
-                  var dr = card.querySelector(".dist-tag.eat-drive");
-                  if (r.miles != null && mi) mi.textContent = (Math.round(r.miles * 10) / 10) + " mi";
-                  if (dr) dr.textContent = d.min + " min";
-                  else if (mi) {
-                    var pill = document.createElement("span");
-                    pill.className = "dist-tag eat-drive";
-                    pill.textContent = d.min + " min";
-                    mi.insertAdjacentElement("afterend", pill);
+                  var tag = card.querySelector(".loc-pill") || card.querySelector(".dist-tag");
+                  if (!tag) {
+                    tag = document.createElement("span");
+                    tag.className = "dist-tag loc-pill";
+                    var host = card.querySelector(".eat-why") || card.querySelector(".ev-body");
+                    var after = host && host.querySelector(".kind-tag");
+                    if (after) after.insertAdjacentElement("afterend", tag);
+                    else if (host) host.appendChild(tag);
                   }
+                  tag.textContent = label;
                 });
               }
             };
@@ -16795,18 +16901,24 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     try { layoutBand(); } catch (eB) {}
 
     var VENUE_PIN = window.VENUE_PIN = [
-      { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 26.9595, lon: -82.3543, onSite: true },
-      { re: /englewood beach|chadwick/i, lat: 26.9247, lon: -82.3534 },
-      { re: /stump pass/i, lat: 26.899, lon: -82.341 },
-      { re: /mccurdy|comedy theatre/i, lat: 27.336, lon: -82.5307 },
-      { re: /venice (theatre|beach|downtown)?/i, lat: 27.0998, lon: -82.4543 },
-      { re: /port charlotte/i, lat: 26.976, lon: -82.0906 },
-      { re: /north port/i, lat: 27.0442, lon: -82.236 },
-      { re: /boca grande/i, lat: 26.749, lon: -82.261 },
-      { re: /rotonda/i, lat: 26.889, lon: -82.271 },
-      { re: /moose/i, lat: 26.965, lon: -82.352 },
-      { re: /sandbar tiki|sand bar tiki|sandbar/i, lat: 26.9248, lon: -82.3535 },
-      { re: /englewood/i, lat: 26.962, lon: -82.352 }
+      { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 26.9595, lon: -82.3543, onSite: true, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" },
+      { re: /englewood beach|chadwick/i, lat: 26.9247, lon: -82.3534, addr: "Chadwick Park / Englewood Beach, 2100 N Beach Rd, Englewood, FL 34223" },
+      { re: /stump pass/i, lat: 26.899, lon: -82.341, addr: "Stump Pass Beach State Park, 900 Gulf Blvd, Englewood, FL 34223" },
+      { re: /mccurdy|comedy theatre/i, lat: 27.336, lon: -82.5307, addr: "McCurdy's Comedy Theatre, 1923 Ringling Blvd, Sarasota, FL 34236" },
+      { re: /venice theatre/i, lat: 27.0995, lon: -82.4476, addr: "Venice Theatre, 140 W Tampa Ave, Venice, FL 34285" },
+      { re: /venice beach/i, lat: 27.1003, lon: -82.4588, addr: "Venice Beach, 101 The Esplanade, Venice, FL 34285" },
+      { re: /venice/i, lat: 27.0998, lon: -82.4543, addr: "Downtown Venice, W Venice Ave, Venice, FL 34285" },
+      { re: /port charlotte/i, lat: 26.976, lon: -82.0906, addr: "Port Charlotte, FL 33948" },
+      { re: /north port/i, lat: 27.0442, lon: -82.236, addr: "North Port, FL 34287" },
+      { re: /boca grande/i, lat: 26.749, lon: -82.261, addr: "Boca Grande, FL 33921" },
+      { re: /rotonda/i, lat: 26.889, lon: -82.271, addr: "Rotonda West, FL 33947" },
+      { re: /gulf cove moose/i, lat: 26.929, lon: -82.165, addr: "Gulf Cove Moose Lodge 2304, 1250 El Jobean Rd, Port Charlotte, FL 33953" },
+      { re: /moose/i, lat: 26.965, lon: -82.352, addr: "Englewood Moose Lodge 1933, 401 W Dearborn St, Englewood, FL 34223" },
+      { re: /sandbar tiki|sand bar tiki|sandbar/i, lat: 26.9248, lon: -82.3535, addr: "SandBar Tiki & Grille, 1975 Beach Rd, Englewood, FL 34223" },
+      { re: /lock\s*'?n?\s*key|lock and key/, lat: 26.9252, lon: -82.3526, addr: "Lock 'N Key, 1980 Beach Rd, Englewood, FL 34223" },
+      { re: /sharky/, lat: 27.1125, lon: -82.4608, addr: "Sharky's on the Pier, 1600 S Harbor Dr, Venice, FL 34285" },
+      { re: /crow'?s nest/, lat: 27.1129, lon: -82.4602, addr: "The Crow's Nest, 1968 Tarpon Center Dr, Venice, FL 34285" },
+      { re: /englewood/i, lat: 26.962, lon: -82.352, addr: "Englewood, FL 34223" }
     ];
     function venueQuery(e) {
       if (!e) return "";
@@ -16821,7 +16933,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       for (var i = 0; i < pins.length; i++) {
         if (!pins[i] || !pins[i].re) continue;
         if (pins[i].re.test(q) || pins[i].re.test(String(e && e.sum || ""))) {
-          return { lat: pins[i].lat, lon: pins[i].lon, onSite: !!pins[i].onSite, q: q };
+          return { lat: pins[i].lat, lon: pins[i].lon, onSite: !!pins[i].onSite, q: pins[i].addr || q, addr: pins[i].addr || q };
         }
       }
       return q ? { q: q } : null;
