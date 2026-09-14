@@ -2070,6 +2070,76 @@
     .buzz-shop .ev-ico { background:#2a7d8f; }
     .buzz-shop .ev-ico svg { stroke:#fff; fill:none; }
 
+
+    html.kiosk.wide #now.page.on,
+    html.wide #now.page.on {
+      display:flex !important;
+      flex-direction:column !important;
+      grid-template-columns:none !important;
+    }
+    .today-shell {
+      display:grid;
+      grid-template-columns:minmax(0,1.2fr) minmax(280px,.95fr);
+      gap:14px 16px;
+      align-items:start;
+      width:100%;
+    }
+    .today-main, .today-side { min-width:0; max-width:100%; }
+    .today-side { display:flex; flex-direction:column; gap:12px; }
+    .today-out-grid {
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .today-sec-h {
+      margin:2px 0 6px;
+      font-size:11px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      font-weight:800;
+      color:var(--teal);
+    }
+    #now .buzz-card,
+    #now .wear-card,
+    #now .eat-card.buzz-card {
+      display:grid;
+      grid-template-columns:56px minmax(0,1fr);
+      gap:10px;
+      align-items:start;
+      width:100%;
+      max-width:100%;
+      margin:0;
+      padding:10px;
+      box-sizing:border-box;
+      overflow:hidden;
+    }
+    #now .buzz-card .ev-rail,
+    #now .wear-card .ev-rail,
+    #now .buzz-art {
+      flex:none;
+      width:56px;
+      min-width:56px;
+      padding:0;
+      border:0;
+    }
+    #now .buzz-art .ev-ico {
+      width:56px;
+      height:56px;
+      border-radius:14px;
+    }
+    #now .ev-body { min-width:0; overflow:hidden; }
+    #now .ev-pills {
+      display:flex;
+      flex-wrap:wrap;
+      gap:5px;
+      margin:0 0 4px;
+    }
+    @media (max-width:900px), (orientation:portrait) {
+      .today-shell { grid-template-columns:1fr; }
+      .today-main { order:1; }
+      .today-side { order:2; }
+    }
+
 </style>
 </head>
 <body>
@@ -3629,7 +3699,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 678;
+    window.BOARD_VER = 679;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -7391,9 +7461,10 @@ function currentRotation() {
         if (nearStorm) pills += '<span class="warn-tag">Thunder</span>';
         else if (nearPop >= 40) pills += '<span class="kind-tag trivia">Rain shell</span>';
         if (windMph >= 18) pills += '<span class="kind-tag eat-sea">Windy</span>';
-        box.innerHTML = '<div class="card ev-card wear-card">' +
-          '<div class="ev-rail"><span class="ev-dow">Wear</span><span class="ev-num">' + tag + '</span><span class="ev-ico" aria-hidden="true">' + shirt + "</span></div>" +
-          '<div class="ev-body">' + pills + "<b>What to wear</b>" +
+        var shirtSvg = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M16 12l8-4 8 4 6-2 2 8-8 3v15H16V21l-8-3 2-8z" fill="none" stroke="#fff" stroke-width="2.3" stroke-linejoin="round"/></svg>';
+        box.innerHTML = '<div class="card ev-card eat-card wear-card">' +
+          '<div class="ev-rail buzz-art buzz-table"><span class="ev-ico">' + shirtSvg + "</span></div>" +
+          '<div class="ev-body"><div class="ev-pills"><span class="kind-tag eat-sea">' + tag + "</span></div><b>What to wear</b>" +
           parts.map(function (p) { return '<span class="eat-why">' + p + "</span>"; }).join("") +
           "</div></div>";
         if (col) col.hidden = !parts.length;
@@ -10425,10 +10496,11 @@ function currentRotation() {
           hh: { pill: "Happy hour", cls: "eat-bar", art: "buzz-hh" },
           shop: { pill: "Shopping", cls: "eat-cafe", art: "buzz-shop" }
         }[kind] || { pill: "Near home", cls: "music", art: "buzz-hot" };
-        var pills = '<span class="kind-tag ' + meta.cls + '">' + meta.pill + "</span>";
+        var pills = '<div class="ev-pills"><span class="kind-tag ' + meta.cls + '">' + meta.pill + "</span>";
         if (row.miles != null && isFinite(row.miles)) pills += '<span class="dist-tag">' + (Math.round(Number(row.miles) * 10) / 10) + " mi</span>";
         if (row.driveMin != null && isFinite(row.driveMin)) pills += '<span class="dist-tag eat-drive">' + Math.max(1, Math.round(row.driveMin)) + " min</span>";
         if (row.rating != null && kind === "table") pills += '<span class="eat-rate-pill">' + Number(row.reviews || 0).toLocaleString() + " reviews</span>";
+        pills += "</div>";
         var mapQ = [row.name, row.where, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(" ");
         var why = String(row.why || "").replace(/\s*This card refreshes[\s\S]*$/i, "").replace(/\s*Used as today[\s\S]*$/i, "").replace(/\s*Used while sale[\s\S]*$/i, "").replace(/\s*Picked for the posted[\s\S]*$/i, "").trim();
         return '<div class="card ev-card eat-card buzz-card map-hit" data-map="' + escBuzz(mapQ).replace(/"/g, "&quot;") + '" data-buzz="' + escBuzz(row.name).replace(/"/g, "&quot;") + '">' +
