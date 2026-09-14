@@ -3825,7 +3825,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 686;
+    window.BOARD_VER = 687;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -10635,11 +10635,19 @@ function currentRotation() {
           shop: { dow: "Sale", num: "%", ico: (window.EV_ART && EV_ART.tag) || "" }
         }[kind] || { dow: "Near", num: "•", ico: "" };
         var meta = {
-          hot: { pill: "Live music", cls: "music" },
+          hot: { pill: "Ticket", cls: "music" },
           table: { pill: "Restaurant", cls: "eat-sea" },
           hh: { pill: "Happy hour", cls: "eat-bar" },
           shop: { pill: "Shopping", cls: "eat-cafe" }
         }[kind] || { pill: "Near home", cls: "music" };
+        if (kind === "hot" && typeof eventKind === "function") {
+          var ek = eventKind(row.name, row.where, row.why || row.whenTxt || "");
+          if (ek && ek.label) {
+            meta.pill = ek.label;
+            meta.cls = ek.cls || "music";
+            if (window.EV_ART && EV_ART[ek.cls]) rail.ico = EV_ART[ek.cls];
+          }
+        }
                 var pills = '<div class="ev-pills"><span class="kind-tag ' + meta.cls + '">' + meta.pill + "</span>";
         if (row.miles != null && isFinite(row.miles)) pills += '<span class="dist-tag">' + (Math.round(Number(row.miles) * 10) / 10) + " mi</span>";
         if (row.driveMin != null && isFinite(row.driveMin)) pills += '<span class="dist-tag eat-drive">' + Math.max(1, Math.round(row.driveMin)) + " min</span>";
@@ -10762,6 +10770,11 @@ function currentRotation() {
         }
         if (!(pack.hot && pack.hot.length)) {
           var live = (typeof recUpcoming === "function") ? recUpcoming(7 * 24 * 3600000) : [];
+          live = live.slice().sort(function (a, b) {
+            var am = (typeof isLiveMusic === "function" && isLiveMusic(a.sum, a.loc, a.desc)) ? 0 : 1;
+            var bm = (typeof isLiveMusic === "function" && isLiveMusic(b.sum, b.loc, b.desc)) ? 0 : 1;
+            return am - bm;
+          });
           live.slice(0, 6).forEach(function (e) {
             pack.hot.push(asItem(e.sum || "Local event",
               "On the local calendar near home.",
