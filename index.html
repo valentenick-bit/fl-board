@@ -9,7 +9,7 @@
   <script>
     try {
       if (localStorage.getItem("bw-kiosk") === "1") document.documentElement.classList.add("kiosk");
-      if (window.matchMedia && window.matchMedia("(max-width:720px)").matches) document.documentElement.classList.add("phone");
+      if (window.matchMedia && window.matchMedia("(max-width:720px)").matches && localStorage.getItem("bw-kiosk") !== "1") document.documentElement.classList.add("phone");
       (function () {
         var s = {};
         try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e2) { s = {}; }
@@ -49,7 +49,8 @@
     window.addEventListener("pageshow", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("focus", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("resize", function () {
-      document.documentElement.classList.toggle("phone", window.innerWidth <= 720);
+      if (typeof layoutBand === "function") layoutBand();
+      else document.documentElement.classList.toggle("phone", window.innerWidth <= 720 && !document.documentElement.classList.contains("kiosk"));
       setTimeout(wakeBoard, 50);
     });
     document.addEventListener("DOMContentLoaded", function () {
@@ -456,6 +457,58 @@
       z-index:10;
       grid-column:1 / -1;
     }
+    html.phone .hdr-bar,
+    html.band-phone .hdr-bar,
+    html.stack-today .hdr-bar {
+      grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:"left clock" "temp temp";
+      align-items:start;
+      gap:6px 8px;
+    }
+    html.phone .hdr-left,
+    html.band-phone .hdr-left,
+    html.stack-today .hdr-left { grid-area:left; min-width:0; }
+    html.phone header .clock,
+    html.band-phone header .clock,
+    html.stack-today header .clock { grid-area:clock; justify-self:end; }
+    html.phone header .temprow,
+    html.band-phone header .temprow,
+    html.stack-today header .temprow {
+      grid-area:temp;
+      justify-self:stretch;
+      width:100%;
+      justify-content:flex-start;
+    }
+    html.phone .brand small,
+    html.band-phone .brand small,
+    html.stack-today .brand small {
+      max-width:min(52vw, 18em);
+      -webkit-line-clamp:2;
+    }
+    html.stack-today .today-shell,
+    html.stack-today .today-out-grid,
+    html.band-phone .today-shell,
+    html.band-phone .today-out-grid {
+      grid-template-columns:1fr;
+    }
+    html.stack-today .today-main,
+    html.band-phone .today-main { order:1; }
+    html.stack-today .today-side,
+    html.band-phone .today-side { order:2; }
+    html.dark .wx-strip.heat { background:#6a3126; color:#f8d7cc; }
+    html.dark .wx-strip.cold { background:#1e3348; color:#d7e6f6; }
+    html.dark .wx-strip.fire { background:#5a3a18; color:#f3e0c8; }
+    html.dark .wx-strip.flood { background:#1f4a32; color:#d4e4d8; }
+    html.dark .wx-strip.spc { background:#4a3a12; color:#efe4c4; }
+    html.dark .wx-strip.stale { background:#3a3830; color:#ddd6c8; }
+    html.phone .settings .set-row,
+    html.band-phone .settings .set-row {
+      border-radius:16px;
+      justify-content:flex-end;
+    }
+    #set-datefmt { max-width:100%; }
+    html.phone #set-datefmt button,
+    html.band-phone #set-datefmt button { font-size:12px; padding:7px 8px; }
     header { display:grid; grid-template-columns:1fr; }
     .hdr-left { display:flex; align-items:center; gap:8px; min-width:0; justify-self:start; }
     header .brand { justify-self:start; }
@@ -3841,7 +3894,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 694;
+    window.BOARD_VER = 695;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -6181,10 +6234,18 @@ function currentRotation() {
       }, 32);
     })();
     function greetWord() {
-      var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
-      if (hr < 12) return "Good morning.";
-      if (hr < 17) return "Good afternoon.";
-      return "Good evening.";
+      var hr = 0;
+      try {
+        var parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).formatToParts(new Date());
+        parts.forEach(function (p) { if (p.type === "hour") hr = parseInt(p.value, 10) || 0; });
+        if (hr === 24) hr = 0;
+      } catch (e) {
+        hr = new Date().getHours();
+      }
+      if (hr >= 5 && hr < 12) return "Good morning.";
+      if (hr >= 12 && hr < 17) return "Good afternoon.";
+      if (hr >= 17 && hr < 21) return "Good evening.";
+      return "Good night.";
     }
     function upcomingHourLines(hours, limit) {
       var now = Date.now();
@@ -8022,7 +8083,8 @@ function currentRotation() {
         var on = false;
         try { on = localStorage.getItem("bw-kiosk") === "1"; } catch (e) {}
         document.documentElement.classList.toggle("kiosk", on);
-        document.documentElement.classList.toggle("phone", window.innerWidth <= 700 && !on);
+        document.documentElement.classList.toggle("phone", window.innerWidth <= 720 && !on);
+        if (typeof layoutBand === "function") layoutBand();
         var linksOn = true;
         try { linksOn = (JSON.parse(localStorage.getItem("bw-set") || "{}") || {}).links !== "0"; } catch (e2) {}
         document.documentElement.classList.toggle("nolinks", !linksOn);
@@ -9178,6 +9240,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v695 — Phone header is two rows so the temp pill no longer covers COMMONS. Today stacks on phone and short landscape. One 720px phone cutoff. HeatRisk readable in dark mode. Date chips wrap. Greeting says Good night from 9pm to 5am.",
       "v499 — Deliveries pull the Sept 9 Gmail scan file, not the old Sept 6 list.",
       "v498 — Calendar paint no longer crashes before tides, deliveries, and rotation finish loading.",
       "v497 — Events still show if distance is unknown. Loading labels clear instead of hanging.",
@@ -16077,7 +16140,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var gust = om.current.wind_gusts_10m != null ? Math.round(om.current.wind_gusts_10m) : null;
       var word = omWord(om.current.weather_code).toLowerCase();
       var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
-      var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
+      var greet = typeof greetWord === "function" ? greetWord() : (hrNow >= 21 || hrNow < 5 ? "Good night." : hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.");
       window.__nowWx = { temp: tempF, feel: feelF, wind: wind, gust: gust, word: word, greet: greet };
       var tempEl = document.getElementById("live-temp");
       var feelEl = document.getElementById("live-feels");
@@ -16343,7 +16406,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           try { if (typeof paintWxFromOm === "function") paintWxFromOm(om); } catch (eWx) {}
           if (skyEl) {
             var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
-            var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
+            var greet = typeof greetWord === "function" ? greetWord() : (hrNow >= 21 || hrNow < 5 ? "Good night." : hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.");
             var short = nowH.shortForecast || today.shortForecast || "fair";
             window.__nowWx = {
               temp: tempF,
@@ -16907,6 +16970,10 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       document.documentElement.classList.add("band-" + band);
       document.documentElement.classList.toggle("orient-land", w > h);
       document.documentElement.classList.toggle("orient-port", h >= w);
+      var stack = !kiosk && (band === "phone" || (h < 500 && w < 1100) || (h >= w && w < 1100));
+      document.documentElement.classList.toggle("stack-today", stack);
+      if (kiosk) document.documentElement.classList.remove("phone");
+      else document.documentElement.classList.toggle("phone", w <= 720 || band === "phone");
       return band;
     }
     window.addEventListener("resize", function () { layoutBand(); });
@@ -17993,10 +18060,10 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             if (fe && /78/.test(fe.textContent)) fe.innerHTML = f + "&deg;";
             var sky = document.getElementById("live-sky");
             var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
-            var g = hr < 12 ? "Good morning." : hr < 17 ? "Good afternoon." : "Good evening.";
+            var g = typeof greetWord === "function" ? greetWord() : (hr >= 21 || hr < 5 ? "Good night." : hr < 12 ? "Good morning." : hr < 17 ? "Good afternoon." : "Good evening.");
             var code = om.current.weather_code || 0;
             var word = code >= 95 ? "Storms" : code >= 61 ? "Rain" : code >= 3 ? "Cloudy" : "Clear";
-            if (sky && /^Good (morning|afternoon|evening)\.?$/i.test((sky.textContent || "").trim())) {
+            if (sky && /^Good (morning|afternoon|evening|night)\.?$/i.test((sky.textContent || "").trim())) {
               sky.textContent = g + " " + word + " in " + homePlace() + ". It is " + t + "° and feels like " + f + "°.";
             }
             var chip = document.getElementById("best-window");
