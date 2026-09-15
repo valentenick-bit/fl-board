@@ -501,6 +501,15 @@
     html.dark .wx-strip.flood { background:#1f4a32; color:#d4e4d8; }
     html.dark .wx-strip.spc { background:#4a3a12; color:#efe4c4; }
     html.dark .wx-strip.stale { background:#3a3830; color:#ddd6c8; }
+    html.dark .gmap-box,
+    html.gmap-night .gmap-box,
+    html.dark #traffic-gmap { background:#1b221f; }
+    html.dark iframe.gmap-night,
+    html.dark #map-pop-frame.gmap-night,
+    html.dark #traffic-map.gmap-night {
+      filter: invert(1) hue-rotate(180deg) saturate(0.65) brightness(0.92);
+      background:#1b221f;
+    }
     html.phone .settings .set-row,
     html.band-phone .settings .set-row {
       border-radius:16px;
@@ -3894,7 +3903,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 695;
+    window.BOARD_VER = 696;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4341,6 +4350,55 @@ Cart shop:</textarea>
     function homeTrafficEmbed() {
       return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=14&hl=en&layer=t&t=m&output=embed";
     }
+    function gmapsWantDark() {
+      return document.documentElement.classList.contains("dark");
+    }
+    function gmapsNightStyles() {
+      return [
+        { elementType: "geometry", stylers: [{ color: "#1d2420" }] },
+        { elementType: "labels.text.stroke", stylers: [{ color: "#1d2420" }] },
+        { elementType: "labels.text.fill", stylers: [{ color: "#c9b88a" }] },
+        { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d4c199" }] },
+        { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#a89b78" }] },
+        { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#1a2a22" }] },
+        { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b8f73" }] },
+        { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a3430" }] },
+        { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1b221f" }] },
+        { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9aa394" }] },
+        { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3a4038" }] },
+        { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#242820" }] },
+        { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#d4c199" }] },
+        { featureType: "transit", elementType: "geometry", stylers: [{ color: "#252c28" }] },
+        { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e2740" }] },
+        { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#6a8aaa" }] }
+      ];
+    }
+    function gmapsLook() {
+      var dark = gmapsWantDark();
+      var opt = { backgroundColor: dark ? "#1b221f" : "#d7e3ea", styles: dark ? gmapsNightStyles() : [] };
+      try {
+        if (window.google && google.maps && google.maps.ColorScheme) {
+          opt.colorScheme = dark ? google.maps.ColorScheme.DARK : google.maps.ColorScheme.LIGHT;
+        }
+      } catch (eC) {}
+      return opt;
+    }
+    function applyGmapsLook(map) {
+      if (!map || typeof map.setOptions !== "function") return;
+      try { map.setOptions(gmapsLook()); } catch (eA) {}
+    }
+    function themeGmapFrames() {
+      var dark = gmapsWantDark();
+      document.documentElement.classList.toggle("gmap-night", dark);
+      applyGmapsLook(window.__trafficMap);
+      ["traffic-map","map-pop-frame"].forEach(function (id) {
+        var f = document.getElementById(id);
+        if (!f) return;
+        var src = f.getAttribute("src") || "";
+        if (/maps\.google|google\.com\/maps/.test(src)) f.classList.toggle("gmap-night", dark);
+      });
+    }
+    window.themeGmapFrames = themeGmapFrames;
     function homeBoltEmbed() {
       return "https://map.blitzortung.org/#10/" + homeLat() + "/" + homeLon();
     }
@@ -4797,20 +4855,25 @@ Cart shop:</textarea>
             window.__trafficMap.panTo(center);
             if (window.__trafficPin) window.__trafficPin.setPosition(center);
             if (window.__trafficLayer) window.__trafficLayer.setMap(window.__trafficMap);
+            if (typeof applyGmapsLook === "function") applyGmapsLook(window.__trafficMap);
           } catch (eR) {}
           if (typeof noteFeed === "function") noteFeed("traffic", true, "reuse google traffic");
           return;
         }
         try {
-          var map = new google.maps.Map(box, {
+          var mapOpt = {
             center: center,
             zoom: 12,
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: true,
             gestureHandling: "greedy"
-          });
+          };
+          var look = typeof gmapsLook === "function" ? gmapsLook() : {};
+          Object.keys(look).forEach(function (k) { mapOpt[k] = look[k]; });
+          var map = new google.maps.Map(box, mapOpt);
           window.__trafficMap = map;
+          if (typeof themeGmapFrames === "function") themeGmapFrames();
           window.__trafficLayer = new google.maps.TrafficLayer();
           window.__trafficLayer.setMap(map);
           window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
@@ -8159,6 +8222,7 @@ function currentRotation() {
       } catch (e) {}
       if (typeof paintSkyHeader === "function") paintSkyHeader();
             if (typeof syncLightningUI === "function") syncLightningUI();
+      if (typeof themeGmapFrames === "function") themeGmapFrames();
       if (typeof noteDarkMode === "function") noteDarkMode();
       var btn = document.getElementById("darkbtn");
       if (btn) {
@@ -9240,6 +9304,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v696 — Google Maps on Land and in the map popup follow board dark mode.",
       "v695 — Phone header is two rows so the temp pill no longer covers COMMONS. Today stacks on phone and short landscape. One 720px phone cutoff. HeatRisk readable in dark mode. Date chips wrap. Greeting says Good night from 9pm to 5am.",
       "v499 — Deliveries pull the Sept 9 Gmail scan file, not the old Sept 6 list.",
       "v498 — Calendar paint no longer crashes before tides, deliveries, and rotation finish loading.",
@@ -10351,6 +10416,7 @@ function currentRotation() {
       if (!pop || !frame) return;
       if (ttl) ttl.textContent = title || "Map";
       frame.src = src || "about:blank";
+      frame.classList.toggle("gmap-night", !!(src && /maps\.google|google\.com\/maps/.test(src) && document.documentElement.classList.contains("dark")));
       if (link) link.innerHTML = links || "";
       if (noteEl) {
         if (note) { noteEl.innerHTML = note; noteEl.hidden = false; }
