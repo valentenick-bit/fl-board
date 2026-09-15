@@ -3984,7 +3984,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 698;
+    window.BOARD_VER = 699;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -9285,6 +9285,7 @@ function currentRotation() {
         });
       fetch("https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json")
         .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
         .then(function (d) {
           var el = document.getElementById("live-swind");
           if (!el) return;
@@ -9325,33 +9326,57 @@ function currentRotation() {
       var el = document.getElementById("live-king");
       if (!el) return;
       var s = typeof getSet === "function" ? getSet() : {};
-      var st = s.tide || s.tideStation || "8725809";
+      var st = s.tide || s.tideStation || "8725520";
       var start = new Date();
       var end = new Date(Date.now() + 12 * 86400000);
       function ymd(d) {
         return d.toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
       }
-      var url = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=Commons&datum=MLLW&station=" + encodeURIComponent(st) + "&begin_date=" + ymd(start) + "&end_date=" + ymd(end) + "&time_zone=lst_ldt&units=english&interval=hilo&format=json";
-      fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-        var rows = (d && d.predictions) || [];
-        var highs = rows.filter(function (p) { return p.type === "H" && Number(p.v) >= 2.0; });
+      function paintHighs(rows, src) {
+        var highs = (rows || []).filter(function (p) {
+          var typ = String(p.type || p.ty || "").toUpperCase();
+          var v = Number(p.v);
+          return (typ === "H" || typ === "HH" || (!typ && isFinite(v))) && isFinite(v) && v >= 2.0;
+        });
         if (!highs.length) {
-          el.textContent = "No nuisance highs in the next 12 days at this station.";
-          if (typeof noteFeed === "function") noteFeed("live-king", true, "none");
-          return;
+          el.textContent = "No 2 ft+ highs in the next 12 days at this station.";
+          if (typeof noteFeed === "function") noteFeed("live-king", true, "none " + (src || ""));
+          return true;
         }
         var bits = highs.slice(0, 3).map(function (p) {
           var ft = Number(p.v).toFixed(1);
-          var when = new Date(p.t.replace(" ", "T"));
-          var label = isNaN(when) ? p.t : when.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", timeZone: "America/New_York" });
+          var when = new Date(String(p.t).replace(" ", "T"));
+          var label = isNaN(when.getTime()) ? p.t : when.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", timeZone: "America/New_York" });
           var kind = Number(p.v) >= 2.3 ? "king" : "nuisance";
           return label + " · " + ft + " ft (" + kind + ")";
         });
         el.textContent = bits.join(" · ");
-        if (typeof noteFeed === "function") noteFeed("live-king", true, highs.length + " highs");
-      }).catch(function () {
-        el.textContent = "Tide calendar did not load.";
-        if (typeof noteFeed === "function") noteFeed("live-king", false, "fail");
+        if (typeof noteFeed === "function") noteFeed("live-king", true, highs.length + " highs · " + (src || "noaa"));
+        return true;
+      }
+      function fromCharts() {
+        var preds = (window.__bwCharts && (window.__bwCharts.preds || window.__bwCharts.hiLo)) || [];
+        if (preds.length) return paintHighs(preds, "chart");
+        return false;
+      }
+      function pull(id) {
+        var url = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=Commons&datum=MLLW&station=" + encodeURIComponent(id) + "&begin_date=" + ymd(start) + "&end_date=" + ymd(end) + "&time_zone=lst_ldt&units=english&interval=hilo&format=json";
+        return fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          var rows = (d && d.predictions) || [];
+          if (rows.length) return paintHighs(rows, id);
+          return false;
+        }).catch(function () { return false; });
+      }
+      pull(st).then(function (ok) {
+        if (ok) return true;
+        if (st !== "8725520") return pull("8725520");
+        return false;
+      }).then(function (ok) {
+        if (ok) return;
+        if (fromCharts()) return;
+        el.textContent = "Using the tide chart on Marine until NOAA answers.";
+        if (typeof noteFeed === "function") noteFeed("live-king", true, "chart pending");
+        setTimeout(function () { if (!fromCharts()) return; }, 8000);
       });
     }
     function loadIssPasses() {
@@ -15517,7 +15542,22 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         var preds = (window.__bwCharts && window.__bwCharts.preds) || [];
         if (preds.length < 4) {
           var lab = document.getElementById("live-surge");
-          if (lab) lab.textContent = "Waiting on NOAA water level";
+          if (lab) lab.textContent = "Predicted tide only · live water level quiet";
+          if (typeof noteFeed === "function") noteFeed("surge", true, "pred only");
+          var st = (typeof getSet === "function" && (getSet().tide || getSet().tideStation)) || "8725520";
+          var day = typeof noaaDay === "function" ? noaaDay(-1) : "";
+          if (day) {
+            fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=Commons&begin_date=" + day + "&range=48&datum=MLLW&station=" + encodeURIComponent(st) + "&time_zone=gmt&units=english&interval=h&format=json")
+              .then(function (r) { return r.ok ? r.json() : null; })
+              .then(function (d) {
+                var rows = (d && d.predictions) || [];
+                if (rows.length >= 4) {
+                  window.__bwCharts = window.__bwCharts || {};
+                  window.__bwCharts.preds = rows;
+                  surgeFallbackTide();
+                }
+              }).catch(function () {});
+          }
           return;
         }
         var pts = preds.map(function (p) {
