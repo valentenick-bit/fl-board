@@ -506,8 +506,14 @@
     html.dark #traffic-gmap { background:#1b221f; }
     html.dark iframe.gmap-night,
     html.dark #map-pop-frame.gmap-night,
-    html.dark #traffic-map.gmap-night {
+    html.dark #traffic-map.gmap-night,
+    html.dark #eat-map-frame,
+    html.dark #golf-map-frame {
       filter: invert(1) hue-rotate(180deg) saturate(0.65) brightness(0.92);
+      background:#1b221f;
+    }
+    html.dark #eats .land-map-frame .radar-crop,
+    html.dark #golf .land-map-frame .radar-crop {
       background:#1b221f;
     }
     html.phone .settings .set-row,
@@ -3903,7 +3909,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 696;
+    window.BOARD_VER = 697;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4387,16 +4393,20 @@ Cart shop:</textarea>
       if (!map || typeof map.setOptions !== "function") return;
       try { map.setOptions(gmapsLook()); } catch (eA) {}
     }
+    function themeOneGmapFrame(f) {
+      if (!f) return;
+      var src = f.getAttribute("src") || "";
+      var isG = /maps\.google|google\.com\/maps/.test(src);
+      f.classList.toggle("gmap-night", isG && gmapsWantDark());
+    }
     function themeGmapFrames() {
       var dark = gmapsWantDark();
       document.documentElement.classList.toggle("gmap-night", dark);
       applyGmapsLook(window.__trafficMap);
-      ["traffic-map","map-pop-frame"].forEach(function (id) {
-        var f = document.getElementById(id);
-        if (!f) return;
-        var src = f.getAttribute("src") || "";
-        if (/maps\.google|google\.com\/maps/.test(src)) f.classList.toggle("gmap-night", dark);
+      ["traffic-map","map-pop-frame","eat-map-frame","golf-map-frame"].forEach(function (id) {
+        themeOneGmapFrame(document.getElementById(id));
       });
+      document.querySelectorAll("iframe").forEach(function (f) { themeOneGmapFrame(f); });
     }
     window.themeGmapFrames = themeGmapFrames;
     function homeBoltEmbed() {
@@ -9304,6 +9314,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v697 — Restaurant and golf page maps follow board dark mode.",
       "v696 — Google Maps on Land and in the map popup follow board dark mode.",
       "v695 — Phone header is two rows so the temp pill no longer covers COMMONS. Today stacks on phone and short landscape. One 720px phone cutoff. HeatRisk readable in dark mode. Date chips wrap. Greeting says Good night from 9pm to 5am.",
       "v499 — Deliveries pull the Sept 9 Gmail scan file, not the old Sept 6 list.",
@@ -10351,7 +10362,10 @@ function currentRotation() {
       if (!r) return;
       var map = document.getElementById("eat-map-frame");
       var mapA = document.getElementById("eat-map-open");
-      if (map) map.src = placeMapSrc(r.name, r.addr);
+      if (map) {
+        map.src = placeMapSrc(r.name, r.addr);
+        if (typeof themeOneGmapFrame === "function") themeOneGmapFrame(map);
+      }
       if (mapA) mapA.href = placeMapLink(r.name, r.addr);
       if (r.website || r.placeId) return;
       if (typeof loadGmaps === "function") loadGmaps(function (ok) {
@@ -10392,7 +10406,10 @@ function currentRotation() {
       if (!r) return;
       var map = document.getElementById("golf-map-frame");
       var mapA = document.getElementById("golf-map-open");
-      if (map) map.src = placeMapSrc(r.name, r.addr);
+      if (map) {
+        map.src = placeMapSrc(r.name, r.addr);
+        if (typeof themeOneGmapFrame === "function") themeOneGmapFrame(map);
+      }
       if (mapA) mapA.href = placeMapLink(r.name, r.addr);
     }
     window.selectEat = selectEat;
