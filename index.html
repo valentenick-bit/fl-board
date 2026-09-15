@@ -9,7 +9,14 @@
   <script>
     try {
       if (localStorage.getItem("bw-kiosk") === "1") document.documentElement.classList.add("kiosk");
-      if (window.matchMedia && window.matchMedia("(max-width:720px)").matches) document.documentElement.classList.add("phone");
+      (function () {
+        var w = window.innerWidth || 0, h = window.innerHeight || 0;
+        var coarse = false;
+        try { coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches; } catch (eP) {}
+        var phone = w <= 720 || (h <= 520 && w <= 980) || (coarse && Math.min(w, h) <= 520);
+        if (phone) document.documentElement.classList.add("phone");
+        if (phone && w > h) document.documentElement.classList.add("phone-land");
+      })();
       (function () {
         var s = {};
         try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e2) { s = {}; }
@@ -49,7 +56,8 @@
     window.addEventListener("pageshow", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("focus", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("resize", function () {
-      document.documentElement.classList.toggle("phone", window.innerWidth <= 720);
+      if (typeof syncPhoneClass === "function") syncPhoneClass();
+      else document.documentElement.classList.toggle("phone", window.innerWidth <= 720);
       setTimeout(wakeBoard, 50);
     });
     document.addEventListener("DOMContentLoaded", function () {
@@ -1429,7 +1437,7 @@
     .hi { font-weight:800; text-align:right; } .lo { color:var(--muted); text-align:right; font-weight:700; }
     .tbar { display:block; height:8px; border-radius:999px; background:#e2d9c8; position:relative; overflow:hidden; }
     .tbar i { position:absolute; top:0; height:100%; border-radius:999px; background:linear-gradient(90deg,#2a9d8f,#c4a35a,#e07a5f); }
-    @media (min-width: 800px) {
+    @media (min-width: 800px) and (min-height: 560px) {
       .day { padding:6px 10px; font-size:13px; }
       iframe.full { height:68vh; }
       iframe.lite, .gmap-box { height:56vh; width:100%; border:0; border-radius:12px; background:#d7e3ea; }
@@ -2300,6 +2308,87 @@
     .ask-row button { flex:1; min-height:40px; border:0; border-radius:10px; background:#1b2a4a; color:#f7f1e4; font-weight:700; }
     .ask-row button.ghost { background:transparent; color:inherit; border:1px solid rgba(27,42,74,.2); }
     .ask-out { margin-top:10px; font-size:15px; line-height:1.5; }
+
+
+    html.dark iframe#traffic-map,
+    html.dark iframe#eat-map-frame,
+    html.dark iframe#golf-map-frame,
+    html.dark iframe#map-pop-frame,
+    html.dark iframe[src*="maps.google.com"],
+    html.dark iframe[src*="google.com/maps"] {
+      filter: invert(0.90) hue-rotate(180deg) saturate(0.65) brightness(0.92);
+    }
+    html.dark #traffic-gmap,
+    html.dark .gmap-box {
+      background:#0e161c;
+    }
+
+
+    html.phone .today-shell,
+    html.phone-land .today-shell,
+    html.phone .today-out-grid,
+    html.phone .fun-shell,
+    html.phone .split-board {
+      grid-template-columns:1fr !important;
+    }
+    html.phone .tiles,
+    html.phone .tiles.facts,
+    html.phone-land .tiles,
+    html.phone-land .tiles.facts {
+      grid-template-columns:1fr 1fr !important;
+    }
+    html.phone .row3 { grid-template-columns:1fr 1fr !important; }
+    html.phone #land .land-top,
+    html.phone #eats .land-top,
+    html.phone #golf .land-top,
+    html.phone #tenday .wx-top,
+    html.phone-land #land .land-top,
+    html.phone-land #eats .land-top,
+    html.phone-land #golf .land-top {
+      grid-template-columns:1fr !important;
+    }
+    html.phone #land .land-map-frame,
+    html.phone #eats .land-map-frame,
+    html.phone #golf .land-map-frame,
+    html.phone-land #land .land-map-frame,
+    html.phone-land #eats .land-map-frame,
+    html.phone-land #golf .land-map-frame {
+      grid-column:1 !important;
+      grid-row:auto !important;
+      width:100%;
+      margin:0 0 10px;
+    }
+    html.phone .land-map-frame .radar-crop,
+    html.phone-land .land-map-frame .radar-crop {
+      max-height:38vh;
+      min-height:180px;
+    }
+    html.phone-land header {
+      padding:8px 8px 12px !important;
+      min-height:76px !important;
+    }
+    html.phone-land header .temp, html.phone-land header .feels strong {
+      font-size:22px !important; line-height:22px !important; height:22px !important;
+    }
+    html.phone .dock button {
+      min-height:36px;
+      font-size:12px;
+      padding:6px 2px;
+    }
+    html.phone-land .dock button { min-height:32px; font-size:12px; }
+    html.phone .ask-sheet {
+      inset:auto 8px 72px 8px;
+      max-height:46vh;
+      overflow:auto;
+    }
+    html.phone .drawer { width:min(88vw,320px); }
+    html.phone .tile { min-height:64px; padding:10px; }
+    html.phone .sky-graphs, html.phone .marine-graphs { grid-template-columns:1fr 1fr; }
+    @media (max-height:520px) and (orientation:landscape) {
+      header { padding:8px 8px 10px; min-height:72px; }
+      .today-shell, .fun-shell, .split-board { grid-template-columns:1fr !important; }
+      .tiles, .tiles.facts { grid-template-columns:1fr 1fr !important; }
+    }
 
 </style>
 </head>
@@ -3854,7 +3943,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 695;
+    window.BOARD_VER = 697;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4298,6 +4387,53 @@ Cart shop:</textarea>
       if (addr && /\d/.test(addr) && addr.length > 8) return addr;
       return homeLat().toFixed(5) + "," + homeLon().toFixed(5);
     }
+
+    var GMAP_NIGHT = [
+      { elementType: "geometry", stylers: [{ color: "#1b2430" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#c9d6c8" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#1b2430" }] },
+      { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#3a4a46" }] },
+      { featureType: "poi", elementType: "geometry", stylers: [{ color: "#24302c" }] },
+      { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#1e2c24" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a3438" }] },
+      { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1b2430" }] },
+      { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3d4a3c" }] },
+      { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2a3036" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e3a44" }] },
+      { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#7aa0a8" }] }
+    ];
+    function boardWantsDark() {
+      return document.documentElement.classList.contains("dark");
+    }
+    function gmapThemeOpts(extra) {
+      var o = extra ? Object.assign({}, extra) : {};
+      var dark = boardWantsDark();
+      try {
+        if (window.google && google.maps && google.maps.ColorScheme) {
+          o.colorScheme = dark ? google.maps.ColorScheme.DARK : google.maps.ColorScheme.LIGHT;
+          o.styles = [];
+          return o;
+        }
+      } catch (eC) {}
+      o.styles = dark ? GMAP_NIGHT : [];
+      o.backgroundColor = dark ? "#0e161c" : "#e8e4d8";
+      return o;
+    }
+    function applyGmapsTheme() {
+      var dark = boardWantsDark();
+      var maps = [];
+      if (window.__trafficMap) maps.push(window.__trafficMap);
+      if (window.__eatJsMap) maps.push(window.__eatJsMap);
+      if (window.__golfJsMap) maps.push(window.__golfJsMap);
+      maps.forEach(function (map) {
+        if (!map || typeof map.setOptions !== "function") return;
+        try { map.setOptions(gmapThemeOpts({})); } catch (eS) {}
+      });
+      if (typeof noteFeed === "function") noteFeed("gmaps-dark", true, dark ? "night" : "day");
+    }
+    window.gmapThemeOpts = gmapThemeOpts;
+    window.applyGmapsTheme = applyGmapsTheme;
+
     function homeTrafficEmbed() {
       return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=14&hl=en&layer=t&t=m&output=embed";
     }
@@ -4762,14 +4898,14 @@ Cart shop:</textarea>
           return;
         }
         try {
-          var map = new google.maps.Map(box, {
+          var map = new google.maps.Map(box, gmapThemeOpts({
             center: center,
             zoom: 12,
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: true,
             gestureHandling: "greedy"
-          });
+          }));
           window.__trafficMap = map;
           window.__trafficLayer = new google.maps.TrafficLayer();
           window.__trafficLayer.setMap(map);
@@ -8109,6 +8245,24 @@ function currentRotation() {
         else if (s.dark === "night") document.documentElement.classList.add("dark");
       })();
     } catch (e) {}
+
+    function isPhoneView() {
+      if (document.documentElement.classList.contains("kiosk")) return false;
+      var w = window.innerWidth || 0, h = window.innerHeight || 0;
+      var coarse = false;
+      try { coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches; } catch (e) {}
+      if (w <= 720) return true;
+      if (h <= 520 && w <= 980) return true;
+      if (coarse && Math.min(w, h) <= 520) return true;
+      return false;
+    }
+    function syncPhoneClass() {
+      var on = isPhoneView();
+      document.documentElement.classList.toggle("phone", on);
+      document.documentElement.classList.toggle("phone-land", on && window.innerWidth > window.innerHeight);
+    }
+    try { syncPhoneClass(); } catch (eSP) {}
+
     function hardRefresh() {
       try { sessionStorage.setItem("bw-refreshed", String(Date.now())); } catch (e) {}
       if (typeof touchFeed === "function") touchFeed("refresh", true, "reload requested");
@@ -8175,7 +8329,8 @@ function currentRotation() {
         var on = false;
         try { on = localStorage.getItem("bw-kiosk") === "1"; } catch (e) {}
         document.documentElement.classList.toggle("kiosk", on);
-        document.documentElement.classList.toggle("phone", window.innerWidth <= 700 && !on);
+        if (typeof syncPhoneClass === "function") syncPhoneClass();
+        else document.documentElement.classList.toggle("phone", window.innerWidth <= 700 && !on);
         var linksOn = true;
         try { linksOn = (JSON.parse(localStorage.getItem("bw-set") || "{}") || {}).links !== "0"; } catch (e2) {}
         document.documentElement.classList.toggle("nolinks", !linksOn);
@@ -8250,6 +8405,7 @@ function currentRotation() {
       } catch (e) {}
       if (typeof paintSkyHeader === "function") paintSkyHeader();
             if (typeof syncLightningUI === "function") syncLightningUI();
+      if (typeof applyGmapsTheme === "function") applyGmapsTheme();
       if (typeof noteDarkMode === "function") noteDarkMode();
       var btn = document.getElementById("darkbtn");
       if (btn) {
@@ -12587,7 +12743,7 @@ function mustEats() {
             document.body.appendChild(box);
           }
           var map = null;
-          try { map = new google.maps.Map(box, { center: { lat: homeLat(), lng: homeLon() }, zoom: 12, disableDefaultUI: true }); } catch (eM) { map = null; }
+          try { map = new google.maps.Map(box, gmapThemeOpts({ center: { lat: homeLat(), lng: homeLon() }, zoom: 12, disableDefaultUI: true })); } catch (eM) { map = null; }
           var svc;
           try { svc = new google.maps.places.PlacesService(map || box); } catch (eS) {
             if (typeof noteFeed === "function") noteFeed("eats-src", false, "PlacesService " + eS);
