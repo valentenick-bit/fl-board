@@ -9,7 +9,7 @@
   <script>
     try {
       if (localStorage.getItem("bw-kiosk") === "1") document.documentElement.classList.add("kiosk");
-      if (window.matchMedia && window.matchMedia("(max-width:720px)").matches && localStorage.getItem("bw-kiosk") !== "1") document.documentElement.classList.add("phone");
+      if (window.matchMedia && window.matchMedia("(max-width:720px)").matches) document.documentElement.classList.add("phone");
       (function () {
         var s = {};
         try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e2) { s = {}; }
@@ -49,8 +49,7 @@
     window.addEventListener("pageshow", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("focus", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("resize", function () {
-      if (typeof layoutBand === "function") layoutBand();
-      else document.documentElement.classList.toggle("phone", window.innerWidth <= 720 && !document.documentElement.classList.contains("kiosk"));
+      document.documentElement.classList.toggle("phone", window.innerWidth <= 720);
       setTimeout(wakeBoard, 50);
     });
     document.addEventListener("DOMContentLoaded", function () {
@@ -457,73 +456,6 @@
       z-index:10;
       grid-column:1 / -1;
     }
-    html.phone .hdr-bar,
-    html.band-phone .hdr-bar,
-    html.stack-today .hdr-bar {
-      grid-template-columns:minmax(0,1fr) auto;
-      grid-template-areas:"left clock" "temp temp";
-      align-items:start;
-      gap:6px 8px;
-    }
-    html.phone .hdr-left,
-    html.band-phone .hdr-left,
-    html.stack-today .hdr-left { grid-area:left; min-width:0; }
-    html.phone header .clock,
-    html.band-phone header .clock,
-    html.stack-today header .clock { grid-area:clock; justify-self:end; }
-    html.phone header .temprow,
-    html.band-phone header .temprow,
-    html.stack-today header .temprow {
-      grid-area:temp;
-      justify-self:stretch;
-      width:100%;
-      justify-content:flex-start;
-    }
-    html.phone .brand small,
-    html.band-phone .brand small,
-    html.stack-today .brand small {
-      max-width:min(52vw, 18em);
-      -webkit-line-clamp:2;
-    }
-    html.stack-today .today-shell,
-    html.stack-today .today-out-grid,
-    html.band-phone .today-shell,
-    html.band-phone .today-out-grid {
-      grid-template-columns:1fr;
-    }
-    html.stack-today .today-main,
-    html.band-phone .today-main { order:1; }
-    html.stack-today .today-side,
-    html.band-phone .today-side { order:2; }
-    html.dark .wx-strip.heat { background:#6a3126; color:#f8d7cc; }
-    html.dark .wx-strip.cold { background:#1e3348; color:#d7e6f6; }
-    html.dark .wx-strip.fire { background:#5a3a18; color:#f3e0c8; }
-    html.dark .wx-strip.flood { background:#1f4a32; color:#d4e4d8; }
-    html.dark .wx-strip.spc { background:#4a3a12; color:#efe4c4; }
-    html.dark .wx-strip.stale { background:#3a3830; color:#ddd6c8; }
-    html.dark .gmap-box,
-    html.gmap-night .gmap-box,
-    html.dark #traffic-gmap { background:#1b221f; }
-    html.dark iframe.gmap-night,
-    html.dark #map-pop-frame.gmap-night,
-    html.dark #traffic-map.gmap-night,
-    html.dark #eat-map-frame,
-    html.dark #golf-map-frame {
-      filter: invert(1) hue-rotate(180deg) saturate(0.65) brightness(0.92);
-      background:#1b221f;
-    }
-    html.dark #eats .land-map-frame .radar-crop,
-    html.dark #golf .land-map-frame .radar-crop {
-      background:#1b221f;
-    }
-    html.phone .settings .set-row,
-    html.band-phone .settings .set-row {
-      border-radius:16px;
-      justify-content:flex-end;
-    }
-    #set-datefmt { max-width:100%; }
-    html.phone #set-datefmt button,
-    html.band-phone #set-datefmt button { font-size:12px; padding:7px 8px; }
     header { display:grid; grid-template-columns:1fr; }
     .hdr-left { display:flex; align-items:center; gap:8px; min-width:0; justify-self:start; }
     header .brand { justify-self:start; }
@@ -2349,6 +2281,26 @@
     html.dark .moon-look { background:#0e141c; }
     .moon-look svg { display:block; width:100%; height:100%; }
 
+
+    .ask-sheet {
+      position:fixed; inset:auto 12px 84px 12px; z-index:80; display:none;
+      background:var(--paper,#f7f1e4); color:var(--navy,#1b2a4a);
+      border-radius:16px; box-shadow:0 12px 40px rgba(20,30,40,.28);
+      padding:14px 14px 12px; max-width:560px; margin:0 auto;
+    }
+    html.dark .ask-sheet { background:#1c2430; color:#efe4c8; }
+    .ask-sheet.on { display:block; }
+    .ask-sheet b { display:block; font-family:"Fraunces",Georgia,serif; font-size:18px; margin:0 0 8px; }
+    .ask-sheet textarea {
+      width:100%; min-height:64px; border-radius:10px; border:1px solid rgba(27,42,74,.18);
+      padding:8px 10px; font:15px/1.4 system-ui,sans-serif; background:#fff; color:inherit;
+    }
+    html.dark .ask-sheet textarea { background:#121820; border-color:#3a4656; }
+    .ask-row { display:flex; gap:8px; margin-top:8px; }
+    .ask-row button { flex:1; min-height:40px; border:0; border-radius:10px; background:#1b2a4a; color:#f7f1e4; font-weight:700; }
+    .ask-row button.ghost { background:transparent; color:inherit; border:1px solid rgba(27,42,74,.2); }
+    .ask-out { margin-top:10px; font-size:15px; line-height:1.5; }
+
 </style>
 </head>
 <body>
@@ -2774,25 +2726,6 @@
       </section>
       <section id="house" class="page">
         <h2 data-k="This house">House</h2>
-        <div class="who-row">
-          <div class="card"><b>Nick</b>
-            <label class="switch">
-              <span class="off-lab">CT</span>
-              <input type="checkbox" id="who-nick-tog" checked />
-              <i></i>
-              <span class="on-lab">FL</span>
-            </label>
-          </div>
-          <div class="card"><b>Dayna</b>
-            <label class="switch">
-              <span class="off-lab">CT</span>
-              <input type="checkbox" id="who-dayna-tog" checked />
-              <i></i>
-              <span class="on-lab">FL</span>
-            </label>
-          </div>
-        </div>
-        <div class="card"><b id="house-occ">Occupied</b><span id="house-seen">Last seen —</span></div>
         <div class="card"><b>Flights</b><div id="live-flights">Loading the flight scan…</div></div>
         <div class="card"><b>AC filter</b><span id="ac-filter-note">Set the date you last changed it. Reminder is 90 days.</span><input type="date" id="ac-filter-date" /></div>
         <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
@@ -3838,6 +3771,17 @@ Cart shop:</textarea>
     </div>
     </div>
 
+    
+    <div class="ask-sheet" id="ask-sheet" hidden>
+      <b>Ask Commons</b>
+      <textarea id="ask-q" placeholder="Tide, beach window, tonight’s table, packages…"></textarea>
+      <div class="ask-row">
+        <button type="button" class="ghost" id="ask-close">Close</button>
+        <button type="button" id="ask-go">Ask</button>
+      </div>
+      <div class="ask-out" id="ask-out"></div>
+    </div>
+
     <div class="drawer-back" id="drawer-back"></div>
     <aside class="drawer" id="drawer" aria-label="Menu">
       <div class="drawer-head">
@@ -3845,6 +3789,7 @@ Cart shop:</textarea>
       </div>
       <nav class="drawer-list">
         <p class="drawer-lab">Daily</p>
+        <button type="button" id="ask-open">Ask Commons</button>
         <button type="button" data-p="now">Today</button>
         <button type="button" data-p="tenday">Weather</button>
         <button type="button" data-p="land">Land</button>
@@ -3909,7 +3854,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 697;
+    window.BOARD_VER = 695;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4356,59 +4301,6 @@ Cart shop:</textarea>
     function homeTrafficEmbed() {
       return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=14&hl=en&layer=t&t=m&output=embed";
     }
-    function gmapsWantDark() {
-      return document.documentElement.classList.contains("dark");
-    }
-    function gmapsNightStyles() {
-      return [
-        { elementType: "geometry", stylers: [{ color: "#1d2420" }] },
-        { elementType: "labels.text.stroke", stylers: [{ color: "#1d2420" }] },
-        { elementType: "labels.text.fill", stylers: [{ color: "#c9b88a" }] },
-        { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d4c199" }] },
-        { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#a89b78" }] },
-        { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#1a2a22" }] },
-        { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b8f73" }] },
-        { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a3430" }] },
-        { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1b221f" }] },
-        { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9aa394" }] },
-        { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3a4038" }] },
-        { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#242820" }] },
-        { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#d4c199" }] },
-        { featureType: "transit", elementType: "geometry", stylers: [{ color: "#252c28" }] },
-        { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e2740" }] },
-        { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#6a8aaa" }] }
-      ];
-    }
-    function gmapsLook() {
-      var dark = gmapsWantDark();
-      var opt = { backgroundColor: dark ? "#1b221f" : "#d7e3ea", styles: dark ? gmapsNightStyles() : [] };
-      try {
-        if (window.google && google.maps && google.maps.ColorScheme) {
-          opt.colorScheme = dark ? google.maps.ColorScheme.DARK : google.maps.ColorScheme.LIGHT;
-        }
-      } catch (eC) {}
-      return opt;
-    }
-    function applyGmapsLook(map) {
-      if (!map || typeof map.setOptions !== "function") return;
-      try { map.setOptions(gmapsLook()); } catch (eA) {}
-    }
-    function themeOneGmapFrame(f) {
-      if (!f) return;
-      var src = f.getAttribute("src") || "";
-      var isG = /maps\.google|google\.com\/maps/.test(src);
-      f.classList.toggle("gmap-night", isG && gmapsWantDark());
-    }
-    function themeGmapFrames() {
-      var dark = gmapsWantDark();
-      document.documentElement.classList.toggle("gmap-night", dark);
-      applyGmapsLook(window.__trafficMap);
-      ["traffic-map","map-pop-frame","eat-map-frame","golf-map-frame"].forEach(function (id) {
-        themeOneGmapFrame(document.getElementById(id));
-      });
-      document.querySelectorAll("iframe").forEach(function (f) { themeOneGmapFrame(f); });
-    }
-    window.themeGmapFrames = themeGmapFrames;
     function homeBoltEmbed() {
       return "https://map.blitzortung.org/#10/" + homeLat() + "/" + homeLon();
     }
@@ -4865,25 +4757,20 @@ Cart shop:</textarea>
             window.__trafficMap.panTo(center);
             if (window.__trafficPin) window.__trafficPin.setPosition(center);
             if (window.__trafficLayer) window.__trafficLayer.setMap(window.__trafficMap);
-            if (typeof applyGmapsLook === "function") applyGmapsLook(window.__trafficMap);
           } catch (eR) {}
           if (typeof noteFeed === "function") noteFeed("traffic", true, "reuse google traffic");
           return;
         }
         try {
-          var mapOpt = {
+          var map = new google.maps.Map(box, {
             center: center,
             zoom: 12,
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: true,
             gestureHandling: "greedy"
-          };
-          var look = typeof gmapsLook === "function" ? gmapsLook() : {};
-          Object.keys(look).forEach(function (k) { mapOpt[k] = look[k]; });
-          var map = new google.maps.Map(box, mapOpt);
+          });
           window.__trafficMap = map;
-          if (typeof themeGmapFrames === "function") themeGmapFrames();
           window.__trafficLayer = new google.maps.TrafficLayer();
           window.__trafficLayer.setMap(map);
           window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
@@ -5077,7 +4964,7 @@ Cart shop:</textarea>
         { id: "sports", group: "Local", title: "Sports scores", source: "ESPN scoreboard APIs for leagues checked on the Sports page.", site: "League venues that night", feeds: ["sports"] },
         { id: "traffic", group: "Local", title: "Traffic map", source: "Google Maps embed pinned on the home address.", site: s.address || (place + " pin"), feeds: ["traffic"] },
         { id: "gator", group: "Local", title: "Alligator headlines", source: "Google News search when the zip is in alligator range.", site: "Regional headlines near " + place, feeds: ["gator"] },
-        { id: "house", group: "House", title: "Occupancy, vendors, villa checks", source: "house.json on Drive / GitHub when shared. Otherwise this browser only.", site: "Household file, not an HOA feed", feeds: ["house"] },
+        { id: "house", group: "House", title: "Vendors, villa checks, flights", source: "house.json on Drive / GitHub when shared. Otherwise this browser only.", site: "Household file, not an HOA feed", feeds: ["house"] },
         { id: "radio", group: "House", title: "Radio and scanners", source: "Station streams and Broadcastify / NOAA weather radio for the home WFO.", site: "Towers that serve " + place, feeds: ["radio"] }
       ];
       return rows;
@@ -6307,18 +6194,10 @@ function currentRotation() {
       }, 32);
     })();
     function greetWord() {
-      var hr = 0;
-      try {
-        var parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).formatToParts(new Date());
-        parts.forEach(function (p) { if (p.type === "hour") hr = parseInt(p.value, 10) || 0; });
-        if (hr === 24) hr = 0;
-      } catch (e) {
-        hr = new Date().getHours();
-      }
-      if (hr >= 5 && hr < 12) return "Good morning.";
-      if (hr >= 12 && hr < 17) return "Good afternoon.";
-      if (hr >= 17 && hr < 21) return "Good evening.";
-      return "Good night.";
+      var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
+      if (hr < 12) return "Good morning.";
+      if (hr < 17) return "Good afternoon.";
+      return "Good evening.";
     }
     function upcomingHourLines(hours, limit) {
       var now = Date.now();
@@ -6981,21 +6860,17 @@ function currentRotation() {
       if (typeof saveHouse === "function") saveHouse();
     }
     function paintWho() {
-      ["nick","dayna"].forEach(function (p) {
-        var tog = document.getElementById("who-" + p + "-tog");
-        if (tog) tog.checked = whoGet(p) === "FL";
-      });
+      var row = document.querySelector(".who-row");
+      if (row) row.remove();
       var occ = document.getElementById("house-occ");
-      var seen = document.getElementById("house-seen");
-      var n = whoGet("nick"), d = whoGet("dayna");
-      if (occ) occ.textContent = (n === "FL" || d === "FL") ? "Someone on the Key" : "Villa empty";
-      if (seen) seen.textContent = "Nick " + n + " · Dayna " + d;
+      if (occ && occ.closest) {
+        var card = occ.closest(".card");
+        if (card) card.remove();
+      }
     }
     function writeWhoLine() {
       var el = document.getElementById("who-line");
-      if (!el) return;
-      function place(v) { return v === "FL" ? "on the Key" : "in Connecticut"; }
-      el.textContent = "Nick is " + place(whoGet("nick")) + ". Dayna is " + place(whoGet("dayna")) + ".";
+      if (el) el.remove();
     }
     ["nick","dayna"].forEach(function (p) {
       var tog = document.getElementById("who-" + p + "-tog");
@@ -7688,6 +7563,149 @@ function currentRotation() {
           if (typeof noteFeed === "function") noteFeed("live-quake-sig", false, "USGS sig failed");
         });
     }
+
+    function commonsSnap() {
+      var wx = window.__nowWx || {};
+      var hours = window.__hours || [];
+      var alerts = window.__nwsHigh || window.__alerts || [];
+      var ev = [];
+      try {
+        if (typeof recUpcoming === "function") {
+          ev = recUpcoming(18 * 3600000).slice(0, 6).map(function (e) {
+            return { name: e.sum || e.name, where: e.loc, when: e.when };
+          });
+        }
+      } catch (e1) {}
+      var inc = ((window.__delivData || {}).incoming || []).length;
+      return {
+        place: (typeof homePlace === "function" && homePlace()) || "Englewood",
+        temp: wx.temp, feel: wx.feel, word: wx.word, wind: wx.wind, gust: wx.gust,
+        humidity: wx.humidity, uv: wx.uv, greet: wx.greet,
+        hours: hours.slice(0, 8).map(function (h) {
+          return { t: h.t || h.hour, word: h.word || h.sky, pop: h.pop, temp: h.temp };
+        }),
+        alerts: (alerts || []).slice(0, 4).map(function (a) {
+          return a.event || a.headline || a.title || String(a);
+        }),
+        tide: (document.getElementById("live-tide") || {}).textContent || "",
+        lightning: window.__lightningNow || window.__boltOn || false,
+        storms: window.__namedStorms || window.__stormNames || "",
+        events: ev,
+        packages: inc,
+        greeting: window.__greetFull || ""
+      };
+    }
+    function commonsLocalBrief(snap) {
+      snap = snap || commonsSnap();
+      var place = snap.place || "home";
+      var bits = [];
+      var word = String(snap.word || "fair skies").replace(/\.$/, "").toLowerCase();
+      var t = snap.feel != null ? snap.feel : snap.temp;
+      var hi = snap.greet || "Hello";
+      var lead = hi.replace(/\.$/, "") + " in " + place + ".";
+      if (t != null && isFinite(Number(t))) lead += " It is " + Math.round(Number(snap.temp != null ? snap.temp : t)) + "° and feels like " + Math.round(Number(t)) + " under " + word + ".";
+      else lead += " Skies are " + word + ".";
+      bits.push(lead);
+      if (snap.alerts && snap.alerts.length) bits.push("Watch: " + snap.alerts[0] + ".");
+      else if (snap.lightning) bits.push("Lightning is in play nearby — pause the beach and the cart until it clears.");
+      if (snap.tide) bits.push("Tide at the house: " + String(snap.tide).replace(/\s+/g, " ").trim() + ".");
+      if (snap.events && snap.events[0]) {
+        var e0 = snap.events[0];
+        bits.push("On the board tonight: " + e0.name + (e0.where ? " at " + e0.where : "") + ".");
+      }
+      if (snap.packages === 1) bits.push("One package is still out.");
+      else if (snap.packages > 1) bits.push(snap.packages + " packages are still out.");
+      var para = bits.join(" ").replace(/\s+/g, " ").trim();
+      return { brief: para, ticker: para, source: "local" };
+    }
+    function commonsAskLocal(q, snap) {
+      q = String(q || "").toLowerCase();
+      snap = snap || commonsSnap();
+      if (/tide|surge/.test(q)) return snap.tide ? ("Tide at the house: " + snap.tide) : "Tide is on the Sea page when NOAA answers.";
+      if (/beach|swim|cart|boat|court|go/.test(q)) return snap.greeting || "Check the Today pills — those are the go / no-go for this hour.";
+      if (/package|deliver|amazon|ups|fedex/.test(q)) return snap.packages ? (snap.packages + " still out.") : "No open packages on the board.";
+      if (/ticket|concert|music|tonight|event/.test(q)) {
+        if (snap.events && snap.events[0]) return snap.events.map(function (e) { return e.name; }).join("; ");
+        return "Nothing loud on the local calendar for the next few hours.";
+      }
+      if (/storm|cane|hurricane|warning|watch/.test(q)) return (snap.alerts && snap.alerts[0]) ? snap.alerts.join(" · ") : "No watches or warnings on the pin right now.";
+      if (/fish|bite|bait/.test(q)) return "Sea page has the fishing note. Early and late are the honest windows in this heat.";
+      if (/golf/.test(q)) return "Golf page lists courses inside your radius with live drive time from the house pin.";
+      if (/eat|dinner|restaurant|table|happy/.test(q)) return "Tonight’s table and Happy hour on Today are the picks inside 25 miles.";
+      return (commonsLocalBrief(snap).brief);
+    }
+    window.__commonsBrief = window.__commonsBrief || null;
+    function applyCommonsBrief(pack) {
+      pack = pack || window.__commonsBrief || commonsLocalBrief();
+      window.__commonsBrief = pack;
+      if (!pack || !pack.brief) return pack;
+      var el = document.getElementById("live-sky") || document.getElementById("greet-hi");
+      var more = document.getElementById("greet-more");
+      if (more) {
+        more.innerHTML = "";
+        more.textContent = pack.brief;
+      } else if (el) {
+        el.textContent = pack.brief;
+      }
+      window.__greetFull = pack.brief;
+      window.__bestWindow = pack.brief;
+      if (typeof noteFeed === "function") noteFeed("ai-brief", true, pack.source || "local");
+      return pack;
+    }
+    function refreshCommonsBrief() {
+      var snap = commonsSnap();
+      var local = commonsLocalBrief(snap);
+      applyCommonsBrief(local);
+      fetch("/brief", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(snap)
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d && (d.brief || d.text)) {
+          applyCommonsBrief({ brief: d.brief || d.text, ticker: d.ticker || d.brief || d.text, source: "grok" });
+          if (typeof writeBriefing === "function") writeBriefing();
+        }
+      }).catch(function () {});
+      return local;
+    }
+    function openAsk() {
+      var sheet = document.getElementById("ask-sheet");
+      if (!sheet) return;
+      sheet.hidden = false;
+      sheet.classList.add("on");
+      var q = document.getElementById("ask-q");
+      if (q) setTimeout(function () { q.focus(); }, 50);
+    }
+    function closeAsk() {
+      var sheet = document.getElementById("ask-sheet");
+      if (!sheet) return;
+      sheet.classList.remove("on");
+      sheet.hidden = true;
+    }
+    function runAsk() {
+      var qel = document.getElementById("ask-q");
+      var out = document.getElementById("ask-out");
+      var q = qel ? qel.value : "";
+      if (!String(q).trim()) return;
+      var ans = commonsAskLocal(q);
+      if (out) out.textContent = ans;
+      fetch("/brief", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ask: q, snap: commonsSnap() })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d && (d.answer || d.brief) && out) out.textContent = d.answer || d.brief;
+      }).catch(function () {});
+    }
+    document.addEventListener("click", function (e) {
+      if (e.target && e.target.id === "ask-open") { e.preventDefault(); e.stopPropagation(); if (typeof closeDrawer === "function") closeDrawer(); openAsk(); }
+      if (e.target && e.target.id === "ask-close") closeAsk();
+      if (e.target && e.target.id === "ask-go") runAsk();
+    }, true);
+    setInterval(function () {
+      if (typeof refreshCommonsBrief === "function") refreshCommonsBrief();
+    }, 15 * 60 * 1000);
+
     function writeGreetingCard() {
       function clothesDetail(wx, hours, hrNow, nearPop, nearStorm, uvN, windMph, rainStart, rainEnd) {
         var t = Number(wx.feel != null ? wx.feel : wx.temp);
@@ -8043,6 +8061,7 @@ function currentRotation() {
           : "";
       }
       bindGreetToggle();
+      if (typeof refreshCommonsBrief === "function") setTimeout(refreshCommonsBrief, 400);
     }
     function boldGreeting(s) {
       var html = String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -8156,8 +8175,7 @@ function currentRotation() {
         var on = false;
         try { on = localStorage.getItem("bw-kiosk") === "1"; } catch (e) {}
         document.documentElement.classList.toggle("kiosk", on);
-        document.documentElement.classList.toggle("phone", window.innerWidth <= 720 && !on);
-        if (typeof layoutBand === "function") layoutBand();
+        document.documentElement.classList.toggle("phone", window.innerWidth <= 700 && !on);
         var linksOn = true;
         try { linksOn = (JSON.parse(localStorage.getItem("bw-set") || "{}") || {}).links !== "0"; } catch (e2) {}
         document.documentElement.classList.toggle("nolinks", !linksOn);
@@ -8232,7 +8250,6 @@ function currentRotation() {
       } catch (e) {}
       if (typeof paintSkyHeader === "function") paintSkyHeader();
             if (typeof syncLightningUI === "function") syncLightningUI();
-      if (typeof themeGmapFrames === "function") themeGmapFrames();
       if (typeof noteDarkMode === "function") noteDarkMode();
       var btn = document.getElementById("darkbtn");
       if (btn) {
@@ -9314,9 +9331,6 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
-      "v697 — Restaurant and golf page maps follow board dark mode.",
-      "v696 — Google Maps on Land and in the map popup follow board dark mode.",
-      "v695 — Phone header is two rows so the temp pill no longer covers COMMONS. Today stacks on phone and short landscape. One 720px phone cutoff. HeatRisk readable in dark mode. Date chips wrap. Greeting says Good night from 9pm to 5am.",
       "v499 — Deliveries pull the Sept 9 Gmail scan file, not the old Sept 6 list.",
       "v498 — Calendar paint no longer crashes before tides, deliveries, and rotation finish loading.",
       "v497 — Events still show if distance is unknown. Loading labels clear instead of hanging.",
@@ -10362,10 +10376,7 @@ function currentRotation() {
       if (!r) return;
       var map = document.getElementById("eat-map-frame");
       var mapA = document.getElementById("eat-map-open");
-      if (map) {
-        map.src = placeMapSrc(r.name, r.addr);
-        if (typeof themeOneGmapFrame === "function") themeOneGmapFrame(map);
-      }
+      if (map) map.src = placeMapSrc(r.name, r.addr);
       if (mapA) mapA.href = placeMapLink(r.name, r.addr);
       if (r.website || r.placeId) return;
       if (typeof loadGmaps === "function") loadGmaps(function (ok) {
@@ -10406,10 +10417,7 @@ function currentRotation() {
       if (!r) return;
       var map = document.getElementById("golf-map-frame");
       var mapA = document.getElementById("golf-map-open");
-      if (map) {
-        map.src = placeMapSrc(r.name, r.addr);
-        if (typeof themeOneGmapFrame === "function") themeOneGmapFrame(map);
-      }
+      if (map) map.src = placeMapSrc(r.name, r.addr);
       if (mapA) mapA.href = placeMapLink(r.name, r.addr);
     }
     window.selectEat = selectEat;
@@ -10433,7 +10441,6 @@ function currentRotation() {
       if (!pop || !frame) return;
       if (ttl) ttl.textContent = title || "Map";
       frame.src = src || "about:blank";
-      frame.classList.toggle("gmap-night", !!(src && /maps\.google|google\.com\/maps/.test(src) && document.documentElement.classList.contains("dark")));
       if (link) link.innerHTML = links || "";
       if (noteEl) {
         if (note) { noteEl.innerHTML = note; noteEl.hidden = false; }
@@ -16223,7 +16230,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var gust = om.current.wind_gusts_10m != null ? Math.round(om.current.wind_gusts_10m) : null;
       var word = omWord(om.current.weather_code).toLowerCase();
       var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
-      var greet = typeof greetWord === "function" ? greetWord() : (hrNow >= 21 || hrNow < 5 ? "Good night." : hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.");
+      var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
       window.__nowWx = { temp: tempF, feel: feelF, wind: wind, gust: gust, word: word, greet: greet };
       var tempEl = document.getElementById("live-temp");
       var feelEl = document.getElementById("live-feels");
@@ -16489,7 +16496,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           try { if (typeof paintWxFromOm === "function") paintWxFromOm(om); } catch (eWx) {}
           if (skyEl) {
             var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
-            var greet = typeof greetWord === "function" ? greetWord() : (hrNow >= 21 || hrNow < 5 ? "Good night." : hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.");
+            var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
             var short = nowH.shortForecast || today.shortForecast || "fair";
             window.__nowWx = {
               temp: tempF,
@@ -17053,10 +17060,6 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       document.documentElement.classList.add("band-" + band);
       document.documentElement.classList.toggle("orient-land", w > h);
       document.documentElement.classList.toggle("orient-port", h >= w);
-      var stack = !kiosk && (band === "phone" || (h < 500 && w < 1100) || (h >= w && w < 1100));
-      document.documentElement.classList.toggle("stack-today", stack);
-      if (kiosk) document.documentElement.classList.remove("phone");
-      else document.documentElement.classList.toggle("phone", w <= 720 || band === "phone");
       return band;
     }
     window.addEventListener("resize", function () { layoutBand(); });
@@ -17691,6 +17694,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         }
         var GAP = "\u00a0".repeat(160);
         var bits = [];
+        if (window.__commonsBrief && window.__commonsBrief.ticker) {
+          bits.push(window.__commonsBrief.ticker);
+        }
         var hr = (typeof recNowET === "function" ? recNowET() : new Date()).getHours();
         var night = hr >= 20 || hr < 6;
         function highHas(re) {
@@ -18143,10 +18149,10 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             if (fe && /78/.test(fe.textContent)) fe.innerHTML = f + "&deg;";
             var sky = document.getElementById("live-sky");
             var hr = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
-            var g = typeof greetWord === "function" ? greetWord() : (hr >= 21 || hr < 5 ? "Good night." : hr < 12 ? "Good morning." : hr < 17 ? "Good afternoon." : "Good evening.");
+            var g = hr < 12 ? "Good morning." : hr < 17 ? "Good afternoon." : "Good evening.";
             var code = om.current.weather_code || 0;
             var word = code >= 95 ? "Storms" : code >= 61 ? "Rain" : code >= 3 ? "Cloudy" : "Clear";
-            if (sky && /^Good (morning|afternoon|evening|night)\.?$/i.test((sky.textContent || "").trim())) {
+            if (sky && /^Good (morning|afternoon|evening)\.?$/i.test((sky.textContent || "").trim())) {
               sky.textContent = g + " " + word + " in " + homePlace() + ". It is " + t + "° and feels like " + f + "°.";
             }
             var chip = document.getElementById("best-window");
