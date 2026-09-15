@@ -2390,6 +2390,37 @@
       .tiles, .tiles.facts { grid-template-columns:1fr 1fr !important; }
     }
 
+
+    .wear-art {
+      width:72px; height:72px; flex:0 0 72px; border-radius:16px;
+      background:rgba(27,42,74,.06); color:var(--navy);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .wear-art svg { width:56px; height:56px; display:block; }
+    html.dark .wear-art { background:rgba(239,228,200,.08); color:#efe4c8; }
+    .wear-card .ev-body { min-width:0; }
+    .wear-card .wear-row { display:flex; gap:12px; align-items:flex-start; }
+    .wear-stamp { display:block; margin-top:6px; font-size:12px; opacity:.7; }
+    .track-pop {
+      position:fixed; inset:auto 12px 96px 12px; z-index:82; display:none;
+      background:var(--paper,#f7f1e4); color:var(--navy,#1b2a4a);
+      border-radius:16px; box-shadow:0 12px 40px rgba(20,30,40,.28);
+      padding:14px; max-width:520px; margin:0 auto;
+    }
+    html.dark .track-pop { background:#1c2430; color:#efe4c8; }
+    .track-pop.on { display:block; }
+    .track-pop b { display:block; font-family:"Fraunces",Georgia,serif; font-size:18px; margin:0 0 6px; }
+    .track-pop p { margin:0 0 10px; font-size:15px; line-height:1.45; }
+    .track-pop a, .track-pop button.go {
+      display:inline-block; margin-right:8px; padding:8px 12px; border-radius:10px;
+      background:#1b6b62; color:#f7f1e4; text-decoration:none; border:0; font-weight:700;
+    }
+    .track-pop button.ghost { background:transparent; color:inherit; border:1px solid rgba(27,42,74,.2); }
+    html.dark .track-pop button.ghost { border-color:#4a5560; }
+    .deliv-track { margin-top:8px; border:0; border-radius:999px; padding:6px 10px; background:#1b6b62; color:#f7f1e4; font-weight:700; }
+    .price-tag { display:inline-block; margin-left:4px; letter-spacing:.04em; font-weight:700; color:var(--teal,#1b6b62); }
+    html.dark .price-tag { color:#7fd1c4; }
+
 </style>
 </head>
 <body>
@@ -3871,6 +3902,16 @@ Cart shop:</textarea>
       <div class="ask-out" id="ask-out"></div>
     </div>
 
+    
+    <div class="track-pop" id="track-pop" hidden>
+      <b id="track-title">Tracking</b>
+      <p id="track-body"></p>
+      <div class="ask-row">
+        <button type="button" class="ghost" id="track-close">Close</button>
+        <a id="track-link" class="go" href="#" target="_blank" rel="noopener">Open tracker</a>
+      </div>
+    </div>
+
     <div class="drawer-back" id="drawer-back"></div>
     <aside class="drawer" id="drawer" aria-label="Menu">
       <div class="drawer-head">
@@ -3943,7 +3984,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 697;
+    window.BOARD_VER = 698;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -7842,6 +7883,88 @@ function currentRotation() {
       if (typeof refreshCommonsBrief === "function") refreshCommonsBrief();
     }, 15 * 60 * 1000);
 
+
+    var WEAR_ART = {
+      shorts: '<svg viewBox="0 0 64 64" fill="none"><path d="M16 18h32v10l-6 22H36l-4-14-4 14H22L16 28V18z" stroke="currentColor" stroke-width="2.4" fill="rgba(27,107,98,.18)"/><path d="M32 28v8" stroke="currentColor" stroke-width="2"/></svg>',
+      tee: '<svg viewBox="0 0 64 64" fill="none"><path d="M14 20l10-8h16l10 8-8 6v24H22V26z" stroke="currentColor" stroke-width="2.4" fill="rgba(27,107,98,.18)"/><path d="M24 12c2 6 16 6 16 0" stroke="currentColor" stroke-width="2"/></svg>',
+      linen: '<svg viewBox="0 0 64 64" fill="none"><path d="M18 16h28v36H18z" stroke="currentColor" stroke-width="2.4" fill="rgba(196,163,90,.2)"/><path d="M18 24h28M32 16v36" stroke="currentColor" stroke-width="1.6"/></svg>',
+      layer: '<svg viewBox="0 0 64 64" fill="none"><path d="M12 24l10-8h20l10 8v28H12V24z" stroke="currentColor" stroke-width="2.4" fill="rgba(27,42,74,.12)"/><path d="M22 16v10h20V16" stroke="currentColor" stroke-width="2"/><path d="M20 34h24" stroke="currentColor" stroke-width="2"/></svg>',
+      rain: '<svg viewBox="0 0 64 64" fill="none"><path d="M16 26c2-10 30-10 32 0v6H16v-6z" stroke="currentColor" stroke-width="2.4" fill="rgba(42,125,143,.22)"/><path d="M18 32v18h28V32" stroke="currentColor" stroke-width="2.4"/><path d="M24 40v8M32 38v10M40 40v8" stroke="currentColor" stroke-width="2"/></svg>'
+    };
+    function wearArtHtml(kind) {
+      return WEAR_ART[kind] || WEAR_ART.tee;
+    }
+    function refreshWearCard() {
+      if (typeof writeGreetingCard === "function") writeGreetingCard();
+      else if (typeof stampGreet === "function") stampGreet();
+    }
+    if (!window.__wearClock) {
+      window.__wearClock = setInterval(refreshWearCard, 2 * 3600 * 1000);
+    }
+    function pkgTrack(item) {
+      if (!item) return null;
+      if (item.trackUrl) return { carrier: item.carrier || "Tracker", num: item.tracking || item.track || "", url: item.trackUrl };
+      var blob = [item.tracking, item.track, item.number, item.detail, item.title].filter(Boolean).join(" ");
+      var ups = blob.match(/\b1Z[0-9A-Z]{16}\b/i);
+      if (ups) return { carrier: "UPS", num: ups[0], url: "https://www.ups.com/track?tracknum=" + encodeURIComponent(ups[0]) };
+      var tba = blob.match(/\bTBA[0-9]{8,}\b/i);
+      if (tba) return { carrier: "Amazon", num: tba[0], url: "https://www.amazon.com/progress-tracker/package/" + encodeURIComponent(tba[0]) };
+      var amz = blob.match(/\b(\d{3}-\d{7}-\d{7})\b/);
+      if (amz) return { carrier: "Amazon order", num: amz[1], url: "https://www.amazon.com/gp/your-account/order-details?orderID=" + encodeURIComponent(amz[1]) };
+      var usps = blob.match(/\b9[0-9]{21,21}\b/) || blob.match(/\b9[0-9]{15,21}\b/);
+      if (usps && /usps|mail|post/i.test(blob + (item.who || ""))) return { carrier: "USPS", num: usps[0], url: "https://tools.usps.com/go/TrackConfirmAction?tLabels=" + encodeURIComponent(usps[0]) };
+      if (item.tracking) return { carrier: item.carrier || "Tracker", num: item.tracking, url: "https://www.google.com/search?q=" + encodeURIComponent(item.tracking + " tracking") };
+      return null;
+    }
+    function openTrackPop(item) {
+      var tr = pkgTrack(item);
+      if (!tr) return;
+      var pop = document.getElementById("track-pop");
+      var ttl = document.getElementById("track-title");
+      var body = document.getElementById("track-body");
+      var link = document.getElementById("track-link");
+      if (!pop) return;
+      if (ttl) ttl.textContent = tr.carrier + " tracking";
+      if (body) body.textContent = (item.title || item.who || "Package") + (tr.num ? " · " + tr.num : "") + (item.detail ? " — " + item.detail : "");
+      if (link) { link.href = tr.url; link.hidden = false; }
+      pop.hidden = false;
+      pop.classList.add("on");
+    }
+    function closeTrackPop() {
+      var pop = document.getElementById("track-pop");
+      if (!pop) return;
+      pop.classList.remove("on");
+      pop.hidden = true;
+    }
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest && e.target.closest("[data-track]");
+      if (btn) {
+        e.preventDefault();
+        var raw = btn.getAttribute("data-track") || "";
+        try { openTrackPop(JSON.parse(decodeURIComponent(raw))); } catch (eJ) { openTrackPop({ detail: raw, title: "Package" }); }
+      }
+      if (e.target && e.target.id === "track-close") closeTrackPop();
+    }, true);
+    function priceMarks(level) {
+      if (level == null || level === "") return "";
+      var n = level;
+      if (typeof level === "string") {
+        var map = { PRICE_LEVEL_FREE:0, PRICE_LEVEL_INEXPENSIVE:1, PRICE_LEVEL_MODERATE:2, PRICE_LEVEL_EXPENSIVE:3, PRICE_LEVEL_VERY_EXPENSIVE:4 };
+        n = map[level] != null ? map[level] : parseInt(level, 10);
+      }
+      n = Number(n);
+      if (!isFinite(n) || n <= 0) return "";
+      return "$".repeat(Math.min(4, n));
+    }
+    function eventLeaveMs(e) {
+      if (!e || !e.when) return 0;
+      var start = e.when instanceof Date ? e.when.getTime() : new Date(e.when).getTime();
+      if (!isFinite(start)) return 0;
+      var drive = Number(e.driveMin || 0) * 60000;
+      var pad = e.inside ? 5 * 60000 : 15 * 60000;
+      return start - drive - pad;
+    }
+
     function writeGreetingCard() {
       function clothesDetail(wx, hours, hrNow, nearPop, nearStorm, uvN, windMph, rainStart, rainEnd) {
         var t = Number(wx.feel != null ? wx.feel : wx.temp);
@@ -7866,7 +7989,14 @@ function currentRotation() {
         else if (rainStart != null) rain = "Later rain is on the book. Dry for now; bring the shell if you will still be out.";
         if (windMph >= 18) extra = "Wind is up. Skip the loose hat on the beach and hold the umbrella or it will invert.";
         else if (windMph >= 12 && !night) extra = "A bit of breeze. Fine for the cart; a brim hat stays on.";
-        return { outfit: outfit, sun: sun, rain: rain, extra: extra };
+        var garment = "tee";
+        if (nearStorm || nearPop >= 60) garment = "rain";
+        else if (night && isFinite(t) && t <= 72) garment = "layer";
+        else if (isFinite(t) && t >= 90) garment = "linen";
+        else if (isFinite(t) && t >= 78) garment = "shorts";
+        else if (isFinite(t) && t <= 68) garment = "layer";
+        else if (night) garment = "tee";
+        return { outfit: outfit, sun: sun, rain: rain, extra: extra, garment: garment };
       }
       function paintWearCard(wx, hours, hrNow, nearPop, nearStorm, uvN, windMph, rainStart, rainEnd) {
         var box = document.getElementById("today-wear");
@@ -7891,14 +8021,24 @@ function currentRotation() {
         if (nearStorm) pills += '<span class="warn-tag">Thunder</span>';
         else if (nearPop >= 40) pills += '<span class="kind-tag trivia">Rain shell</span>';
         if (windMph >= 18) pills += '<span class="kind-tag eat-sea">Windy</span>';
-        var shirtSvg = (window.EV_ART && EV_ART.shirt) || "";
+        var art = (typeof wearArtHtml === "function" ? wearArtHtml(d.garment) : "") || (window.EV_ART && EV_ART.shirt) || "";
+        var nowEt = new Date();
+        try {
+          nowEt = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+        } catch (eT) {}
+        var stamp = nowEt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
+        var nextH = new Date(nowEt.getTime() + 2 * 3600000);
+        var nextS = nextH.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
         box.innerHTML = '<div class="card ev-card eat-card wear-card">' +
-          '<div class="ev-rail"><span class="ev-dow">Wear</span><span class="ev-num">' + tag + '</span><span class="ev-ico" aria-hidden="true">' + shirtSvg + "</span></div>" +
-          '<div class="ev-body"><div class="ev-pills"><span class="kind-tag eat-sea">' + tag + "</span></div><b>What to wear</b>" +
+          '<div class="ev-rail"><span class="ev-dow">Wear</span><span class="ev-num">' + tag + '</span></div>' +
+          '<div class="ev-body"><div class="wear-row"><div class="wear-art" aria-hidden="true">' + art + "</div><div>" +
+          '<div class="ev-pills"><span class="kind-tag eat-sea">' + tag + "</span>" + pills + "</div><b>What to wear</b>" +
           parts.map(function (p) { return '<span class="eat-why">' + p + "</span>"; }).join("") +
-          "</div></div>";
+          '<small class="wear-stamp">Updated ' + stamp + " · next look " + nextS + "</small>" +
+          "</div></div></div></div>";
         if (col) col.hidden = !parts.length;
-        if (typeof noteFeed === "function") noteFeed("wear", !!parts.length, parts[0] ? parts[0].slice(0, 48) : "none");
+        window.__wearAt = Date.now();
+        if (typeof noteFeed === "function") noteFeed("wear", !!parts.length, (d.garment || tag) + " · " + (parts[0] ? parts[0].slice(0, 36) : "none"));
       }
       var el = document.getElementById("live-sky");
       var hi = document.getElementById("greet-hi");
@@ -11502,7 +11642,11 @@ function currentRotation() {
           }
           if (!end && start) end = start + 2 * 3600000;
           return !end || end >= Date.now() - 30 * 60000;
-        }).sort(function (a, b) { return (a.when || 0) - (b.when || 0); });
+        }).sort(function (a, b) {
+          var la = typeof eventLeaveMs === "function" ? eventLeaveMs(a) : 0;
+          var lb = typeof eventLeaveMs === "function" ? eventLeaveMs(b) : 0;
+          return (la || 0) - (lb || 0);
+        });
         if (!evs.length) {
           var waitingE = !window.__entAll;
           doBox.innerHTML = todayEmpty("fun",
@@ -11694,7 +11838,18 @@ function currentRotation() {
         if (e.loc && String(e.loc).split(",")[0].trim() && String(e.loc).toLowerCase().indexOf(String(place).toLowerCase()) < 0) {
           locLine = place + " · " + e.loc;
         }
-        return '<div class="card ev-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '" data-drive="' + String(driveKey).replace(/"/g, "&quot;") + '"><div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '<span class="busy-tag" hidden></span><b>' + locLine + '</b><span class="ev-when">' + whenLine + "</span></div></div>";
+        return '<div class="card ev-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '" data-drive="' + String(driveKey).replace(/"/g, "&quot;") + '"><div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '<span class="busy-tag" hidden></span><b>' + locLine + '</b><span class="ev-when">' + whenLine +
+          (e.opens ? " · opens " + e.opens : "") +
+          (e.driveMin != null ? " · " + Math.round(e.driveMin) + " min drive" : "") +
+          (function () {
+            if (!e.when || e.inside) return "";
+            var leave = typeof eventLeaveMs === "function" ? eventLeaveMs(e) : 0;
+            if (!leave) return "";
+            var dt = new Date(leave);
+            var lab = (typeof fmtClockTime === "function" ? fmtClockTime(dt) : dt.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}));
+            return " · leave by " + lab;
+          })() +
+          "</span></div></div>";
       };
       function render(id, events) {
         var box = document.getElementById(id);
@@ -11740,7 +11895,11 @@ function currentRotation() {
           return typeof eventInRange !== "function" || eventInRange(e);
         });
         if (!merged.length && upcoming.length) merged = upcoming;
-        merged.sort(function (a, b) { return a.when - b.when; });
+        merged.sort(function (a, b) {
+          var la = typeof eventLeaveMs === "function" ? eventLeaveMs(a) : (a.when && a.when.getTime && a.when.getTime());
+          var lb = typeof eventLeaveMs === "function" ? eventLeaveMs(b) : (b.when && b.when.getTime && b.when.getTime());
+          return (la || 0) - (lb || 0);
+        });
         merged.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
         window.__entAll = merged;
         if (typeof enrichEventDistances === "function") enrichEventDistances(merged);
@@ -11972,6 +12131,7 @@ function currentRotation() {
               (who ? '<span class="kind-tag">' + who + "</span>" : "") +
               "<b>" + title + "</b>" +
               (detail ? '<span class="ev-when">' + detail + "</span>" : "") +
+              (typeof pkgTrack === "function" && pkgTrack(item) ? '<button type="button" class="deliv-track" data-track="' + encodeURIComponent(JSON.stringify({ who:item.who||"", title:item.title||"", detail:item.detail||"", tracking:item.tracking||item.track||"", trackUrl:item.trackUrl||"", carrier:item.carrier||"" })) + '">Tracking</button>' : "") +
               '<label class="deliv-mark"><input type="checkbox" data-deliv="' + key + '"> Delivered</label>' +
             "</div></div>";
         }
@@ -12134,6 +12294,8 @@ function currentRotation() {
         var reviews = r.reviews ? (r.reviews + " reviews") : "";
         var pills = '<span class="kind-tag eat-' + kindCls(r.kind) + '">' + (r.kind || "Restaurant") + "</span>";
         pills += (typeof locPillHtml === "function" ? locPillHtml(r) : (dist ? '<span class="dist-tag loc-pill">' + dist + "</span>" : ""));
+        var bucks = typeof priceMarks === "function" ? priceMarks(r.priceLevel != null ? r.priceLevel : r.price_level) : "";
+        if (bucks) pills += '<span class="price-tag">' + bucks + "</span>";
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var delta = "";
@@ -12388,7 +12550,7 @@ function currentRotation() {
           headers: {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": key,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location"
+            "X-Goog-FieldMask": "places.id,places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.formattedAddress,places.location"
           },
           body: JSON.stringify({
             textQuery: String(r.name) + " " + String(r.addr || "Englewood FL"),
@@ -12401,6 +12563,7 @@ function currentRotation() {
           cb({
             rating: pl.rating,
             reviews: pl.userRatingCount || 0,
+              priceLevel: pl.priceLevel,
             addr: pl.formattedAddress || "",
             placeId: pl.id,
             lat: pl.location && pl.location.latitude,
@@ -12483,6 +12646,7 @@ function currentRotation() {
           reviews: p.user_ratings_total || 0,
           gRated: p.rating != null,
           open: p.opening_hours ? p.opening_hours.open_now : null,
+          priceLevel: p.price_level,
           kind: kindOf(((p.types || []).join(" ")) + " " + (p.name || "")),
           miles: (lat && lon) ? milesFn(lat, lon) : null,
           lat: lat, lon: lon,
@@ -12575,6 +12739,7 @@ function mustEats() {
               name: name,
               rating: pl.rating,
               reviews: pl.userRatingCount || 0,
+              priceLevel: pl.priceLevel,
               open: pl.currentOpeningHours ? pl.currentOpeningHours.openNow : null,
               kind: kindOf(((pl.types || []).join(" ")) + " " + name),
               types: pl.types || [],
@@ -12597,7 +12762,7 @@ function mustEats() {
             headers: {
               "Content-Type": "application/json",
               "X-Goog-Api-Key": key,
-              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.types"
+              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.priceLevel,places.location,places.types"
             },
             body: JSON.stringify(body)
           }).then(function (r) { return r.json(); }).then(function (j) {
@@ -12644,6 +12809,7 @@ function mustEats() {
               name: name,
               rating: pl.rating,
               reviews: pl.userRatingCount || 0,
+              priceLevel: pl.priceLevel,
               open: pl.currentOpeningHours ? pl.currentOpeningHours.openNow : null,
               kind: kindOf(((pl.types || []).join(" ")) + " " + name),
               types: pl.types || [],
@@ -12661,7 +12827,7 @@ function mustEats() {
             headers: {
               "Content-Type": "application/json",
               "X-Goog-Api-Key": key,
-              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.types"
+              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.priceLevel,places.location,places.types"
             },
             body: JSON.stringify(body)
           }).then(function (r) { return r.json(); }).then(function (j) {
@@ -12691,7 +12857,7 @@ function mustEats() {
           headers: {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": key,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.types"
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.priceLevel,places.location,places.types"
           },
           body: JSON.stringify(body)
         }).then(function (r) { return r.json(); }).then(function (j) {
@@ -17519,6 +17685,18 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       if (!e || !d) return;
       e.driveMin = d.min;
       if (d.miles != null) e.miles = d.miles;
+      if (typeof fetchVenueHours === "function") fetchVenueHours(e);
+      if (window.__leavePaintT) clearTimeout(window.__leavePaintT);
+      window.__leavePaintT = setTimeout(function () {
+        if (typeof paintToday === "function") paintToday();
+        var list = document.getElementById("ent-list");
+        if (list && window.__entAll && window.entCardHtml) {
+          var rows = (window.__entAll || []).slice().sort(function (a, b) {
+            return (typeof eventLeaveMs === "function" ? eventLeaveMs(a) : 0) - (typeof eventLeaveMs === "function" ? eventLeaveMs(b) : 0);
+          });
+          list.innerHTML = rows.map(window.entCardHtml).join("");
+        }
+      }, 400);
       var label = locLabelFromDrive(d, e.inside);
       var key = String(e.sum || "") + "|" + (e.when && e.when.toISOString ? e.when.toISOString() : "");
       document.querySelectorAll(".loc-pill, #ent-list .ev-card, #today-do .ev-card").forEach(function (node) {
@@ -17572,6 +17750,48 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           });
         } catch (e0) { done(); }
       });
+    }
+
+    function fetchVenueHours(e) {
+      if (!e || e.opens || e.inside) return;
+      var key = String((typeof venueQuery === "function" ? venueQuery(e) : e.loc) || e.sum || "");
+      if (!key) return;
+      var hit = typeof gCacheGet === "function" ? gCacheGet("hours", key, 6 * 3600 * 1000) : null;
+      if (hit && hit.opens) { e.opens = hit.opens; e.openNow = hit.openNow; return; }
+      var gkey = String((typeof getSet === "function" && getSet().gmapsKey) || "").trim();
+      if (!gkey || (typeof mapsPaidOn === "function" && !mapsPaidOn())) return;
+      fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": gkey,
+          "X-Goog-FieldMask": "places.displayName,places.currentOpeningHours,places.regularOpeningHours"
+        },
+        body: JSON.stringify({
+          textQuery: key + (/\bFL\b/i.test(key) ? "" : " Englewood FL"),
+          pageSize: 1
+        })
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        var pl = j && j.places && j.places[0];
+        var hrs = (pl && (pl.currentOpeningHours || pl.regularOpeningHours)) || {};
+        var opens = "";
+        var periods = hrs.periods || [];
+        if (periods[0] && periods[0].open && periods[0].open.hour != null) {
+          var h = periods[0].open.hour, m = periods[0].open.minute || 0;
+          var dt = new Date(); dt.setHours(h, m, 0, 0);
+          opens = (typeof fmtClockTime === "function" ? fmtClockTime(dt) : (h + ":" + (m < 10 ? "0" : "") + m));
+        }
+        if (!opens && hrs.weekdayDescriptions && hrs.weekdayDescriptions[0]) {
+          var w = String(hrs.weekdayDescriptions[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1] || hrs.weekdayDescriptions[0]);
+          var tm = w.match(/(\d{1,2}(?::\d{2})?\s*[ap]m)/i);
+          if (tm) opens = tm[1];
+        }
+        if (opens) {
+          e.opens = opens;
+          e.openNow = !!(hrs.openNow);
+          if (typeof gCacheSet === "function") gCacheSet("hours", key, { opens: opens, openNow: e.openNow });
+        }
+      }).catch(function () {});
     }
     function enrichEventDistances(list) {
       (list || []).forEach(function (e) {
