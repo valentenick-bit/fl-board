@@ -796,7 +796,7 @@
     .card.today-card.fly > .pulse-art img { object-fit:cover; border-radius:10px; }
 
 
-    .busy-tag { display:inline-block; margin:0 6px 0 0; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.02em; background:#e7f4f1; color:#1b6b62; }
+    .busy-tag { background:#e7f4f1; color:#1b6b62; }
     .busy-tag.busy { background:#f3e6c4; color:#7a5a12; }
     .busy-tag.long { background:#f6d6ce; color:#8a2f1f; }
     .busy-tag.quiet { background:#e7f4f1; color:#1b6b62; }
@@ -925,7 +925,7 @@
     html.dark .fun-col-h { color:#efe4c8; }
     .fun-main, .fun-eats, .fun-golf { min-width:0; }
 
-    .eat-rate-pill { display:inline-block; margin:0 6px 4px 0; padding:2px 8px; border-radius:999px; background:#f3e6c4; color:#7a5a12; font-size:11px; font-weight:800; }
+    .eat-rate-pill { background:#f3e6c4; color:#7a5a12; }
     html.dark .eat-rate-pill { background:#3a3018; color:#f0e2b8; }
     #eat-list .ev-card { cursor:pointer; }
     .eat-card { background:var(--card); border:1px solid var(--hair); border-radius:16px; padding:10px 12px; margin:0 0 8px; }
@@ -1135,7 +1135,20 @@
     html.dark .ev-rail .ev-num { color:#f4efe4; }
     html.dark .ev-rail { color:#7fd1c7; }
 
-    .music-tag, .place-tag, .kind-tag, .warn-tag { display:inline-block; margin:0 6px 4px 0; padding:2px 10px; border-radius:999px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; line-height:1.4; }
+    
+.music-tag, .place-tag, .kind-tag, .warn-tag,
+    .busy-tag, .eat-rate-pill, .loc-pill, .dist-tag {
+      display:inline-flex; align-items:center; justify-content:center;
+      box-sizing:border-box; height:22px; margin:0 6px 4px 0; padding:0 9px;
+      border-radius:999px; border:0; line-height:1;
+      font-family:"Source Sans 3",system-ui,sans-serif;
+      font-size:10px; letter-spacing:.06em; text-transform:uppercase; font-weight:800;
+      vertical-align:middle;
+    }
+    .card span.music-tag, .card span.place-tag, .card span.kind-tag, .card span.warn-tag,
+    .card span.busy-tag, .card span.eat-rate-pill, .card span.loc-pill, .card span.dist-tag {
+      font-size:10px; line-height:1; padding:0 9px; height:22px;
+    }
     .card span.music-tag, .card span.kind-tag { background:var(--navy); color:#fff; }
     .card span.warn-tag { background:var(--coral); color:#fff; }
     .card span.kind-tag.music { background:#1b6b62; color:#fff; }
@@ -2275,10 +2288,7 @@
     }
 
 
-    .dist-tag, .loc-pill {
-      display:inline-block; margin:0 6px 4px 0; padding:2px 10px; border-radius:999px;
-      background:#f3ead8; color:#5c4a2a; font-size:11px; font-weight:800; letter-spacing:.02em;
-    }
+    .dist-tag, .loc-pill { background:#f3ead8; color:#5c4a2a; }
     html.dark .dist-tag, html.dark .loc-pill { background:#3a3428; color:#efe4c8; }
 
 
@@ -3989,7 +3999,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 712;
+    window.BOARD_VER = 714;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -10676,7 +10686,7 @@ function currentRotation() {
     }
     function openEatPop(r) {
       if (!r) return;
-      var src = (typeof venueMapSrc === "function" ? venueMapSrc(r.name, r.addr || r.area, r.lat, r.lon) : "");
+      var src = (typeof venueMapSrc === "function" ? venueMapSrc(r.name, r.addr || r.area, r.lat, r.lon, r.placeId) : "");
       var maps = (typeof venueMapLink === "function" ? venueMapLink(r.name, r.addr || r.area, r.lat, r.lon) : "");
       var links = '<a href="' + maps + '" target="_blank" rel="noopener">Directions</a>';
       if (r.phone) links += '<a href="tel:' + String(r.phone).replace(/[^\d+]/g, "") + '">Call</a>';
@@ -10685,7 +10695,7 @@ function currentRotation() {
     }
     function openDealPop(row) {
       if (!row) return;
-      var src = (typeof venueMapSrc === "function" ? venueMapSrc(row.name, row.addr, row.lat, row.lon) : "");
+      var src = (typeof venueMapSrc === "function" ? venueMapSrc(row.name, row.addr, row.lat, row.lon, row.placeId) : "");
       var maps = (typeof venueMapLink === "function" ? venueMapLink(row.name, row.addr, row.lat, row.lon) : "");
       var now = (typeof recNowET === "function") ? recNowET() : new Date();
       var hr = now.getHours() + now.getMinutes() / 60;
@@ -10779,11 +10789,25 @@ function currentRotation() {
     }
     window.selectEat = selectEat;
     window.selectGolf = selectGolf;
-    function pinMapSrc(lat, lon) {
+    function pinMapSrc(lat, lon, name, placeId) {
       lat = Number(lat); lon = Number(lon);
-      if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) < 1 || Math.abs(lon) < 1) return "";
-      return "https://maps.google.com/maps?q=" + lat.toFixed(6) + "," + lon.toFixed(6) +
-        "&ll=" + lat.toFixed(6) + "," + lon.toFixed(6) + "&z=14&t=m&hl=en&output=embed";
+      var key = typeof gmapsKey === "function" ? gmapsKey() : "";
+      if (key && placeId) {
+        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) +
+          "&q=place_id:" + encodeURIComponent(placeId) + "&zoom=14";
+      }
+      if (key && isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        var q = name ? encodeURIComponent(String(name)) + "@" + lat.toFixed(6) + "," + lon.toFixed(6)
+          : (lat.toFixed(6) + "," + lon.toFixed(6));
+        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) +
+          "&q=" + q + "&zoom=14";
+      }
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        var label = name ? encodeURIComponent(String(name)) + "@" : "";
+        return "https://maps.google.com/maps?q=" + label + lat.toFixed(6) + "," + lon.toFixed(6) +
+          "&ll=" + lat.toFixed(6) + "," + lon.toFixed(6) + "&z=14&hl=en&output=embed";
+      }
+      return "";
     }
     function pinNearHome(lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -10804,12 +10828,21 @@ function currentRotation() {
       if (!/fl|florida/i.test(raw)) raw += ", FL";
       return raw.replace(/\s+/g, " ").trim();
     }
-    function venueMapSrc(name, addr, lat, lon) {
+    function venueMapSrc(name, addr, lat, lon, placeId) {
       lat = Number(lat); lon = Number(lon);
+      var key = typeof gmapsKey === "function" ? gmapsKey() : "";
+      if (key && placeId) {
+        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) +
+          "&q=place_id:" + encodeURIComponent(placeId) + "&zoom=14";
+      }
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1 && typeof pinMapSrc === "function") {
-        return pinMapSrc(lat, lon);
+        return pinMapSrc(lat, lon, name, placeId);
       }
       var q = venueQuery(name, addr);
+      if (key && q) {
+        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) +
+          "&q=" + encodeURIComponent(q) + "&zoom=14";
+      }
       return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=14&hl=en&iwloc=A&output=embed";
     }
     function venueMapLink(name, addr, lat, lon) {
@@ -10895,7 +10928,7 @@ function currentRotation() {
         };
       }
       var pin = typeof resolveVenuePin === "function" ? resolveVenuePin(row.name, row.addr, row.lat, row.lon) : row;
-      var src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon) : "";
+      var src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon, row.placeId) : "";
       var link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon) : "";
       if (typeof openMapPop === "function") {
         openMapPop(pin.name || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
