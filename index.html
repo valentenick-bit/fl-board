@@ -3989,7 +3989,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 710;
+    window.BOARD_VER = 711;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -17567,12 +17567,26 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       { re: /lock\s*'?n?\s*key|lock and key/, lat: 26.9252, lon: -82.3526, addr: "Lock 'N Key, 1980 Beach Rd, Englewood, FL 34223" },
       { re: /sharky/, lat: 27.1125, lon: -82.4608, addr: "Sharky's on the Pier, 1600 S Harbor Dr, Venice, FL 34285" },
       { re: /crow'?s nest/, lat: 27.1129, lon: -82.4602, addr: "The Crow's Nest, 1968 Tarpon Center Dr, Venice, FL 34285" },
-      { re: /englewood/i, lat: 26.962, lon: -82.352, addr: "Englewood, FL 34223" }
+      { re: /pop'?s sunset|pops sunset/i, lat: 27.1228, lon: -82.4675, addr: "Pop's Sunset Grill, 112 Circuit Rd, Nokomis, FL 34275" },
+      { re: /magnolias on the bay|magnolias/i, lat: 26.9315, lon: -82.3532, addr: "Magnolias on the Bay, 2395 N Beach Rd, Englewood, FL 34223" },
+      { re: /connors steak/i, lat: 27.0116, lon: -82.1436, addr: "Connors Steak & Seafood, 1440 Tamiami Trl, Port Charlotte, FL 33948" },
+      { re: /publix super market at englewood|publix.*dear?born|1750 s mccall|2491 s mccall/i, lat: 26.9618, lon: -82.3396, addr: "Publix, 1750 S McCall Rd, Englewood, FL 34223" }
     ];
-    function venueQuery(e) {
-      if (!e) return "";
-      if (e.inside) return "BeachWalk by Manasota Key, Englewood FL";
-      return String(e.loc || e.sum || "").replace(/\s+/g, " ").trim();
+    function venueQuery(name, addr) {
+      if (name && typeof name === "object") {
+        if (name.inside) return "BeachWalk by Manasota Key, Englewood FL";
+        addr = name.loc || name.addr || name.where || addr || "";
+        name = name.sum || name.name || name.title || "";
+      }
+      var raw = [name, addr].filter(Boolean).join(", ");
+      var hasStreet = /\d/.test(addr || "") && /,/.test(addr || "");
+      var hasCity = /englewood|placida|rotonda|venice|nokomis|port charlotte|north port|punta gorda|sarasota|manasota|boca grande|lake suzy/i.test(addr || raw || "");
+      if (hasStreet && hasCity) return String(raw).replace(/\s+/g, " ").trim();
+      if (typeof enrichLoc === "function") raw = enrichLoc(raw || name || "");
+      var place = (typeof homePlace === "function" && homePlace()) || "";
+      if (!hasCity && place && raw.toLowerCase().indexOf(String(place).toLowerCase()) < 0) raw += ", " + place;
+      if (!/fl\b|florida\b/i.test(raw)) raw += ", FL";
+      return String(raw).replace(/\s+/g, " ").trim();
     }
     function pinVenue(e) {
       var q = venueQuery(e);
