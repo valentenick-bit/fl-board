@@ -3989,7 +3989,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 708;
+    window.BOARD_VER = 709;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -7959,7 +7959,21 @@ function currentRotation() {
       }
       n = Number(n);
       if (!isFinite(n) || n <= 0) return "";
-      return "$".repeat(Math.min(4, n));
+      return "$".repeat(Math.min(4, Math.max(1, Math.round(n))));
+    }
+    function estimateEatPrice(r) {
+      if (!r) return "";
+      var known = priceMarks(r.priceLevel != null ? r.priceLevel : r.price_level);
+      if (known) { r.priceEst = false; return known; }
+      var blob = [r.name, r.kind, r.types, r.area, r.why].filter(Boolean).join(" ").toLowerCase();
+      var n = 2;
+      if (/mcdonald|wendy|taco bell|subway|dunkin|burger king|chick-fil|waffle house|culver|sonic|popeyes|little caesar/.test(blob)) n = 1;
+      else if (/ruth.?chris|capital grille|morton|osteria|fine dining|tasting menu|prix fixe/.test(blob)) n = 4;
+      else if (/lock.?n.?key|magnolia|waverly|rumours|filet|prime rib|steakhouse|sushi|oyster bar/.test(blob)) n = 3;
+      else if (/sandbar|tiki|grill|seafood|italian|bistro|tavern|waterfront|grouper|dock|key/.test(blob)) n = 2;
+      else if (/pizza|mexican|cafe|diner|breakfast|pub|wing|taco|bbq/.test(blob)) n = 2;
+      r.priceEst = true;
+      return "$".repeat(n);
     }
     function eventLeaveMs(e) {
       if (!e || !e.when) return 0;
@@ -10704,7 +10718,7 @@ function currentRotation() {
     function placeMapSrc(name, addr, lat, lon) {
       if (typeof venueMapSrc === "function") return venueMapSrc(name, addr, lat, lon);
       var q = [name, addr].filter(Boolean).join(", ");
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=14&hl=en&iwloc=A&output=embed";
     }
     function placeMapLink(name, addr, lat, lon) {
       if (typeof venueMapLink === "function") return venueMapLink(name, addr, lat, lon);
@@ -10769,7 +10783,7 @@ function currentRotation() {
       lat = Number(lat); lon = Number(lon);
       if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) < 1 || Math.abs(lon) < 1) return "";
       return "https://maps.google.com/maps?q=" + lat.toFixed(6) + "," + lon.toFixed(6) +
-        "&ll=" + lat.toFixed(6) + "," + lon.toFixed(6) + "&z=16&t=m&hl=en&output=embed";
+        "&ll=" + lat.toFixed(6) + "," + lon.toFixed(6) + "&z=14&t=m&hl=en&output=embed";
     }
     function pinNearHome(lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -10781,22 +10795,28 @@ function currentRotation() {
     }
     function venueQuery(name, addr) {
       var place = (typeof homePlace === "function" && homePlace()) || "";
-      var zip = "";
-      try { zip = String((getSet() || {}).zip || ""); } catch (eZ) {}
       var raw = [name, addr].filter(Boolean).join(", ");
+      var hasStreet = /\d/.test(addr || "") && /,/.test(addr || "");
+      var hasCity = /englewood|placida|rotonda|venice|port charlotte|north port|punta gorda|sarasota|manasota|boca grande|lake suzy/i.test(addr || "");
+      if (hasStreet && hasCity) return String(raw).replace(/\s+/g, " ").trim();
       if (typeof enrichLoc === "function") raw = enrichLoc(raw || name || "");
-      if (place && raw.toLowerCase().indexOf(String(place).toLowerCase()) < 0) raw += ", " + place;
-      if (zip && raw.indexOf(zip) < 0) raw += " " + zip;
+      if (!hasCity && place && raw.toLowerCase().indexOf(String(place).toLowerCase()) < 0) raw += ", " + place;
       if (!/fl|florida/i.test(raw)) raw += ", FL";
       return raw.replace(/\s+/g, " ").trim();
     }
     function venueMapSrc(name, addr, lat, lon) {
-      if (pinNearHome(lat, lon) && typeof pinMapSrc === "function") return pinMapSrc(lat, lon);
+      lat = Number(lat); lon = Number(lon);
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1 && typeof pinMapSrc === "function") {
+        return pinMapSrc(lat, lon);
+      }
       var q = venueQuery(name, addr);
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=14&hl=en&iwloc=A&output=embed";
     }
     function venueMapLink(name, addr, lat, lon) {
-      if (pinNearHome(lat, lon)) return "https://www.google.com/maps/dir/?api=1&destination=" + Number(lat) + "," + Number(lon);
+      lat = Number(lat); lon = Number(lon);
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        return "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
+      }
       return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(venueQuery(name, addr));
     }
     function googleDestLink(addr, lat, lon) {
@@ -10890,11 +10910,11 @@ function currentRotation() {
         var src = "", link = "";
         if (typeof pinNearHome === "function" && pinNearHome(slat, slon)) {
           src = (typeof pinMapSrc === "function" && pinMapSrc(slat, slon)) ||
-            ("https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=16&t=m&hl=en&output=embed");
+            ("https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=14&t=m&hl=en&output=embed");
           link = "https://www.google.com/maps/dir/?api=1&destination=" + slat + "," + slon;
         } else {
           src = (typeof venueMapSrc === "function") ? venueMapSrc(pick.name, saddr || q, slat, slon)
-            : ("https://maps.google.com/maps?q=" + encodeURIComponent(saddr || q) + "&z=16&hl=en&output=embed");
+            : ("https://maps.google.com/maps?q=" + encodeURIComponent(saddr || q) + "&z=14&hl=en&output=embed");
           link = (typeof venueMapLink === "function") ? venueMapLink(pick.name, saddr || q, slat, slon)
             : ("https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(saddr || q));
         }
@@ -10932,11 +10952,11 @@ function currentRotation() {
         var loc = evCard.getAttribute("data-loc") || q;
         if (typeof pinNearHome === "function" && pinNearHome(lat, lon)) {
           src = (typeof pinMapSrc === "function" && pinMapSrc(lat, lon)) ||
-            ("https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=16&t=m&hl=en&output=embed");
+            ("https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=14&t=m&hl=en&output=embed");
           link = "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
         } else {
           src = (typeof venueMapSrc === "function") ? venueMapSrc(titleName, loc, lat, lon)
-            : ("https://maps.google.com/maps?q=" + encodeURIComponent(loc || q) + "&z=16&hl=en&output=embed");
+            : ("https://maps.google.com/maps?q=" + encodeURIComponent(loc || q) + "&z=14&hl=en&output=embed");
           link = (typeof venueMapLink === "function") ? venueMapLink(titleName, loc, lat, lon)
             : ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(loc || q));
         }
@@ -12377,7 +12397,7 @@ function currentRotation() {
         var reviews = r.reviews ? (r.reviews + " reviews") : "";
         var pills = '<span class="kind-tag eat-' + kindCls(r.kind) + '">' + (r.kind || "Restaurant") + "</span>";
         pills += (typeof locPillHtml === "function" ? locPillHtml(r) : (dist ? '<span class="dist-tag loc-pill">' + dist + "</span>" : ""));
-        var bucks = typeof priceMarks === "function" ? priceMarks(r.priceLevel != null ? r.priceLevel : r.price_level) : "";
+        var bucks = typeof estimateEatPrice === "function" ? estimateEatPrice(r) : (typeof priceMarks === "function" ? priceMarks(r.priceLevel != null ? r.priceLevel : r.price_level) : "");
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var delta = "";
@@ -13216,7 +13236,7 @@ function mustEats() {
           { name: "Twin Isles Country Club", lat: 26.9176, lon: -82.3479, kind: "Private", rating: 4.4, reviews: 70, addr: "2100 Placida Rd, Englewood, FL" },
           { name: "Rotonda Golf & Country Club", lat: 26.8934, lon: -82.2718, kind: "Public", rating: 4.0, reviews: 140, addr: "100 Rotonda Cir, Rotonda West, FL" },
           { name: "Broadmoor Park Golf Club", lat: 26.8968, lon: -82.2655, kind: "Public", rating: 3.9, reviews: 85, addr: "Rotonda Blvd E, Rotonda West, FL" },
-          { name: "Coral Creek Club", lat: 26.8688, lon: -82.2614, kind: "Private", rating: 4.6, reviews: 40, addr: "10949 W Placida Rd, Placida, FL" },
+          { name: "Coral Creek Club", lat: 26.8398, lon: -82.2657, kind: "Private", rating: 4.6, reviews: 40, addr: "13111 Gasparilla Rd, Placida, FL 33946" },
           { name: "Deep Creek Golf Club", lat: 27.0022, lon: -82.1816, kind: "Public", rating: 4.0, reviews: 220, addr: "1260 San Cristobal Ave, Port Charlotte, FL" },
           { name: "Kingsway Country Club", lat: 27.0486, lon: -82.0528, kind: "Private", rating: 4.1, reviews: 150, addr: "13625 SW Kingsway Cir, Lake Suzy, FL 34269" }
         ].map(function (r) {
