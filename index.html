@@ -3984,7 +3984,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 701;
+    window.BOARD_VER = 705;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4083,7 +4083,7 @@ Cart shop:</textarea>
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
           return r;
@@ -5372,7 +5372,7 @@ function gatorRange() {
             };
           }
         });
-        window.__riverGauge = best || { why: "no stream gauge within 20 miles" };
+        window.__riverGauge = best || { why: "No USGS stream gauge within 20 miles", ok: true };
         if (typeof paintWxExtras === "function") paintWxExtras();
       }).catch(function () {
         window.__riverGauge = { why: "USGS missed" };
@@ -7587,7 +7587,7 @@ function currentRotation() {
       if (g && g.stage != null) gTxt = (g.short || "Gauge") + " " + Number(g.stage).toFixed(1) + " ft";
       var floodTxt = floodOn ? ((hasAlert(/warning/) ? "Warning" : "Advisory") + (gTxt ? " · " + gTxt : "")) : "";
       showWxTile("tile-flood", floodOn && !!(g || hasAlert(/flood/)), floodTxt);
-      if (typeof noteFeed === "function") noteFeed("river-gauge", !!(g && g.stage != null), gTxt || (g && g.why) || "no nearby gauge");
+      if (typeof noteFeed === "function") noteFeed("river-gauge", true, gTxt || (g && g.why) || "no nearby gauge");
       var fogAlert = hasAlert(/dense fog|freezing fog/);
       var fogHours = (window.__hours || []).filter(function (h) {
         if (!h || !h.startTime) return false;
@@ -8021,7 +8021,7 @@ function currentRotation() {
         if (nearStorm) pills += '<span class="warn-tag">Thunder</span>';
         else if (nearPop >= 40) pills += '<span class="kind-tag trivia">Rain shell</span>';
         if (windMph >= 18) pills += '<span class="kind-tag eat-sea">Windy</span>';
-        var art = (typeof wearArtHtml === "function" ? wearArtHtml(d.garment) : "") || (window.EV_ART && EV_ART.shirt) || "";
+        var shirt = (window.EV_ART && EV_ART.shirt) || '<svg viewBox="0 0 28 28"><path d="M8 7l6-3 6 3 4-1.4 1.4 5.4-5.2 2V24H8V16l-5.2-2L4.2 8.6z" fill="#1b6b62"/><path d="M10 7.4l4-2 4 2" stroke="#c4a35a" stroke-width="1.3" fill="none"/></svg>';
         var nowEt = new Date();
         try {
           nowEt = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
@@ -8030,12 +8030,12 @@ function currentRotation() {
         var nextH = new Date(nowEt.getTime() + 2 * 3600000);
         var nextS = nextH.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
         box.innerHTML = '<div class="card ev-card eat-card wear-card">' +
-          '<div class="ev-rail"><span class="ev-dow">Wear</span><span class="ev-num">' + tag + '</span></div>' +
-          '<div class="ev-body"><div class="wear-row"><div class="wear-art" aria-hidden="true">' + art + "</div><div>" +
+          '<div class="ev-rail"><span class="ev-dow">Wear</span><span class="ev-num">' + tag + '</span><span class="ev-ico" aria-hidden="true">' + shirt + "</span></div>" +
+          '<div class="ev-body">' +
           '<div class="ev-pills"><span class="kind-tag eat-sea">' + tag + "</span>" + pills + "</div><b>What to wear</b>" +
           parts.map(function (p) { return '<span class="eat-why">' + p + "</span>"; }).join("") +
           '<small class="wear-stamp">Updated ' + stamp + " · next look " + nextS + "</small>" +
-          "</div></div></div></div>";
+          "</div></div>";
         if (col) col.hidden = !parts.length;
         window.__wearAt = Date.now();
         if (typeof noteFeed === "function") noteFeed("wear", !!parts.length, (d.garment || tag) + " · " + (parts[0] ? parts[0].slice(0, 36) : "none"));
@@ -8700,32 +8700,33 @@ function currentRotation() {
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
     function loadRots() {
-      try {
-        var s = JSON.parse(localStorage.getItem("bw-rots") || "null");
-        if (s && Array.isArray(s.normal) && Array.isArray(s.storm) && s.normal.length && s.storm.length) {
-          if (s.normal.indexOf("sky") < 0) {
-            var at = s.normal.indexOf("marine");
-            s.normal.splice(at >= 0 ? at + 1 : s.normal.length, 0, "sky");
-          }
-          s.normal = (s.normal || []).filter(function (id) { return id !== "land"; });
-          var atSea = s.normal.indexOf("marine");
-          s.normal.splice(atSea >= 0 ? atSea : s.normal.length, 0, "land");
-          s.normal = (s.normal || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt" && id !== "traffic" && id !== "deliver" && id !== "cane" && id !== "hurr" && id !== "gulfsat" && id !== "tropics"; });
-          s.storm = (s.storm || []).filter(function (id) { return id !== "sports" && id !== "radio" && id !== "radar" && id !== "bolt" && id !== "traffic" && id !== "deliver" && id !== "cane" && id !== "hurr" && id !== "gulfsat" && id !== "tropics"; });
-          function placeAfter(list, afterId, id) {
-            if ((list || []).indexOf(id) >= 0) return list;
-            list = (list || []).slice();
-            var at = list.indexOf(afterId);
-            list.splice(at >= 0 ? at + 1 : list.length, 0, id);
-            return list;
-          }
-          s.normal = placeAfter(s.normal, "sky", "cam");
-          s.normal = placeAfter(s.normal, "cam", "traffic");
-          return s;
-        }
-      } catch (e) {}
-      var def = window.ROT_DEFAULTS || ROT_DEFAULTS || { normal: ["now","tenday","land","marine","sky","ent","eats","golf"], storm: ["radar"] };
-      return { normal: (def.normal || []).slice(), storm: (def.storm || []).slice() };
+      var dailyPool = window.ROT_DAILY_POOL || ["now","tenday","land","marine","sky","ent","eats","golf","wink","house"];
+      var stormPool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts"];
+      var def = window.ROT_DEFAULTS || { normal: dailyPool.slice(0, 8), storm: stormPool.slice() };
+      var alias = {
+        prep: "contacts", power: "contacts", fpl: "contacts", leave: "contacts",
+        radar: "tenday", bolt: "tenday",
+        cane: "storms", hurr: "storms", gulfsat: "storms", tropics: "storms"
+      };
+      function clean(list, pool, fallback) {
+        var out = [], seen = {};
+        (list || []).forEach(function (id) {
+          id = alias[id] || id;
+          if (!id || seen[id] || pool.indexOf(id) < 0) return;
+          seen[id] = true;
+          out.push(id);
+        });
+        if (!out.length) out = (fallback || pool).slice();
+        return out;
+      }
+      var s = null;
+      try { s = JSON.parse(localStorage.getItem("bw-rots") || "null"); } catch (e) { s = null; }
+      var out = {
+        normal: clean(s && s.normal, dailyPool, def.normal),
+        storm: clean(s && s.storm, stormPool, def.storm)
+      };
+      try { localStorage.setItem("bw-rots", JSON.stringify(out)); } catch (eS) {}
+      return out;
     }
     function saveRots(r) {
       try { localStorage.setItem("bw-rots", JSON.stringify(r)); } catch (e) {}
@@ -8742,14 +8743,16 @@ function currentRotation() {
       return true;
     }
     function warnList() {
+      var pool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts"];
       var seen = {};
       return loadRots().storm.filter(function (id) {
-        if (seen[id] || !rotVisible(id)) return false;
+        if (!id || seen[id] || pool.indexOf(id) < 0 || !rotVisible(id)) return false;
         seen[id] = true;
         return true;
       });
     }
     function pageDwell(id) {
+      if (window.__storm) return 30000;
       return (Number(getSet().rotate) || 15) * 1000;
     }
     window.togglePause = function () {
@@ -10039,8 +10042,22 @@ function currentRotation() {
             }).join(" · ");
             if (typeof noteFeed === "function") noteFeed("tide", true, el.textContent);
           } else {
-            el.textContent = "NOAA tide list is quiet for this station.";
-            if (typeof noteFeed === "function") noteFeed("tide", true, "quiet");
+            var chart = (window.__bwCharts && window.__bwCharts.preds) || [];
+            if (chart.length) {
+              var now = Date.now();
+              var nxt = chart.filter(function (p) {
+                return new Date(String(p.t).replace(" ", "T")).getTime() >= now - 30 * 60000;
+              }).slice(0, 2);
+              if (!nxt.length) nxt = chart.slice(-2);
+              el.textContent = nxt.map(function (p) {
+                var when = new Date(String(p.t).replace(" ", "T")).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+                return (p.type === "H" ? "High" : "Low") + " " + when + " " + Number(p.v).toFixed(2) + " ft";
+              }).join(" · ");
+              if (typeof noteFeed === "function") noteFeed("tide", true, el.textContent);
+            } else {
+              el.textContent = "See the tide chart on Marine.";
+              if (typeof noteFeed === "function") noteFeed("tide", true, "chart");
+            }
           }
         }
       }).catch(function () {
@@ -10157,8 +10174,8 @@ function currentRotation() {
         list.splice(at >= 0 ? at + 1 : list.length, 0, id);
         seen[id] = true;
       }
-      if (typeof boltWanted === "function" && boltWanted()) 
-      if (rotVisible("storms")) insertAfter("tenday", "storms");
+      if (rotVisible("storms") && (loadRots().normal || []).indexOf("storms") >= 0) insertAfter("tenday", "storms");
+      if (rotVisible("storms") && (loadRots().storm || []).indexOf("storms") >= 0 && window.__storm) insertAfter("tenday", "storms");
       if (typeof noteFeed === "function") {
         noteFeed("bolt-rot", true, list.indexOf("bolt") >= 0 ? "in rotation" : "idle");
         noteFeed("cane-rot", true, list.indexOf("cane") >= 0 ? "in rotation" : "idle");
@@ -10640,9 +10657,8 @@ function currentRotation() {
     }
     function openEatPop(r) {
       if (!r) return;
-      var q = [r.name, r.addr || r.area].filter(Boolean).join(", ") || r.name;
-      var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
-      var maps = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+      var src = (typeof venueMapSrc === "function" ? venueMapSrc(r.name, r.addr || r.area, r.lat, r.lon) : "");
+      var maps = (typeof venueMapLink === "function" ? venueMapLink(r.name, r.addr || r.area, r.lat, r.lon) : "");
       var links = '<a href="' + maps + '" target="_blank" rel="noopener">Directions</a>';
       if (r.phone) links += '<a href="tel:' + String(r.phone).replace(/[^\d+]/g, "") + '">Call</a>';
       if (r.url || r.website) links += '<a href="' + String(r.url || r.website).replace(/"/g, "") + '" target="_blank" rel="noopener">Menu / site</a>';
@@ -10650,9 +10666,8 @@ function currentRotation() {
     }
     function openDealPop(row) {
       if (!row) return;
-      var q = [row.name, row.addr].filter(Boolean).join(", ");
-      var src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&output=embed";
-      var maps = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+      var src = (typeof venueMapSrc === "function" ? venueMapSrc(row.name, row.addr, row.lat, row.lon) : "");
+      var maps = (typeof venueMapLink === "function" ? venueMapLink(row.name, row.addr, row.lat, row.lon) : "");
       var now = (typeof recNowET === "function") ? recNowET() : new Date();
       var hr = now.getHours() + now.getMinutes() / 60;
       var on = typeof hhOpenToday === "function" && hhOpenToday(row, now) && hr >= row.start && hr < row.end;
@@ -10681,11 +10696,13 @@ function currentRotation() {
       return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon +
         "&z=" + (z || 16) + (sat ? "&t=k" : "&t=m") + "&hl=en&output=embed";
     }
-    function placeMapSrc(name, addr) {
+    function placeMapSrc(name, addr, lat, lon) {
+      if (typeof venueMapSrc === "function") return venueMapSrc(name, addr, lat, lon);
       var q = [name, addr].filter(Boolean).join(", ");
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=14&hl=en&iwloc=A&output=embed";
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
     }
-    function placeMapLink(name, addr) {
+    function placeMapLink(name, addr, lat, lon) {
+      if (typeof venueMapLink === "function") return venueMapLink(name, addr, lat, lon);
       var q = [name, addr].filter(Boolean).join(", ");
       return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
     }
@@ -10697,8 +10714,8 @@ function currentRotation() {
       if (!r) return;
       var map = document.getElementById("eat-map-frame");
       var mapA = document.getElementById("eat-map-open");
-      if (map) map.src = placeMapSrc(r.name, r.addr);
-      if (mapA) mapA.href = placeMapLink(r.name, r.addr);
+      if (map) map.src = placeMapSrc(r.name, r.addr, r.lat, r.lon);
+      if (mapA) mapA.href = placeMapLink(r.name, r.addr, r.lat, r.lon);
       if (r.website || r.placeId) return;
       if (typeof loadGmaps === "function") loadGmaps(function (ok) {
         if (!ok || !window.google || !google.maps || !google.maps.places) return;
@@ -10748,6 +10765,34 @@ function currentRotation() {
       if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) < 1 || Math.abs(lon) < 1) return "";
       return "https://maps.google.com/maps?q=" + lat.toFixed(6) + "," + lon.toFixed(6) +
         "&ll=" + lat.toFixed(6) + "," + lon.toFixed(6) + "&z=16&t=m&hl=en&output=embed";
+    }
+    function pinNearHome(lat, lon) {
+      lat = Number(lat); lon = Number(lon);
+      var a = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var b = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      if (!isFinite(lat) || !isFinite(lon) || !isFinite(a) || !isFinite(b)) return false;
+      var miles = Math.sqrt((lat - a) * (lat - a) + (lon - b) * (lon - b)) * 69;
+      return miles < 55;
+    }
+    function venueQuery(name, addr) {
+      var place = (typeof homePlace === "function" && homePlace()) || "";
+      var zip = "";
+      try { zip = String((getSet() || {}).zip || ""); } catch (eZ) {}
+      var raw = [name, addr].filter(Boolean).join(", ");
+      if (typeof enrichLoc === "function") raw = enrichLoc(raw || name || "");
+      if (place && raw.toLowerCase().indexOf(String(place).toLowerCase()) < 0) raw += ", " + place;
+      if (zip && raw.indexOf(zip) < 0) raw += " " + zip;
+      if (!/fl|florida/i.test(raw)) raw += ", FL";
+      return raw.replace(/\s+/g, " ").trim();
+    }
+    function venueMapSrc(name, addr, lat, lon) {
+      if (pinNearHome(lat, lon) && typeof pinMapSrc === "function") return pinMapSrc(lat, lon);
+      var q = venueQuery(name, addr);
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
+    }
+    function venueMapLink(name, addr, lat, lon) {
+      if (pinNearHome(lat, lon)) return "https://www.google.com/maps/dir/?api=1&destination=" + Number(lat) + "," + Number(lon);
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(venueQuery(name, addr));
     }
     function googleDestLink(addr, lat, lon) {
       var q = addr || ((isFinite(Number(lat)) && isFinite(Number(lon))) ? (Number(lat) + "," + Number(lon)) : "");
@@ -10838,13 +10883,15 @@ function currentRotation() {
         var saddr = shopCard.getAttribute("data-map") || pick.addr || "";
         var q = [pick.name, saddr].filter(Boolean).join(", ");
         var src = "", link = "";
-        if (isFinite(slat) && isFinite(slon) && Math.abs(slat) > 1 && Math.abs(slon) > 1) {
+        if (typeof pinNearHome === "function" && pinNearHome(slat, slon)) {
           src = (typeof pinMapSrc === "function" && pinMapSrc(slat, slon)) ||
             ("https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=16&t=m&hl=en&output=embed");
           link = "https://www.google.com/maps/dir/?api=1&destination=" + slat + "," + slon;
-        } else if (saddr || q) {
-          src = "https://maps.google.com/maps?q=" + encodeURIComponent(saddr || q) + "&z=16&hl=en&output=embed";
-          link = "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(saddr || q);
+        } else {
+          src = (typeof venueMapSrc === "function") ? venueMapSrc(pick.name, saddr || q, slat, slon)
+            : ("https://maps.google.com/maps?q=" + encodeURIComponent(saddr || q) + "&z=16&hl=en&output=embed");
+          link = (typeof venueMapLink === "function") ? venueMapLink(pick.name, saddr || q, slat, slon)
+            : ("https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(saddr || q));
         }
         openMapPop(pick.name || saddr || "Store", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
         return;
@@ -10876,13 +10923,17 @@ function currentRotation() {
         var q = evCard.getAttribute("data-map") || eventMapQuery(evCard) || "";
         var title = evCard.getAttribute("data-golf") || evCard.getAttribute("data-eat") || q || "Map";
         var src, link;
-        if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        var titleName = evCard.getAttribute("data-buzz") || evCard.getAttribute("data-eat") || evCard.getAttribute("data-golf") || "";
+        var loc = evCard.getAttribute("data-loc") || q;
+        if (typeof pinNearHome === "function" && pinNearHome(lat, lon)) {
           src = (typeof pinMapSrc === "function" && pinMapSrc(lat, lon)) ||
             ("https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=16&t=m&hl=en&output=embed");
           link = "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
         } else {
-          src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&output=embed";
-          link = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+          src = (typeof venueMapSrc === "function") ? venueMapSrc(titleName, loc, lat, lon)
+            : ("https://maps.google.com/maps?q=" + encodeURIComponent(loc || q) + "&z=16&hl=en&output=embed");
+          link = (typeof venueMapLink === "function") ? venueMapLink(titleName, loc, lat, lon)
+            : ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(loc || q));
         }
         openMapPop(title, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
       }
@@ -11181,7 +11232,9 @@ function currentRotation() {
         pills += (typeof locPillHtml === "function" ? locPillHtml(row) : "");
         if (row.rating != null && kind === "table") pills += '<span class="eat-rate-pill">' + Number(row.reviews || 0).toLocaleString() + " reviews</span>";
         pills += "</div>";
-        var mapQ = [row.name, row.where, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(" ");
+        var mapQ = (typeof venueQuery === "function")
+          ? venueQuery(row.name, row.addr || row.where)
+          : [row.name, row.addr || row.where, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(", ");
         var why = String(row.why || "").replace(/\s*This card refreshes[\s\S]*$/i, "").replace(/\s*Used as today[\s\S]*$/i, "").replace(/\s*Used while sale[\s\S]*$/i, "").replace(/\s*Picked for the posted[\s\S]*$/i, "").replace(/\s*Picked for tickets[\s\S]*$/i, "").replace(/\s*Chosen for buzz[\s\S]*$/i, "").trim();
         if (kind === "hot" || kind === "table") {
           var fact = funFactFor(row, kind);
@@ -13776,11 +13829,12 @@ function mustEats() {
         } else {
           arr = arr.filter(function (x) { return x !== id; });
           if (kind === "normal" && arr.indexOf("now") < 0) arr.unshift("now");
-          if (!arr.length) arr = kind === "storm" ? ["radar"] : ["now"];
+          if (!arr.length) arr = kind === "storm" ? (window.ROT_STORM_POOL || ["tenday","storms","marine","contacts"]).slice() : ["now"];
         }
         r[kind] = arr;
         saveRots(r);
         paintRotSet();
+        if (typeof startRotate === "function") startRotate();
         if (typeof paintTriggers === "function") paintTriggers();
         if (typeof rebuildDock === "function") rebuildDock();
       });
