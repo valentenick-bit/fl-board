@@ -3989,7 +3989,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 711;
+    window.BOARD_VER = 712;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -10841,6 +10841,69 @@ function currentRotation() {
       }
       return { name: name || "", addr: addr || "", lat: lat, lon: lon };
     }
+    function normalizeVenue(row, kind) {
+      row = row || {};
+      var name = row.name || row.title || row.sum || "";
+      var addr = row.addr || row.where || row.loc || row.area || "";
+      var lat = Number(row.lat), lon = Number(row.lon);
+      if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) < 1) {
+        var pin = typeof resolveVenuePin === "function" ? resolveVenuePin(name, addr, row.lat, row.lon) : null;
+        if (pin) {
+          if (isFinite(Number(pin.lat)) && Math.abs(Number(pin.lat)) > 1) {
+            lat = Number(pin.lat);
+            lon = Number(pin.lon);
+          }
+          if (pin.addr) addr = pin.addr;
+        }
+      }
+      return {
+        name: name,
+        addr: addr,
+        lat: (isFinite(lat) && Math.abs(lat) > 1) ? lat : "",
+        lon: (isFinite(lon) && Math.abs(lon) > 1) ? lon : "",
+        kind: kind || row.kind || "",
+        placeId: row.placeId || row.place_id || ""
+      };
+    }
+    function venueDataAttrs(row, kind, extra) {
+      extra = extra || {};
+      var v = normalizeVenue(row, kind);
+      function esc(s) { return String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;"); }
+      var mapQ = (typeof venueQuery === "function") ? venueQuery(v.name, v.addr) : [v.name, v.addr].filter(Boolean).join(", ");
+      var bits = ['data-venue="1"', 'data-map="' + esc(mapQ) + '"', 'data-name="' + esc(v.name) + '"'];
+      if (v.addr) bits.push('data-loc="' + esc(v.addr) + '"');
+      if (v.lat !== "" && v.lon !== "") bits.push('data-lat="' + v.lat + '" data-lon="' + v.lon + '"');
+      if (v.placeId) bits.push('data-placeid="' + esc(v.placeId) + '"');
+      if (v.kind) bits.push('data-kind="' + esc(v.kind) + '"');
+      if (extra.eat) bits.push('data-eat="' + esc(extra.eat) + '"');
+      if (extra.golf) bits.push('data-golf="' + esc(extra.golf) + '"');
+      if (extra.buzz) bits.push('data-buzz="' + esc(extra.buzz) + '"');
+      if (extra.busy) bits.push('data-busy="' + esc(extra.busy) + '"');
+      if (extra.drive) bits.push('data-drive="' + esc(extra.drive) + '"');
+      return bits.join(" ");
+    }
+    function openVenueMap(rowOrEl) {
+      var row = rowOrEl;
+      if (rowOrEl && rowOrEl.getAttribute) {
+        row = {
+          name: rowOrEl.getAttribute("data-name") || rowOrEl.getAttribute("data-eat") || rowOrEl.getAttribute("data-golf") || rowOrEl.getAttribute("data-buzz") || "",
+          addr: rowOrEl.getAttribute("data-loc") || "",
+          lat: rowOrEl.getAttribute("data-lat"),
+          lon: rowOrEl.getAttribute("data-lon"),
+          placeId: rowOrEl.getAttribute("data-placeid"),
+          kind: rowOrEl.getAttribute("data-kind")
+        };
+      }
+      var pin = typeof resolveVenuePin === "function" ? resolveVenuePin(row.name, row.addr, row.lat, row.lon) : row;
+      var src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon) : "";
+      var link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon) : "";
+      if (typeof openMapPop === "function") {
+        openMapPop(pin.name || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+      }
+    }
+    window.normalizeVenue = normalizeVenue;
+    window.venueDataAttrs = venueDataAttrs;
+    window.openVenueMap = openVenueMap;
     function googleDestLink(addr, lat, lon) {
       var q = addr || ((isFinite(Number(lat)) && isFinite(Number(lon))) ? (Number(lat) + "," + Number(lon)) : "");
       return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(q);
@@ -10957,6 +11020,10 @@ function currentRotation() {
         }
         if (typeof selectGolf === "function") selectGolf(grow);
         return;
+      }
+      var venueEl = e.target.closest && e.target.closest(".map-hit[data-venue], #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-hh .card, #ent-list .card");
+      if (venueEl && !(e.target.closest && (e.target.closest("#eat-list .eat-card") || e.target.closest("#golf-list .eat-card")))) {
+        if (typeof openVenueMap === "function") { openVenueMap(venueEl); return; }
       }
       var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-hh .card, #ent-list .card");
       if (evCard) {
@@ -11280,9 +11347,7 @@ function currentRotation() {
           why = fact ? ("Fun fact: " + fact) : "";
         }
         var locFull = (typeof enrichLoc === "function") ? enrichLoc(row.addr || row.where || mapQ || row.name) : (row.addr || mapQ || "");
-        return '<div class="card ev-card eat-card buzz-card map-hit buzz-' + kind + '" data-map="' + escBuzz(mapQ).replace(/"/g, "&quot;") + '" data-buzz="' + escBuzz(row.name).replace(/"/g, "&quot;") + '"' +
-          (row.lat != null ? ' data-lat="' + row.lat + '" data-lon="' + row.lon + '"' : "") +
-          (locFull ? ' data-loc="' + escBuzz(locFull).replace(/"/g, "&quot;") + '"' : "") + '>' +
+        return '<div class="card ev-card eat-card buzz-card map-hit buzz-' + kind + '" ' + venueDataAttrs(row, kind, { buzz: row.name, busy: mapQ }) + '>' +
           '<div class="ev-rail' + ((rail.dow || rail.num) ? "" : " rail-solo") + '"><span class="ev-dow">' + (rail.dow || "") + '</span><span class="ev-num">' + (rail.num || "") + '</span><span class="ev-ico" aria-hidden="true">' + rail.ico + '</span></div>' +
           '<div class="ev-body">' + pills +
           "<b>" + escBuzz(row.name) + "</b>" +
@@ -11946,7 +12011,7 @@ function currentRotation() {
         var title = String(e.sum || "");
         if (at) title = title.replace(/\s*@\s*.+$/, "").trim();
         var pclass = e.inside ? "place-tag place-bw" : "place-tag place-out";
-        var mapQ = e.inside ? ("BeachWalk by Manasota Key, Englewood FL") : ((e.loc || place || e.sum) + ", Englewood FL");
+        var mapQ = e.inside ? "BeachWalk by Manasota Key, Englewood FL" : ((e.loc || place || e.sum) || "");
         var pin = typeof pinVenue === "function" ? pinVenue(e) : null;
         if (pin && pin.lat != null) { e.lat = pin.lat; e.lon = pin.lon; }
         if (pin && pin.onSite) e.inside = true;
@@ -11963,7 +12028,7 @@ function currentRotation() {
         if (e.loc && String(e.loc).split(",")[0].trim() && String(e.loc).toLowerCase().indexOf(String(place).toLowerCase()) < 0) {
           locLine = place + " · " + e.loc;
         }
-        return '<div class="card ev-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '" data-drive="' + String(driveKey).replace(/"/g, "&quot;") + '"><div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '<span class="busy-tag" hidden></span><b>' + locLine + '</b><span class="ev-when">' + whenLine +
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: title || e.sum, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '<span class="busy-tag" hidden></span><b>' + locLine + '</b><span class="ev-when">' + whenLine +
           (e.opens ? " · opens " + e.opens : "") +
           (e.driveMin != null ? " · " + Math.round(e.driveMin) + " min drive" : "") +
           (function () {
@@ -12426,9 +12491,7 @@ function currentRotation() {
         if (r.prevRating != null && r.rating != null && Number(r.prevRating) !== Number(r.rating)) {
           delta = Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
         }
-        return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '" data-eat="' + String(r.name || "").replace(/"/g, "&quot;") + '"' +
-          (r.lat != null ? ' data-lat="' + r.lat + '" data-lon="' + r.lon + '"' : "") +
-          (r.addr ? ' data-loc="' + String(r.addr).replace(/"/g, "&quot;") + '"' : "") + '>' +
+        return '<div class="card ev-card eat-card map-hit" ' + venueDataAttrs(r, r.kind || "restaurant", { eat: r.name, busy: mapQ }) + '>' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + delta + '</span><span class="ev-ico ev-price" aria-hidden="true">' + (bucks || "–") + "</span></div>" +
           '<div class="ev-body">' + pills +
           "<b>" + (r.name || "Restaurant") + "</b>" +
@@ -13223,9 +13286,7 @@ function mustEats() {
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var mapQ = ((r.name || "") + (addr ? " " + addr : "")).trim() || (r.name + " golf");
-        return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-golf="' + String(r.name || "").replace(/"/g, "&quot;") + '"' +
-          (r.lat != null && r.lon != null ? ' data-lat="' + r.lat + '" data-lon="' + r.lon + '"' : "") +
-          (addr ? ' data-loc="' + String(addr).replace(/"/g, "&quot;") + '"' : "") + '>' +
+        return '<div class="card ev-card eat-card map-hit" ' + venueDataAttrs(r, r.kind || "golf", { golf: r.name, busy: mapQ }) + '>' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + '</span><span class="ev-ico" aria-hidden="true">⛳</span></div>' +
           '<div class="ev-body"><b>' + String(r.name || "Golf").replace(/</g, "") + "</b>" +
           (addr ? "<span>" + String(addr).replace(/</g, "") + "</span>" : "") +
