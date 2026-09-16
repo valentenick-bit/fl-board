@@ -2396,6 +2396,11 @@
       background:rgba(27,42,74,.06); color:var(--navy);
       display:flex; align-items:center; justify-content:center;
     }
+    .ev-ico.ev-price {
+      font-size:13px; font-weight:700; letter-spacing:.02em;
+      line-height:1; color:var(--teal,#1b6b62);
+    }
+    html.dark .ev-ico.ev-price { color:#e8c47a; }
     .wear-art svg { width:56px; height:56px; display:block; }
     html.dark .wear-art { background:rgba(239,228,200,.08); color:#efe4c8; }
     .wear-card .ev-body { min-width:0; }
@@ -3984,7 +3989,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 705;
+    window.BOARD_VER = 708;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4852,8 +4857,8 @@ Cart shop:</textarea>
       window.__gmapsLoading = false;
       var good = !!(ok && gmapsReady());
       if (typeof noteFeed === "function") {
-        noteFeed("gmaps", good, good ? "maps js" : "script not ready");
-        noteFeed("places", !!String((getSet() || {}).gmapsKey || "").trim(), String((getSet() || {}).gmapsKey || "").trim() ? "autocomplete + details" : "no key");
+        noteFeed("gmaps", good && !!(getSet() && getSet().gmapsKey), good ? "maps js" : (!String((getSet() || {}).gmapsKey || "").trim() ? "no Maps key" : "script not ready"));
+        noteFeed("places", !!String((getSet() || {}).gmapsKey || "").trim(), String((getSet() || {}).gmapsKey || "").trim() ? "autocomplete + details" : "no Maps key");
       }
       var fns = window.__gmapsWait || [];
       window.__gmapsWait = [];
@@ -4910,13 +4915,13 @@ Cart shop:</textarea>
       if (page !== "land" && !force) {
         if (box) box.hidden = true;
         if (frame) frame.style.display = "";
-        if (typeof noteFeed === "function") noteFeed("traffic", true, "google embed");
+        if (typeof noteFeed === "function") noteFeed("traffic", !!(getSet() && getSet().gmapsKey), (getSet() && getSet().gmapsKey) ? "google embed" : "no Maps key");
         return;
       }
       if (!String((getSet() || {}).gmapsKey || "").trim()) {
         if (box) box.hidden = true;
         if (frame) { frame.style.display = ""; frame.src = embed; }
-        if (typeof noteFeed === "function") noteFeed("traffic", true, "no key · google embed");
+        if (typeof noteFeed === "function") noteFeed("traffic", false, "no Maps key — traffic layer off");
         return;
       }
       loadGmaps(function (ok) {
@@ -10755,8 +10760,8 @@ function currentRotation() {
       if (!r) return;
       var map = document.getElementById("golf-map-frame");
       var mapA = document.getElementById("golf-map-open");
-      if (map) map.src = placeMapSrc(r.name, r.addr);
-      if (mapA) mapA.href = placeMapLink(r.name, r.addr);
+      if (map) map.src = placeMapSrc(r.name, r.addr, r.lat, r.lon);
+      if (mapA) mapA.href = placeMapLink(r.name, r.addr, r.lat, r.lon);
     }
     window.selectEat = selectEat;
     window.selectGolf = selectGolf;
@@ -12373,7 +12378,6 @@ function currentRotation() {
         var pills = '<span class="kind-tag eat-' + kindCls(r.kind) + '">' + (r.kind || "Restaurant") + "</span>";
         pills += (typeof locPillHtml === "function" ? locPillHtml(r) : (dist ? '<span class="dist-tag loc-pill">' + dist + "</span>" : ""));
         var bucks = typeof priceMarks === "function" ? priceMarks(r.priceLevel != null ? r.priceLevel : r.price_level) : "";
-        if (bucks) pills += '<span class="price-tag">' + bucks + "</span>";
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var delta = "";
@@ -12383,7 +12387,7 @@ function currentRotation() {
         return '<div class="card ev-card eat-card map-hit" data-map="' + String(mapQ).replace(/"/g, "&quot;") + '" data-busy="' + String(mapQ).replace(/"/g, "&quot;") + '" data-eat="' + String(r.name || "").replace(/"/g, "&quot;") + '"' +
           (r.lat != null ? ' data-lat="' + r.lat + '" data-lon="' + r.lon + '"' : "") +
           (r.addr ? ' data-loc="' + String(r.addr).replace(/"/g, "&quot;") + '"' : "") + '>' +
-          '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + delta + '</span><span class="ev-ico" aria-hidden="true">★</span></div>' +
+          '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + delta + '</span><span class="ev-ico ev-price" aria-hidden="true">' + (bucks || "–") + "</span></div>" +
           '<div class="ev-body">' + pills +
           "<b>" + (r.name || "Restaurant") + "</b>" +
           (addr ? '<span class="ev-when">' + addr + "</span>" : "") +
@@ -13434,6 +13438,19 @@ function mustEats() {
         if (d.eatPick && d.eatPick.name) {
           window.__eatPick = d.eatPick;
           if (typeof window.paintEatPick === "function") window.paintEatPick();
+        }
+        var gk = String(d.gmapsKey || d.mapsKey || d.googleMapsKey || d.googleKey || "").trim();
+        if (gk && gk.length > 20) {
+          var had = "";
+          try { had = String((getSet() || {}).gmapsKey || "").trim(); } catch (eK) {}
+          if (had !== gk) {
+            if (typeof putSet === "function") putSet({ gmapsKey: gk });
+            if (typeof loadGmaps === "function") loadGmaps(function () {
+              if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
+              if (typeof window.reloadEats === "function") window.reloadEats();
+              if (typeof window.reloadGolf === "function") window.reloadGolf();
+            });
+          }
         }
       }
       function next(i) {
@@ -14636,7 +14653,7 @@ function mustEats() {
       function verdict(s) {
         s = String(s || "").replace(/\s+/g, " ").trim();
         if (/none upcoming|no upcoming flights|none on calendar|none current|scan empty/i.test(s)) return "ok";
-        if (/did not load|timed out|not wired|video unavailable|no data was found|no live report|drive file blocked|gmail scan/i.test(s)) return "failed";
+        if (/did not load|timed out|not wired|video unavailable|no data was found|no live report|drive file blocked|gmail scan|no Maps key|traffic layer off|embed only|no headline|none in range/i.test(s)) return "failed";
         if (/NHC list is quiet|no named|outlook maps below still update/i.test(s)) return "ok";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
         if (/\bG0\b|space weather|flare [A-Z]\d/i.test(s)) return "ok";
@@ -14711,9 +14728,14 @@ function mustEats() {
             return (b.gulf || b.atl) ? ((b.gulf ? "gulf sat" : "") + (b.atl ? (b.gulf ? " + atl sat" : "atl sat") : "")) : "radar only";
           })()],
           ["traffic", (function(){
+            var key = "";
+            try { key = String((getSet() || {}).gmapsKey || "").trim(); } catch (eT) {}
+            if (!key) return "no Maps key — traffic layer off";
+            if (window.__trafficLayer && window.__trafficMap) return "traffic layer";
             var src = ((document.getElementById("traffic-map") || {}).src || "") + " " + ((document.getElementById("traffic-gmap") || {}).hidden === false ? "gmaps-js" : "");
             if (/waze/i.test(src)) return "waze";
-            if (/ll=|layer=t|maps\.google|gmaps-js/i.test(src)) return "pinned";
+            if (/gmaps-js/i.test(src)) return "gmaps-js";
+            if (/maps\.google/i.test(src)) return "embed only — no traffic layer";
             return (window.__feeds && window.__feeds.traffic && window.__feeds.traffic.detail) || "";
           })()],
           ["rain", document.documentElement.classList.contains("raining") ? "raining" : "dry"],
@@ -14981,6 +15003,10 @@ function mustEats() {
           holdN += (p.hold || []).length;
         });
       }
+      ["gmaps", "places", "traffic", "eats", "eat-pick", "golf"].forEach(function (k) {
+        var f = window.__feeds && window.__feeds[k];
+        if (f && f.ok === false) downN += 1;
+      });
       var sum = document.getElementById("health-sum");
       if (sum) sum.textContent = downN + " down · " + holdN + " waiting · " + okN + " ok · " + (window.__crashes || []).length + " crashes · v" + (window.BOARD_VER || "?");
       var waitEl = document.getElementById("health-wait");
@@ -18518,27 +18544,67 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
             if (typeof syncLightningUI === "function") syncLightningUI();
         ringStormDock();
         (function syncNoaa(hasWarn) {
-          var audio = document.getElementById("radioPlayer");
-          var playing = audio && audio.getAttribute("src");
-          if (hasWarn) {
-            if (!window.__nwrAlert) {
-              var cur = (audio && audio.getAttribute("src")) || savedRadio() || "";
-              if (/KHB32|NWR|KEC38/i.test(cur)) cur = savedRadio() && !/KHB32|NWR|KEC38/i.test(savedRadio()) ? savedRadio() : "";
-              window.__nwrPrev = { url: cur };
+          function isNoaaUrl(u) {
+            return /weatherusa|\/NWR\/|KHB32|KEC38|nwr/i.test(String(u || ""));
+          }
+          function rememberPrev() {
+            var audio = document.getElementById("radioPlayer");
+            var src = (audio && (audio.getAttribute("src") || audio.src)) || "";
+            var saved = "";
+            try { saved = savedRadio() || (getSet() && getSet().station) || ""; } catch (eS) {}
+            var want = (window.__radioWant && window.__radioWant.url) || "";
+            var cands = [want, src, saved];
+            var pick = "";
+            var lab = "";
+            cands.forEach(function (u) {
+              if (pick || !u) return;
+              if (isNoaaUrl(u)) return;
+              pick = u;
+            });
+            if (window.__radioWant && window.__radioWant.label && !isNoaaUrl(window.__radioWant.url)) lab = window.__radioWant.label;
+            if (!pick && window.__nwrPrev && window.__nwrPrev.url && !isNoaaUrl(window.__nwrPrev.url)) {
+              pick = window.__nwrPrev.url;
+              lab = window.__nwrPrev.label || lab;
             }
+            window.__nwrPrev = { url: pick, label: lab };
+            try { sessionStorage.setItem("bw-nwr-prev", JSON.stringify(window.__nwrPrev)); } catch (eP) {}
+          }
+          function restorePrev() {
+            var prev = window.__nwrPrev;
+            if (!prev || !prev.url) {
+              try { prev = JSON.parse(sessionStorage.getItem("bw-nwr-prev") || "null"); } catch (eR) { prev = null; }
+            }
+            window.__nwrAlert = false;
+            window.__nwrPrev = null;
+            try { sessionStorage.removeItem("bw-nwr-prev"); } catch (eC) {}
+            var url = prev && prev.url && !isNoaaUrl(prev.url) ? prev.url : "";
+            if (!url) {
+              try {
+                var saved = savedRadio() || "";
+                if (saved && !isNoaaUrl(saved)) url = saved;
+              } catch (eT) {}
+            }
+            if (!url) {
+              window.__forceRadio = false;
+              playStation("", "Mute", { keepSaved: true });
+              return;
+            }
+            window.__forceRadio = true;
+            playStation(url, (prev && prev.label) || "station", { keepSaved: true });
+            if (typeof saveRadio === "function") saveRadio(url);
+            window.__forceRadio = false;
+          }
+          var audio = document.getElementById("radioPlayer");
+          var playing = audio && (audio.getAttribute("src") || audio.src || "");
+          if (hasWarn) {
+            if (!window.__nwrAlert || !(window.__nwrPrev && window.__nwrPrev.url && !isNoaaUrl(window.__nwrPrev.url))) rememberPrev();
             window.__nwrAlert = true;
             window.__forceRadio = true;
-            if (getSet().noaa !== "0" && (!playing || String(playing).indexOf("KHB32") < 0)) {
+            if (getSet().noaa !== "0" && !isNoaaUrl(playing)) {
               playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
             }
           } else if (window.__nwrAlert) {
-            window.__nwrAlert = false;
-            var prev = window.__nwrPrev || {};
-            window.__nwrPrev = null;
-            if (inQuietHours()) {
-              playStation("", "Mute", { keepSaved: true });
-              if (prev.url) saveRadio(prev.url);
-            } else playStation(prev.url || "", prev.url ? "previous station" : "Mute");
+            restorePrev();
           }
         })(!!isWarnEarly);
         if (isStormRot) {
