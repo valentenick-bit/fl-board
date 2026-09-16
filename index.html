@@ -3989,7 +3989,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 709;
+    window.BOARD_VER = 710;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -10819,6 +10819,28 @@ function currentRotation() {
       }
       return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(venueQuery(name, addr));
     }
+    function resolveVenuePin(name, addr, lat, lon) {
+      lat = Number(lat); lon = Number(lon);
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        return { name: name || "", addr: addr || "", lat: lat, lon: lon };
+      }
+      var needle = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      var pools = [].concat(window.__eats || [], window.__golfs || [], window.__eatPool || []);
+      var hit = null;
+      pools.forEach(function (x) {
+        if (hit || !x || !x.name) return;
+        var n = String(x.name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        if (n && (n === needle || needle.indexOf(n) >= 0 || n.indexOf(needle) >= 0)) hit = x;
+      });
+      if (hit && hit.lat != null) {
+        return { name: hit.name || name, addr: hit.addr || addr || "", lat: Number(hit.lat), lon: Number(hit.lon) };
+      }
+      if (typeof pinVenue === "function") {
+        var pin = pinVenue({ sum: name, loc: addr || name });
+        if (pin && pin.lat != null) return { name: name || "", addr: pin.addr || addr || "", lat: Number(pin.lat), lon: Number(pin.lon) };
+      }
+      return { name: name || "", addr: addr || "", lat: lat, lon: lon };
+    }
     function googleDestLink(addr, lat, lon) {
       var q = addr || ((isFinite(Number(lat)) && isFinite(Number(lon))) ? (Number(lat) + "," + Number(lon)) : "");
       return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(q);
@@ -10875,7 +10897,7 @@ function currentRotation() {
       return homeBoltEmbed();
     }
     function eventMapQuery(el, ev) {
-      if (ev && ev.loc) return ev.loc + (ev.inside ? " BeachWalk Manasota Key Florida" : " Englewood Florida");
+      if (ev && ev.loc) return typeof venueQuery === "function" ? venueQuery(ev.sum || ev.name || "", ev.loc) : ev.loc;
       if (el && el.getAttribute("data-map")) return el.getAttribute("data-map");
       var loc = el && (el.getAttribute("data-loc") || "");
       var place = el && (el.getAttribute("data-place") || "");
@@ -10908,17 +10930,12 @@ function currentRotation() {
         var saddr = shopCard.getAttribute("data-map") || pick.addr || "";
         var q = [pick.name, saddr].filter(Boolean).join(", ");
         var src = "", link = "";
-        if (typeof pinNearHome === "function" && pinNearHome(slat, slon)) {
-          src = (typeof pinMapSrc === "function" && pinMapSrc(slat, slon)) ||
-            ("https://maps.google.com/maps?q=" + slat + "," + slon + "&ll=" + slat + "," + slon + "&z=14&t=m&hl=en&output=embed");
-          link = "https://www.google.com/maps/dir/?api=1&destination=" + slat + "," + slon;
-        } else {
-          src = (typeof venueMapSrc === "function") ? venueMapSrc(pick.name, saddr || q, slat, slon)
-            : ("https://maps.google.com/maps?q=" + encodeURIComponent(saddr || q) + "&z=14&hl=en&output=embed");
-          link = (typeof venueMapLink === "function") ? venueMapLink(pick.name, saddr || q, slat, slon)
-            : ("https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(saddr || q));
-        }
-        openMapPop(pick.name || saddr || "Store", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+        var pin = typeof resolveVenuePin === "function" ? resolveVenuePin(pick.name, saddr || q, slat, slon) : { name: pick.name, addr: saddr, lat: slat, lon: slon };
+        src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon)
+          : ("https://maps.google.com/maps?q=" + encodeURIComponent(pin.addr || q) + "&z=14&hl=en&output=embed");
+        link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon)
+          : ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(pin.addr || q));
+        openMapPop(pin.name || saddr || "Store", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
         return;
       }
       var eatCard = e.target.closest && e.target.closest("#eat-list .eat-card");
@@ -10941,7 +10958,7 @@ function currentRotation() {
         if (typeof selectGolf === "function") selectGolf(grow);
         return;
       }
-      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #ent-list .card");
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-hh .card, #ent-list .card");
       if (evCard) {
         var lat = Number(evCard.getAttribute("data-lat"));
         var lon = Number(evCard.getAttribute("data-lon"));
@@ -10950,17 +10967,14 @@ function currentRotation() {
         var src, link;
         var titleName = evCard.getAttribute("data-buzz") || evCard.getAttribute("data-eat") || evCard.getAttribute("data-golf") || "";
         var loc = evCard.getAttribute("data-loc") || q;
-        if (typeof pinNearHome === "function" && pinNearHome(lat, lon)) {
-          src = (typeof pinMapSrc === "function" && pinMapSrc(lat, lon)) ||
-            ("https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=14&t=m&hl=en&output=embed");
-          link = "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
-        } else {
-          src = (typeof venueMapSrc === "function") ? venueMapSrc(titleName, loc, lat, lon)
-            : ("https://maps.google.com/maps?q=" + encodeURIComponent(loc || q) + "&z=14&hl=en&output=embed");
-          link = (typeof venueMapLink === "function") ? venueMapLink(titleName, loc, lat, lon)
-            : ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(loc || q));
-        }
-        openMapPop(title, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+        var pin = typeof resolveVenuePin === "function"
+          ? resolveVenuePin(titleName || title, loc || q, lat, lon)
+          : { name: titleName || title, addr: loc || q, lat: lat, lon: lon };
+        src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon)
+          : ("https://maps.google.com/maps?q=" + encodeURIComponent(pin.addr || q) + "&z=14&hl=en&output=embed");
+        link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon)
+          : ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(pin.addr || q));
+        openMapPop(pin.name || title, src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
       }
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMapPop(); });
@@ -11451,6 +11465,14 @@ function currentRotation() {
           lon: extra.lon,
           addr: extra.addr || extra.where || ""
         };
+        if ((out.lat == null || out.lon == null) && typeof resolveVenuePin === "function") {
+          var pinned = resolveVenuePin(out.name, out.addr || out.where, out.lat, out.lon);
+          if (pinned && pinned.lat != null && isFinite(Number(pinned.lat))) {
+            out.lat = pinned.lat;
+            out.lon = pinned.lon;
+            if (pinned.addr) out.addr = out.where = pinned.addr;
+          }
+        }
         if (kind === "hot") {
           var pinH = typeof pinVenue === "function" ? pinVenue({ sum: name, loc: out.addr || out.where || name }) : null;
           if (pinH && pinH.addr) {
