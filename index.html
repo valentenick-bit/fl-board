@@ -2470,6 +2470,21 @@
       position:absolute; inset:0; width:100%; height:100% !important; min-height:180px;
       border:0; border-radius:16px; display:block;
     }
+    
+    .map-place {
+      position:absolute; top:10px; left:10px; z-index:6;
+      max-width:min(72%, 280px);
+      background:#fff; color:#1b2a4a;
+      border-radius:10px; padding:8px 10px 7px;
+      box-shadow:0 2px 12px rgba(0,0,0,.2);
+      line-height:1.25; pointer-events:none;
+    }
+    .map-place[hidden] { display:none !important; }
+    .map-place b { display:block; font-size:14px; font-weight:800; }
+    .map-place span { display:block; font-size:12px; opacity:.78; margin-top:2px; }
+    html.dark .map-place { background:#1e3330; color:#efe4c8; box-shadow:0 2px 12px rgba(0,0,0,.45); }
+    #map-pop .pop-map { position:relative; }
+
     #map-pop-gmap { width:100%; height:min(62vh,520px); min-height:220px; border:0; background:#d7ece8; }
     html.phone #map-pop iframe,
     html.phone #map-pop-gmap {
@@ -2961,6 +2976,7 @@
             <div class="radar-crop radar-stage">
               <div id="eat-gmap" class="gmap-box land-map-pane" hidden></div>
               <iframe class="land-map-pane on" id="eat-map-frame" title="Restaurant map" src="about:blank" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+              <div class="map-place" id="eat-place" hidden></div>
             </div>
             <p class="wx-map-cap"><b>Location</b><a id="eat-map-open" href="#" target="_blank" rel="noopener">Open map</a></p>
           </div>
@@ -2977,6 +2993,7 @@
             <div class="radar-crop radar-stage">
               <div id="golf-gmap" class="gmap-box land-map-pane" hidden></div>
               <iframe class="land-map-pane on" id="golf-map-frame" title="Course location" src="about:blank" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+              <div class="map-place" id="golf-place" hidden></div>
             </div>
             <p class="wx-map-cap"><b>Location</b><a id="golf-map-open" href="#" target="_blank" rel="noopener">Open map</a></p>
           </div>
@@ -4053,8 +4070,11 @@ Cart shop:</textarea>
       <div class="pop-card" role="dialog" aria-modal="true">
         <div class="pop-bar"><span id="map-pop-title">Map</span><button type="button" id="map-pop-x" aria-label="Close">×</button></div>
         <div class="pop-note" id="map-pop-note" hidden></div>
+        <div class="pop-map">
         <div id="map-pop-gmap" hidden></div>
         <iframe id="map-pop-frame" title="Map" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <div class="map-place" id="map-pop-place" hidden></div>
+        </div>
         <div class="pop-links" id="map-pop-links"></div>
       </div>
     </div>
@@ -4174,7 +4194,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 752;
+    window.BOARD_VER = 753;
 
     
     function communityShort() {
@@ -11090,6 +11110,15 @@ function currentRotation() {
       }
       return true;
     }
+    function writeMapPlace(id, name, addr) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      name = String(name || "").trim();
+      addr = String(addr || "").trim();
+      if (!name && !addr) { el.hidden = true; el.innerHTML = ""; return; }
+      el.hidden = false;
+      el.innerHTML = (name ? "<b>" + name.replace(/</g,"") + "</b>" : "") + (addr ? "<span>" + addr.replace(/</g,"") + "</span>" : "");
+    }
     function fillVenueMap(boxId, iframeId, name, addr, lat, lon) {
       var painted = pinLiveMap(boxId, iframeId, lat, lon, name);
       var frame = document.getElementById(iframeId);
@@ -11100,6 +11129,8 @@ function currentRotation() {
           if (ok) pinLiveMap(boxId, iframeId, lat, lon, name);
         });
       }
+      var placeId = boxId === "eat-gmap" ? "eat-place" : boxId === "golf-gmap" ? "golf-place" : boxId === "map-pop-gmap" ? "map-pop-place" : "";
+      if (placeId) writeMapPlace(placeId, name, addr);
       return painted;
     }
     function venueMapSrc(name, addr, lat, lon, placeId) {
@@ -11197,7 +11228,7 @@ function currentRotation() {
       var pin = typeof resolveVenuePin === "function" ? resolveVenuePin(row.name, row.addr, row.lat, row.lon) : row;
       var src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon, row.placeId) : "";
       var link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon) : "";
-      window.__mapPopPin = { lat: pin.lat, lon: pin.lon, name: pin.name };
+      window.__mapPopPin = { lat: pin.lat, lon: pin.lon, name: pin.name, addr: pin.addr || row.addr || "" };
       if (document.documentElement.classList.contains("phone") && link && !(window.google && google.maps && isFinite(Number(pin.lat)))) {
         window.open(link, "_blank");
         return;
@@ -11221,6 +11252,8 @@ function currentRotation() {
       var noteEl = document.getElementById("map-pop-note");
       if (!pop || !frame) return;
       if (ttl) ttl.textContent = title || "Map";
+      var pin = window.__mapPopPin || {};
+      writeMapPlace("map-pop-place", pin.name || title, pin.addr || pin.q || "");
       var gbox = document.getElementById("map-pop-gmap");
       var used = false;
       if (gbox && window.__mapPopPin && pinLiveMap("map-pop-gmap", "map-pop-frame", window.__mapPopPin.lat, window.__mapPopPin.lon, title)) {
