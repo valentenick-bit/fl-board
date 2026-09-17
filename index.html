@@ -4127,7 +4127,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 740;
+    window.BOARD_VER = 743;
 
     
     function communityShort() {
@@ -13524,6 +13524,14 @@ function mustEats() {
         var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
       }
+      function isGolfName(name, tags, types) {
+        var n = String(name || "").toLowerCase();
+        var blob = n + " " + String((types || []).join(" ")).toLowerCase() + " " + String((tags && tags.amenity) || "");
+        if (/hospital|medical center|clinic|urgent care|health system|physician|doctor|orthopedic|dental|pharmacy|veterinary|rehab|imaging/.test(blob)) return false;
+        if (tags && String(tags.leisure || "") === "golf_course") return true;
+        if ((types || []).indexOf("golf_course") >= 0) return true;
+        return /\bgolf\b|country club|\blinks\b|driving range/.test(n);
+      }
       function kindOf(tags) {
         var t = tags || {};
         var blob = String(t.golf || t.access || t.leisure || t.description || "").toLowerCase();
@@ -13594,6 +13602,7 @@ function mustEats() {
       function rank(list) {
         var cap = golfMiles();
         return dedupe(list).filter(function (r) {
+          if (!isGolfName(r.name)) return false;
           if (r.miles == null && r.lat != null) r.miles = milesOf(r.lat, r.lon);
           return r.miles == null || r.miles <= cap;
         }).sort(function (a, b) {
@@ -13647,7 +13656,7 @@ function mustEats() {
       }
       function fromOverpass(cb) {
         var miles = golfMiles();
-        var q = '[out:json][timeout:25];(nwr["leisure"="golf_course"](around:' + Math.round(miles * 1609.34) + "," + homeLat() + "," + homeLon() + ');nwr["sport"="golf"](around:' + Math.round(miles * 1609.34) + "," + homeLat() + "," + homeLon() + '););out center 40;';
+        var q = '[out:json][timeout:25];(nwr["leisure"="golf_course"](around:' + Math.round(miles * 1609.34) + "," + homeLat() + "," + homeLon() + '););out center 40;';
         var urls = [
           "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q),
           "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q)
@@ -13667,6 +13676,7 @@ function mustEats() {
               var lat = el.lat || (el.center && el.center.lat);
               var lon = el.lon || (el.center && el.center.lon);
               if (!tags.name || lat == null) return null;
+              if (!isGolfName(tags.name, tags)) return null;
               return {
                 name: tags.name,
                 kind: kindOf(tags),
@@ -13699,6 +13709,7 @@ function mustEats() {
               var loc = p.geometry && p.geometry.location;
               var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
               var lon = loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng);
+              if (!isGolfName(p.name, null, p.types)) return null;
               return {
                 name: p.name,
                 kind: /country club|private/i.test(p.name || "") ? "Private" : "Course",
@@ -13709,7 +13720,7 @@ function mustEats() {
                 lat: lat, lon: lon,
                 addr: p.vicinity || ""
               };
-            }));
+            }).filter(Boolean));
           });
         } catch (e) { fail(); }
       }
@@ -13726,16 +13737,17 @@ function mustEats() {
             if (r.rating != null) return setTimeout(next, 20);
             try {
               svc.findPlaceFromQuery({
-                query: r.name + " golf " + (r.addr || homePlace() || ""),
-                fields: ["rating", "user_ratings_total", "formatted_address", "geometry", "place_id"]
+                query: r.name + " golf course " + (r.addr || homePlace() || ""),
+                fields: ["name", "rating", "user_ratings_total", "formatted_address", "geometry", "place_id", "types"]
               }, function (results, status) {
                 if (status === "OK" && results && results[0]) {
                   var p = results[0];
+                  if (!isGolfName(p.name || r.name, null, p.types)) return setTimeout(next, 160);
                   if (p.rating != null) r.rating = p.rating;
                   r.reviews = p.user_ratings_total || r.reviews;
                   if (p.formatted_address) r.addr = p.formatted_address;
                   var loc = p.geometry && p.geometry.location;
-                  if (loc) {
+                  if (loc && (r.lat == null || r.lon == null)) {
                     r.lat = typeof loc.lat === "function" ? loc.lat() : loc.lat;
                     r.lon = typeof loc.lng === "function" ? loc.lng() : loc.lng;
                     r.miles = milesOf(r.lat, r.lon);
@@ -17642,9 +17654,11 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           return;
         }
         var body = hits.map(function (h) {
-          var line = "BREAKING · " + h.src + ". " + h.title;
-          if (!/[.!?]$/.test(line)) line += ".";
-          return spaceSentences(line);
+          var src = String(h.src || "");
+          if (/FDA|NTAS|CDC|TFR|USCG|AIR/i.test(src)) {
+            return spaceSentences(String(h.title || ""));
+          }
+          return speakAlert({ kind: "break", title: src + " breaking news", body: h.title });
         }).join("\u00a0".repeat(160));
         bar.classList.add("on");
         stackTickers();
@@ -18820,11 +18834,91 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       if (/statement/.test(ev)) return "statement";
       return "other";
     }
+    
+    function alertAction(kind, ev) {
+      ev = String(ev || "").toLowerCase();
+      kind = String(kind || "").toLowerCase();
+      if (kind === "amber" || kind === "child" || /amber|abduction|missing child/.test(ev))
+        return "If you see them or the vehicle, call 911. Do not approach.";
+      if (kind === "silver" || kind === "purple")
+        return "If you see them, call 911. Do not approach.";
+      if (kind === "blue")
+        return "If you see the suspect or vehicle, call 911. Do not approach.";
+      if (kind === "evac" || /evacuation immediate|evacuate now/.test(ev))
+        return "Leave if your zone is called. Take meds, papers, and pets. Do not wait on the last bridge.";
+      if (kind === "shelter" || /shelter in place/.test(ev))
+        return "Stay inside. Shut windows. Wait for the all-clear.";
+      if (kind === "911" || /911 telephone|911 service/.test(ev))
+        return "If you have an emergency, use another phone or go to a fire station.";
+      if (kind === "dam" || /dam break|dam failure|levee/.test(ev))
+        return "Move off low ground and away from the water if officials say so.";
+      if (kind === "hazmat" || /hazardous materials|radiological|nuclear/.test(ev))
+        return "Stay upwind and inside unless you are told to leave.";
+      if (kind === "civil" || /civil emergency|local area emergency|law enforcement/.test(ev))
+        return "Follow local officers. Stay off the roads if they say so.";
+      if (kind === "school" || /lockdown|lockout/.test(ev))
+        return "Stay away from campus. Wait for the school or police to say it is clear.";
+      if (/tornado/.test(ev))
+        return "Get to an interior room with no windows. Stay off the beach and the water.";
+      if (/hurricane|tropical storm|storm surge/.test(ev))
+        return "Check your zone. Fuel up. Ice, water, meds, cash. Leave if they call your zone.";
+      if (/flash flood|flood warning/.test(ev))
+        return "Do not drive through water. Turn around.";
+      if (/rip current/.test(ev))
+        return "Stay out of the surf while this is up.";
+      if (/small craft|gale|marine warning|hazardous seas/.test(ev))
+        return "Stay off the water until this expires.";
+      if (/severe thunderstorm|thunderstorm warning/.test(ev))
+        return "Get inside. Wait 30 minutes after the last thunder.";
+      if (kind === "boil" || /boil water|do not drink/.test(ev))
+        return "Do not drink tap water until the utility says it is safe. Use bottled water.";
+      if (kind === "fda")
+        return "If you have it, do not eat it. Throw it out or return it.";
+      if (kind === "ntas")
+        return "This is a national advisory, not a local evacuation.";
+      if (kind === "han" || kind === "cdc")
+        return "This is health guidance, not a local outbreak notice unless it names this town.";
+      if (kind === "tfr")
+        return "This is for pilots. No action for the house.";
+      if (kind === "uscg")
+        return "Check conditions before you launch.";
+      if (kind === "air")
+        return "Sensitive groups should limit outdoor time.";
+      if (kind === "nixle")
+        return "This is a local notice. Details are on the Emergency page.";
+      if (kind === "break")
+        return "Open Local News if you want the full story.";
+      return "";
+    }
+    function speakAlert(opts) {
+      opts = opts || {};
+      var kind = opts.kind || "";
+      var title = String(opts.title || "Alert").replace(/\s+/g, " ").trim();
+      var body = String(opts.body || "").replace(/\s+/g, " ").trim();
+      if (body && title && body.toLowerCase().indexOf(title.toLowerCase()) === 0) {
+        /* headline already includes the event name */
+      } else if (body && title && body.toLowerCase().indexOf(title.toLowerCase()) >= 0) {
+        title = "";
+      }
+      if (title && !/[.!?]$/.test(title)) title += ".";
+      if (body.length > 180) body = body.slice(0, 177).replace(/\s+\S*$/, "") + ".";
+      if (body && !/[.!?]$/.test(body)) body += ".";
+      var act = opts.action != null ? opts.action : alertAction(kind, title + " " + body);
+      var parts = [];
+      if (title) parts.push(title);
+      if (body && (!title || body.toLowerCase() !== title.toLowerCase())) parts.push(body);
+      if (act && parts.join(" ").toLowerCase().indexOf(act.slice(0, 20).toLowerCase()) < 0) parts.push(act);
+      var out = parts.join(" ").replace(/\s+/g, " ").trim();
+      return typeof spaceSentences === "function" ? spaceSentences(out) : out;
+    }
+
     function nwsLine(f) {
       var p = (f && f.properties) || {};
-      var line = (p.event || "Alert") + ". " + (p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 280);
-      if (!/[.!?]$/.test(line)) line += ".";
-      return typeof spaceSentences === "function" ? spaceSentences(line) : line;
+      return speakAlert({
+        kind: "wx",
+        title: p.event || "Weather alert",
+        body: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 180)
+      });
     }
     function alarmedIds() {
       try { return JSON.parse(localStorage.getItem("bw-alarmed") || "{}") || {}; } catch (e) { return {}; }
@@ -19068,7 +19162,7 @@ function homeCountyGuess() {
       window.__civicAlerts = items || [];
       if (card) {
         card.textContent = items.length
-          ? items.map(function (x) { return x.title + ". " + x.body; }).join(" ")
+          ? items.map(function (x) { return speakAlert({ kind: x.kind || "civic", title: x.title, body: x.body }); }).join(" ")
           : "No AMBER, Silver, Purple, Blue, or other civic alert for " + (typeof homePlace === "function" ? homePlace() : "this address") + ".";
       }
       if (!bar || !txt) return;
@@ -19083,7 +19177,9 @@ function homeCountyGuess() {
       var kind = items[0].kind || "law";
       bar.className = "alert-ticker civic on " + kind;
       if (lab) lab.textContent = kind === "amber" ? "AMBER" : kind === "silver" ? "SILVER" : kind === "purple" ? "PURPLE" : kind === "blue" ? "BLUE" : kind === "child" ? "MISSING" : "ALERT";
-      var body = items.map(function (x) { return x.title + ". " + x.body; }).join("\u00a0".repeat(160));
+      var body = items.map(function (x) {
+        return speakAlert({ kind: x.kind || "civic", title: x.title, body: x.body });
+      }).join("\u00a0".repeat(160));
       if (typeof setTicker === "function") setTicker(txt, typeof spaceSentences === "function" ? spaceSentences(body) : body, typeof tickSpeedPx === "function" ? tickSpeedPx() : 40);
       if (typeof stackTickers === "function") stackTickers();
       if (typeof noteFeed === "function") noteFeed("civic", true, items.length + " · " + kind);
@@ -19113,7 +19209,7 @@ function homeCountyGuess() {
           add({
             kind: kind,
             title: (p.event || "Alert"),
-            body: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 280) + " Call 911 if this matches what you see.",
+            body: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 180),
             src: "nws"
           });
         });
@@ -19365,7 +19461,7 @@ function homeCountyGuess() {
     function paintPublicSafety(rows) {
       window.__publicSafety = rows || [];
       var on = !!(rows && rows.length);
-      var txt = on ? rows.map(function (x) { return x.title + ". " + x.body; }).join(" ")
+      var txt = on ? rows.map(function (x) { return speakAlert({ kind: x.kind || "civil", title: x.title, body: x.body }); }).join(" ")
         : "No civil emergency, evacuation, 911 outage, dam, or hazmat alert for this pin.";
       setQuietCard("psafety-card", "live-psafety", on, txt);
       if (typeof noteFeed === "function") noteFeed("public-safety", true, on ? (rows.length + " live") : "none");
@@ -19398,7 +19494,7 @@ function homeCountyGuess() {
         action ? ("Air quality action day near " + place + ". AQI " + Math.round(aqi) + ". Sensitive groups should limit outdoor time.") : "");
       if (typeof noteFeed === "function") noteFeed("air-action", true, action ? ("AQI " + Math.round(aqi)) : "none");
       window.__deskBreak = [];
-      if (action) window.__deskBreak.push({ src: "AIR", title: "Air quality action day near " + place + ". AQI " + Math.round(aqi) });
+      if (action) window.__deskBreak.push({ src: "AIR", title: speakAlert({ kind: "air", title: "Air quality action day", body: "AQI " + Math.round(aqi) + " near " + place }) });
 
       function newsToCard(cardId, spanId, feedKey, items, emptyHidden) {
         var on = !!(items && items.length);
@@ -19410,52 +19506,93 @@ function homeCountyGuess() {
       if (typeof fetchNewsQuery === "function") {
         fetchNewsQuery('"boil water" OR "do not drink" OR "boil-water" ' + place + " OR " + st + " when:3d", function (items) {
           items = (items || []).filter(function (x) { return /boil|do not drink|water notice/i.test(x.title || ""); });
-          window.__boilTick = items.length ? spaceSentences("Drinking water. " + items[0].title + ".") : "";
+          window.__boilTick = items.length ? speakAlert({ kind: "boil", title: "Boil-water notice", body: items[0].title }) : "";
           newsToCard("boil-card", "live-boil", "boil", items, true);
         });
         fetchNewsQuery("NTAS OR \"national terrorism advisory\" when:14d", function (items) {
           items = (items || []).filter(function (x) { return /ntas|advisory system|elevated|imminent/i.test(x.title || ""); });
           window.__deskBreak = window.__deskBreak || [];
-          items.forEach(function (x) { window.__deskBreak.push({ src: "NTAS", title: x.title }); });
+          items.forEach(function (x) { window.__deskBreak.push({ src: "NTAS", title: speakAlert({ kind: "ntas", title: "National threat advisory", body: x.title }) }); });
           newsToCard("ntas-card", "live-ntas", "ntas", items, true);
         });
         fetchNewsQuery("CDC \"health alert\" OR HAN outbreak United States when:7d", function (items) {
           window.__deskBreak = window.__deskBreak || [];
-          items.forEach(function (x) { window.__deskBreak.push({ src: "CDC", title: x.title }); });
+          items.forEach(function (x) { window.__deskBreak.push({ src: "CDC", title: speakAlert({ kind: "han", title: "Health alert", body: x.title }) }); });
           newsToCard("han-card", "live-han", "han", items, true);
         });
         fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\") school (" + place + " OR " + st + ") when:2d", function (items) {
           items = (items || []).filter(function (x) { return /lockdown|lockout|shelter in place|school/i.test(x.title || ""); });
-          window.__schoolAlerts = items.map(function (x) { return { kind: "law", title: "School emergency", body: x.title }; });
+          window.__schoolAlerts = items.map(function (x) { return { kind: "school", title: "School emergency", body: x.title }; });
           newsToCard("school-card", "live-school", "school", items, true);
         });
         fetchNewsQuery("(nixle OR \"community alert\" OR \"emergency management\") (" + place + " OR Charlotte OR Sarasota) when:2d", function (items) {
-          window.__nixleCivic = items.map(function (x) { return { kind: "law", title: "Local notice", body: x.title }; });
+          window.__nixleCivic = items.map(function (x) { return { kind: "nixle", title: "Local notice", body: x.title }; });
           newsToCard("nixle-card", "live-nixle", "nixle", items, true);
         });
         fetchNewsQuery("TFR OR \"temporary flight restriction\" (" + place + " OR " + st + " OR Tampa OR Sarasota) when:2d", function (items) {
           window.__deskBreak = window.__deskBreak || [];
-          items.forEach(function (x) { window.__deskBreak.push({ src: "TFR", title: x.title }); });
+          items.forEach(function (x) { window.__deskBreak.push({ src: "TFR", title: speakAlert({ kind: "tfr", title: "Flight restriction", body: x.title }) }); });
           newsToCard("tfr-card", "live-tfr", "tfr", items, true);
         });
         fetchNewsQuery("\"local notice to mariners\" OR \"urgent marine\" (\"District 7\" OR Gulf OR " + place + ") when:3d", function (items) {
           window.__deskBreak = window.__deskBreak || [];
-          items.forEach(function (x) { window.__deskBreak.push({ src: "USCG", title: x.title }); });
+          items.forEach(function (x) { window.__deskBreak.push({ src: "USCG", title: speakAlert({ kind: "uscg", title: "Marine notice", body: x.title }) }); });
           newsToCard("uscg-card", "live-uscg", "uscg-ntm", items, true);
           if (typeof mergeDeskIntoTickers === "function") mergeDeskIntoTickers();
         });
       }
 
-      var fda = "https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22+AND+(state:%22" + st + "%22+OR+distribution_pattern:nationwide)&limit=6";
+      var fda = "https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22+AND+(state:%22" + st + "%22+OR+distribution_pattern:nationwide)&limit=20";
       fetch(fda, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
-        var recs = ((d && d.results) || []).map(function (x) {
-          return { title: (x.recalling_firm || "Recall") + " · " + String(x.product_description || "").slice(0, 80) };
+        function clsRank(c) {
+          c = String(c || "").toUpperCase();
+          if (/CLASS I\b/.test(c) || c === "I") return 1;
+          if (/CLASS II\b/.test(c) || c === "II") return 2;
+          if (/CLASS III\b/.test(c) || c === "III") return 3;
+          return 4;
+        }
+        function shortProduct(s) {
+          s = String(s || "").replace(/\s+/g, " ").trim();
+          s = s.replace(/^\d+\s*(oz|lb|ct|count|pack).*$/i, s);
+          var cut = s.split(/[.;]/)[0] || s;
+          if (cut.length > 90) cut = cut.slice(0, 87).replace(/[,;:\s]+$/, "") + "…";
+          return cut || "a food product";
+        }
+        function shortReason(s) {
+          s = String(s || "").replace(/\s+/g, " ").trim();
+          s = s.replace(/^potential(ly)?\s+/i, "");
+          var cut = s.split(/[.;]/)[0] || s;
+          if (cut.length > 80) cut = cut.slice(0, 77).replace(/[,;:\s]+$/, "") + "…";
+          return cut;
+        }
+        function whereSold(x) {
+          var dist = String(x.distribution_pattern || "").toLowerCase();
+          var stU = String(st || "").toUpperCase();
+          if (/nationwide|national|united states/.test(dist)) return "Sold nationwide";
+          if (stU && dist.indexOf(stU.toLowerCase()) >= 0) return "Sold in " + stU;
+          if (x.state) return "Recalled from " + x.state;
+          return "May be on store shelves";
+        }
+        var parsed = ((d && d.results) || []).map(function (x) {
+          var rank = clsRank(x.classification);
+          var product = shortProduct(x.product_description);
+          var reason = shortReason(x.reason_for_recall);
+          var firm = String(x.recalling_firm || "").replace(/\s+/g, " ").trim();
+          var cls = rank === 1 ? "Class I" : rank === 2 ? "Class II" : rank === 3 ? "Class III" : "FDA";
+          var card = cls + " · " + product + (reason ? " — " + reason : "") + ". " + whereSold(x) + (firm ? ". " + firm : "") + ".";
+          var tick = cls + " food recall. " + product + ". " + (reason ? reason + ". " : "") + whereSold(x) + ". If you have it, do not eat it — throw it out or return it.";
+          return { rank: rank, date: x.report_date || x.recall_initiation_date || "", card: card, tick: tick };
+        }).filter(function (x) { return x.tick; }).sort(function (a, b) {
+          if (a.rank !== b.rank) return a.rank - b.rank;
+          return String(b.date).localeCompare(String(a.date));
         });
-        var on = recs.length > 0;
-        setQuietCard("recall-card", "live-recall", on, recs.slice(0, 3).map(function (x) { return x.title; }).join(" · "));
-        if (typeof noteFeed === "function") noteFeed("recall", true, on ? (recs.length + " ongoing") : "none");
+        var on = parsed.length > 0;
+        setQuietCard("recall-card", "live-recall", on, parsed.slice(0, 4).map(function (x) { return x.card; }).join(" "));
+        if (typeof noteFeed === "function") noteFeed("recall", true, on ? (parsed.length + " ongoing · " + (parsed[0].rank === 1 ? "Class I" : "Class " + parsed[0].rank)) : "none");
         window.__deskBreak = window.__deskBreak || [];
-        recs.slice(0, 3).forEach(function (x) { window.__deskBreak.push({ src: "FDA", title: x.title }); });
+        parsed.filter(function (x) { return x.rank <= 2; }).slice(0, 2).forEach(function (x) {
+          window.__deskBreak.push({ src: "FDA", title: x.tick });
+        });
         if (typeof mergeDeskIntoTickers === "function") mergeDeskIntoTickers();
       }).catch(function () {
         if (typeof noteFeed === "function") noteFeed("recall", false, "fda fetch");
@@ -19465,9 +19602,7 @@ function homeCountyGuess() {
     function deskWarnLines() {
       var parts = [];
       (window.__publicSafety || []).forEach(function (x) {
-        var line = (x.title || "Public safety") + ". " + (x.body || "");
-        if (!/[.!?]$/.test(line)) line += ".";
-        parts.push(typeof spaceSentences === "function" ? spaceSentences(line) : line);
+        parts.push(speakAlert({ kind: x.kind || "civil", title: x.title || "Public safety", body: x.body || "" }));
       });
       if (window.__boilTick) parts.push(window.__boilTick);
       return parts;
