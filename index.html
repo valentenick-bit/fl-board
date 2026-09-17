@@ -1483,6 +1483,25 @@
     .addr-suggest li { padding:10px 12px; cursor:pointer; border-bottom:1px solid #eee; font-size:14px; }
     .addr-suggest li:last-child { border-bottom:0; }
     .addr-suggest li:hover, .addr-suggest li.active { background:#eef6f4; }
+
+    html.dark .addr-suggest {
+      background:#1a2330 !important;
+      border:1px solid #6b7a8d !important;
+      box-shadow:0 8px 24px rgba(0,0,0,.45);
+    }
+    html.dark .addr-suggest li {
+      color:#f6edd4 !important;
+      background:#1a2330 !important;
+      border-bottom:1px solid #3a4656 !important;
+    }
+    html.dark .addr-suggest li:hover,
+    html.dark .addr-suggest li.active {
+      background:#2f5a52 !important;
+      color:#fff !important;
+    }
+    .ev-pills { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:0 0 6px; min-height:0; }
+    .ev-pills > span { margin:0 !important; }
+
     html.nolinks a[href] { pointer-events:none; cursor:default; }
     html.nolinks a[href]::after { content:none; }
     html.kiosk main { overflow:hidden; }
@@ -4046,16 +4065,30 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 725;
+    window.BOARD_VER = 726;
 
+    
+    function communityShort() {
+      var n = (typeof communityLabel === "function" ? communityLabel() : "BeachWalk");
+      if (/beachwalk/i.test(n)) return "BeachWalk";
+      var first = (n.split(/[,—-]/)[0] || n).trim();
+      return first.slice(0, 14) || "Community";
+    }
+    function paintCommNav() {
+      var shortN = communityShort();
+      var full = typeof communityLabel === "function" ? communityLabel() : shortN;
+      document.querySelectorAll('[data-p="comm"]').forEach(function (b) { b.textContent = shortN; });
+      var title = document.getElementById("comm-title");
+      if (title) title.textContent = full;
+    }
     function gitFileUrls(name) {
       var cb = Date.now();
       var origin = "";
       try { origin = location.origin || ""; } catch (e) {}
       return [
-        (origin ? origin + "/" + name + "?cb=" + cb : "/" + name + "?cb=" + cb),
         "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/" + name + "?cb=" + cb,
-        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/" + name
+        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/" + name + "?cb=" + cb,
+        (origin ? origin + "/" + name + "?cb=" + cb : "/" + name + "?cb=" + cb)
       ];
     }
 
@@ -4549,8 +4582,15 @@ Cart shop:</textarea>
     window.gmapThemeOpts = gmapThemeOpts;
     window.applyGmapsTheme = applyGmapsTheme;
 
+    function homeOsmEmbed() {
+      var lat = homeLat(), lon = homeLon(), d = 0.12;
+      return "https://www.openstreetmap.org/export/embed.html?bbox=" +
+        (lon - d) + "%2C" + (lat - d) + "%2C" + (lon + d) + "%2C" + (lat + d) +
+        "&layer=mapnik&marker=" + lat + "%2C" + lon;
+    }
     function homeTrafficEmbed() {
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=14&hl=en&layer=t&t=m&output=embed";
+      if (window.__gmapsAuthFail || typeof mapsPaidOn === "function" && !mapsPaidOn()) return homeOsmEmbed();
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=12&hl=en&layer=t&t=m&output=embed";
     }
     function homeBoltEmbed() {
       return "https://map.blitzortung.org/#10/" + homeLat() + "/" + homeLon();
@@ -11455,7 +11495,7 @@ function currentRotation() {
         var locFull = (typeof enrichLoc === "function") ? enrichLoc(row.addr || row.where || mapQ || row.name) : (row.addr || mapQ || "");
         return '<div class="card ev-card eat-card buzz-card map-hit buzz-' + kind + '" ' + venueDataAttrs(row, kind, { buzz: row.name, busy: mapQ }) + '>' +
           '<div class="ev-rail' + ((rail.dow || rail.num) ? "" : " rail-solo") + '"><span class="ev-dow">' + (rail.dow || "") + '</span><span class="ev-num">' + (rail.num || "") + '</span><span class="ev-ico" aria-hidden="true">' + rail.ico + '</span></div>' +
-          '<div class="ev-body">' + pills +
+          '<div class="ev-body"><div class="ev-pills">' + pills + '</div>' +
           "<b>" + escBuzz(row.name) + "</b>" +
           ((kind === "hot" ? (row.addr || row.where) : row.where) ? '<span class="ev-when">' + escBuzz(kind === "hot" ? (row.addr || row.where) : row.where) + "</span>" : "") +
           (why ? '<span class="eat-why">' + escBuzz(why) + "</span>" : "") +
@@ -12134,7 +12174,7 @@ function currentRotation() {
         if (e.loc && String(e.loc).split(",")[0].trim() && String(e.loc).toLowerCase().indexOf(String(place).toLowerCase()) < 0) {
           locLine = place + " · " + e.loc;
         }
-        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: title || e.sum, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '<b>' + locLine + '</b><span class="ev-when">' + whenLine +
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: title || e.sum, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + '<div class="ev-pills">' + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
           (e.opens ? " · opens " + e.opens : "") +
           (e.driveMin != null ? " · " + Math.round(e.driveMin) + " min drive" : "") +
           (function () {
@@ -12156,6 +12196,7 @@ function currentRotation() {
       var bag = { bw: [], eng: [], local: [], comedy: [] };
       try {
         var cached = JSON.parse(localStorage.getItem("bw-ent-cache") || "{}");
+        if (cached.local) bag.local = cached.local.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+3*3600*1000); e.inside = false; e.src = e.src || "local"; return e; }).filter(function (e) { return e.end && e.end.getTime() >= Date.now(); });
         if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = true; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
         if (cached.eng) bag.eng = cached.eng.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = false; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
       } catch (e) {}
@@ -12218,6 +12259,7 @@ function currentRotation() {
         try {
           localStorage.setItem("bw-ent-cache", JSON.stringify({
             bw: bag.bw.slice(0, 40),
+            local: (bag.local || []).slice(0, 80),
             eng: bag.eng.slice(0, 40)
           }));
         } catch (err) {}
@@ -12650,7 +12692,7 @@ function currentRotation() {
         }
         return '<div class="card ev-card eat-card map-hit" ' + venueDataAttrs(r, r.kind || "restaurant", { eat: r.name, busy: mapQ }) + '>' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + delta + '</span><span class="ev-ico ev-price" aria-hidden="true">' + (bucks || "–") + "</span></div>" +
-          '<div class="ev-body">' + pills +
+          '<div class="ev-body"><div class="ev-pills">' + pills + '</div>' +
           "<b>" + (r.name || "Restaurant") + "</b>" +
           (addr ? '<span class="ev-when">' + addr + "</span>" : "") +
           "</div></div>";
@@ -13445,9 +13487,10 @@ function mustEats() {
         var mapQ = ((r.name || "") + (addr ? " " + addr : "")).trim() || (r.name + " golf");
         return '<div class="card ev-card eat-card map-hit" ' + venueDataAttrs(r, r.kind || "golf", { golf: r.name, busy: mapQ }) + '>' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + '</span><span class="ev-ico" aria-hidden="true">⛳</span></div>' +
-          '<div class="ev-body"><b>' + String(r.name || "Golf").replace(/</g, "") + "</b>" +
-          (addr ? "<span>" + String(addr).replace(/</g, "") + "</span>" : "") +
-          '<div class="eat-why">' + pills + "</div></div></div>";
+          '<div class="ev-body"><div class="ev-pills">' + pills + "</div>" +
+          "<b>" + String(r.name || "Golf").replace(/</g, "") + "</b>" +
+          (addr ? '<span class="ev-when">' + String(addr).replace(/</g, "") + "</span>" : "") +
+          "</div></div>";
       }
       function dedupe(list) {
         var seen = {};
@@ -17913,7 +17956,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var loc = enrichLoc(row.addr || row.address || row.loc || row.where || row.area || row.mapQ || "");
       if (!onsite && !locHasFix(lat, lon, loc) && row.name) loc = enrichLoc(row.name);
       if (!onsite && !locHasFix(lat, lon, loc)) return "";
-      var label = onsite ? "On site" : (fmtDrivePill(row) || "…");
+      var drive = fmtDrivePill(row);
+      if (!onsite && !drive) return "";
+      var label = onsite ? "On site" : drive;
       var attrs = ' class="dist-tag loc-pill"';
       if (lat != null && lon != null && !isNaN(Number(lat))) attrs += ' data-lat="' + Number(lat) + '" data-lon="' + Number(lon) + '"';
       if (loc) attrs += ' data-loc="' + String(loc).replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '"';
