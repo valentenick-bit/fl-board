@@ -4081,7 +4081,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 727;
+    window.BOARD_VER = 729;
 
     
     function communityShort() {
@@ -4600,14 +4600,7 @@ Cart shop:</textarea>
     window.gmapThemeOpts = gmapThemeOpts;
     window.applyGmapsTheme = applyGmapsTheme;
 
-    function homeOsmEmbed() {
-      var lat = homeLat(), lon = homeLon(), d = 0.12;
-      return "https://www.openstreetmap.org/export/embed.html?bbox=" +
-        (lon - d) + "%2C" + (lat - d) + "%2C" + (lon + d) + "%2C" + (lat + d) +
-        "&layer=mapnik&marker=" + lat + "%2C" + lon;
-    }
     function homeTrafficEmbed() {
-      if (window.__gmapsAuthFail || typeof mapsPaidOn === "function" && !mapsPaidOn()) return homeOsmEmbed();
       return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=12&hl=en&layer=t&t=m&output=embed";
     }
     function homeBoltEmbed() {
@@ -5099,9 +5092,8 @@ Cart shop:</textarea>
               if (typeof noteFeed === "function") noteFeed("maps-visual", false, "no tiles");
               if (frame) {
                 frame.style.display = "";
-                frame.src = (typeof homeOsmEmbed === "function" ? homeOsmEmbed() : frame.src);
+                frame.src = (typeof homeTrafficEmbed === "function" ? homeTrafficEmbed() : frame.src);
               }
-              if (box) box.hidden = true;
             }
           }, 2500);
           if (typeof nudgeTrafficLayer === "function") nudgeTrafficLayer();
@@ -10307,7 +10299,15 @@ function currentRotation() {
     }
 
     function pageLabel(id) {
-      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Events", eats:"Restaurants", golf:"Golf", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
+      var comm = "BeachWalk";
+      try {
+        if (typeof communityShort === "function") comm = communityShort();
+        else if (typeof commName === "function") {
+          var n = commName();
+          comm = /beachwalk/i.test(n) ? "BeachWalk" : String(n).split(/[,—-]/)[0].trim().slice(0, 14) || "BeachWalk";
+        }
+      } catch (e) {}
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", comm: comm, traffic:"Traffic", ent:"Events", eats:"Restaurants", golf:"Golf", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
       return names[id] || id;
     }
     function rebuildDock() {
@@ -10318,6 +10318,7 @@ function currentRotation() {
         return '<button type="button" data-p="' + id + '">' + pageLabel(id) + "</button>";
       }).join("");
       dock.innerHTML = html;
+      if (typeof paintCommNav === "function") paintCommNav();
       var n = Math.max(list.length, 2);
       dock.style.gridTemplateColumns = "repeat(" + n + ",1fr)";
       if (typeof showPage === "function") {
@@ -15128,7 +15129,7 @@ function mustEats() {
           ["comm-label", (function () {
             var btn = document.querySelector('#dock [data-p="comm"]');
             var txt = ((btn && btn.textContent) || "").trim();
-            var ok = !!txt && txt !== "Community";
+            var ok = !!txt && txt !== "Community" && txt !== "comm";
             if (typeof noteFeed === "function") noteFeed("comm-label", ok, txt || "blank");
             return txt || "blank";
           })()],
@@ -18076,15 +18077,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     
     
     function mapFallbackSrc() {
-      var s = typeof getSet === "function" ? getSet() : {};
-      var lat = Number(s.lat) || 26.96, lon = Number(s.lon) || -82.35;
-      var d = 0.18;
-      return "https://www.openstreetmap.org/export/embed.html?bbox=" +
-        (lon - d) + "%2C" + (lat - d) + "%2C" + (lon + d) + "%2C" + (lat + d) +
-        "&layer=mapnik&marker=" + lat + "%2C" + lon;
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=12&hl=en&layer=t&t=m&output=embed";
     }
     function applyMapFallback(reason) {
-      window.__gmapsAuthFail = true;
       var src = mapFallbackSrc();
       ["traffic-map","eat-map-frame","golf-map-frame","map-pop-frame"].forEach(function (id) {
         var el = document.getElementById(id);
@@ -18094,8 +18089,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       });
       var g = document.getElementById("traffic-gmap");
       if (g) g.innerHTML = "<iframe title=\"Map\" src=\"" + src + "\" style=\"width:100%;height:100%;border:0;border-radius:16px\"></iframe>";
-      if (typeof noteFeed === "function") noteFeed("maps-visual", false, reason || "using OpenStreetMap fallback");
-      if (typeof noteFeed === "function") noteFeed("traffic", true, "osm fallback");
+      if (typeof noteFeed === "function") noteFeed("maps-visual", true, reason || "google embed");
+      if (typeof noteFeed === "function") noteFeed("traffic", true, "google embed");
     }
     function mapsLooksBroken() {
       if (window.__gmapsAuthFail) return "auth fail";
