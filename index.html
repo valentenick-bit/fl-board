@@ -4083,7 +4083,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 732;
+    window.BOARD_VER = 733;
 
     
     function communityShort() {
@@ -10950,24 +10950,30 @@ function currentRotation() {
     }
     function venueQuery(name, addr) {
       var place = (typeof homePlace === "function" && homePlace()) || "";
-      var raw = [name, addr].filter(Boolean).join(", ");
-      var hasStreet = /\d/.test(addr || "") && /,/.test(addr || "");
-      var hasCity = /englewood|placida|rotonda|venice|port charlotte|north port|punta gorda|sarasota|manasota|boca grande|lake suzy/i.test(addr || "");
-      if (hasStreet && hasCity) return String(raw).replace(/\s+/g, " ").trim();
-      if (typeof enrichLoc === "function") raw = enrichLoc(raw || name || "");
+      var a = String(addr || "").replace(/\s+/g, " ").trim();
+      var n = String(name || "").replace(/\s+/g, " ").trim();
+      var hasStreet = /\d/.test(a) && /,/.test(a);
+      var hasCity = /englewood|placida|rotonda|venice|port charlotte|north port|punta gorda|sarasota|manasota|boca grande|lake suzy/i.test(a || n);
+      var raw = "";
+      if (hasStreet) raw = a;
+      else if (a && n && a.toLowerCase().indexOf(n.toLowerCase()) >= 0) raw = a;
+      else if (a && n && n.toLowerCase().indexOf(a.toLowerCase()) >= 0) raw = n;
+      else if (a) raw = a;
+      else raw = n;
+      if (typeof enrichLoc === "function") raw = enrichLoc(raw || n || a || "");
       if (!hasCity && place && raw.toLowerCase().indexOf(String(place).toLowerCase()) < 0) raw += ", " + place;
-      if (!/fl|florida/i.test(raw)) raw += ", FL";
+      if (!/fl\b|florida\b/i.test(raw)) raw += ", FL";
       return raw.replace(/\s+/g, " ").trim();
     }
     function venueMapSrc(name, addr, lat, lon, placeId) {
       lat = Number(lat); lon = Number(lon);
-      var q = "";
+      var q = (typeof venueQuery === "function") ? venueQuery(name, addr) : [addr, name].filter(Boolean).join(", ");
+      if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
+      var url = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        q = (name ? String(name) + " @" : "") + lat.toFixed(5) + "," + lon.toFixed(5);
-      } else {
-        q = (typeof venueQuery === "function" ? venueQuery(name, addr) : [name, addr].filter(Boolean).join(", "));
+        url += "&ll=" + lat.toFixed(5) + "," + lon.toFixed(5);
       }
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q || "Englewood FL") + "&z=15&hl=en&iwloc=A&output=embed";
+      return url;
     }
     function venueMapLink(name, addr, lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -12186,7 +12192,7 @@ function currentRotation() {
         if (e.loc && String(e.loc).split(",")[0].trim() && String(e.loc).toLowerCase().indexOf(String(place).toLowerCase()) < 0) {
           locLine = place + " · " + e.loc;
         }
-        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: title || e.sum, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: place || e.loc || title, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
           (e.opens ? " · opens " + e.opens : "") +
           (e.driveMin != null ? " · " + Math.round(e.driveMin) + " min drive" : "") +
           (function () {
