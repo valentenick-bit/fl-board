@@ -853,7 +853,7 @@
     #today-shell.night { display:grid; }
     #today-shell.night .today-side { order:0; }
     #today-shell.night .today-main { order:0; }
-    #today-shell.night #go-strip { display:none; }
+    #today-shell.night #go-strip { display:block; }
     #today-shell:not(.night) #go-night { display:none; }
     .next3-card { margin:10px 0 8px; }
     .next3-card b { display:block; font-size:13px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:0 0 4px; }
@@ -1499,8 +1499,24 @@
       background:#2f5a52 !important;
       color:#fff !important;
     }
-    .ev-pills { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:0 0 6px; min-height:0; }
-    .ev-pills > span { margin:0 !important; }
+    .ev-pills { display:flex; flex-wrap:nowrap; gap:6px; align-items:center; margin:0 0 8px; min-height:26px; overflow-x:auto; }
+    .ev-pills > span { margin:0 !important; flex:0 0 auto; }
+    .dist-tag, .music-tag, .place-tag, .kind-tag, .warn-tag, .busy-tag, .eat-rate-pill, .loc-pill {
+      display:inline-flex !important;
+      align-items:center !important;
+      justify-content:center;
+      height:26px !important;
+      min-height:26px !important;
+      max-height:26px !important;
+      line-height:26px !important;
+      padding:0 10px !important;
+      margin:0 !important;
+      box-sizing:border-box;
+      font-size:11px !important;
+      font-weight:700;
+      white-space:nowrap;
+      vertical-align:middle;
+    }
 
     html.nolinks a[href] { pointer-events:none; cursor:default; }
     html.nolinks a[href]::after { content:none; }
@@ -4065,7 +4081,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 726;
+    window.BOARD_VER = 727;
 
     
     function communityShort() {
@@ -4074,13 +4090,15 @@ Cart shop:</textarea>
       var first = (n.split(/[,—-]/)[0] || n).trim();
       return first.slice(0, 14) || "Community";
     }
-    function paintCommNav() {
+    function paintCommNav() { /* boot */
       var shortN = communityShort();
       var full = typeof communityLabel === "function" ? communityLabel() : shortN;
       document.querySelectorAll('[data-p="comm"]').forEach(function (b) { b.textContent = shortN; });
       var title = document.getElementById("comm-title");
       if (title) title.textContent = full;
     }
+    setTimeout(function () { try { paintCommNav(); } catch (e) {} }, 0);
+    setTimeout(function () { try { paintCommNav(); } catch (e) {} }, 800);
     function gitFileUrls(name) {
       var cb = Date.now();
       var origin = "";
@@ -5077,9 +5095,15 @@ Cart shop:</textarea>
           });
           setTimeout(function () {
             if (!window.__trafficTiles) {
-              if (typeof noteFeed === "function") noteFeed("traffic", true, "google traffic pending tiles");
+              if (typeof noteFeed === "function") noteFeed("traffic", false, "google tiles never loaded");
+              if (typeof noteFeed === "function") noteFeed("maps-visual", false, "no tiles");
+              if (frame) {
+                frame.style.display = "";
+                frame.src = (typeof homeOsmEmbed === "function" ? homeOsmEmbed() : frame.src);
+              }
+              if (box) box.hidden = true;
             }
-          }, 5000);
+          }, 2500);
           if (typeof nudgeTrafficLayer === "function") nudgeTrafficLayer();
         } catch (eMap) {
           if (box) box.hidden = true;
@@ -15100,6 +15124,21 @@ function mustEats() {
             var on = list.indexOf("comm") >= 0;
             if (typeof noteFeed === "function") noteFeed("rot-comm", on, on ? "Community in rotation" : "Community missing from this device rotation");
             return on ? "in loop" : "MISSING";
+          })()],
+          ["comm-label", (function () {
+            var btn = document.querySelector('#dock [data-p="comm"]');
+            var txt = ((btn && btn.textContent) || "").trim();
+            var ok = !!txt && txt !== "Community";
+            if (typeof noteFeed === "function") noteFeed("comm-label", ok, txt || "blank");
+            return txt || "blank";
+          })()],
+          ["today-go", (function () {
+            var strip = document.getElementById("go-strip");
+            var hide = !strip || getComputedStyle(strip).display === "none";
+            var bars = strip ? strip.querySelectorAll(".go-sbar").length : 0;
+            var ok = !hide && bars >= 4;
+            if (typeof noteFeed === "function") noteFeed("today-go", ok, hide ? "When to go hidden" : (bars + " activity bars"));
+            return hide ? "hidden" : (bars + " bars");
           })()],
           ["maps-visual", (function () {
             var bad = typeof mapsLooksBroken === "function" ? mapsLooksBroken() : "";
