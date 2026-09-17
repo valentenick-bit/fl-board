@@ -3029,6 +3029,16 @@ Cart shop:</textarea>
         <p class="pill-key">One page for the warning, the kit, the pets, and the power.</p>
         <div class="card" id="rightnow-card"><b>Right now</b><span id="live-prep">Checking watches for the Key…</span></div>
         <div class="card" id="civic-card"><b>AMBER / Silver / other alerts</b><span id="live-civic">Checking missing-person and civic alerts for this address…</span></div>
+        <div class="card" id="psafety-card" hidden><b>Public safety</b><span id="live-psafety">No civil emergency, evacuation, 911 outage, dam, or hazmat alert for this pin.</span></div>
+        <div class="card" id="air-action-card" hidden><b>Air quality action</b><span id="live-air-action"></span></div>
+        <div class="card" id="boil-card" hidden><b>Drinking water</b><span id="live-boil"></span></div>
+        <div class="card" id="ntas-card" hidden><b>National threat level</b><span id="live-ntas"></span></div>
+        <div class="card" id="recall-card" hidden><b>Food recalls</b><span id="live-recall"></span></div>
+        <div class="card" id="han-card" hidden><b>Health alert</b><span id="live-han"></span></div>
+        <div class="card" id="school-card" hidden><b>School emergency</b><span id="live-school"></span></div>
+        <div class="card" id="nixle-card" hidden><b>Local notice</b><span id="live-nixle"></span></div>
+        <div class="card" id="tfr-card" hidden><b>Flight restriction</b><span id="live-tfr"></span></div>
+        <div class="card" id="uscg-card" hidden><b>Marine notice</b><span id="live-uscg"></span></div>
         <div class="card leave-card" id="leave-card-em" hidden>
           <b>Should we leave?</b>
           <span class="leave-body">Checking warnings…</span>
@@ -3740,6 +3750,19 @@ Cart shop:</textarea>
             <button type="button" data-v="1">On</button>
           </div>
         </div>
+        <div class="set-line"><label>Civic chime</label>
+          <div class="set-row" id="set-civicchime">
+            <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Breaking chime</label>
+          <div class="set-row" id="set-breakchime">
+            <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
+          </div>
+        </div>
+        <p class="hint">Warning uses the loud two-tone. Civic is a short two-note ding for AMBER and school alerts. Breaking stays silent unless you turn that chime on.</p>
         <div class="set-line"><label>Radio on load</label>
           <div class="set-row" id="set-radioauto">
             <button type="button" data-v="0">Off</button>
@@ -4098,7 +4121,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 735;
+    window.BOARD_VER = 738;
 
     
     function communityShort() {
@@ -4336,7 +4359,7 @@ Cart shop:</textarea>
     window.__wxRisk = window.__wxRisk || { alert: false, cane: false, bolt: false, hurr: false };
     var SET_DEFAULTS = {
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
-      station: "", vol: "whisper", noaa: "1", radioauto: "1",
+      station: "", vol: "whisper", noaa: "1", radioauto: "1", civicChime: "1", breakChime: "0",
       zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1",
       community: "",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
@@ -14255,6 +14278,8 @@ function mustEats() {
         })();
         mark("set-vol", s.vol);
         mark("set-noaa", s.noaa);
+        mark("set-civicchime", s.civicChime);
+        mark("set-breakchime", s.breakChime);
         mark("set-radioauto", s.radioauto);
         mark("set-camnight", s.camNight);
         mark("set-wxradar", s.wxradar);
@@ -14444,6 +14469,8 @@ function mustEats() {
         if (audio && typeof setLoudness === "function") setLoudness(audio, audio.getAttribute("src") || "");
       });
       tap("set-noaa", "noaa");
+      tap("set-civicchime", "civicChime");
+      tap("set-breakchime", "breakChime");
       tap("set-radioauto", "radioauto");
       tap("set-camnight", "camNight");
       tap("set-wxradar", "wxradar", function () { if (typeof syncWxMapFrame === "function") syncWxMapFrame(); });
@@ -16390,6 +16417,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         .then(function (d) {
           var feats = (d && d.features) || [];
           window.__nwsAlerts = feats;
+          if (typeof collectPublicSafetyFromNws === "function") collectPublicSafetyFromNws();
           if (typeof paintWxExtras === "function") paintWxExtras();
           var rip = "Low";
           var craft = "None";
@@ -17591,6 +17619,13 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           hits.push(h);
         });
         hits = hits.slice(0, 6);
+        (window.__deskBreak || []).forEach(function (h) {
+          var k = keyOf(h.title);
+          if (!k || seen[k]) return;
+          seen[k] = true;
+          hits.push(h);
+        });
+        hits = hits.slice(0, 10);
         if (!hits.length) {
           bar.classList.remove("on");
           txt.setAttribute("data-hash", "");
@@ -17605,6 +17640,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         bar.classList.add("on");
         stackTickers();
         setTicker(txt, body, tickSpeedPx());
+        if (typeof maybeChimeBreak === "function") maybeChimeBreak(hits);
       }).catch(function () { bar.classList.remove("on"); stackTickers(); });
     }
     pollBreaking();
@@ -18865,6 +18901,60 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       });
       return bits.join(" ");
     }
+    
+    function playAttentionChime(kind) {
+      if (window.__alarming) return;
+      kind = kind || "civic";
+      try {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        var ctx = window.__audioCtx || new Ctx();
+        window.__audioCtx = ctx;
+        if (ctx.state === "suspended") ctx.resume();
+        var master = ctx.createGain();
+        master.connect(ctx.destination);
+        var t0 = ctx.currentTime;
+        var notes = kind === "break" ? [523.25, 659.25] : [659.25, 783.99];
+        var peak = kind === "break" ? 0.035 : 0.055;
+        master.gain.setValueAtTime(0.0001, t0);
+        master.gain.exponentialRampToValueAtTime(peak, t0 + 0.04);
+        notes.forEach(function (hz, i) {
+          var o = ctx.createOscillator();
+          o.type = "sine";
+          o.frequency.value = hz;
+          o.connect(master);
+          var a = t0 + i * 0.22;
+          o.start(a);
+          o.stop(a + 0.2);
+        });
+        master.gain.setValueAtTime(peak, t0 + 0.42);
+        master.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.55);
+      } catch (e) {}
+    }
+    function chimeHash(list) {
+      return (list || []).map(function (x) { return String((x && (x.id || x.title || x.src)) || ""); }).join("|");
+    }
+    function maybeChimeCivic(items) {
+      var s = typeof getSet === "function" ? getSet() : {};
+      if (s.civicChime === "0") return;
+      items = items || [];
+      if (!items.length) { window.__civicChimeHash = ""; return; }
+      var h = chimeHash(items);
+      if (h === window.__civicChimeHash) return;
+      window.__civicChimeHash = h;
+      playAttentionChime("civic");
+    }
+    function maybeChimeBreak(hits) {
+      var s = typeof getSet === "function" ? getSet() : {};
+      if (s.breakChime !== "1") return;
+      hits = hits || [];
+      if (!hits.length) { window.__breakChimeHash = ""; return; }
+      var h = chimeHash(hits);
+      if (h === window.__breakChimeHash) return;
+      window.__breakChimeHash = h;
+      playAttentionChime("break");
+    }
+
     function maybeAlarmEmergencies(list) {
       var seen = alarmedIds();
       var fresh = [];
@@ -18879,17 +18969,32 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       playEmergencyTone();
     }
     
-    function civicKind(ev) {
+        function civicKind(ev) {
       ev = String(ev || "").toLowerCase();
       if (/amber|child abduction/.test(ev)) return "amber";
       if (/silver alert|\bsilver\b/.test(ev) && /alert|missing|endangered/.test(ev)) return "silver";
       if (/purple alert|\bpurple\b/.test(ev) && /alert|missing/.test(ev)) return "purple";
       if (/blue alert/.test(ev)) return "blue";
       if (/missing child/.test(ev)) return "child";
-      if (/law enforcement|civil danger|civil emergency|911 telephone|hazardous materials|nuclear|radiological/.test(ev)) return "law";
       return "";
     }
-    function homeCountyGuess() {
+    function publicSafetyKind(ev) {
+      ev = String(ev || "").toLowerCase();
+      if (/evacuation immediate|evacuate now/.test(ev)) return "evac";
+      if (/shelter in place/.test(ev)) return "shelter";
+      if (/911 telephone|911 service/.test(ev)) return "911";
+      if (/dam break|dam failure|dam watch|levee/.test(ev)) return "dam";
+      if (/hazardous materials|radiological|nuclear power/.test(ev)) return "hazmat";
+      if (/civil emergency|civil danger|local area emergency|law enforcement warning/.test(ev)) return "civil";
+      if (/fire warning/.test(ev) && !/fire weather/.test(ev)) return "fire";
+      return "";
+    }
+    function isMeteoAlert(ev) {
+      ev = String(ev || "").toLowerCase();
+      if (civicKind(ev) || publicSafetyKind(ev)) return false;
+      return /tornado|thunderstorm|hurricane|tropical|storm surge|flood|flash flood|wind|heat|cold|freeze|frost|fog|smoke|ash|dust|fire weather|red flag|rip|marine|surf|high surf|coastal|tsunami|blizzard|winter|ice|snow|avalanche|drought|air quality|dense/.test(ev) || /watch|warning|advisory|statement/.test(ev);
+    }
+function homeCountyGuess() {
       var zip = String((typeof getSet === "function" && getSet().zip) || "");
       var addr = String((typeof getSet === "function" && (getSet().address || getSet().home)) || "").toLowerCase();
       if (/charlotte|port charlotte|punta gorda|englewood|grove city|placida/.test(addr) || /^339(46|47|48|50|51|52|53|54|81|82|83)|342(23|24)$/.test(zip)) return { name: "Charlotte", fips: "12015", near: ["englewood","venice","north port","port charlotte","punta gorda","grove city","rotonda","placida","manasota"] };
@@ -18973,6 +19078,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       if (typeof setTicker === "function") setTicker(txt, typeof spaceSentences === "function" ? spaceSentences(body) : body, typeof tickSpeedPx === "function" ? tickSpeedPx() : 40);
       if (typeof stackTickers === "function") stackTickers();
       if (typeof noteFeed === "function") noteFeed("civic", true, items.length + " · " + kind);
+      if (typeof maybeChimeCivic === "function") maybeChimeCivic(items);
     }
     function pollCivic() {
       var items = [];
@@ -19046,6 +19152,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         feats.forEach(function (f) {
           var ev = ((f.properties || {}).event || "");
           if (typeof civicKind === "function" && civicKind(ev)) return;
+          if (typeof publicSafetyKind === "function" && publicSafetyKind(ev)) return;
           var rank = nwsRank(ev);
           if (rank === "emergency" || rank === "warning" || rank === "watch") high.push(f);
           else if (rank === "advisory" || rank === "statement") low.push(f);
@@ -19197,7 +19304,8 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           startRotate();
         }
         pagesFromDock();
-        if (!keep.length) {
+        var deskWarn = (typeof deskWarnLines === "function") ? deskWarnLines() : [];
+        if (!keep.length && !deskWarn.length) {
           if (typeof paintHdrAlert === "function") paintHdrAlert([], false);
           bar.className = "alert-ticker";
           txt.setAttribute("data-hash", "");
@@ -19205,9 +19313,10 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           writeBriefing();
           return;
         }
-        var isEmerg = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; });
-        var isWarn = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "warning"; });
-        var parts = keep.map(nwsLine);
+        var isEmerg = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; }) ||
+          (window.__publicSafety || []).some(function (x) { return /evac|911|dam|hazmat|shelter|civil/.test(x.kind || ""); });
+        var isWarn = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "warning"; }) || !!deskWarn.length;
+        var parts = keep.map(nwsLine).concat(deskWarn);
         var body = parts.join("\u00a0".repeat(160));
         if (window.__hurrTick) body += "\u00a0".repeat(160) + spaceSentences("Hurricane tracker. " + window.__hurrTick);
         var tone = isEmerg ? "emergency" : isWarn ? "warning" : "watch";
@@ -19225,8 +19334,139 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
     }
     pollAlerts();
     setInterval(pollAlerts, 5 * 60 * 1000);
+
+    function setQuietCard(id, spanId, on, text) {
+      var card = document.getElementById(id);
+      var span = document.getElementById(spanId);
+      if (span && text) span.textContent = text;
+      if (card) card.hidden = !on;
+    }
+    function paintPublicSafety(rows) {
+      window.__publicSafety = rows || [];
+      var on = !!(rows && rows.length);
+      var txt = on ? rows.map(function (x) { return x.title + ". " + x.body; }).join(" ")
+        : "No civil emergency, evacuation, 911 outage, dam, or hazmat alert for this pin.";
+      setQuietCard("psafety-card", "live-psafety", on, txt);
+      if (typeof noteFeed === "function") noteFeed("public-safety", true, on ? (rows.length + " live") : "none");
+    }
+    function collectPublicSafetyFromNws() {
+      var rows = [];
+      ((window.__nwsAlerts) || []).forEach(function (f) {
+        var p = f.properties || {};
+        var ev = p.event || "";
+        var kind = typeof publicSafetyKind === "function" ? publicSafetyKind(ev) : "";
+        if (!kind) return;
+        rows.push({
+          kind: kind,
+          title: ev || "Public safety",
+          body: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 280)
+        });
+      });
+      paintPublicSafety(rows);
+      if (rows.length && typeof window.__nwsHigh !== "undefined") {
+        /* already excluded from weather ticker; civic bar stays missing-person only */
+      }
+    }
+    function pollPublicDesk() {
+      collectPublicSafetyFromNws();
+      var place = (typeof homePlace === "function" && homePlace()) || "Englewood";
+      var st = (typeof homeState === "function" && homeState()) || "FL";
+      var aqi = Number(window.__aqi);
+      var action = isFinite(aqi) && aqi >= 101;
+      setQuietCard("air-action-card", "live-air-action", action,
+        action ? ("Air quality action day near " + place + ". AQI " + Math.round(aqi) + ". Sensitive groups should limit outdoor time.") : "");
+      if (typeof noteFeed === "function") noteFeed("air-action", true, action ? ("AQI " + Math.round(aqi)) : "none");
+      window.__deskBreak = [];
+      if (action) window.__deskBreak.push({ src: "AIR", title: "Air quality action day near " + place + ". AQI " + Math.round(aqi) });
+
+      function newsToCard(cardId, spanId, feedKey, items, emptyHidden) {
+        var on = !!(items && items.length);
+        var txt = on ? items.slice(0, 3).map(function (x) { return x.title; }).join(" · ") : "";
+        setQuietCard(cardId, spanId, on, txt);
+        if (typeof noteFeed === "function") noteFeed(feedKey, true, on ? (items.length + " hits") : "none");
+      }
+
+      if (typeof fetchNewsQuery === "function") {
+        fetchNewsQuery('"boil water" OR "do not drink" OR "boil-water" ' + place + " OR " + st + " when:3d", function (items) {
+          items = (items || []).filter(function (x) { return /boil|do not drink|water notice/i.test(x.title || ""); });
+          window.__boilTick = items.length ? spaceSentences("Drinking water. " + items[0].title + ".") : "";
+          newsToCard("boil-card", "live-boil", "boil", items, true);
+        });
+        fetchNewsQuery("NTAS OR \"national terrorism advisory\" when:14d", function (items) {
+          items = (items || []).filter(function (x) { return /ntas|advisory system|elevated|imminent/i.test(x.title || ""); });
+          window.__deskBreak = window.__deskBreak || [];
+          items.forEach(function (x) { window.__deskBreak.push({ src: "NTAS", title: x.title }); });
+          newsToCard("ntas-card", "live-ntas", "ntas", items, true);
+        });
+        fetchNewsQuery("CDC \"health alert\" OR HAN outbreak United States when:7d", function (items) {
+          window.__deskBreak = window.__deskBreak || [];
+          items.forEach(function (x) { window.__deskBreak.push({ src: "CDC", title: x.title }); });
+          newsToCard("han-card", "live-han", "han", items, true);
+        });
+        fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\") school (" + place + " OR " + st + ") when:2d", function (items) {
+          items = (items || []).filter(function (x) { return /lockdown|lockout|shelter in place|school/i.test(x.title || ""); });
+          window.__schoolAlerts = items.map(function (x) { return { kind: "law", title: "School emergency", body: x.title }; });
+          newsToCard("school-card", "live-school", "school", items, true);
+        });
+        fetchNewsQuery("(nixle OR \"community alert\" OR \"emergency management\") (" + place + " OR Charlotte OR Sarasota) when:2d", function (items) {
+          window.__nixleCivic = items.map(function (x) { return { kind: "law", title: "Local notice", body: x.title }; });
+          newsToCard("nixle-card", "live-nixle", "nixle", items, true);
+        });
+        fetchNewsQuery("TFR OR \"temporary flight restriction\" (" + place + " OR " + st + " OR Tampa OR Sarasota) when:2d", function (items) {
+          window.__deskBreak = window.__deskBreak || [];
+          items.forEach(function (x) { window.__deskBreak.push({ src: "TFR", title: x.title }); });
+          newsToCard("tfr-card", "live-tfr", "tfr", items, true);
+        });
+        fetchNewsQuery("\"local notice to mariners\" OR \"urgent marine\" (\"District 7\" OR Gulf OR " + place + ") when:3d", function (items) {
+          window.__deskBreak = window.__deskBreak || [];
+          items.forEach(function (x) { window.__deskBreak.push({ src: "USCG", title: x.title }); });
+          newsToCard("uscg-card", "live-uscg", "uscg-ntm", items, true);
+          if (typeof mergeDeskIntoTickers === "function") mergeDeskIntoTickers();
+        });
+      }
+
+      var fda = "https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22+AND+(state:%22" + st + "%22+OR+distribution_pattern:nationwide)&limit=6";
+      fetch(fda, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+        var recs = ((d && d.results) || []).map(function (x) {
+          return { title: (x.recalling_firm || "Recall") + " · " + String(x.product_description || "").slice(0, 80) };
+        });
+        var on = recs.length > 0;
+        setQuietCard("recall-card", "live-recall", on, recs.slice(0, 3).map(function (x) { return x.title; }).join(" · "));
+        if (typeof noteFeed === "function") noteFeed("recall", true, on ? (recs.length + " ongoing") : "none");
+        window.__deskBreak = window.__deskBreak || [];
+        recs.slice(0, 3).forEach(function (x) { window.__deskBreak.push({ src: "FDA", title: x.title }); });
+        if (typeof mergeDeskIntoTickers === "function") mergeDeskIntoTickers();
+      }).catch(function () {
+        if (typeof noteFeed === "function") noteFeed("recall", false, "fda fetch");
+      });
+    }
+    
+    function deskWarnLines() {
+      var parts = [];
+      (window.__publicSafety || []).forEach(function (x) {
+        var line = (x.title || "Public safety") + ". " + (x.body || "");
+        if (!/[.!?]$/.test(line)) line += ".";
+        parts.push(typeof spaceSentences === "function" ? spaceSentences(line) : line);
+      });
+      if (window.__boilTick) parts.push(window.__boilTick);
+      return parts;
+    }
+    function mergeDeskIntoTickers() {
+      try { if (typeof pollAlerts === "function") { /* warning bar rebuilt on next pollAlerts; nudge if desk-only */ } } catch (e) {}
+      var civic = (window.__civicAlerts || []).slice();
+      (window.__schoolAlerts || []).forEach(function (x) { civic.push(x); });
+      (window.__nixleCivic || []).forEach(function (x) { civic.push(x); });
+      if (civic.length && typeof paintCivic === "function") paintCivic(civic);
+      if (typeof pollBreaking === "function") pollBreaking();
+    }
+
+    window.pollPublicDesk = pollPublicDesk;
+    window.deskWarnLines = deskWarnLines;
+
     pollCivic();
     setInterval(pollCivic, 5 * 60 * 1000);
+    pollPublicDesk();
+    setInterval(pollPublicDesk, 5 * 60 * 1000);
 
     (function () {
       var style = document.createElement("style");
