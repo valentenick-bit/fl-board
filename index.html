@@ -2857,7 +2857,7 @@
         <p class="pill-key" id="ent-refs">
           <a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">BeachWalk calendar</a>
           ·
-          <span>Town list = BeachWalk calendar + local research for this pin (live music, bingo, comedy, markets) + ticketed shows near the address.</span>
+          <span>Town list = BeachWalk calendar + events.json on GitHub + ticketed shows near the pin.</span>
         </p>
       </section>
       <section id="eats" class="page">
@@ -2906,7 +2906,7 @@
         <div class="card"><b>AC filter</b><span id="ac-filter-note">Set the date you last changed it. Reminder is 90 days.</span><input type="date" id="ac-filter-date" /></div>
         <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
         <div class="card"><b>Vendors</b>
-          <span>Castle after-hours 800-337-5850. Shared with every board when house.json is on GitHub/Drive.</span>
+          <span>Castle after-hours 800-337-5850. Shared with every board when house.json is on GitHub.</span>
           <p id="house-sync" class="pill-key">House list is loading…</p>
           <textarea id="vendors" rows="4" style="width:100%;margin-top:8px;border:1px solid #d7cdbb;border-radius:8px;padding:8px;font:inherit">HVAC:
 Pest:
@@ -3619,8 +3619,9 @@ Cart shop:</textarea>
         <div class="set-line"><label>Language</label>
           <select id="set-lang" style="max-width:220px"></select>
         </div>
+        <p class="hint">Live files (events, packages, flights, community notes, house) load from GitHub. On-site events load from the BeachWalk Google Calendar. Nothing on the wall reads Google Drive.</p>
         <p class="hint">Dates, times, and numbers follow the language. Board wording stays English for now. Time zone follows this device.</p>
-        <p class="hint">Loop is Today, Weather, Land, Sea, Sky, then Views and the house pages. Radar and Lightning are not separate pages — radar sits on Weather, and lightning uses that same frame when it is close. Traffic sits on Land. Packages only show on Today — everything still incoming, plus delivered in the last 5 days. Today and Cam stay a little longer than the other pages.</p>
+        <p class="hint">Loop is Today, Weather, Land, Sea, Sky, Community, Events, Eats, and Golf. Radar sits on Weather. Lightning uses that same frame when it is close. Traffic sits on Land. Packages show on Today. Today stays a little longer than the other pages.</p>
       </div>
       <div class="set-card">
         <h3>Accessibility</h3>
@@ -3906,7 +3907,7 @@ Cart shop:</textarea>
             <button type="button" data-v="0">Off</button>
           </div>
         </div>
-        <p class="hint">Address suggestions use Places Autocomplete (New) when this key is saved. Enable Places API (New) on the key. Traffic still uses the free embed unless Use Google key is On.</p>
+        <p class="hint">Optional. Enable Maps JavaScript API, Places API, Geocoding API, and Distance Matrix API on this key. Add https://commons.valente-nick.workers.dev/* as an HTTP referrer. Leave Use Google key Off to skip Maps billing and use the free pin.</p>
         <div class="set-line"><label>Google cache</label>
           <button type="button" id="set-gcache" class="ghost">Clear lookups</button>
         </div>
@@ -4045,7 +4046,19 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 722;
+    window.BOARD_VER = 725;
+
+    function gitFileUrls(name) {
+      var cb = Date.now();
+      var origin = "";
+      try { origin = location.origin || ""; } catch (e) {}
+      return [
+        (origin ? origin + "/" + name + "?cb=" + cb : "/" + name + "?cb=" + cb),
+        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/" + name + "?cb=" + cb,
+        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/" + name
+      ];
+    }
+
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -5197,14 +5210,14 @@ Cart shop:</textarea>
         { id: "nhc", group: "Storms", title: "Named storms and NHC discussion", source: "NHC CurrentStorms.json and NHC text products.", site: "National Hurricane Center, Miami, FL", feeds: ["named-storms", "nhc-disc", "storms"] },
         { id: "goes", group: "Storms", title: "Gulf / Atlantic satellite", source: "NOAA GOES East imagery.", site: "GOES-16, aimed at the Atlantic and Gulf", feeds: ["sat"] },
         { id: "events", group: "Local", title: "Events", source: "Public Google calendars (BeachWalk, Englewood, Moose) through the Worker /ics route.", site: "Calendar owners, not a venue door", feeds: ["events"] },
-        { id: "deliveries", group: "Local", title: "Deliveries", source: "Gmail scan automation written to deliveries.json on Drive.", site: "Inbox of the account that runs the automation", feeds: ["deliveries"] },
+        { id: "deliveries", group: "Local", title: "Deliveries", source: "Gmail scan automation written to deliveries.json on GitHub.", site: "Inbox of the account that runs the automation", feeds: ["deliveries"] },
         { id: "flights", group: "Local", title: "Flights", source: "flights.json from the Fly calendar automation. Live pill from FlightAware / Airportia when those pages answer, else inferred from the scheduled time.", site: "Calendar plus public flight-status pages", feeds: ["flights"] },
         { id: "power", group: "Local", title: "Power outages", source: "FPL Power Tracker / county totals when the map feed answers.", site: "FPL territory near " + place, feeds: ["power"] },
         { id: "news", group: "Local", title: "News ticker", source: "National breaking from Fox; local from Google News / WINK for the home place.", site: "Newsrooms, not a sensor at " + place, feeds: ["news"] },
         { id: "sports", group: "Local", title: "Sports scores", source: "ESPN scoreboard APIs for leagues checked on the Sports page.", site: "League venues that night", feeds: ["sports"] },
         { id: "traffic", group: "Local", title: "Traffic map", source: "Google Maps embed pinned on the home address.", site: s.address || (place + " pin"), feeds: ["traffic"] },
         { id: "gator", group: "Local", title: "Alligator headlines", source: "Google News search when the zip is in alligator range.", site: "Regional headlines near " + place, feeds: ["gator"] },
-        { id: "house", group: "House", title: "Vendors, villa checks, flights", source: "house.json on Drive / GitHub when shared. Otherwise this browser only.", site: "Household file, not an HOA feed", feeds: ["house"] },
+        { id: "house", group: "House", title: "Vendors, villa checks, flights", source: "house.json on GitHub when shared. Otherwise this browser only.", site: "Household file, not an HOA feed", feeds: ["house"] },
         { id: "radio", group: "House", title: "Radio and scanners", source: "Station streams and Broadcastify / NOAA weather radio for the home WFO.", site: "Towers that serve " + place, feeds: ["radio"] }
       ];
       return rows;
@@ -5777,6 +5790,7 @@ function gatorRange() {
       var place = homePlace();
       var zip = getSet().zip || "";
       if (typeof paintCommunity === "function") paintCommunity();
+        if (typeof paintCommNav === "function") paintCommNav();
       else {
         var hdr = document.getElementById("hdr-place");
         if (hdr) hdr.textContent = communityName();
@@ -8740,7 +8754,7 @@ function currentRotation() {
           if (!r.ok) throw new Error("no");
           stamp("Saved for every device · " + new Date().toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }));
         }).catch(function () {
-          stamp("Saved on this device. Add house.json to GitHub or the /house Worker route to share.");
+          stamp("Saved on this device. Add house.json to GitHub to share.");
         });
       };
       function pull() {
@@ -10065,7 +10079,7 @@ function currentRotation() {
         "Those Today pills — beach, rip, pool, cart, boat, courts — are morning and afternoon calls. Swim, short window, or no. After dinner it still scores the evening instead of going blank. If the hourly grid is late, it uses the wind and rain you can already see on the header.",
         "Weather and Marine are the working guts: temp, wind, humidity, UV, hourly, ten-day, tides, surge, rip, red tide, Gulf water, fishing. Sky is sun, moon, planets, ISS, and whatever horoscope signs you left on in Settings.",
         "The briefing ticker never shuts up. The orange warning ticker and the breaking-news ticker only roll when they have something real. They do not jump back to the start; they loop.",
-        "House stuff — who is in the villa, the AC filter date, vendors, open/close checks, packages — lives in this browser unless house.json is reachable. Then every screen sees the same checks.",
+        "House stuff — who is in the villa, the AC filter date, vendors, open/close checks, packages — lives in this browser unless house.json is on GitHub. Then every screen sees the same checks.",
         "Dev is in More, left of the gear. Status is the honest report. How it works is this page. Ideas is the not-built-yet list. Status is supposed to yell when a card is still Loading or only says See something else. If Status is green and a card is wrong, that is a bug in Status, not in you.",
         "What we just changed: " + latest + " The rest of the recent notes: " + notes.slice(1).join(" ")
       ];
@@ -12120,7 +12134,7 @@ function currentRotation() {
         if (e.loc && String(e.loc).split(",")[0].trim() && String(e.loc).toLowerCase().indexOf(String(place).toLowerCase()) < 0) {
           locLine = place + " · " + e.loc;
         }
-        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: title || e.sum, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '<span class="busy-tag" hidden></span><b>' + locLine + '</b><span class="ev-when">' + whenLine +
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: title || e.sum, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '<b>' + locLine + '</b><span class="ev-when">' + whenLine +
           (e.opens ? " · opens " + e.opens : "") +
           (e.driveMin != null ? " · " + Math.round(e.driveMin) + " min drive" : "") +
           (function () {
@@ -12313,11 +12327,7 @@ function currentRotation() {
         next(0);
       }
       function loadLocal(done) {
-        var urls = [
-          "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/events.json?cb=" + Date.now(),
-          "/events.json?cb=" + Date.now(),
-          "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/events.json"
-        ];
+        var urls = gitFileUrls("events.json");
         function next(i) {
           if (i >= urls.length) {
             if (typeof noteFeed === "function") noteFeed("local-events", !!(bag.local && bag.local.length), (bag.local && bag.local.length ? bag.local.length + " researched" : "no events.json"));
@@ -12345,11 +12355,12 @@ function currentRotation() {
       loadLocal();
       if (typeof window.reloadTown === "function") window.reloadTown();
       load(BW, "bw", true);
+      loadLocal();
       setInterval(function () {
         loadLocal();
         if (typeof window.reloadTown === "function") window.reloadTown();
         load(BW, "bw", true);
-      }, 15 * 60 * 1000);
+        }, 15 * 60 * 1000);
     })();
 
     window.__deliveredMarks = window.__deliveredMarks || {};
@@ -12414,12 +12425,7 @@ function currentRotation() {
       var title = document.getElementById("comm-title");
       if (title) title.textContent = commName();
       var note = document.getElementById("comm-note");
-      var COMM_ID = "1NnpKNIiPTQch7s02z_PQ3u_MxwxRrq16";
-      var urls = [
-        "/community.json?cb=" + Date.now(),
-        "https://drive.google.com/uc?export=download&id=" + COMM_ID + "&cb=" + Date.now(),
-        "https://drive.usercontent.google.com/download?id=" + COMM_ID + "&export=download&confirm=t&cb=" + Date.now()
-      ];
+      var urls = gitFileUrls("community.json");
       function apply(j) {
         window.__community = j || {};
         if (note) note.textContent = (j.source ? j.source + " · " : "") + (j.updated ? ("updated " + j.updated) : "TownSq harvest");
@@ -12451,16 +12457,7 @@ function currentRotation() {
       var box = document.getElementById("deliv-list") || document.getElementById("today-deliv");
       if (!box) box = document.body.appendChild(document.createElement("div"));
       if (typeof noteFeed === "function") noteFeed("deliveries", false, "loading report");
-      var DELIV_ID = "10ZVNK2VP1eH7EuBMOds5jUMiBg7U0lyb";
-      var drive = "https://drive.google.com/uc?export=download&id=" + DELIV_ID;
-      var urls = [
-        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/deliveries.json?cb=" + Date.now(),
-        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/deliveries.json?cb=" + Date.now(),
-        "/deliveries.json?cb=" + Date.now(),
-        drive + "&cb=" + Date.now(),
-        "https://drive.usercontent.google.com/download?id=" + DELIV_ID + "&export=download&confirm=t&cb=" + Date.now(),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent(drive)
-      ];
+      var urls = gitFileUrls("deliveries.json");
       function esc(s) {
         return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
       }
@@ -13669,14 +13666,7 @@ function mustEats() {
     })();
 
     (function loadKeyJson() {
-      var KEY_ID = "195jOs8blhTyKRJpMoDDpICnbl97A7kO1";
-      var urls = [
-        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/key.json?cb=" + Date.now(),
-        "/key.json?cb=" + Date.now(),
-        "key.json",
-        "https://corsproxy.io/?" + encodeURIComponent("https://drive.google.com/uc?export=download&id=" + KEY_ID),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://drive.google.com/uc?export=download&id=" + KEY_ID)
-      ];
+      var urls = gitFileUrls("key.json");
       function apply(d) {
         if (!d) return;
         if (d.fishing && document.getElementById("live-fish")) document.getElementById("live-fish").innerHTML = d.fishing;
@@ -13725,17 +13715,8 @@ function mustEats() {
     })();
     (function loadFlights() {
       var el = document.getElementById("live-flights");
-      var FLIGHT_ID = "19TGlPZR7yD9uiuWu-foeulHGoRZpp1qr";
-      var driveF = "https://drive.usercontent.google.com/download?id=" + FLIGHT_ID + "&export=download&confirm=t";
       if (typeof noteFeed === "function") noteFeed("flights", true, "loading scan");
-      var urls = [
-        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/flights.json?cb=" + Date.now(),
-        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/flights.json?cb=" + Date.now(),
-        "https://corsproxy.io/?" + encodeURIComponent("https://raw.githubusercontent.com/valentenick-bit/fl-board/main/flights.json"),
-        "/flights.json?cb=" + Date.now(),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent(driveF),
-        driveF
-      ];
+      var urls = gitFileUrls("flights.json");
       function paint(d) {
         window.__flightData = d || { flights: [] };
         var rows = (d && d.flights) || [];
@@ -14231,6 +14212,7 @@ function mustEats() {
         var comm = document.getElementById("set-community");
         if (comm && document.activeElement !== comm) comm.value = s.community || "BeachWalk by Manasota Key";
         if (typeof paintCommunity === "function") paintCommunity();
+        if (typeof paintCommNav === "function") paintCommNav();
         var hint = document.getElementById("set-zip-hint");
         if (hint) hint.textContent = (s.place || "Englewood FL") + " · " + Number(s.lat).toFixed(3) + ", " + Number(s.lon).toFixed(3) + ". Tides and BeachWalk calendars stay on the Key.";
       }
@@ -15080,6 +15062,10 @@ function mustEats() {
             var bad = typeof mapsLooksBroken === "function" ? mapsLooksBroken() : "";
             if (typeof noteFeed === "function") noteFeed("maps-visual", !bad, bad || "no overlay");
             if (bad && typeof noteFeed === "function") noteFeed("traffic", false, bad);
+            if (bad && !window.__mapFallbackOn && typeof applyMapFallback === "function") {
+              window.__mapFallbackOn = true;
+              applyMapFallback(bad);
+            }
             return bad || "ok";
           })()],
           ["js-ready", window.__rotStarted ? "rotation started" : "rotation not started"],
@@ -18001,8 +17987,32 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       });
       if (typeof noteFeed === "function") noteFeed("gmaps", false, "API not enabled on this key");
       if (typeof noteFeed === "function") noteFeed("traffic", false, "maps api disabled");
+      if (typeof applyMapFallback === "function") applyMapFallback("google reject");
     };
     
+    
+    function mapFallbackSrc() {
+      var s = typeof getSet === "function" ? getSet() : {};
+      var lat = Number(s.lat) || 26.96, lon = Number(s.lon) || -82.35;
+      var d = 0.18;
+      return "https://www.openstreetmap.org/export/embed.html?bbox=" +
+        (lon - d) + "%2C" + (lat - d) + "%2C" + (lon + d) + "%2C" + (lat + d) +
+        "&layer=mapnik&marker=" + lat + "%2C" + lon;
+    }
+    function applyMapFallback(reason) {
+      window.__gmapsAuthFail = true;
+      var src = mapFallbackSrc();
+      ["traffic-map","eat-map-frame","golf-map-frame","map-pop-frame"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (el.tagName === "IFRAME") { el.src = src; return; }
+        el.innerHTML = "<iframe title=\"Map\" src=\"" + src + "\" style=\"width:100%;height:100%;border:0;border-radius:16px\"></iframe>";
+      });
+      var g = document.getElementById("traffic-gmap");
+      if (g) g.innerHTML = "<iframe title=\"Map\" src=\"" + src + "\" style=\"width:100%;height:100%;border:0;border-radius:16px\"></iframe>";
+      if (typeof noteFeed === "function") noteFeed("maps-visual", false, reason || "using OpenStreetMap fallback");
+      if (typeof noteFeed === "function") noteFeed("traffic", true, "osm fallback");
+    }
     function mapsLooksBroken() {
       if (window.__gmapsAuthFail) return "auth fail";
       var ids = ["traffic-gmap","traffic-map","eat-map-frame","golf-map-frame","map-pop-frame"];
