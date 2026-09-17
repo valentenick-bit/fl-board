@@ -4127,7 +4127,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 749;
+    window.BOARD_VER = 750;
 
     
     function communityShort() {
@@ -10978,10 +10978,10 @@ function currentRotation() {
       lat = Number(lat); lon = Number(lon);
       var q;
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        q = lat.toFixed(5) + "," + lon.toFixed(5) + (name ? " (" + String(name) + ")" : "");
-        return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&ll=" + lat.toFixed(5) + "," + lon.toFixed(5) + "&z=16&hl=en&output=embed";
+        q = (name ? String(name) + " @" : "") + lat.toFixed(5) + "," + lon.toFixed(5);
+      } else {
+        q = name || "Englewood FL";
       }
-      q = name || "Englewood FL";
       return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
     }
     function pinNearHome(lat, lon) {
@@ -11011,13 +11011,13 @@ function currentRotation() {
     }
     function venueMapSrc(name, addr, lat, lon, placeId) {
       lat = Number(lat); lon = Number(lon);
-      var label = (typeof venueQuery === "function") ? venueQuery(name, addr) : [name, addr].filter(Boolean).join(", ");
-      if (!label) label = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
+      var q = (typeof venueQuery === "function") ? venueQuery(name, addr) : [addr, name].filter(Boolean).join(", ");
+      if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
+      var url = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        var q = lat.toFixed(5) + "," + lon.toFixed(5) + " (" + label + ")";
-        return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&ll=" + lat.toFixed(5) + "," + lon.toFixed(5) + "&z=16&hl=en&output=embed";
+        url += "&ll=" + lat.toFixed(5) + "," + lon.toFixed(5);
       }
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(label) + "&z=15&hl=en&iwloc=A&output=embed";
+      return url;
     }
     function venueMapLink(name, addr, lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -13566,7 +13566,7 @@ function mustEats() {
         var seen = {};
         var out = [];
         (list || []).forEach(function (r) {
-          var k = String(r.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\b(golf|club|course|country)\b/g, " ").replace(/\s+/g, " ").trim();
+          var k = String(r.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
           if (!k) return;
           if (!seen[k]) { seen[k] = r; out.push(r); return; }
           var cur = seen[k];
@@ -13584,7 +13584,7 @@ function mustEats() {
         return [
           { name: "Lemon Bay Golf Club", lat: 26.8887, lon: -82.3128, kind: "Private", rating: 4.3, reviews: 210, addr: "9600 Eagle Preserve Dr, Englewood, FL 34224" },
           { name: "Oyster Creek Golf Club", lat: 26.9272, lon: -82.3082, kind: "Public", rating: 4.1, reviews: 180, addr: "6651 Oriole Blvd, Englewood, FL 34224" },
-          { name: "Myakka Pines Golf Club", lat: 26.99785, lon: -82.31202, kind: "Public", rating: 4.2, reviews: 160, addr: "2550 S River Rd, Englewood, FL 34223" },
+          { name: "Myakka Pines Golf Club", lat: 27.0020, lon: -82.3530, kind: "Public", rating: 4.2, reviews: 160, addr: "2550 S River Rd, Englewood, FL 34223" },
           { name: "Boca Royale Golf & Country Club", lat: 26.9882, lon: -82.3228, kind: "Private", rating: 4.5, reviews: 95, addr: "1601 Englewood Rd, Englewood, FL" },
           { name: "Twin Isles Country Club", lat: 26.9176, lon: -82.3479, kind: "Private", rating: 4.4, reviews: 70, addr: "2100 Placida Rd, Englewood, FL" },
           { name: "Rotonda Golf & Country Club", lat: 26.8934, lon: -82.2718, kind: "Public", rating: 4.0, reviews: 140, addr: "100 Rotonda Cir, Rotonda West, FL" },
