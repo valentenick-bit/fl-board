@@ -4098,7 +4098,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 734;
+    window.BOARD_VER = 735;
 
     
     function communityShort() {
@@ -10947,13 +10947,12 @@ function currentRotation() {
     window.selectGolf = selectGolf;
         function pinMapSrc(lat, lon, name, placeId) {
       lat = Number(lat); lon = Number(lon);
-      var q;
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        q = (name ? String(name) + " @" : "") + lat.toFixed(5) + "," + lon.toFixed(5);
-      } else {
-        q = name || "Englewood FL";
+        var pair = lat.toFixed(6) + "," + lon.toFixed(6);
+        return "https://maps.google.com/maps?q=" + pair + "&ll=" + pair + "&z=16&hl=en&t=m&output=embed";
       }
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
+      var q = name || (typeof homePlace === "function" && homePlace()) || "Englewood FL";
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
     }
     function pinNearHome(lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -10982,13 +10981,13 @@ function currentRotation() {
     }
     function venueMapSrc(name, addr, lat, lon, placeId) {
       lat = Number(lat); lon = Number(lon);
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        var pair = lat.toFixed(6) + "," + lon.toFixed(6);
+        return "https://maps.google.com/maps?q=" + pair + "&ll=" + pair + "&z=16&hl=en&t=m&output=embed";
+      }
       var q = (typeof venueQuery === "function") ? venueQuery(name, addr) : [addr, name].filter(Boolean).join(", ");
       if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
-      var url = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
-      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        url += "&ll=" + lat.toFixed(5) + "," + lon.toFixed(5);
-      }
-      return url;
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
     }
     function venueMapLink(name, addr, lat, lon) {
       lat = Number(lat); lon = Number(lon);
