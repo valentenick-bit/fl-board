@@ -61,6 +61,8 @@
       setTimeout(wakeBoard, 50);
     });
     document.addEventListener("DOMContentLoaded", function () {
+      if (typeof loadCommunity === "function") loadCommunity();
+      if (typeof loadDeliveries === "function") loadDeliveries();
       ["drawer-back","dev-lock","settings"].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) return;
@@ -130,7 +132,7 @@
       }, true);
       setTimeout(function () {
         if (window.__rotStarted) return;
-        var ids = ["now","tenday","land","marine","sky","ent","eats","golf"];
+        var ids = ["now","tenday","land","marine","sky","comm","ent","eats","golf"];
         var n = 0;
         window.__fallbackRot = setInterval(function () {
           if (window.__rotStarted) { clearInterval(window.__fallbackRot); return; }
@@ -2288,7 +2290,14 @@
     }
 
 
-    .dist-tag, .loc-pill { background:#f3ead8; color:#5c4a2a; }
+    
+.dist-tag, .loc-pill { background:#f3ead8; color:#5c4a2a; }
+    .comm-row { display:flex; flex-direction:column; gap:2px; padding:8px 0; border-bottom:1px solid var(--hair); }
+    .comm-row:last-child { border-bottom:0; }
+    .comm-row b { color:var(--navy); font-size:15px; }
+    .comm-row span { color:var(--muted); font-size:13px; line-height:1.4; }
+    .comm-row em { font-style:normal; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--teal); font-weight:800; }
+
     html.dark .dist-tag, html.dark .loc-pill { background:#3a3428; color:#efe4c8; }
 
 
@@ -2858,6 +2867,16 @@
             <p class="wx-map-cap"><b>Location</b><a id="golf-map-open" href="#" target="_blank" rel="noopener">Open map</a></p>
           </div>
         </div>
+      </section>
+      <section id="comm" class="page">
+        <h2 id="comm-title">Community</h2>
+        <p class="pill-key" id="comm-note">Notices from TownSq. Dated events stay on Events.</p>
+        <div class="card" id="comm-need-card" hidden><b>Need to know</b><div id="comm-need"></div></div>
+        <div class="card"><b>This week on site</b><div id="comm-week">Loading…</div></div>
+        <div class="card" id="comm-announce-card"><b>Announcements</b><div id="comm-announce">Loading…</div></div>
+        <div class="card" id="comm-news-card"><b>Beach Talk</b><div id="comm-news"></div></div>
+        <div class="card" id="comm-survey-card"><b>Surveys</b><div id="comm-survey"></div></div>
+        <div class="card" id="comm-archive-card"><b>Archive</b><div id="comm-archive"></div></div>
       </section>
       <section id="house" class="page">
         <h2 data-k="This house">House</h2>
@@ -3460,7 +3479,8 @@ Cart shop:</textarea>
             <button type="button" data-p="land">Land</button>
             <button type="button" data-p="marine">Sea</button>
             <button type="button" data-p="sky">Sky</button>
-            <button type="button" data-p="ent">Events</button>
+            <button type="button" data-p="comm">Community</button>
+        <button type="button" data-p="ent">Events</button>
         <button type="button" data-p="eats">Restaurants</button>
         <button type="button" data-p="golf">Golf</button>
           </div>
@@ -3482,6 +3502,7 @@ Cart shop:</textarea>
         <div class="menu-block">
           <h3>House</h3>
           <div class="menu-grid">
+            <button type="button" data-p="comm">Community</button>
             <button type="button" data-p="house">House</button>
             <button type="button" data-p="villa">Open / close</button>
             <button type="button" data-p="account">Account</button>
@@ -3894,7 +3915,8 @@ Cart shop:</textarea>
       <button type="button" data-p="land">Land</button>
       <button type="button" data-p="marine">Sea</button>
       <button type="button" data-p="sky">Sky</button>
-      <button type="button" data-p="ent">Events</button>
+      <button type="button" data-p="comm">Community</button>
+        <button type="button" data-p="ent">Events</button>
         <button type="button" data-p="eats">Restaurants</button>
         <button type="button" data-p="golf">Golf</button>
     </nav>
@@ -3940,6 +3962,7 @@ Cart shop:</textarea>
         <button type="button" data-p="land">Land</button>
         <button type="button" data-p="marine">Sea</button>
         <button type="button" data-p="sky">Sky</button>
+        <button type="button" data-p="comm">Community</button>
         <button type="button" data-p="ent">Events</button>
         <button type="button" data-p="eats">Restaurants</button>
         <button type="button" data-p="golf">Golf</button>
@@ -3999,7 +4022,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 714;
+    window.BOARD_VER = 716;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4053,7 +4076,7 @@ Cart shop:</textarea>
       setTimeout(pad, 600);
     })();
     window.ROT_DEFAULTS = {
-      normal: ["now","tenday","land","marine","sky","ent","eats","golf"],
+      normal: ["now","tenday","land","marine","sky","comm","ent","eats","golf"],
       storm: ["tenday","storms","marine","contacts"]
     };
     var ROT_DEFAULTS = window.ROT_DEFAULTS;
@@ -8723,7 +8746,7 @@ function currentRotation() {
     })();
     clock(); setInterval(clock, 15000);
     var ROT_DEFAULTS = window.ROT_DEFAULTS || {
-      normal: ["now","tenday","land","marine","sky","ent","eats","golf"],
+      normal: ["now","tenday","land","marine","sky","comm","ent","eats","golf"],
       storm: ["tenday","storms","marine","contacts"]
     };
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
@@ -12318,7 +12341,75 @@ function currentRotation() {
       });
       return out;
     }
-    (function loadDeliveries() {
+    function commName() {
+      var s = typeof getSet === "function" ? getSet() : {};
+      return String(s.community || "BeachWalk by Manasota Key").trim() || "Community";
+    }
+    function paintCommList(id, rows, empty) {
+      var box = document.getElementById(id);
+      if (!box) return;
+      rows = rows || [];
+      if (!rows.length) { box.innerHTML = empty || ""; return; }
+      box.innerHTML = rows.map(function (r) {
+        var when = r.when || r.posted || "";
+        return "<div class=\"comm-row\"><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(r.body || "").replace(/</g,"") + "</span>" +
+          (when ? "<em>" + String(when) + "</em>" : "") + "</div>";
+      }).join("");
+    }
+    function paintCommWeek() {
+      var box = document.getElementById("comm-week");
+      if (!box) return;
+      var list = window.__events || window.__ent || [];
+      var now = Date.now();
+      var week = now + 7 * 86400000;
+      var rows = (list || []).filter(function (e) {
+        var t = e && e.when ? +new Date(e.when) : 0;
+        if (!t || t < now || t > week) return false;
+        var blob = String((e.loc || "") + " " + (e.sum || "") + " " + (e.inside ? "inside beachwalk" : "")).toLowerCase();
+        return e.inside || /beachwalk|capri|high tide|manasota/.test(blob);
+      }).slice(0, 8);
+      if (!rows.length) { box.textContent = "Nothing dated on site in the next 7 days."; return; }
+      box.innerHTML = rows.map(function (e) {
+        var d = e.when && e.when.toLocaleDateString ? e.when.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "";
+        return "<div class=\"comm-row\"><b>" + String(e.sum || "Event").replace(/</g,"") + "</b><span>" + d + (e.loc ? " · " + e.loc : "") + "</span></div>";
+      }).join("");
+    }
+    function loadCommunity() {
+      var title = document.getElementById("comm-title");
+      if (title) title.textContent = commName();
+      var note = document.getElementById("comm-note");
+      var COMM_ID = "1NnpKNIiPTQch7s02z_PQ3u_MxwxRrq16";
+      var urls = [
+        "/community.json?cb=" + Date.now(),
+        "https://drive.google.com/uc?export=download&id=" + COMM_ID + "&cb=" + Date.now(),
+        "https://drive.usercontent.google.com/download?id=" + COMM_ID + "&export=download&confirm=t&cb=" + Date.now()
+      ];
+      function apply(j) {
+        window.__community = j || {};
+        if (note) note.textContent = (j.source ? j.source + " · " : "") + (j.updated ? ("updated " + j.updated) : "TownSq harvest");
+        var need = j.need || [];
+        var needCard = document.getElementById("comm-need-card");
+        if (needCard) needCard.hidden = !need.length;
+        paintCommList("comm-need", need, "");
+        paintCommList("comm-announce", j.announce || [], "No open announcements.");
+        paintCommList("comm-news", j.newsletters || [], "No newsletter on file.");
+        paintCommList("comm-survey", j.surveys || [], "No open surveys.");
+        paintCommList("comm-archive", j.archive || [], "Archive empty.");
+        paintCommWeek();
+        if (typeof noteFeed === "function") noteFeed("community", true, (j.announce || []).length + " notes · " + (j.surveys || []).length + " surveys");
+      }
+      function next(i) {
+        if (i >= urls.length) {
+          apply({ announce: [], newsletters: [], surveys: [], archive: [], source: "no community.json" });
+          if (typeof noteFeed === "function") noteFeed("community", false, "no community.json");
+          return;
+        }
+        fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(apply).catch(function () { next(i + 1); });
+      }
+      next(0);
+    }
+    window.loadCommunity = loadCommunity;
+    function loadDeliveries() {
       window.__delivStarted = Date.now();
       var note = document.getElementById("deliv-note");
       var box = document.getElementById("deliv-list") || document.getElementById("today-deliv");
@@ -12453,7 +12544,7 @@ function currentRotation() {
       }
       next(0);
       setInterval(function () { next(0); }, 30 * 60 * 1000);
-    })();
+    }
 
     (function loadEats() {
       function milesOf(lat, lon) {
