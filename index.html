@@ -4127,7 +4127,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 745;
+    window.BOARD_VER = 746;
 
     
     function communityShort() {
@@ -17663,6 +17663,12 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         });
         var seen = {};
         var hits = [];
+        (window.__deskBreak || []).forEach(function (h) {
+          var k = keyOf(h.title) || h.src;
+          if (!k || seen[k]) return;
+          seen[k] = true;
+          hits.push(h);
+        });
         foxHits.concat(localHits).forEach(function (h) {
           var k = keyOf(h.title);
           if (!k || seen[k]) return;
@@ -17670,14 +17676,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           seen[k] = true;
           hits.push(h);
         });
-        hits = hits.slice(0, 6);
-        (window.__deskBreak || []).forEach(function (h) {
-          var k = keyOf(h.title);
-          if (!k || seen[k]) return;
-          seen[k] = true;
-          hits.push(h);
-        });
-        hits = hits.slice(0, 10);
+        hits = hits.slice(0, 8);
         if (typeof noteFeed === "function") {
           noteFeed("breaking", !!hits.length, hits.length + " · fox " + foxHits.length + " · local " + localHits.length + " · desk " + (window.__deskBreak || []).length);
         }
@@ -19542,6 +19541,17 @@ function homeCountyGuess() {
         /* already excluded from weather ticker; civic bar stays missing-person only */
       }
     }
+    
+    function setDeskBreak(src, rows) {
+      window.__deskBy = window.__deskBy || {};
+      window.__deskBy[src] = rows || [];
+      var order = ["NTAS", "FDA", "CDC", "AIR", "TFR", "USCG"];
+      window.__deskBreak = [];
+      order.forEach(function (k) {
+        (window.__deskBy[k] || []).forEach(function (x) { window.__deskBreak.push(x); });
+      });
+      if (typeof pollBreaking === "function") pollBreaking();
+    }
     function pollPublicDesk() {
       collectPublicSafetyFromNws();
       var place = (typeof homePlace === "function" && homePlace()) || "Englewood";
@@ -19551,8 +19561,7 @@ function homeCountyGuess() {
       setQuietCard("air-action-card", "live-air-action", action,
         action ? ("Air quality action day near " + place + ". AQI " + Math.round(aqi) + ". Sensitive groups should limit outdoor time.") : "");
       if (typeof noteFeed === "function") noteFeed("air-action", true, action ? ("AQI " + Math.round(aqi)) : "none");
-      window.__deskBreak = [];
-      if (action) window.__deskBreak.push({ src: "AIR", title: speakAlert({ kind: "air", title: "Air quality action day", body: "AQI " + Math.round(aqi) + " near " + place }) });
+      setDeskBreak("AIR", action ? [{ src: "AIR", title: speakAlert({ kind: "air", title: "Air quality action day", body: "AQI " + Math.round(aqi) + " near " + place }) }] : []);
 
       function newsToCard(cardId, spanId, feedKey, items, emptyHidden) {
         var on = !!(items && items.length);
@@ -19567,15 +19576,22 @@ function homeCountyGuess() {
           window.__boilTick = items.length ? speakAlert({ kind: "boil", title: "Boil-water notice", body: items[0].title }) : "";
           newsToCard("boil-card", "live-boil", "boil", items, true);
         });
-        fetchNewsQuery("NTAS OR \"national terrorism advisory\" when:14d", function (items) {
-          items = (items || []).filter(function (x) { return /ntas|advisory system|elevated|imminent/i.test(x.title || ""); });
-          window.__deskBreak = window.__deskBreak || [];
-          items.forEach(function (x) { window.__deskBreak.push({ src: "NTAS", title: speakAlert({ kind: "ntas", title: "National threat advisory", body: x.title }) }); });
+        fetchNewsQuery("NTAS OR \"national terrorism advisory\" when:7d", function (items) {
+          items = (items || []).filter(function (x) {
+            return /ntas|national terrorism advisory|terrorism advisory system/i.test(x.title || "");
+          }).slice(0, 1);
+          setDeskBreak("NTAS", items.map(function (x) {
+            return { src: "NTAS", title: speakAlert({ kind: "ntas", title: "National threat advisory", body: x.title }) };
+          }));
           newsToCard("ntas-card", "live-ntas", "ntas", items, true);
         });
         fetchNewsQuery("CDC \"health alert\" OR HAN outbreak United States when:7d", function (items) {
-          window.__deskBreak = window.__deskBreak || [];
-          items.forEach(function (x) { window.__deskBreak.push({ src: "CDC", title: speakAlert({ kind: "han", title: "Health alert", body: x.title }) }); });
+          var tick = (items || []).filter(function (x) {
+            return /outbreak|emergency|nationwide increase|health alert network/i.test(x.title || "");
+          }).slice(0, 1);
+          setDeskBreak("CDC", tick.map(function (x) {
+            return { src: "CDC", title: speakAlert({ kind: "han", title: "Health alert", body: x.title }) };
+          }));
           newsToCard("han-card", "live-han", "han", items, true);
         });
         fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\") school (" + place + " OR " + st + ") when:2d", function (items) {
@@ -19588,13 +19604,15 @@ function homeCountyGuess() {
           newsToCard("nixle-card", "live-nixle", "nixle", items, true);
         });
         fetchNewsQuery("TFR OR \"temporary flight restriction\" (" + place + " OR " + st + " OR Tampa OR Sarasota) when:2d", function (items) {
-          window.__deskBreak = window.__deskBreak || [];
-          items.forEach(function (x) { window.__deskBreak.push({ src: "TFR", title: speakAlert({ kind: "tfr", title: "Flight restriction", body: x.title }) }); });
+          setDeskBreak("TFR", (items || []).slice(0, 1).map(function (x) {
+            return { src: "TFR", title: speakAlert({ kind: "tfr", title: "Flight restriction", body: x.title }) };
+          }));
           newsToCard("tfr-card", "live-tfr", "tfr", items, true);
         });
         fetchNewsQuery("\"local notice to mariners\" OR \"urgent marine\" (\"District 7\" OR Gulf OR " + place + ") when:3d", function (items) {
-          window.__deskBreak = window.__deskBreak || [];
-          items.forEach(function (x) { window.__deskBreak.push({ src: "USCG", title: speakAlert({ kind: "uscg", title: "Marine notice", body: x.title }) }); });
+          setDeskBreak("USCG", (items || []).slice(0, 1).map(function (x) {
+            return { src: "USCG", title: speakAlert({ kind: "uscg", title: "Marine notice", body: x.title }) };
+          }));
           newsToCard("uscg-card", "live-uscg", "uscg-ntm", items, true);
           if (typeof mergeDeskIntoTickers === "function") mergeDeskIntoTickers();
         });
@@ -19647,11 +19665,9 @@ function homeCountyGuess() {
         var on = parsed.length > 0;
         setQuietCard("recall-card", "live-recall", on, parsed.slice(0, 4).map(function (x) { return x.card; }).join(" "));
         if (typeof noteFeed === "function") noteFeed("recall", true, on ? (parsed.length + " ongoing · " + (parsed[0].rank === 1 ? "Class I" : "Class " + parsed[0].rank)) : "none");
-        window.__deskBreak = window.__deskBreak || [];
-        parsed.filter(function (x) { return x.rank <= 2; }).slice(0, 2).forEach(function (x) {
-          window.__deskBreak.push({ src: "FDA", title: x.tick });
-        });
-        if (typeof mergeDeskIntoTickers === "function") mergeDeskIntoTickers();
+        setDeskBreak("FDA", parsed.filter(function (x) { return x.rank <= 2; }).slice(0, 2).map(function (x) {
+          return { src: "FDA", title: x.tick };
+        }));
       }).catch(function () {
         if (typeof noteFeed === "function") noteFeed("recall", false, "fda fetch");
       });
