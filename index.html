@@ -4127,7 +4127,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 743;
+    window.BOARD_VER = 744;
 
     
     function communityShort() {
@@ -18891,6 +18891,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       return "";
     }
     function speakAlert(opts) {
+      try {
       opts = opts || {};
       var kind = opts.kind || "";
       var title = String(opts.title || "Alert").replace(/\s+/g, " ").trim();
@@ -18910,6 +18911,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       if (act && parts.join(" ").toLowerCase().indexOf(act.slice(0, 20).toLowerCase()) < 0) parts.push(act);
       var out = parts.join(" ").replace(/\s+/g, " ").trim();
       return typeof spaceSentences === "function" ? spaceSentences(out) : out;
+      } catch (eA) {
+        return String((opts && (opts.title || opts.body)) || "Alert.");
+      }
     }
 
     function nwsLine(f) {
@@ -19242,14 +19246,34 @@ function homeCountyGuess() {
       nextNws(0);
     }
     window.pollCivic = pollCivic;
+    function fetchNwsAlerts() {
+      var pt = homePoint();
+      var urls = [
+        "https://api.weather.gov/alerts/active?point=" + pt,
+        "https://corsproxy.io/?" + encodeURIComponent("https://api.weather.gov/alerts/active?point=" + pt)
+      ];
+      var i = 0;
+      function next() {
+        if (i >= urls.length) return Promise.reject(new Error("nws all urls failed"));
+        var u = urls[i++];
+        var hdrs = u.indexOf("https://api.weather.gov") === 0 ? { Accept: "application/geo+json" } : {};
+        return fetch(u, { cache: "no-store", headers: hdrs }).then(function (r) {
+          if (!r.ok) throw new Error("nws " + r.status);
+          return r.json();
+        }).then(function (d) {
+          if (d && d.contents) { try { d = JSON.parse(d.contents); } catch (eP) {} }
+          if (d && d.features) return d;
+          throw new Error("nws empty");
+        }).catch(function () { return next(); });
+      }
+      return next();
+    }
     function pollAlerts() {
       var bar = document.getElementById("alertbar");
       var txt = document.getElementById("alerttext");
       var frame = document.querySelector(".frame");
       if (!bar || !txt) return;
-      fetch("https://api.weather.gov/alerts/active?point=" + homePoint(), {
-        headers: { "Accept": "application/geo+json" }
-      }).then(function (r) { return r.json(); }).then(function (data) {
+      fetchNwsAlerts().then(function (data) {
         var feats = (data && data.features) || [];
         window.__nwsAlerts = feats;
         var high = [];
@@ -19445,8 +19469,8 @@ function homeCountyGuess() {
         frame.classList.add("has-alert"); stackTickers();
         setTicker(txt, body, tickSpeedPx());
         writeBriefing();
-      }).catch(function () {
-        if (typeof touchFeed === "function") touchFeed("alerts", false, "NWS alerts fetch failed");
+      }).catch(function (err) {
+        if (typeof touchFeed === "function") touchFeed("alerts", false, "NWS alerts fetch failed" + (err && err.message ? (" · " + err.message) : ""));
       });
     }
     pollAlerts();
