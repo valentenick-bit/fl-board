@@ -1501,7 +1501,7 @@
     }
     .ev-pills { display:flex; flex-wrap:nowrap; gap:6px; align-items:center; margin:0 0 8px; min-height:26px; overflow-x:auto; }
     .ev-pills > span { margin:0 !important; flex:0 0 auto; white-space:nowrap; }
-    .ev-card > .kind-tag, .ev-card > .place-tag { display:none; }
+    .ev-body > .kind-tag, .ev-body > .place-tag, .ev-card > .kind-tag, .ev-card > .place-tag { display:none; }
     .dist-tag, .music-tag, .place-tag, .kind-tag, .warn-tag, .busy-tag, .eat-rate-pill, .loc-pill {
       display:inline-flex !important;
       align-items:center !important;
@@ -4083,7 +4083,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 730;
+    window.BOARD_VER = 731;
 
     
     function communityShort() {
@@ -5034,13 +5034,6 @@ Cart shop:</textarea>
         frame.src = embed;
         frame.setAttribute("data-pin", homePinQuery());
       }
-      if (box) box.hidden = true;
-      if (frame) {
-        frame.style.display = "";
-        if (force || !frame.src || frame.src.indexOf("maps.google.com/maps") < 0) frame.src = embed;
-      }
-      if (typeof noteFeed === "function") noteFeed("traffic", true, "google embed · no JS map");
-      return;
       if (page !== "land" && !force) {
         if (box) box.hidden = true;
         if (frame) frame.style.display = "";
@@ -5086,6 +5079,8 @@ Cart shop:</textarea>
             gestureHandling: "greedy"
           }));
           window.__trafficMap = map;
+          if (frame) frame.style.display = "none";
+          if (box) box.hidden = false;
           window.__trafficLayer = new google.maps.TrafficLayer();
           window.__trafficLayer.setMap(map);
           window.__trafficPin = new google.maps.Marker({ position: center, map: map, title: homeAddress() });
@@ -12208,7 +12203,7 @@ function currentRotation() {
         if (e.loc && String(e.loc).split(",")[0].trim() && String(e.loc).toLowerCase().indexOf(String(place).toLowerCase()) < 0) {
           locLine = place + " · " + e.loc;
         }
-        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: title || e.sum, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><span class="' + pclass + '">' + (title || "Event") + "</span>" + '<div class="ev-pills">' + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: title || e.sum, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
           (e.opens ? " · opens " + e.opens : "") +
           (e.driveMin != null ? " · " + Math.round(e.driveMin) + " min drive" : "") +
           (function () {
