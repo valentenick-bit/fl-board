@@ -4083,7 +4083,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 731;
+    window.BOARD_VER = 732;
 
     
     function communityShort() {
@@ -10930,25 +10930,15 @@ function currentRotation() {
     }
     window.selectEat = selectEat;
     window.selectGolf = selectGolf;
-    function pinMapSrc(lat, lon, name, placeId) {
+        function pinMapSrc(lat, lon, name, placeId) {
       lat = Number(lat); lon = Number(lon);
-      var key = typeof gmapsKey === "function" ? gmapsKey() : "";
-      if (key && placeId) {
-        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) +
-          "&q=place_id:" + encodeURIComponent(placeId) + "&zoom=14";
-      }
-      if (key && isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        var q = name ? encodeURIComponent(String(name)) + "@" + lat.toFixed(6) + "," + lon.toFixed(6)
-          : (lat.toFixed(6) + "," + lon.toFixed(6));
-        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) +
-          "&q=" + q + "&zoom=14";
-      }
+      var q;
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        var label = name ? encodeURIComponent(String(name)) + "@" : "";
-        return "https://maps.google.com/maps?q=" + label + lat.toFixed(6) + "," + lon.toFixed(6) +
-          "&ll=" + lat.toFixed(6) + "," + lon.toFixed(6) + "&z=14&hl=en&output=embed";
+        q = (name ? String(name) + " @" : "") + lat.toFixed(5) + "," + lon.toFixed(5);
+      } else {
+        q = name || "Englewood FL";
       }
-      return "";
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
     }
     function pinNearHome(lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -10971,20 +10961,13 @@ function currentRotation() {
     }
     function venueMapSrc(name, addr, lat, lon, placeId) {
       lat = Number(lat); lon = Number(lon);
-      var key = typeof gmapsKey === "function" ? gmapsKey() : "";
-      if (key && placeId) {
-        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) +
-          "&q=place_id:" + encodeURIComponent(placeId) + "&zoom=14";
+      var q = "";
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        q = (name ? String(name) + " @" : "") + lat.toFixed(5) + "," + lon.toFixed(5);
+      } else {
+        q = (typeof venueQuery === "function" ? venueQuery(name, addr) : [name, addr].filter(Boolean).join(", "));
       }
-      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1 && typeof pinMapSrc === "function") {
-        return pinMapSrc(lat, lon, name, placeId);
-      }
-      var q = venueQuery(name, addr);
-      if (key && q) {
-        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) +
-          "&q=" + encodeURIComponent(q) + "&zoom=14";
-      }
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=14&hl=en&iwloc=A&output=embed";
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q || "Englewood FL") + "&z=15&hl=en&iwloc=A&output=embed";
     }
     function venueMapLink(name, addr, lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -15144,6 +15127,17 @@ function mustEats() {
             var ok = !hide && bars >= 4;
             if (typeof noteFeed === "function") noteFeed("today-go", ok, hide ? "When to go hidden" : (bars + " activity bars"));
             return hide ? "hidden" : (bars + " bars");
+          })()],
+          ["venue-maps", (function () {
+            var ids = ["eat-map-frame","golf-map-frame","map-pop-frame"];
+            var bad = "";
+            ids.forEach(function (id) {
+              var el = document.getElementById(id);
+              var src = el && el.src || "";
+              if (/embed\/v1/.test(src)) bad = id + " embed api";
+            });
+            if (typeof noteFeed === "function") noteFeed("venue-maps", !bad, bad || "google embed");
+            return bad || "ok";
           })()],
           ["maps-visual", (function () {
             var bad = typeof mapsLooksBroken === "function" ? mapsLooksBroken() : "";
