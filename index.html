@@ -4045,7 +4045,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 721;
+    window.BOARD_VER = 722;
     (function pullRefresh() {
       var startY = 0, pulling = false, armed = false;
       var hint = document.getElementById("ptr");
@@ -4937,7 +4937,7 @@ Cart shop:</textarea>
       var s = document.createElement("script");
       s.id = "gmaps-js";
       s.async = true;
-      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&callback=__commonsGmaps";
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places&callback=__commonsGmaps";
       s.onerror = function () { finishGmaps(false); };
       document.head.appendChild(s);
     }
@@ -8777,7 +8777,7 @@ function currentRotation() {
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
     function loadRots() {
-      var dailyPool = window.ROT_DAILY_POOL || ["now","tenday","land","marine","sky","ent","eats","golf","wink","house"];
+      var dailyPool = window.ROT_DAILY_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
       var stormPool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts"];
       var def = window.ROT_DEFAULTS || { normal: dailyPool.slice(0, 8), storm: stormPool.slice() };
       var alias = {
@@ -8798,9 +8798,19 @@ function currentRotation() {
       }
       var s = null;
       try { s = JSON.parse(localStorage.getItem("bw-rots") || "null"); } catch (e) { s = null; }
+      function mergeMissing(saved, defaults, pool) {
+        var out = clean(saved, pool, defaults);
+        (defaults || []).forEach(function (id, idx) {
+          if (!id || out.indexOf(id) >= 0 || pool.indexOf(id) < 0) return;
+          var prev = defaults[idx - 1];
+          var at = prev && out.indexOf(prev) >= 0 ? out.indexOf(prev) + 1 : Math.min(idx, out.length);
+          out.splice(at, 0, id);
+        });
+        return out;
+      }
       var out = {
-        normal: clean(s && s.normal, dailyPool, def.normal),
-        storm: clean(s && s.storm, stormPool, def.storm)
+        normal: mergeMissing(s && s.normal, def.normal, dailyPool),
+        storm: mergeMissing(s && s.storm, def.storm, stormPool)
       };
       try { localStorage.setItem("bw-rots", JSON.stringify(out)); } catch (eS) {}
       return out;
@@ -13930,7 +13940,7 @@ function mustEats() {
       if (n) n.innerHTML = rowHtml("normal", r.normal);
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
-    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","ent","eats","golf","wink","house"];
+    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
     var ROT_STORM_POOL = ["tenday","storms","marine","contacts"];
     var ROT_AUTO_NOTE = {
       tenday: "radar lives on this page; lightning swaps into that frame when it is close",
@@ -15060,6 +15070,18 @@ function mustEats() {
           ["tick-warn", (document.getElementById("alerttext") && (document.getElementById("alerttext").textContent || "").trim()) ? "on" : "off"],
           ["tick-break", (document.getElementById("breaktext") && (document.getElementById("breaktext").textContent || "").trim()) ? "on" : "off"],
           ["rotation-on", (typeof rotateList === "function" ? rotateList() : []).join(">") || ""],
+          ["rot-comm", (function () {
+            var list = typeof rotateList === "function" ? rotateList() : [];
+            var on = list.indexOf("comm") >= 0;
+            if (typeof noteFeed === "function") noteFeed("rot-comm", on, on ? "Community in rotation" : "Community missing from this device rotation");
+            return on ? "in loop" : "MISSING";
+          })()],
+          ["maps-visual", (function () {
+            var bad = typeof mapsLooksBroken === "function" ? mapsLooksBroken() : "";
+            if (typeof noteFeed === "function") noteFeed("maps-visual", !bad, bad || "no overlay");
+            if (bad && typeof noteFeed === "function") noteFeed("traffic", false, bad);
+            return bad || "ok";
+          })()],
           ["js-ready", window.__rotStarted ? "rotation started" : "rotation not started"],
           ["header", (window.__headerPlan && window.__headerPlan.text) || (window.__feeds && window.__feeds.header && window.__feeds.header.detail) || ""],
           ["sources", document.querySelectorAll("#source-list .card").length ? (document.querySelectorAll("#source-list .card").length + " sources") : ""],
@@ -17980,6 +18002,18 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       if (typeof noteFeed === "function") noteFeed("gmaps", false, "API not enabled on this key");
       if (typeof noteFeed === "function") noteFeed("traffic", false, "maps api disabled");
     };
+    
+    function mapsLooksBroken() {
+      if (window.__gmapsAuthFail) return "auth fail";
+      var ids = ["traffic-gmap","traffic-map","eat-map-frame","golf-map-frame","map-pop-frame"];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (!el) continue;
+        if (el.querySelector(".gm-err-container, .gm-err-message, .gmap-fail")) return "google error overlay";
+        if (/API is not activated|rejected your request|Maps Platform rejected/i.test(el.textContent || "")) return "google reject banner";
+      }
+      return "";
+    }
     function mapsPaidOn() {
       var s = typeof getSet === "function" ? getSet() : {};
       return !!(String(s.gmapsKey || "").trim() && s.gmapsOn !== "0");
