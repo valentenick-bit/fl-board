@@ -4127,7 +4127,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 744;
+    window.BOARD_VER = 745;
 
     
     function communityShort() {
@@ -14655,12 +14655,27 @@ function mustEats() {
       } catch (e) {}
     })();
 
-    function localNewsRss() {
-      var place = (typeof homePlace === "function" ? homePlace() : "Englewood");
+    function newsSearchPlace() {
       var st = (typeof homeState === "function" ? homeState() : "FL");
-      var zip = (getSet().zip || "");
-      var q = encodeURIComponent('"' + place + '" ' + st + " when:7d");
-      return "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
+      var zip = String((getSet() || {}).zip || "").slice(0, 5);
+      var city = "";
+      if (typeof ZIP_CITY !== "undefined" && zip && ZIP_CITY[zip]) {
+        city = String(ZIP_CITY[zip]).split(",")[0].trim();
+      }
+      if (!city) {
+        city = (typeof homePlace === "function" ? homePlace() : "") || "";
+        city = String(city).replace(/,.*$/, "").trim();
+      }
+      if (!city || /^(florida|fl|united states|usa|home)$/i.test(city) || (typeof looksLikeStreet === "function" && looksLikeStreet(city))) {
+        city = "Englewood";
+        if (st === "CT") city = "South Windsor";
+      }
+      return { city: city, st: st, zip: zip };
+    }
+    function localNewsRss() {
+      var n = newsSearchPlace();
+      var q = '"' + n.city + '" ' + n.st + (n.zip ? " OR " + n.zip : "") + " when:7d";
+      return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
     }
     (function localHeadlines() {
       var box = document.getElementById("wink-list");
@@ -17597,7 +17612,23 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
         return out;
       }
       function rssXml(url) {
-        return fetch(url).then(function (r) { return r.text(); }).then(parseRss).catch(function () { return []; });
+        var urls = [url];
+        if (url.indexOf("corsproxy.io") < 0 && url.indexOf("allorigins") < 0) {
+          urls.push("https://corsproxy.io/?" + encodeURIComponent(url));
+        }
+        var i = 0;
+        function next() {
+          if (i >= urls.length) return Promise.resolve([]);
+          return fetch(urls[i++], { cache: "no-store" }).then(function (r) {
+            if (!r.ok) throw new Error("rss " + r.status);
+            return r.text();
+          }).then(function (xml) {
+            var rows = parseRss(xml);
+            if (rows.length) return rows;
+            throw new Error("empty rss");
+          }).catch(function () { return next(); });
+        }
+        return next();
       }
       function isBreak(it) {
         var title = String(it.title || "");
@@ -17647,6 +17678,9 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           hits.push(h);
         });
         hits = hits.slice(0, 10);
+        if (typeof noteFeed === "function") {
+          noteFeed("breaking", !!hits.length, hits.length + " · fox " + foxHits.length + " · local " + localHits.length + " · desk " + (window.__deskBreak || []).length);
+        }
         if (!hits.length) {
           bar.classList.remove("on");
           txt.setAttribute("data-hash", "");
