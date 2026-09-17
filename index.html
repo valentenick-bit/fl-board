@@ -3762,7 +3762,13 @@ Cart shop:</textarea>
             <button type="button" data-v="1">On</button>
           </div>
         </div>
-        <p class="hint">Warning uses the loud two-tone. Civic is a short two-note ding for AMBER and school alerts. Breaking stays silent unless you turn that chime on.</p>
+        <div class="set-line"><label>Scanner on school / Blue</label>
+          <div class="set-row" id="set-scancivic">
+            <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
+          </div>
+        </div>
+        <p class="hint">Warning uses the loud two-tone. Civic is a short two-note ding. NOAA radio also keys for IPAWS and AMBER. The police scanner only auto-starts for a school lock-in or Blue alert, and only if this switch is on. Breaking has no radio channel.</p>
         <div class="set-line"><label>Radio on load</label>
           <div class="set-row" id="set-radioauto">
             <button type="button" data-v="0">Off</button>
@@ -4121,7 +4127,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 738;
+    window.BOARD_VER = 740;
 
     
     function communityShort() {
@@ -4359,7 +4365,7 @@ Cart shop:</textarea>
     window.__wxRisk = window.__wxRisk || { alert: false, cane: false, bolt: false, hurr: false };
     var SET_DEFAULTS = {
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
-      station: "", vol: "whisper", noaa: "1", radioauto: "1", civicChime: "1", breakChime: "0",
+      station: "", vol: "whisper", noaa: "1", radioauto: "1", civicChime: "1", breakChime: "0", scanCivic: "0",
       zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1",
       community: "",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
@@ -10970,12 +10976,13 @@ function currentRotation() {
     window.selectGolf = selectGolf;
         function pinMapSrc(lat, lon, name, placeId) {
       lat = Number(lat); lon = Number(lon);
+      var q;
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        var pair = lat.toFixed(6) + "," + lon.toFixed(6);
-        return "https://maps.google.com/maps?q=" + pair + "&ll=" + pair + "&z=16&hl=en&t=m&output=embed";
+        q = (name ? String(name) + " @" : "") + lat.toFixed(5) + "," + lon.toFixed(5);
+      } else {
+        q = name || "Englewood FL";
       }
-      var q = name || (typeof homePlace === "function" && homePlace()) || "Englewood FL";
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
     }
     function pinNearHome(lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -11004,13 +11011,13 @@ function currentRotation() {
     }
     function venueMapSrc(name, addr, lat, lon, placeId) {
       lat = Number(lat); lon = Number(lon);
-      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        var pair = lat.toFixed(6) + "," + lon.toFixed(6);
-        return "https://maps.google.com/maps?q=" + pair + "&ll=" + pair + "&z=16&hl=en&t=m&output=embed";
-      }
       var q = (typeof venueQuery === "function") ? venueQuery(name, addr) : [addr, name].filter(Boolean).join(", ");
       if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=16&hl=en&iwloc=A&output=embed";
+      var url = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        url += "&ll=" + lat.toFixed(5) + "," + lon.toFixed(5);
+      }
+      return url;
     }
     function venueMapLink(name, addr, lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -14280,6 +14287,7 @@ function mustEats() {
         mark("set-noaa", s.noaa);
         mark("set-civicchime", s.civicChime);
         mark("set-breakchime", s.breakChime);
+        mark("set-scancivic", s.scanCivic);
         mark("set-radioauto", s.radioauto);
         mark("set-camnight", s.camNight);
         mark("set-wxradar", s.wxradar);
@@ -14471,6 +14479,7 @@ function mustEats() {
       tap("set-noaa", "noaa");
       tap("set-civicchime", "civicChime");
       tap("set-breakchime", "breakChime");
+      tap("set-scancivic", "scanCivic");
       tap("set-radioauto", "radioauto");
       tap("set-camnight", "camNight");
       tap("set-wxradar", "wxradar", function () { if (typeof syncWxMapFrame === "function") syncWxMapFrame(); });
@@ -19290,7 +19299,19 @@ function homeCountyGuess() {
           } else if (window.__nwrAlert) {
             restorePrev();
           }
-        })(!!isWarnEarly);
+                var nwrNeed = !!isWarnEarly ||
+          ((window.__publicSafety || []).length > 0) ||
+          ((window.__civicAlerts || []).some(function (x) { return /amber|child/.test(String(x.kind || "")); }));
+        })(nwrNeed);
+        (function syncScanner() {
+          var s = typeof getSet === "function" ? getSet() : {};
+          if (s.scanCivic !== "1") return;
+          if (nwrNeed) return;
+          var needScan = (window.__schoolAlerts || []).length > 0 ||
+            (window.__civicAlerts || []).some(function (x) { return String(x.kind || "") === "blue"; });
+          if (!needScan) return;
+          if (typeof playStation === "function") playStation("scan:30021", "Police", { keepSaved: true });
+        })();
         if (isStormRot) {
           window.__storm = true;
           pages = warnList();
