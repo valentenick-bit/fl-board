@@ -932,7 +932,7 @@
     }
     html.phone #eat-list .ev-body, html.phone #eat-list .eat-why { overflow-wrap:anywhere; word-break:break-word; }
     
-    #eats .split-list, #golf .split-list { max-height:none; }
+    #eats .split-list, #golf .split-list { max-height:none; overflow:visible; }
     #eats .split-list { display:flex; flex-direction:column; gap:10px; }
 
     #eat-list, #golf-list { min-width:0; }
@@ -2125,7 +2125,8 @@
     #radar-home-pin { display:none !important; }
 
     .split-board { display:grid; grid-template-columns:minmax(230px,34%) 1fr; gap:12px; align-items:stretch; min-height:calc(100dvh - 230px); }
-    .split-list { overflow:auto; max-height:calc(100dvh - 230px); padding-right:4px; }
+    .split-list { overflow:visible; max-height:none; padding-right:0; }
+    #ent-list.split-list, #today-do.split-list { overflow:auto; max-height:calc(100dvh - 230px); padding-right:4px; }
     .split-frames { display:grid; grid-template-rows:1fr 1fr; gap:10px; min-height:280px; }
     .split-frame { display:flex; flex-direction:column; min-height:0; background:rgba(255,255,255,.55); border:1px solid rgba(26,58,82,.12); border-radius:16px; overflow:hidden; }
     html.dark .split-frame { background:rgba(12,22,34,.55); border-color:rgba(255,255,255,.1); }
@@ -2166,7 +2167,7 @@
       background:#dce8e4;
       z-index:3;
     }
-    #eats .split-list, #golf .split-list { max-height:min(52vh, 480px); overflow:auto; }
+    #eats .split-list, #golf .split-list { max-height:none; overflow:visible; }
     .mid-frame {
       width:min(920px, 100%);
       margin:16px auto 0;
@@ -4194,7 +4195,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 761;
+    window.BOARD_VER = 763;
 
     
     function communityShort() {
@@ -5492,6 +5493,20 @@ Cart shop:</textarea>
       var m = raw.match(/\b([A-Z]{2})\s+\d{5}/) || raw.match(/,\s*([A-Z]{2})\s*$/);
       if (m) return m[1];
       return "";
+    }
+    function homeStateName() {
+      var map = { AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming",DC:"District of Columbia" };
+      return map[(typeof homeState === "function" && homeState()) || ""] || "";
+    }
+    function textHitsHomeState(text) {
+      var blob = String(text || "").replace(/\s+/g, " ");
+      var low = blob.toLowerCase();
+      var ab = (typeof homeState === "function" && homeState()) || "";
+      var name = (typeof homeStateName === "function" && homeStateName()) || "";
+      if (/nationwide|nationally|all 50 states|united states|\bu\.s\.\b|across the (country|nation)/i.test(blob)) return true;
+      if (name && low.indexOf(name.toLowerCase()) >= 0) return true;
+      if (ab && new RegExp("(^|[^A-Za-z])" + ab + "([^A-Za-z]|$)", "i").test(blob)) return true;
+      return false;
     }
 function gatorRange() {
       return /^(FL|GA|AL|MS|LA|SC|NC|TX|AR|OK)$/.test(homeState());
@@ -19821,7 +19836,11 @@ function homeCountyGuess() {
         });
         fetchNewsQuery("NTAS OR \"national terrorism advisory\" when:7d", function (items) {
           items = (items || []).filter(function (x) {
-            return /ntas|national terrorism advisory|terrorism advisory system/i.test(x.title || "");
+            var ttl = String(x.title || "");
+            if (!/ntas|national terrorism advisory|terrorism advisory system/i.test(ttl)) return false;
+            if (/no current|expired|what is ntas|explained|history of|downgraded/i.test(ttl)) return false;
+            if (!/elevated|imminent|current bulletin|issues? an? ntas|issued/i.test(ttl)) return false;
+            return true;
           }).slice(0, 1);
           setDeskBreak("NTAS", items.map(function (x) {
             return { src: "NTAS", title: speakAlert({ kind: "ntas", title: "National threat advisory", body: x.title }) };
@@ -19830,12 +19849,14 @@ function homeCountyGuess() {
         });
         fetchNewsQuery("CDC \"health alert\" OR HAN outbreak United States when:7d", function (items) {
           var tick = (items || []).filter(function (x) {
-            return /outbreak|emergency|nationwide increase|health alert network/i.test(x.title || "");
+            var ttl = String(x.title || "") + " " + String(x.description || x.desc || "");
+            if (!/outbreak|emergency|nationwide increase|health alert network|\bhan\b/i.test(ttl)) return false;
+            return typeof textHitsHomeState === "function" ? textHitsHomeState(ttl) : false;
           }).slice(0, 1);
           setDeskBreak("CDC", tick.map(function (x) {
             return { src: "CDC", title: speakAlert({ kind: "han", title: "Health alert", body: x.title }) };
           }));
-          newsToCard("han-card", "live-han", "han", items, true);
+          newsToCard("han-card", "live-han", "han", tick, true);
         });
         fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\") school (" + place + " OR " + st + ") when:2d", function (items) {
           items = (items || []).filter(function (x) { return /lockdown|lockout|shelter in place|school/i.test(x.title || ""); });
@@ -19892,7 +19913,10 @@ function homeCountyGuess() {
           if (x.state) return "Recalled from " + x.state;
           return "May be on store shelves";
         }
-        var parsed = ((d && d.results) || []).map(function (x) {
+        var parsed = ((d && d.results) || []).filter(function (x) {
+          var dist = ((x && x.distribution_pattern) || "") + " " + ((x && x.state) || "") + " " + ((x && x.product_description) || "");
+          return typeof textHitsHomeState === "function" ? textHitsHomeState(dist) : true;
+        }).map(function (x) {
           var rank = clsRank(x.classification);
           var product = shortProduct(x.product_description);
           var reason = shortReason(x.reason_for_recall);
