@@ -4195,7 +4195,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 763;
+    window.BOARD_VER = 764;
 
     
     function communityShort() {
@@ -19539,9 +19539,15 @@ function homeCountyGuess() {
     window.pollCivic = pollCivic;
     function fetchNwsAlerts() {
       var pt = homePoint();
+      var st = (typeof homeState === "function" && homeState()) || "FL";
+      var raw = "https://api.weather.gov/alerts/active?point=" + pt;
+      var area = "https://api.weather.gov/alerts/active?area=" + encodeURIComponent(st);
       var urls = [
-        "https://api.weather.gov/alerts/active?point=" + pt,
-        "https://corsproxy.io/?" + encodeURIComponent("https://api.weather.gov/alerts/active?point=" + pt)
+        raw,
+        area,
+        "https://corsproxy.io/?" + encodeURIComponent(raw),
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw),
+        "https://corsproxy.io/?" + encodeURIComponent(area)
       ];
       var i = 0;
       function next() {
@@ -19761,6 +19767,10 @@ function homeCountyGuess() {
         setTicker(txt, body, tickSpeedPx());
         writeBriefing();
       }).catch(function (err) {
+        if (window.__nwsAlerts && window.__nwsAlerts.length) {
+          if (typeof touchFeed === "function") touchFeed("alerts", true, "cached · fetch failed");
+          return;
+        }
         if (typeof touchFeed === "function") touchFeed("alerts", false, "NWS alerts fetch failed" + (err && err.message ? (" · " + err.message) : ""));
       });
     }
@@ -19924,7 +19934,14 @@ function homeCountyGuess() {
           var cls = rank === 1 ? "Class I" : rank === 2 ? "Class II" : rank === 3 ? "Class III" : "FDA";
           var card = cls + " · " + product + (reason ? " — " + reason : "") + ". " + whereSold(x) + (firm ? ". " + firm : "") + ".";
           var tick = cls + " food recall. " + product + ". " + (reason ? reason + ". " : "") + whereSold(x) + ". If you have it, do not eat it — throw it out or return it.";
-          return { rank: rank, date: x.report_date || x.recall_initiation_date || "", card: card, tick: tick };
+          var dist = String(x.distribution_pattern || "");
+          var named = false;
+          try {
+            var ab = (typeof homeState === "function" && homeState()) || "";
+            var nm = (typeof homeStateName === "function" && homeStateName()) || "";
+            named = !!( (nm && dist.toLowerCase().indexOf(nm.toLowerCase()) >= 0) || (ab && new RegExp("(^|[^A-Za-z])" + ab + "([^A-Za-z]|$)", "i").test(dist)) );
+          } catch (eN) {}
+          return { rank: rank, date: x.report_date || x.recall_initiation_date || "", card: card, tick: tick, named: named };
         }).filter(function (x) { return x.tick; }).sort(function (a, b) {
           if (a.rank !== b.rank) return a.rank - b.rank;
           return String(b.date).localeCompare(String(a.date));
@@ -19932,7 +19949,9 @@ function homeCountyGuess() {
         var on = parsed.length > 0;
         setQuietCard("recall-card", "live-recall", on, parsed.slice(0, 4).map(function (x) { return x.card; }).join(" "));
         if (typeof noteFeed === "function") noteFeed("recall", true, on ? (parsed.length + " ongoing · " + (parsed[0].rank === 1 ? "Class I" : "Class " + parsed[0].rank)) : "none");
-        setDeskBreak("FDA", parsed.filter(function (x) { return x.rank <= 2; }).map(function (x) {
+        var forTick = parsed.filter(function (x) { return x.rank === 1 && x.named; });
+        if (!forTick.length) forTick = parsed.filter(function (x) { return x.rank === 1; }).slice(0, 1);
+        setDeskBreak("FDA", forTick.slice(0, 2).map(function (x) {
           return { src: "FDA", title: x.tick };
         }));
       }).catch(function () {
