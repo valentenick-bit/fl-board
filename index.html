@@ -4195,7 +4195,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 764;
+    window.BOARD_VER = 765;
 
     
     function communityShort() {
@@ -19543,18 +19543,17 @@ function homeCountyGuess() {
       var raw = "https://api.weather.gov/alerts/active?point=" + pt;
       var area = "https://api.weather.gov/alerts/active?area=" + encodeURIComponent(st);
       var urls = [
+        "/nws-alerts?point=" + encodeURIComponent(pt) + "&area=" + encodeURIComponent(st),
         raw,
         area,
         "https://corsproxy.io/?" + encodeURIComponent(raw),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw),
-        "https://corsproxy.io/?" + encodeURIComponent(area)
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw)
       ];
       var i = 0;
       function next() {
         if (i >= urls.length) return Promise.reject(new Error("nws all urls failed"));
         var u = urls[i++];
-        var hdrs = u.indexOf("https://api.weather.gov") === 0 ? { Accept: "application/geo+json" } : {};
-        return fetch(u, { cache: "no-store", headers: hdrs }).then(function (r) {
+        return fetch(u, { cache: "no-store" }).then(function (r) {
           if (!r.ok) throw new Error("nws " + r.status);
           return r.json();
         }).then(function (d) {
@@ -19860,8 +19859,12 @@ function homeCountyGuess() {
         fetchNewsQuery("CDC \"health alert\" OR HAN outbreak United States when:7d", function (items) {
           var tick = (items || []).filter(function (x) {
             var ttl = String(x.title || "") + " " + String(x.description || x.desc || "");
-            if (!/outbreak|emergency|nationwide increase|health alert network|\bhan\b/i.test(ttl)) return false;
-            return typeof textHitsHomeState === "function" ? textHitsHomeState(ttl) : false;
+            if (!/outbreak|emergency|health alert network|\bhan\b/i.test(ttl)) return false;
+            var ab = (typeof homeState === "function" && homeState()) || "";
+            var nm = (typeof homeStateName === "function" && homeStateName()) || "";
+            if (nm && ttl.toLowerCase().indexOf(nm.toLowerCase()) >= 0) return true;
+            if (ab && new RegExp("(^|[^A-Za-z])" + ab + "([^A-Za-z]|$)", "i").test(ttl)) return true;
+            return false;
           }).slice(0, 1);
           setDeskBreak("CDC", tick.map(function (x) {
             return { src: "CDC", title: speakAlert({ kind: "han", title: "Health alert", body: x.title }) };
@@ -19950,7 +19953,6 @@ function homeCountyGuess() {
         setQuietCard("recall-card", "live-recall", on, parsed.slice(0, 4).map(function (x) { return x.card; }).join(" "));
         if (typeof noteFeed === "function") noteFeed("recall", true, on ? (parsed.length + " ongoing · " + (parsed[0].rank === 1 ? "Class I" : "Class " + parsed[0].rank)) : "none");
         var forTick = parsed.filter(function (x) { return x.rank === 1 && x.named; });
-        if (!forTick.length) forTick = parsed.filter(function (x) { return x.rank === 1; }).slice(0, 1);
         setDeskBreak("FDA", forTick.slice(0, 2).map(function (x) {
           return { src: "FDA", title: x.tick };
         }));
