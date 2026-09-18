@@ -2466,12 +2466,15 @@
     }
     #eats .land-map-frame iframe,
     #golf .land-map-frame iframe,
+    #eat-gmap, #golf-gmap, #map-pop-gmap { display:none !important; }
+    #eat-map-frame, #golf-map-frame, #map-pop-frame { z-index:3; }
+    .map-place { display:none !important; }
     #eat-gmap, #golf-gmap {
       position:absolute; inset:0; width:100%; height:100% !important; min-height:180px;
       border:0; border-radius:16px; display:block;
     }
     
-    .map-place {
+    .map-place { display:none !important; 
       position:absolute; top:10px; left:10px; z-index:6;
       max-width:min(72%, 280px);
       background:#fff; color:#1b2a4a;
@@ -4194,7 +4197,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 753;
+    window.BOARD_VER = 755;
 
     
     function communityShort() {
@@ -10978,8 +10981,8 @@ function currentRotation() {
       return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon +
         "&z=" + (z || 16) + (sat ? "&t=k" : "&t=m") + "&hl=en&output=embed";
     }
-    function placeMapSrc(name, addr, lat, lon) {
-      if (typeof venueMapSrc === "function") return venueMapSrc(name, addr, lat, lon);
+    function placeMapSrc(name, addr, lat, lon, placeId) {
+      if (typeof venueMapSrc === "function") return venueMapSrc(name, addr, lat, lon, placeId);
       var q = [name, addr].filter(Boolean).join(", ");
       return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=14&hl=en&iwloc=A&output=embed";
     }
@@ -10995,7 +10998,7 @@ function currentRotation() {
       });
       if (!r) return;
       var mapA = document.getElementById("eat-map-open");
-      fillVenueMap("eat-gmap", "eat-map-frame", r.name, r.addr, r.lat, r.lon);
+      fillVenueMap("eat-gmap", "eat-map-frame", r.name, r.addr, r.lat, r.lon, r.placeId);
       if (mapA) mapA.href = placeMapLink(r.name, r.addr, r.lat, r.lon);
       if (r.website || r.placeId) return;
       if (typeof loadGmaps === "function") loadGmaps(function (ok) {
@@ -11035,7 +11038,7 @@ function currentRotation() {
       });
       if (!r) return;
       var mapA = document.getElementById("golf-map-open");
-      fillVenueMap("golf-gmap", "golf-map-frame", r.name, r.addr, r.lat, r.lon);
+      fillVenueMap("golf-gmap", "golf-map-frame", r.name, r.addr, r.lat, r.lon, r.placeId);
       if (mapA) mapA.href = placeMapLink(r.name, r.addr, r.lat, r.lon);
     }
     window.selectEat = selectEat;
@@ -11119,29 +11122,31 @@ function currentRotation() {
       el.hidden = false;
       el.innerHTML = (name ? "<b>" + name.replace(/</g,"") + "</b>" : "") + (addr ? "<span>" + addr.replace(/</g,"") + "</span>" : "");
     }
-    function fillVenueMap(boxId, iframeId, name, addr, lat, lon) {
-      var painted = pinLiveMap(boxId, iframeId, lat, lon, name);
+    function fillVenueMap(boxId, iframeId, name, addr, lat, lon, placeId) {
+      var box = document.getElementById(boxId);
       var frame = document.getElementById(iframeId);
-      if (!painted && frame && typeof placeMapSrc === "function") {
-        frame.src = placeMapSrc(name, addr, lat, lon);
-      } else if (!painted && typeof loadGmaps === "function") {
-        loadGmaps(function (ok) {
-          if (ok) pinLiveMap(boxId, iframeId, lat, lon, name);
-        });
+      if (box) { box.hidden = true; box.style.display = "none"; }
+      ["eat-place","golf-place","map-pop-place"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) { el.hidden = true; el.innerHTML = ""; }
+      });
+      if (frame) {
+        frame.hidden = false;
+        frame.style.display = "";
+        frame.src = venueMapSrc(name, addr, lat, lon, placeId);
       }
-      var placeId = boxId === "eat-gmap" ? "eat-place" : boxId === "golf-gmap" ? "golf-place" : boxId === "map-pop-gmap" ? "map-pop-place" : "";
-      if (placeId) writeMapPlace(placeId, name, addr);
-      return painted;
+      return true;
     }
     function venueMapSrc(name, addr, lat, lon, placeId) {
-      lat = Number(lat); lon = Number(lon);
-      var q = (typeof venueQuery === "function") ? venueQuery(name, addr) : [addr, name].filter(Boolean).join(", ");
-      if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
-      var url = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&hl=en&iwloc=A&output=embed";
-      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        url += "&ll=" + lat.toFixed(5) + "," + lon.toFixed(5);
+      placeId = String(placeId || "").trim();
+      var q;
+      if (placeId && /^ChIJ/.test(placeId)) q = "place_id:" + placeId;
+      else {
+        q = [name, addr].filter(Boolean).join(", ");
+        if (!q && typeof venueQuery === "function") q = venueQuery(name, addr);
+        if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
       }
-      return url;
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&ie=UTF8&iwloc=A&output=embed";
     }
     function venueMapLink(name, addr, lat, lon) {
       lat = Number(lat); lon = Number(lon);
@@ -11228,11 +11233,8 @@ function currentRotation() {
       var pin = typeof resolveVenuePin === "function" ? resolveVenuePin(row.name, row.addr, row.lat, row.lon) : row;
       var src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon, row.placeId) : "";
       var link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon) : "";
-      window.__mapPopPin = { lat: pin.lat, lon: pin.lon, name: pin.name, addr: pin.addr || row.addr || "" };
-      if (document.documentElement.classList.contains("phone") && link && !(window.google && google.maps && isFinite(Number(pin.lat)))) {
-        window.open(link, "_blank");
-        return;
-      }
+      window.__mapPopPin = { lat: pin.lat, lon: pin.lon, name: pin.name, addr: pin.addr || row.addr || "", placeId: row.placeId };
+      src = venueMapSrc(pin.name, pin.addr || row.addr, pin.lat, pin.lon, row.placeId);
       if (typeof openMapPop === "function") {
         openMapPop(pin.name || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
       }
@@ -11252,19 +11254,11 @@ function currentRotation() {
       var noteEl = document.getElementById("map-pop-note");
       if (!pop || !frame) return;
       if (ttl) ttl.textContent = title || "Map";
-      var pin = window.__mapPopPin || {};
-      writeMapPlace("map-pop-place", pin.name || title, pin.addr || pin.q || "");
       var gbox = document.getElementById("map-pop-gmap");
-      var used = false;
-      if (gbox && window.__mapPopPin && pinLiveMap("map-pop-gmap", "map-pop-frame", window.__mapPopPin.lat, window.__mapPopPin.lon, title)) {
-        used = true;
-      }
-      if (!used) {
-        if (gbox) gbox.hidden = true;
-        frame.hidden = false;
-        frame.style.display = "";
-        frame.src = src || "about:blank";
-      }
+      if (gbox) gbox.hidden = true;
+      frame.hidden = false;
+      frame.style.display = "";
+      frame.src = src || "about:blank";
       if (link) link.innerHTML = links || "";
       if (noteEl) {
         if (note) { noteEl.innerHTML = note; noteEl.hidden = false; }
@@ -13859,7 +13853,8 @@ function mustEats() {
                 src: "places",
                 miles: milesOf(lat, lon),
                 lat: lat, lon: lon,
-                addr: p.vicinity || ""
+                addr: p.vicinity || "",
+                placeId: p.place_id || ""
               };
             }).filter(Boolean));
           });
