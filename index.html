@@ -1055,6 +1055,23 @@
     .wx-strip.stale { background:#eee8dc; color:#4a4538; }
 
     .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+    
+    .metric-table { display:flex; flex-direction:column; gap:0; margin:8px 0 12px; border:1px solid rgba(27,42,74,.12); border-radius:14px; overflow:hidden; background:rgba(255,255,255,.55); }
+    html.dark .metric-table { background:rgba(12,22,36,.45); border-color:rgba(255,255,255,.12); }
+    .metric-row { display:grid; grid-template-columns:7.2rem minmax(5.2rem,auto) minmax(88px,1fr); gap:8px; align-items:center; padding:7px 10px; border-bottom:1px solid rgba(27,42,74,.08); }
+    html.dark .metric-row { border-bottom-color:rgba(255,255,255,.08); }
+    .metric-row:last-child { border-bottom:0; }
+    .metric-row label { font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#5c6b7a; margin:0; }
+    html.dark .metric-row label { color:#9aa8b5; }
+    .metric-row strong { font-size:15px; font-weight:700; color:#1b2a4a; }
+    html.dark .metric-row strong { color:#e8eef4; }
+    .metric-row small { display:block; font-size:10px; color:#7a8794; font-weight:500; }
+    .metric-spark { height:30px; min-height:30px; }
+    .metric-spark svg { width:100%; height:30px; display:block; }
+    html.phone .metric-row { grid-template-columns:5.4rem minmax(4.4rem,auto) 1fr; padding:6px 8px; }
+    html.phone .metric-row label { font-size:10px; }
+    html.phone .metric-row strong { font-size:13px; }
+
     .tiles.facts { grid-template-columns:repeat(4,1fr); }
     .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:10px 0; }
     .tile { background:var(--card); border:1px solid var(--hair); border-radius:16px; padding:12px; min-height:76px; display:flex; flex-direction:column; justify-content:space-between; }
@@ -2848,34 +2865,20 @@
           <div class="hour">5p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>88&deg;</b></div>
           <div class="hour">8p<svg viewBox="0 0 32 32"><path d="M6 12h16" stroke="#5c6b7a" fill="none" stroke-width="2"/></svg><b>80&deg;</b></div>
         </div>
-        <div class="tiles facts">
-          <div class="tile"><label>Wind</label><strong id="live-wind">E 6 mph</strong></div>
-          <div class="tile"><label>Gusts</label><strong id="live-gusts">light</strong></div>
-          <div class="tile"><label>Peak wind</label><strong id="live-wind-peak">—</strong><small id="live-wind-peak-note"></small></div>
-          <div class="tile"><label>Humidity</label><strong id="live-rh">—</strong></div>
-          <div class="tile"><label>Dew point</label><strong id="live-dew">—</strong></div>
-          <div class="tile"><label>Pressure</label><strong id="live-pres">—</strong><small id="live-pres-note"></small></div>
-          <div class="tile"><label>Rain this month</label><strong id="live-rain-mo">—</strong></div>
-          <div class="tile"><label>UV</label><strong id="live-uv">—</strong></div>
-          <div class="tile" id="tile-vis"><label>Visibility</label><strong id="live-vis">—</strong><small id="live-vis-note"></small></div>
-        </div>
-        <div class="tile wide" style="margin-bottom:8px">
-          <label>UV index</label>
-          <div class="pbar uv"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" id="uv-needle" style="left:20%"><em id="uv-mark">—</em></i></div>
-          <div class="pbar-scale"><span>0</span><span>5</span><span>8</span><span>11+</span></div>
+        <div class="metric-table" id="wx-metrics">
+          <div class="metric-row"><label>Temp</label><strong id="live-temp-row">—</strong><div class="metric-spark hist" id="temp-chart"></div></div>
+          <div class="metric-row"><label>Feels</label><strong id="live-feels-row">—</strong><div class="metric-spark hist" id="feel-chart"></div></div>
+          <div class="metric-row"><label>Wind</label><strong id="live-wind">E 6 mph</strong><div class="metric-spark hist" id="wind-chart"></div></div>
+          <div class="metric-row"><label>Gusts</label><strong id="live-gusts">light</strong><div class="metric-spark hist" id="gust-chart"></div></div>
+          <div class="metric-row"><label>Peak wind</label><div><strong id="live-wind-peak">—</strong><small id="live-wind-peak-note"></small></div><div></div></div>
+          <div class="metric-row"><label>Humidity</label><strong id="live-rh">—</strong><div class="metric-spark hist" id="humid-chart"></div></div>
+          <div class="metric-row"><label>Dew point</label><strong id="live-dew">—</strong><div class="metric-spark hist" id="dew-chart"></div></div>
+          <div class="metric-row"><label>Pressure</label><div><strong id="live-pres">—</strong><small id="live-pres-note"></small></div><div class="metric-spark hist" id="pres-chart"></div></div>
+          <div class="metric-row"><label>Rain month</label><strong id="live-rain-mo">—</strong><div class="metric-spark hist" id="rainmo-chart"></div></div>
+          <div class="metric-row"><label>UV</label><strong id="live-uv">—</strong><div class="pbar uv" style="height:10px;margin:0"><span class="pseg uv0">Low</span><span class="pseg uv1">Mod</span><span class="pseg uv2">High</span><span class="pseg uv3">Ext</span><i class="pneedle" id="uv-needle" style="left:20%"><em id="uv-mark">—</em></i></div></div>
+          <div class="metric-row" id="tile-vis"><label>Visibility</label><div><strong id="live-vis">—</strong><small id="live-vis-note"></small></div><div class="metric-spark hist" id="vis-chart"></div></div>
         </div>
         </div>
-        </div>
-        <div class="marine-graphs">
-          <div class="card chart"><b>Humidity</b><span>Last day at the house</span>
-            <div class="tide hist" id="humid-chart"></div>
-          </div>
-          <div class="card chart"><b>Pressure</b><span>Last day at the house</span>
-            <div class="tide hist" id="pres-chart"></div>
-          </div>
-        </div>
-        <div class="card chart"><b>Rain</b><span>Hourly inches this month</span>
-          <div class="tide hist" id="rainmo-chart"></div>
         </div>
         <div class="tenday"></div>
       </section>
@@ -2891,17 +2894,17 @@
         </div>
         <div class="land-top-left">
         <p class="pill-key" id="land-nowline">Ground, air you walk in, and the crust under the house.</p>
-        <div class="tiles facts">
-          <div class="tile"><label>Air quality</label><strong id="live-aqi">—</strong><small id="live-aqi-note"></small></div>
-          <div class="tile" id="tile-heatrisk"><label>Heat risk</label><strong id="live-heatrisk">—</strong></div>
-          <div class="tile" id="tile-flood"><label>River / flood</label><strong id="live-flood">—</strong></div>
-          <div class="tile" id="tile-fog"><label>Dense fog</label><strong id="live-fog">—</strong></div>
-          <div class="tile" id="tile-firewx"><label>Fire weather</label><strong id="live-firewx">—</strong></div>
-          <div class="tile" id="tile-pollen"><label>Pollen</label><strong id="live-pollen">See local count</strong></div>
-          <div class="tile wx-extra" id="tile-frost"><label>Frost</label><strong id="live-frost">—</strong></div>
-          <div class="tile wx-extra" id="tile-freeze"><label>Freeze</label><strong id="live-freeze">—</strong></div>
-          <div class="tile wx-extra" id="tile-snow"><label>Snow 24h</label><strong id="live-snow">—</strong></div>
-          <div class="tile wx-extra" id="tile-ice"><label>Ice</label><strong id="live-ice">—</strong></div>
+        <div class="metric-table" id="land-metrics">
+          <div class="metric-row"><label>Air quality</label><div><strong id="live-aqi">—</strong><small id="live-aqi-note"></small></div><div class="metric-spark hist" id="aqi-chart"></div></div>
+          <div class="metric-row" id="tile-heatrisk"><label>Heat risk</label><strong id="live-heatrisk">—</strong><div></div></div>
+          <div class="metric-row" id="tile-flood"><label>River</label><strong id="live-flood">—</strong><div class="metric-spark hist" id="river-chart"></div></div>
+          <div class="metric-row" id="tile-fog"><label>Fog</label><strong id="live-fog">—</strong><div></div></div>
+          <div class="metric-row" id="tile-firewx"><label>Fire wx</label><strong id="live-firewx">—</strong><div></div></div>
+          <div class="metric-row" id="tile-pollen"><label>Pollen</label><strong id="live-pollen">See local count</strong><div></div></div>
+          <div class="metric-row wx-extra" id="tile-frost"><label>Frost</label><strong id="live-frost">—</strong><div></div></div>
+          <div class="metric-row wx-extra" id="tile-freeze"><label>Freeze</label><strong id="live-freeze">—</strong><div></div></div>
+          <div class="metric-row wx-extra" id="tile-snow"><label>Snow 24h</label><strong id="live-snow">—</strong><div></div></div>
+          <div class="metric-row wx-extra" id="tile-ice"><label>Ice</label><strong id="live-ice">—</strong><div></div></div>
         </div>
         </div>
         </div>
@@ -2916,23 +2919,16 @@
         <div class="card chart"><b id="tide-title">Tide</b><span id="live-tide-today">Loading tides…</span><span id="live-tide-station" hidden></span>
           <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/></svg></div>
         </div>
-        <div class="card chart"><b>Ocean surge</b><span id="live-surge">Loading water level…</span>
-          <div class="tide hist" id="surge-chart"></div>
         </div>
-        </div>
-        <div class="tiles facts">
-          <div class="tile"><label>Gulf water</label><strong id="live-sst">—</strong></div>
-          <div class="tile"><label>Inlet water</label><strong id="live-wtemp">—</strong></div>
-          <div class="tile"><label>Seas</label><strong id="live-seas">—</strong></div>
-          <div class="tile"><label>Small craft</label><strong id="live-craft">None</strong></div>
-        </div>
-        <div class="status-row">
-          <div class="status-chip"><label>Rip tide</label><strong id="live-rip">Typical</strong></div>
-          <div class="status-chip"><label>Red tide</label><strong id="live-redtide">Checking</strong><em id="live-redtide-age"></em></div>
-          <div class="status-chip"><label>Bacteria</label><strong id="live-bacteria">—</strong><em id="live-bacteria-age"></em></div>
-        </div>
-        <div class="card chart"><b>Gulf water history</b><span>Open-Meteo SST</span>
-          <div class="tide hist" id="wtemp-chart"></div>
+        <div class="metric-table" id="sea-metrics">
+          <div class="metric-row"><label>Surge</label><strong id="live-surge">Loading…</strong><div class="metric-spark hist" id="surge-chart"></div></div>
+          <div class="metric-row"><label>Gulf water</label><strong id="live-sst">—</strong><div class="metric-spark hist" id="wtemp-chart"></div></div>
+          <div class="metric-row"><label>Inlet</label><strong id="live-wtemp">—</strong><div></div></div>
+          <div class="metric-row"><label>Seas</label><strong id="live-seas">—</strong><div></div></div>
+          <div class="metric-row"><label>Small craft</label><strong id="live-craft">None</strong><div></div></div>
+          <div class="metric-row"><label>Rip tide</label><strong id="live-rip">Typical</strong><div></div></div>
+          <div class="metric-row"><label>Red tide</label><div><strong id="live-redtide">Checking</strong><em id="live-redtide-age"></em></div><div></div></div>
+          <div class="metric-row"><label>Bacteria</label><div><strong id="live-bacteria">—</strong><em id="live-bacteria-age"></em></div><div></div></div>
         </div>
         <div class="card"><b id="coast-title">On the water</b><span id="live-coastal">Gulf snapshot for a boat ride off the beach — seas, wind, and whether small craft should stay in.</span></div>
         <div class="card"><b id="fish-title">What’s biting</b><span id="live-fish">Loading the local bite…</span></div>
@@ -4187,7 +4183,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 758;
+    window.BOARD_VER = 759;
 
     
     function communityShort() {
@@ -15953,7 +15949,29 @@ function drawSurgeChart(points) {
       if (lab) lab.textContent = (last >= 0 ? "+" : "") + last.toFixed(2) + " ft vs predicted tide";
       drawHistChart("surge-chart", clean, "#e07a5f", -vmax, vmax, " ft");
     }
-function drawHistChart(id, points, color, ymin, ymax, unit) {
+
+    function drawSpark(id, points, color) {
+      var box = document.getElementById(id);
+      if (!box || !points || points.length < 2) return false;
+      var pts = points.filter(function (p) { return p && isFinite(p.t) && isFinite(p.v); }).sort(function (a, b) { return a.t - b.t; });
+      if (pts.length < 2) return false;
+      var now = Date.now();
+      pts = pts.filter(function (p) { return p.t <= now + 20 * 60 * 1000; });
+      if (pts.length < 2) return false;
+      var vals = pts.map(function (p) { return p.v; });
+      var ymin = Math.min.apply(null, vals);
+      var ymax = Math.max.apply(null, vals);
+      if (ymax === ymin) { ymin -= 1; ymax += 1; }
+      var w = 140, h = 28, pad = 2;
+      function X(i) { return pad + (i / (pts.length - 1)) * (w - 2 * pad); }
+      function Y(v) { return h - pad - ((v - ymin) / (ymax - ymin)) * (h - 2 * pad); }
+      var d = pts.map(function (p, i) { return (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(p.v).toFixed(1); }).join(" ");
+      box.innerHTML = '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none"><path d="' + d + '" fill="none" stroke="' + (color || "#2a9d8f") + '" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      box.setAttribute("data-n", String(pts.length));
+      return true;
+    }
+
+    function drawHistChart(id, points, color, ymin, ymax, unit) {
       var box = document.getElementById(id);
       if (!box || !points || points.length < 2) return;
       var pts = points.filter(function (p) { return p && !isNaN(p.t) && !isNaN(p.v); }).sort(function (a, b) { return a.t - b.t; });
@@ -16010,9 +16028,19 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       );
     }
 
+    
+    function syncWxMetricNow() {
+      var t = document.getElementById("live-temp");
+      var tr = document.getElementById("live-temp-row");
+      if (t && tr && t.textContent) tr.textContent = t.textContent.replace(/[^0-9.\-°]+/g, "") ? t.textContent : tr.textContent;
+      var f = document.getElementById("live-feels");
+      var fr = document.getElementById("live-feels-row");
+      if (f && fr && f.textContent) fr.textContent = f.textContent;
+    }
+
     function loadHistWx() {
       var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
-        "&hourly=relative_humidity_2m,surface_pressure,precipitation,visibility,cloud_cover,temperature_2m&current=visibility,cloud_cover&past_days=2&forecast_days=1&temperature_unit=fahrenheit&timezone=America%2FNew_York";
+        "&hourly=relative_humidity_2m,surface_pressure,precipitation,visibility,cloud_cover,temperature_2m,apparent_temperature,dew_point_2m,wind_speed_10m,wind_gusts_10m&current=visibility,cloud_cover&past_days=2&forecast_days=1&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FNew_York";
       fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
         var d = null;
         try { d = txt ? JSON.parse(txt) : null; } catch (e) { d = null; }
@@ -16047,30 +16075,42 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
           }
         }
         if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (eY) {}
+        if (typeof syncWxMetricNow === "function") try { syncWxMetricNow(); } catch (eS) {}
         var now = Date.now();
-        var hum = [], pres = [], rain = [];
+        var hum = [], pres = [], rain = [], temps = [], feels = [], dews = [], winds = [], gusts = [], vis = [];
+        var at = h.apparent_temperature || [];
+        var dp = h.dew_point_2m || [];
+        var ws = h.wind_speed_10m || [];
+        var wg = h.wind_gusts_10m || [];
+        var vv = h.visibility || [];
         for (var i = 0; i < times.length; i++) {
           var ts = new Date(times[i]).getTime();
           if (ts < now - 36 * 3600000 || ts > now + 10 * 60000) continue;
           if (rh[i] != null) hum.push({ t: ts, v: Number(rh[i]) });
           if (pr[i] != null) pres.push({ t: ts, v: Number(pr[i]) * 0.029529983 });
           if (pc[i] != null) rain.push({ t: ts, v: Number(pc[i]) / 25.4 });
+          if (tf[i] != null) temps.push({ t: ts, v: Number(tf[i]) });
+          if (at[i] != null) feels.push({ t: ts, v: Number(at[i]) });
+          if (dp[i] != null) dews.push({ t: ts, v: Number(dp[i]) });
+          if (ws[i] != null) winds.push({ t: ts, v: Number(ws[i]) });
+          if (wg[i] != null) gusts.push({ t: ts, v: Number(wg[i]) });
+          if (vv[i] != null) vis.push({ t: ts, v: Number(vv[i]) / 1609.34 });
         }
-        if (hum.length >= 8) {
-          var hmin = Math.min.apply(null, hum.map(function (p) { return p.v; }));
-          var hmax = Math.max.apply(null, hum.map(function (p) { return p.v; }));
-          drawHistChart("humid-chart", hum, "#2a9d8f", Math.max(0, hmin - 8), Math.min(100, hmax + 8), "%");
+        function sparkOrHist(id, pts, color, ymin, ymax, unit) {
+          if (pts.length < 4) return;
+          if (typeof drawSpark === "function") drawSpark(id, pts, color);
+          else if (typeof drawHistChart === "function") drawHistChart(id, pts, color, ymin, ymax, unit);
         }
-        if (pres.length >= 8) {
-          var lo = Math.min.apply(null, pres.map(function (p) { return p.v; })) - 0.08;
-          var hi = Math.max.apply(null, pres.map(function (p) { return p.v; })) + 0.08;
-          if (hi - lo < 0.2) { lo -= 0.1; hi += 0.1; }
-          drawHistChart("pres-chart", pres, "#1b2a4a", lo, hi, " inHg");
-        }
+        sparkOrHist("temp-chart", temps, "#c45c26");
+        sparkOrHist("feel-chart", feels, "#e07a5f");
+        sparkOrHist("wind-chart", winds, "#1b2a4a");
+        sparkOrHist("gust-chart", gusts, "#5c6b7a");
+        sparkOrHist("humid-chart", hum, "#2a9d8f");
+        sparkOrHist("dew-chart", dews, "#4a90a4");
+        sparkOrHist("pres-chart", pres, "#1b2a4a");
+        sparkOrHist("rainmo-chart", rain, "#4a90a4");
+        sparkOrHist("vis-chart", vis, "#8aa0b5");
         if (rain.length >= 8) {
-          var rmax = 0.15;
-          rain.forEach(function (p) { if (p.v > rmax) rmax = p.v; });
-          drawHistChart("rainmo-chart", rain, "#4a90a4", 0, rmax, " in");
           if (typeof noteFeed === "function") noteFeed("rain-chart", true, rain.length + " hours");
         } else if (typeof noteFeed === "function") noteFeed("rain-chart", false, "no 48h rain series");
         if (typeof noteFeed === "function") {
@@ -17273,6 +17313,7 @@ function drawHistChart(id, points, color, ymin, ymax, unit) {
       var uvEl = document.getElementById("live-uv");
       if (tempEl && tempF != null) { tempEl.innerHTML = fmtTempN(tempF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(tempEl, tempF); }
       window.__nowFeelF = feelF; if (feelEl && feelF != null) { feelEl.innerHTML = fmtTempN(feelF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(feelEl, feelF); }
+      if (typeof syncWxMetricNow === "function") try { syncWxMetricNow(); } catch (eM) {}
       if (windEl && wind != null) {
         var dir = typeof compassFromDeg === "function" ? compassFromDeg(om.current.wind_direction_10m) : "";
         windEl.textContent = typeof fmtWindLine === "function" ? fmtWindLine(dir, wind) : ((dir ? dir + " " : "") + wind + " mph");
