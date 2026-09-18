@@ -931,6 +931,10 @@
       max-width:100%; min-width:0; overflow:visible;
     }
     html.phone #eat-list .ev-body, html.phone #eat-list .eat-why { overflow-wrap:anywhere; word-break:break-word; }
+    
+    #eats .split-list, #golf .split-list { max-height:none; }
+    #eats .split-list { display:flex; flex-direction:column; gap:10px; }
+
     #eat-list, #golf-list { min-width:0; }
     html.phone #eat-list .eat-card, html.phone #eat-list .ev-card { max-width:100%; }
 
@@ -2980,37 +2984,13 @@
       </section>
       <section id="eats" class="page">
         <h2 data-k="Near the pin">Restaurants</h2>
-        <div class="land-top eat-top">
-          <div class="land-top-left">
-            <p class="pill-key" id="eat-count">Restaurants near home…</p>
-            <div class="split-list" id="eat-list"></div>
-          </div>
-          <div class="land-map-frame">
-            <div class="radar-crop radar-stage">
-              <div id="eat-gmap" class="gmap-box land-map-pane" hidden></div>
-              <iframe class="land-map-pane on" id="eat-map-frame" title="Restaurant map" src="about:blank" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
-              <div class="map-place" id="eat-place" hidden></div>
-            </div>
-            <p class="wx-map-cap"><b>Location</b><a id="eat-map-open" href="#" target="_blank" rel="noopener">Open map</a></p>
-          </div>
-        </div>
+        <p class="pill-key" id="eat-count">Restaurants near home…</p>
+        <div class="split-list" id="eat-list"></div>
       </section>
       <section id="golf" class="page">
         <h2 data-k="Near the pin">Golf</h2>
-        <div class="land-top golf-top">
-          <div class="land-top-left">
-            <p class="pill-key" id="golf-count">Courses near home…</p>
-            <div class="split-list" id="golf-list"></div>
-          </div>
-          <div class="land-map-frame">
-            <div class="radar-crop radar-stage">
-              <div id="golf-gmap" class="gmap-box land-map-pane" hidden></div>
-              <iframe class="land-map-pane on" id="golf-map-frame" title="Course location" src="about:blank" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
-              <div class="map-place" id="golf-place" hidden></div>
-            </div>
-            <p class="wx-map-cap"><b>Location</b><a id="golf-map-open" href="#" target="_blank" rel="noopener">Open map</a></p>
-          </div>
-        </div>
+        <p class="pill-key" id="golf-count">Courses near home…</p>
+        <div class="split-list" id="golf-list"></div>
       </section>
       <section id="comm" class="page">
         <h2 id="comm-title">Community</h2>
@@ -4207,7 +4187,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 756;
+    window.BOARD_VER = 757;
 
     
     function communityShort() {
@@ -11353,28 +11333,13 @@ function currentRotation() {
         openMapPop(pin.name || saddr || "Store", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
         return;
       }
-      var eatCard = e.target.closest && e.target.closest("#eat-list .eat-card");
-      if (eatCard) {
-        var name = eatCard.getAttribute("data-eat");
-        var row = (window.__eats || []).filter(function (x) { return x.name === name; })[0];
-        if (!row) {
-          row = { name: name, addr: eatCard.getAttribute("data-map"), lat: Number(eatCard.getAttribute("data-lat")), lon: Number(eatCard.getAttribute("data-lon")) };
-        }
-        if (typeof selectEat === "function") selectEat(row);
-        return;
-      }
-      var golfCard = e.target.closest && e.target.closest("#golf-list .eat-card");
-      if (golfCard) {
-        var gname = golfCard.getAttribute("data-golf");
-        var grow = (window.__golfs || []).filter(function (x) { return x.name === gname; })[0];
-        if (!grow) {
-          grow = { name: gname, addr: golfCard.getAttribute("data-map"), lat: Number(golfCard.getAttribute("data-lat")), lon: Number(golfCard.getAttribute("data-lon")) };
-        }
-        if (typeof selectGolf === "function") selectGolf(grow);
+      var eatCard = e.target.closest && e.target.closest("#eat-list .eat-card, #golf-list .eat-card");
+      if (eatCard && typeof openVenueMap === "function") {
+        openVenueMap(eatCard);
         return;
       }
       var venueEl = e.target.closest && e.target.closest(".map-hit[data-venue], #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-hh .card, #ent-list .card");
-      if (venueEl && !(e.target.closest && (e.target.closest("#eat-list .eat-card") || e.target.closest("#golf-list .eat-card")))) {
+      if (venueEl) {
         if (typeof openVenueMap === "function") { openVenueMap(venueEl); return; }
       }
       var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-hh .card, #ent-list .card");
