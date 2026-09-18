@@ -1069,22 +1069,20 @@
     .metric-spark { height:30px; min-height:30px; }
     .metric-spark svg { width:100%; height:30px; display:block; }
     .metric-row.has-chart {
-      grid-template-columns: 7.2rem 1fr;
-      grid-template-rows: auto 88px;
+      grid-template-columns: 6.2rem minmax(4.6rem,6.8rem) minmax(120px,1fr);
+      grid-template-rows: 80px;
       align-items:center;
-      padding-bottom:8px;
+      gap:8px 10px;
     }
     .metric-row.has-chart .metric-spark {
-      grid-column:1 / -1;
-      height:88px;
-      min-height:88px;
+      grid-column:3;
+      height:80px;
+      min-height:80px;
     }
-    .metric-row.has-chart .metric-spark svg { height:88px; }
-    #tide-chart { min-height:148px; height:148px; }
-    #tide-chart svg { width:100%; height:148px; display:block; }
-    html.dark #tide-chart svg line, html.dark .metric-spark svg line { stroke:#3d4f63; }
-    html.phone .metric-row.has-chart { grid-template-columns:5.4rem 1fr; grid-template-rows:auto 76px; }
-    html.phone .metric-row.has-chart .metric-spark, html.phone .metric-row.has-chart .metric-spark svg { height:76px; min-height:76px; }
+    .metric-row.has-chart .metric-spark svg { width:100%; height:80px; display:block; }
+    html.dark .metric-spark svg line { stroke:#3d4f63; }
+    html.phone .metric-row.has-chart { grid-template-columns:4.8rem minmax(3.8rem,5.4rem) 1fr; grid-template-rows:68px; }
+    html.phone .metric-row.has-chart .metric-spark, html.phone .metric-row.has-chart .metric-spark svg { height:68px; min-height:68px; }
     html.phone .metric-row { grid-template-columns:5.4rem minmax(4.4rem,auto) 1fr; padding:6px 8px; }
     html.phone .metric-row label { font-size:10px; }
     html.phone .metric-row strong { font-size:13px; }
@@ -2932,12 +2930,8 @@
       </section>
       <section id="marine" class="page">
         <h2 data-k="Gulf and inlet">Sea</h2>
-        <div class="marine-graphs">
-        <div class="card chart"><b id="tide-title">Tide</b><span id="live-tide-today">Loading tides…</span><span id="live-tide-station" hidden></span>
-          <div class="tide" id="tide-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,58 C40,62 55,48 80,36 C110,22 130,28 150,24 C175,20 195,40 210,50" fill="none" stroke="#2a9d8f" stroke-width="3"/><circle cx="80" cy="36" r="4" fill="#1b2a4a"/><circle cx="150" cy="24" r="4" fill="#1b2a4a"/></svg></div>
-        </div>
-        </div>
         <div class="metric-table" id="sea-metrics">
+          <div class="metric-row has-chart"><label>Tide</label><div><strong id="live-tide-today">Loading tides…</strong><small id="live-tide-station"></small></div><div class="metric-spark hist tide" id="tide-chart"></div></div>
           <div class="metric-row has-chart"><label>Surge</label><strong id="live-surge">Loading…</strong><div class="metric-spark hist" id="surge-chart"></div></div>
           <div class="metric-row has-chart"><label>Gulf water</label><strong id="live-sst">—</strong><div class="metric-spark hist" id="wtemp-chart"></div></div>
           <div class="metric-row"><label>Inlet</label><strong id="live-wtemp">—</strong><div></div></div>
@@ -4200,7 +4194,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 760;
+    window.BOARD_VER = 761;
 
     
     function communityShort() {
@@ -15926,7 +15920,7 @@ function mustEats() {
       }).filter(function (p) { return isFinite(p.t) && isFinite(p.v); }).sort(function (a, b) { return a.t - b.t; });
       if (raw.length < 2) return;
       var now = Date.now();
-      var win0 = now - 8 * 3600000, win1 = now + 28 * 3600000;
+      var win0 = now - 12 * 3600000, win1 = now + 12 * 3600000;
       var slice = raw.filter(function (p) { return p.t >= win0 - 6 * 3600000 && p.t <= win1 + 6 * 3600000; });
       if (slice.length < 2) slice = raw.slice(-8);
       var pts = [];
@@ -15974,6 +15968,23 @@ function mustEats() {
         "</svg>";
     }
 
+
+    function drawSurgeChart(points) {
+      var lab = document.getElementById("live-surge");
+      var clean = (points || []).filter(function (p) { return p && isFinite(p.t) && isFinite(p.v); });
+      if (clean.length < 2) {
+        if (lab && !(lab.textContent || "").trim()) lab.textContent = "No water-level series";
+        return;
+      }
+      var last = clean[clean.length - 1].v;
+      if (lab && !/ft/.test(lab.textContent || "")) {
+        lab.textContent = (last >= 0 ? "+" : "") + last.toFixed(2) + " ft vs predicted tide";
+      }
+      if (typeof drawHistChart === "function") {
+        var vmax = Math.max(0.4, Math.max.apply(null, clean.map(function (p) { return Math.abs(p.v); })));
+        drawHistChart("surge-chart", clean, "#e07a5f", -vmax, vmax, " ft");
+      }
+    }
     function drawSpark(id, points, color) {
       var box = document.getElementById(id);
       if (!box || !points || points.length < 2) return false;
