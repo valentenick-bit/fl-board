@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 775;
+    window.BOARD_VER = 776;
 
     
     function communityShort() {
@@ -15828,7 +15828,7 @@ function mustEats() {
           ["strikes", (window.__feeds && window.__feeds.strikes && window.__feeds.strikes.detail) || "not polled"],
           ["alerts", (function(){
             var f = window.__feeds && window.__feeds.alerts;
-            if (f && f.ok === false) return "NWS alerts fetch failed";
+            if (f && f.ok === false) return String(f.detail || "NWS alerts fetch failed").slice(0, 80);
             return (f && f.detail) || "";
           })()],
           ["flights", (function(){
@@ -20149,10 +20149,11 @@ function homeCountyGuess() {
       var bar = document.getElementById("alertbar");
       var txt = document.getElementById("alerttext");
       var frame = document.querySelector(".frame");
-      if (!bar || !txt) return;
       fetchNwsAlerts().then(function (data) {
         var feats = (data && data.features) || [];
         window.__nwsAlerts = feats;
+        if (typeof touchFeed === "function") touchFeed("alerts", true, feats.length ? (feats.length + " NWS alerts") : "no warnings");
+        if (!bar || !txt) return;
         var high = [];
         var low = [];
         feats.forEach(function (f) {
