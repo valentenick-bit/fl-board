@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 769;
+    window.BOARD_VER = 770;
 
     
     function communityShort() {
@@ -5270,7 +5270,7 @@ Cart shop:</textarea>
       return { keys:["al","at"], label:label,
         two2:"https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png", two5:"https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png",
         gtwo:"https://www.nhc.noaa.gov/gtwo.php?basin=atlc",
-        sat: gulfCoast ? "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/gm/GEOCOLOR/1000x1000.jpg"
+        sat: gulfCoast ? "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg"
                        : "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg",
         satCap: gulfCoast ? "Regional satellite" : "Atlantic satellite",
         radar: (gulfCoast || lat < 36) ? "https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif"
@@ -5507,35 +5507,30 @@ Cart shop:</textarea>
       var lab = document.getElementById("storm-basin-label");
       if (lab) lab.textContent = b.label;
       var frames = document.getElementById("storm-frames");
-      var extra = [];
-      if (s) {
-        var cone = typeof nhcGraphic === "function" ? nhcGraphic(s, "cone") : "";
-        var ir = typeof nhcGraphic === "function" ? nhcGraphic(s, "ir") : "";
-        var vis = typeof nhcGraphic === "function" ? nhcGraphic(s, "vis") : "";
-        var idU = String(s.id || "").toUpperCase();
-        var bin = String(s.binNumber || "").replace(/\s/g, "").toUpperCase();
-        if (!bin && idU) {
-          var n = parseInt(idU.replace(/\D/g, "").slice(-2), 10);
-          var pref = /^EP/.test(idU) ? "EP" : /^CP/.test(idU) ? "CP" : "AT";
-          if (n) bin = pref + n;
-        }
-        var baseG = bin ? ("https://www.nhc.noaa.gov/storm_graphics/" + bin + "/refresh/") : "";
-        extra.push({ src: cone || b.two5, cap: stormIsInvest(s) ? "Track / outlook" : "Forecast cone" });
-        if (ir) extra.push({ src: ir, cap: "Infrared satellite" });
-        if (vis) extra.push({ src: vis, cap: "Visible satellite" });
-        if (baseG && idU && !stormIsInvest(s)) {
-          extra.push({ src: baseG + idU + "_wind_history+pngnow.png", cap: "Wind history" });
-          extra.push({ src: baseG + idU + "_wind_probs_34_F120+pngnow.png", cap: "34-kt wind odds" });
-        }
+      function drawStormFrames(extra) {
+        if (!frames) return;
+        frames.innerHTML = extra.map(function (sl, i) {
+          return '<div class="storm-frame' + (i === 0 ? " storm-wide" : "") + '"><img alt="' + sl.cap + '" src="' + bustImg(sl.src) + '" onerror="this.parentNode.classList.add(\'broken\');window.__stormMapFail=(window.__stormMapFail||0)+1"/><b>' + sl.cap + "</b></div>";
+        }).join("");
+        var total = extra.length;
+        setTimeout(function () {
+          var broken = frames.querySelectorAll(".broken").length;
+          var ok = total - broken;
+          if (typeof noteFeed === "function") noteFeed("storm-maps", broken === 0, ok + "/" + total + " maps");
+        }, 2500);
       }
+      var extra = [];
       extra.push({ src: b.sat, cap: b.satCap });
       extra.push({ src: b.radar, cap: b.radarCap });
       extra.push({ src: b.two2, cap: "2-day outlook" });
       extra.push({ src: b.two5, cap: "5-day outlook" });
-      if (frames) {
-        frames.innerHTML = extra.map(function (sl, i) {
-          return '<div class="storm-frame' + (i === 0 ? " storm-wide" : "") + '"><img alt="' + sl.cap + '" src="' + bustImg(sl.src) + '"/><b>' + sl.cap + "</b></div>";
-        }).join("");
+      window.__stormMapFail = 0;
+      if (s && typeof loadStormGraphics === "function") {
+        loadStormGraphics(s, function (pics) {
+          drawStormFrames((pics || []).concat(extra));
+        });
+      } else {
+        drawStormFrames(extra);
       }
       var gLink = document.getElementById("cane-refs");
       if (gLink) {
@@ -5548,23 +5543,27 @@ Cart shop:</textarea>
       var el = document.getElementById("hurr-adv");
       if (!el) return;
       var url = s && s.publicAdvisory && s.publicAdvisory.url;
-      if (!url) { el.hidden = true; return; }
-      var urls = [url, "https://corsproxy.io/?" + encodeURIComponent(url), "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)];
-      var i = 0;
-      function next() {
-        if (i >= urls.length) { el.hidden = true; return; }
-        fetch(urls[i++], { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (txt) {
-          txt = String(txt || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-          var cut = txt.replace(/^.*SUMMARY OF/i, "SUMMARY OF");
-          if (cut.length < 80) cut = txt;
-          if (cut.length > 700) cut = cut.slice(0, 680).replace(/\s+\S*$/, "") + "…";
-          if (cut.length < 40) return next();
-          el.hidden = false;
-          el.innerHTML = "<b>Public advisory</b><span>" + cut + "</span>";
-        }).catch(next);
+      if (!url) {
+        el.hidden = true;
+        if (typeof noteFeed === "function") noteFeed("hurr-adv", true, "none");
+        return;
       }
-      next();
+      fetchNhcText(url, function (txt) {
+        if (!looksOfficialNhc(txt)) {
+          el.hidden = true;
+          if (typeof noteFeed === "function") noteFeed("hurr-adv", false, "html not advisory");
+          return;
+        }
+        var cut = txt;
+        var sum = txt.search(/SUMMARY OF/i);
+        if (sum >= 0) cut = txt.slice(sum);
+        if (cut.length > 900) cut = cut.slice(0, 880).replace(/\s+\S*$/, "") + "…";
+        el.hidden = false;
+        el.innerHTML = "<b>Public advisory</b><span style=\"white-space:pre-wrap\">" + cut.replace(/</g, "&lt;") + "</span>";
+        if (typeof noteFeed === "function") noteFeed("hurr-adv", true, (s.name || "storm") + " TCP");
+      });
     }
+
     function relevantStorms(list) {
       return (list || []).filter(stormThreatensHome);
     }
@@ -9510,24 +9509,84 @@ function currentRotation() {
       fetchHurrDisc(s || null);
     }
     setTimeout(function () { try { fetchHurrDisc(window.__namedStorms && window.__namedStorms[0] || null); } catch (e) {} }, 2500);
+    function nhcExtractText(raw) {
+      raw = String(raw || "");
+      var pre = raw.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+      var tx = pre ? pre[1] : raw;
+      tx = tx.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
+      tx = tx.replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/\n[ \t]+/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+      return tx;
+    }
+    function looksOfficialNhc(tx) {
+      if (!tx || tx.length < 80) return false;
+      if (/DOCTYPE html|skip to content|nhcWeb|function\s*\(|window\.|corsproxy/i.test(tx)) return false;
+      return /National Hurricane Center|DISCUSSION NUMBER|SUMMARY OF|TROPICAL (DEPRESSION|STORM|CYCLONE|HURRICANE)|FORECAST POSITIONS|WTNT|MIATCD|MIATCP/i.test(tx);
+    }
+    function fetchNhcText(url, done) {
+      if (!url) return done("");
+      var tries = [url, "https://corsproxy.io/?" + encodeURIComponent(url), "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)];
+      var i = 0;
+      function next() {
+        if (i >= tries.length) return done("");
+        fetch(tries[i++], { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (raw) {
+          var tx = nhcExtractText(raw);
+          if (looksOfficialNhc(tx)) return done(tx);
+          next();
+        }).catch(next);
+      }
+      next();
+    }
+    function labelStormGraphic(src) {
+      var u = String(src || "").toLowerCase();
+      if (/5day_cone|cone_with_line/.test(u)) return "Forecast cone";
+      if (/3day_cone/.test(u)) return "3-day cone";
+      if (/wind_history/.test(u)) return "Wind history";
+      if (/wind_probs_34/.test(u)) return "34-kt wind odds";
+      if (/current_wind/.test(u)) return "Wind field";
+      if (/ir_/.test(u)) return "Infrared";
+      if (/vis_/.test(u)) return "Visible";
+      return "";
+    }
+    function loadStormGraphics(s, done) {
+      var page = s && s.forecastGraphics && s.forecastGraphics.url;
+      if (!page) return done([]);
+      var tries = [page, "https://corsproxy.io/?" + encodeURIComponent(page), "https://api.allorigins.win/raw?url=" + encodeURIComponent(page)];
+      var i = 0;
+      function next() {
+        if (i >= tries.length) return done([]);
+        fetch(tries[i++], { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (html) {
+          var srcs = [];
+          String(html || "").replace(/src=["']([^"']+)["']/ig, function (_, src) {
+            if (/\/storm_graphics\/.+\.(png|gif|jpg)/i.test(src)) srcs.push(src);
+          });
+          if (!srcs.length) return next();
+          var seen = {}, out = [];
+          srcs.forEach(function (src) {
+            if (src.indexOf("http") !== 0) src = "https://www.nhc.noaa.gov" + (src.charAt(0) === "/" ? src : "/" + src);
+            var cap = labelStormGraphic(src);
+            if (!cap || seen[cap]) return;
+            seen[cap] = 1;
+            out.push({ src: src, cap: cap });
+          });
+          done(out);
+        }).catch(next);
+      }
+      next();
+    }
     function fetchHurrDisc(s) {
       var el = document.getElementById("hurr-disc");
       if (!el) return;
       var stormUrl = s && s.forecastDiscussion && s.forecastDiscussion.url;
       if (stormUrl) {
-        var tries = [stormUrl, "https://corsproxy.io/?" + encodeURIComponent(stormUrl), "https://api.allorigins.win/raw?url=" + encodeURIComponent(stormUrl)];
-        var ti = 0;
-        function nextDisc() {
-          if (ti >= tries.length) return fetchTwoOutlook();
-          fetch(tries[ti++], { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (txt) {
-            txt = String(txt || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-            if (txt.length < 60) return nextDisc();
-            if (txt.length > 900) txt = txt.slice(0, 880).replace(/\s+\S*$/, "") + "…";
-            el.innerHTML = "<b>NHC discussion</b><span>" + txt + "</span>";
-            if (typeof noteFeed === "function") noteFeed("nhc-disc", true, (s.name || "storm") + " TCD");
-          }).catch(nextDisc);
-        }
-        nextDisc();
+        fetchNhcText(stormUrl, function (txt) {
+          if (!looksOfficialNhc(txt)) {
+            if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "html not discussion");
+            return fetchTwoOutlook();
+          }
+          var body = txt.length > 1100 ? txt.slice(0, 1080).replace(/\s+\S*$/, "") + "…" : txt;
+          el.innerHTML = "<b>NHC discussion</b><span style=\"white-space:pre-wrap\">" + body.replace(/</g, "&lt;") + "</span>";
+          if (typeof noteFeed === "function") noteFeed("nhc-disc", true, (s.name || "storm") + " TCD");
+        });
         return;
       }
       function fetchTwoOutlook() {
