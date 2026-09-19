@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 772;
+    window.BOARD_VER = 773;
 
     
     function communityShort() {
@@ -5292,7 +5292,15 @@ Cart shop:</textarea>
     }
     function stormInHomeBasin(s) {
       var b = homeStormBasin();
-      return b.keys.indexOf(stormBasinKey(s)) >= 0;
+      var k = stormBasinKey(s);
+      if (k) return b.keys.indexOf(k) >= 0;
+      var c = typeof stormCoords === "function" ? stormCoords(s) : { lon: NaN };
+      if (!isNaN(c.lon)) {
+        if (c.lon <= -100) return b.keys.indexOf("ep") >= 0 || b.keys.indexOf("cp") >= 0;
+        return b.keys.indexOf("al") >= 0;
+      }
+      if (s && s.__basin) return b.keys.indexOf(s.__basin) >= 0;
+      return b.keys.indexOf("al") >= 0;
     }
     function stormIsInvest(s) {
       var name = String((s && (s.name || s.Name)) || "");
@@ -5301,6 +5309,22 @@ Cart shop:</textarea>
     }
     function homeBasinStorms(list) {
       return (list || []).filter(stormInHomeBasin);
+    }
+    function saveNhcCache(list) {
+      try {
+        if (list && list.length) localStorage.setItem("commons-nhc", JSON.stringify({ at: Date.now(), storms: list }));
+      } catch (e) {}
+    }
+    function loadNhcCache() {
+      try {
+        var o = JSON.parse(localStorage.getItem("commons-nhc") || "null");
+        if (o && o.at && Date.now() - o.at < 8 * 3600 * 1000 && Array.isArray(o.storms) && o.storms.length) return o.storms;
+      } catch (e) {}
+      return [];
+    }
+    if (!window.__nhcAllStorms || !window.__nhcAllStorms.length) {
+      window.__nhcAllStorms = loadNhcCache();
+      window.__stormPageList = homeBasinStorms(window.__nhcAllStorms);
     }
     function stormThreatensHome(s) {
       if (typeof stormIsInvest === "function" && stormIsInvest(s)) return false;
@@ -17426,10 +17450,19 @@ function mustEats() {
         function apply(d) {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
-          if (storms.length) window.__nhcAllStorms = storms.slice();
-          else storms = window.__nhcAllStorms || [];
-          window.__namedStorms = relevantStorms(storms);
-          window.__stormPageList = homeBasinStorms(window.__nhcAllStorms || storms);
+          var cached = window.__nhcAllStorms || loadNhcCache() || [];
+          var incomingGood = storms.some(function (s) { return s && (s.id || (s.latitude && s.longitude)); });
+          if (!incomingGood && cached.length) storms = cached;
+          else if (storms.length) {
+            window.__nhcAllStorms = storms.slice();
+            saveNhcCache(storms);
+          } else {
+            storms = cached;
+            window.__nhcAllStorms = storms.slice();
+          }
+          if (!window.__nhcAllStorms || !window.__nhcAllStorms.length) window.__nhcAllStorms = storms.slice();
+          window.__namedStorms = relevantStorms(window.__nhcAllStorms);
+          window.__stormPageList = homeBasinStorms(window.__nhcAllStorms);
           storms = window.__namedStorms;
           if (typeof paintStormPage === "function") paintStormPage();
           if (typeof writeTodayChips === "function") writeTodayChips();
@@ -17476,7 +17509,12 @@ function mustEats() {
             : farStormLine();
         }
         function fail() {
-          if (el) el.textContent = "NHC list is quiet. Atlantic outlook maps below still update.";
+          var keep = window.__nhcAllStorms || loadNhcCache() || [];
+          if (keep.length) {
+            apply({ activeStorms: keep });
+            return;
+          }
+          if (el) el.textContent = "NHC list did not load. Outlook maps below still update.";
         }
         var raw = "https://www.nhc.noaa.gov/CurrentStorms.json";
         var urls = [
@@ -17504,7 +17542,7 @@ function mustEats() {
             if (seen[key]) return;
             seen[key] = true;
             var cls = /hurricane/i.test(m[1]) ? "HU" : /storm/i.test(m[1]) ? "TS" : /depression/i.test(m[1]) ? "TD" : "PTC";
-            out.push({ name: m[2], classification: cls, latitude: "", longitude: "", intensity: "" });
+            out.push({ name: m[2], classification: cls, latitude: "", longitude: "", intensity: "", id: "al99" + m[2].toLowerCase(), __basin: "al" });
           });
           return out;
         }
