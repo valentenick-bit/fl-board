@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 773;
+    window.BOARD_VER = 774;
 
     
     function communityShort() {
@@ -5578,26 +5578,35 @@ Cart shop:</textarea>
     function fetchStormAdvisory(s) {
       var el = document.getElementById("hurr-adv");
       if (!el) return;
-      var url = s && s.publicAdvisory && s.publicAdvisory.url;
-      if (!url) {
-        el.hidden = true;
-        if (typeof noteFeed === "function") noteFeed("hurr-adv", true, "none");
-        return;
-      }
-      fetchNhcText(url, function (txt) {
-        if (!looksOfficialNhc(txt)) {
-          el.hidden = true;
-          if (typeof noteFeed === "function") noteFeed("hurr-adv", false, "html not advisory");
-          return;
+      if (!s) { el.hidden = true; return; }
+      fetchNwsNhc("TCP", s, function (txt) {
+        if (!txt || (!looksOfficialNhc(txt) && txt.length < 80)) {
+          var url = s.publicAdvisory && s.publicAdvisory.url;
+          if (!url) {
+            el.hidden = true;
+            if (typeof noteFeed === "function") noteFeed("hurr-adv", false, "no advisory");
+            return;
+          }
+          return fetchNhcText(url, function (htmlTxt) {
+            if (!looksOfficialNhc(htmlTxt)) {
+              el.hidden = true;
+              if (typeof noteFeed === "function") noteFeed("hurr-adv", false, "html not advisory");
+              return;
+            }
+            showAdv(htmlTxt);
+          });
         }
+        showAdv(txt);
+      });
+      function showAdv(txt) {
         var cut = txt;
         var sum = txt.search(/SUMMARY OF/i);
         if (sum >= 0) cut = txt.slice(sum);
-        if (cut.length > 900) cut = cut.slice(0, 880).replace(/\s+\S*$/, "") + "…";
+        if (cut.length > 1000) cut = cut.slice(0, 980).replace(/\s+\S*$/, "") + "…";
         el.hidden = false;
         el.innerHTML = "<b>Public advisory</b><span style=\"white-space:pre-wrap\">" + cut.replace(/</g, "&lt;") + "</span>";
         if (typeof noteFeed === "function") noteFeed("hurr-adv", true, (s.name || "storm") + " TCP");
-      });
+      }
     }
 
     function relevantStorms(list) {
@@ -9664,19 +9673,85 @@ function currentRotation() {
       }
       next();
     }
+    function nhcWmo(s, kind) {
+      var id = String((s && (s.id || s.binNumber)) || "").toUpperCase();
+      var n = parseInt(id.replace(/^[A-Z]+/, "").slice(0, 2), 10);
+      if (!n) n = parseInt(String((s && s.binNumber) || "").replace(/\D/g, ""), 10) || 1;
+      if (n > 9) n = n % 10 || 1;
+      if (/^EP/.test(id)) return (kind === "TCD" ? "WTPZ4" : "WTPZ3") + n;
+      if (/^CP/.test(id)) return (kind === "TCD" ? "WTPA4" : "WTPA3") + n;
+      return (kind === "TCD" ? "WTNT4" : "WTNT3") + n;
+    }
+    function fetchNwsNhc(type, s, done) {
+      var hdr = { "Accept": "application/ld+json" };
+      fetch("https://api.weather.gov/products?type=" + type, { headers: hdr, cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          var items = (list && list["@graph"]) || [];
+          var wmo = nhcWmo(s, type);
+          var idU = String((s && s.id) || "").toUpperCase();
+          var name = String((s && s.name) || "");
+          var pick = null;
+          items.forEach(function (it) {
+            if (pick) return;
+            if (it.wmoCollectiveId === wmo && /KNHC/i.test(it.issuingOffice || "")) pick = it;
+          });
+          if (!pick) {
+            items.forEach(function (it) {
+              if (pick) return;
+              if (/KNHC/i.test(it.issuingOffice || "") && it.wmoCollectiveId && it.wmoCollectiveId.indexOf(wmo.slice(0, 5)) === 0) pick = it;
+            });
+          }
+          pick = pick || items[0];
+          if (!pick || !pick["@id"]) throw new Error("no product");
+          return fetch(pick["@id"], { headers: hdr, cache: "no-store" }).then(function (r) { return r.json(); });
+        })
+        .then(function (prod) {
+          var text = String((prod && prod.productText) || "").replace(/\r/g, "").trim();
+          if (idMatchFail(text, s)) return done("");
+          done(text);
+        })
+        .catch(function () { done(""); });
+    }
+    function idMatchFail(text, s) {
+      if (!text) return true;
+      var idU = String((s && s.id) || "").toUpperCase();
+      var name = String((s && s.name) || "");
+      if (idU && text.toUpperCase().indexOf(idU) >= 0) return false;
+      if (name && new RegExp("\\b" + name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&") + "\\b", "i").test(text)) return false;
+      return text.length < 80;
+    }
+    function paintDisc(txt, s) {
+      var el = document.getElementById("hurr-disc");
+      if (!el) return;
+      if (!txt) {
+        if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "empty");
+        return;
+      }
+      var body = txt.length > 1400 ? txt.slice(0, 1380).replace(/\s+\S*$/, "") + "…" : txt;
+      el.innerHTML = "<b>NHC discussion</b><span style=\"white-space:pre-wrap\">" + body.replace(/</g, "&lt;") + "</span>";
+      if (typeof noteFeed === "function") noteFeed("nhc-disc", true, (s && s.name ? s.name + " TCD" : "TCD"));
+    }
     function fetchHurrDisc(s) {
       var el = document.getElementById("hurr-disc");
       if (!el) return;
-      var stormUrl = s && s.forecastDiscussion && s.forecastDiscussion.url;
-      if (stormUrl) {
-        fetchNhcText(stormUrl, function (txt) {
-          if (!looksOfficialNhc(txt)) {
-            if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "html not discussion");
-            return fetchTwoOutlook();
+      if (s && s.name) {
+        fetchNwsNhc("TCD", s, function (txt) {
+          if (!looksOfficialNhc(txt) && txt.length < 80) {
+            var stormUrl = s.forecastDiscussion && s.forecastDiscussion.url;
+            if (!stormUrl) {
+              if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "no discussion");
+              return;
+            }
+            return fetchNhcText(stormUrl, function (htmlTxt) {
+              if (!looksOfficialNhc(htmlTxt)) {
+                if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "html not discussion");
+                return;
+              }
+              paintDisc(htmlTxt, s);
+            });
           }
-          var body = txt.length > 1100 ? txt.slice(0, 1080).replace(/\s+\S*$/, "") + "…" : txt;
-          el.innerHTML = "<b>NHC discussion</b><span style=\"white-space:pre-wrap\">" + body.replace(/</g, "&lt;") + "</span>";
-          if (typeof noteFeed === "function") noteFeed("nhc-disc", true, (s.name || "storm") + " TCD");
+          paintDisc(txt, s);
         });
         return;
       }
