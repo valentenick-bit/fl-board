@@ -2519,6 +2519,9 @@
       position:relative;
     }
     #eat-gmap, #golf-gmap, #map-pop-gmap { display:none !important; }
+    #traffic-gmap.leaflet-container, #land-map-frame .leaflet-container {
+      display:block !important; width:100%; height:100%; min-height:220px; border-radius:16px;
+    }
     .map-place { display:none !important; }
     
     .map-place { display:none !important; 
@@ -4195,7 +4198,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 765;
+    window.BOARD_VER = 766;
 
     
     function communityShort() {
@@ -5097,6 +5100,7 @@ Cart shop:</textarea>
       var fns = window.__gmapsWait || [];
       window.__gmapsWait = [];
       fns.forEach(function (fn) { try { fn(good); } catch (eF) {} });
+      if (!good && typeof applyMapFallback === "function") applyMapFallback("maps js off");
     }
     window.__commonsGmaps = function () { finishGmaps(true); };
     function loadGmaps(done) {
@@ -13634,7 +13638,11 @@ function mustEats() {
           paint(mergeEatCache(warm));
         }
         function ingestEats(rows) {
-          var keep = (rows || []).filter(function (r) { return r && isSitDownEat(r) && (enoughReviewsAt(r, 1000) || r.reviews == null); });
+          var keep = (rows || []).filter(function (r) {
+            if (!r || !r.name) return false;
+            if (r.src === "osm" || r.src === "seed") return inRange(r);
+            return isSitDownEat(r) && (enoughReviewsAt(r, 1000) || r.reviews == null);
+          });
           window.__eatBag = dedupeEats(window.__eatBag.concat(keep));
           paint(mergeEatCache(window.__eatBag));
           if (typeof noteFeed === "function") {
@@ -13651,6 +13659,14 @@ function mustEats() {
         if (typeof fromPlaces === "function") fromPlaces(function (places) {
           if (places && places.length) ingestEats(places);
         });
+        setTimeout(function () {
+          var have = (window.__eatBag || []).length || (window.__eatPool || []).length;
+          if (have >= 4) return;
+          if (typeof fromOverpass === "function") fromOverpass(function (osm) {
+            ingestEats(osm || []);
+          });
+          ingestEats(mustEats());
+        }, 2500);
       }
       window.reloadEats = run;
       window.paintEatPick = function () {
@@ -13910,10 +13926,18 @@ function mustEats() {
         });
       }
       function run() {
-        window.__golfPool = [];
-        fromPlaces(function (places) {
-          fromOverpass(function (osm) {
-            window.__golfPool = dedupe((places || []).concat(seedGolf()).concat(osm || []));
+        window.__golfPool = seedGolf();
+        draw(window.__golfPool);
+        var bag = seedGolf();
+        function merge(extra) {
+          bag = dedupe(bag.concat(extra || []));
+          window.__golfPool = bag;
+          draw(bag);
+        }
+        fromPlaces(function (places) { merge(places); });
+        fromOverpass(function (osm) {
+            merge(osm);
+            window.__golfPool = dedupe((window.__golfPool || []).concat(seedGolf()).concat(osm || []));
             draw(window.__golfPool);
             rateList(window.__golfPool.slice(), function (rated) {
               window.__golfPool = dedupe(rated.concat(window.__golfPool || []));
@@ -13924,7 +13948,6 @@ function mustEats() {
               }
             });
           });
-        });
       }
       window.reloadGolf = run;
       setTimeout(run, 1600);
@@ -18447,18 +18470,47 @@ function mustEats() {
     function mapFallbackSrc() {
       return "https://maps.google.com/maps?q=" + encodeURIComponent(homePinQuery()) + "&z=12&hl=en&layer=t&t=m&output=embed";
     }
+    function mountLeafletMap(el, lat, lon, z) {
+      if (!el || !window.L) return false;
+      try {
+        if (el._leaflet_id && window.__leafletByEl && window.__leafletByEl[el.id]) {
+          var old = window.__leafletByEl[el.id];
+          try { old.setView([lat, lon], z || 12); old.invalidateSize(); } catch (e0) {}
+          return true;
+        }
+        el.innerHTML = "";
+        el.hidden = false;
+        el.style.display = "block";
+        var map = L.map(el, { zoomControl: true, attributionControl: false, scrollWheelZoom: true }).setView([lat, lon], z || 12);
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+        L.circleMarker([lat, lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#e85d4c", fillOpacity: 1 }).addTo(map);
+        window.__leafletByEl = window.__leafletByEl || {};
+        if (el.id) window.__leafletByEl[el.id] = map;
+        setTimeout(function () { try { map.invalidateSize(); } catch (eI) {} }, 250);
+        return true;
+      } catch (e) { return false; }
+    }
     function applyMapFallback(reason) {
-      var src = mapFallbackSrc();
-      ["traffic-map","eat-map-frame","golf-map-frame","map-pop-frame"].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        if (el.tagName === "IFRAME") { el.src = src; return; }
-        el.innerHTML = "<iframe title=\"Map\" src=\"" + src + "\" style=\"width:100%;height:100%;border:0;border-radius:16px\"></iframe>";
-      });
+      var lat = (typeof homeLat === "function" && homeLat()) || 26.96;
+      var lon = (typeof homeLon === "function" && homeLon()) || -82.35;
+      var iframe = document.getElementById("traffic-map");
       var g = document.getElementById("traffic-gmap");
-      if (g) g.innerHTML = "<iframe title=\"Map\" src=\"" + src + "\" style=\"width:100%;height:100%;border:0;border-radius:16px\"></iframe>";
-      if (typeof noteFeed === "function") noteFeed("maps-visual", true, reason || "google embed");
-      if (typeof noteFeed === "function") noteFeed("traffic", true, "google embed");
+      if (g && window.L && mountLeafletMap(g, lat, lon, 12)) {
+        if (iframe) { iframe.hidden = true; iframe.style.display = "none"; }
+        g.hidden = false;
+      } else {
+        var src = mapFallbackSrc();
+        if (iframe) iframe.src = src;
+        ["eat-map-frame","golf-map-frame","map-pop-frame"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          if (el.tagName === "IFRAME") { el.src = src; return; }
+          if (window.L && mountLeafletMap(el, lat, lon, 12)) return;
+          el.innerHTML = "<iframe title=\"Map\" src=\"" + src + "\" style=\"width:100%;height:100%;border:0;border-radius:16px\"></iframe>";
+        });
+      }
+      if (typeof noteFeed === "function") noteFeed("maps-visual", true, reason || "osm leaflet");
+      if (typeof noteFeed === "function") noteFeed("traffic", true, "osm leaflet");
     }
     function mapsLooksBroken() {
       if (window.__gmapsAuthFail) return "auth fail";
@@ -19558,7 +19610,8 @@ function homeCountyGuess() {
           return r.json();
         }).then(function (d) {
           if (d && d.contents) { try { d = JSON.parse(d.contents); } catch (eP) {} }
-          if (d && d.features) return d;
+          if (d && Array.isArray(d.features)) return d;
+          if (d && d.type === "FeatureCollection") return { type: "FeatureCollection", features: d.features || [] };
           throw new Error("nws empty");
         }).catch(function () { return next(); });
       }
