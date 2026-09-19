@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 770;
+    window.BOARD_VER = 771;
 
     
     function communityShort() {
@@ -5507,10 +5507,22 @@ Cart shop:</textarea>
       var lab = document.getElementById("storm-basin-label");
       if (lab) lab.textContent = b.label;
       var frames = document.getElementById("storm-frames");
+      window.stormImgFallback = function (img) {
+        var list = String(img.getAttribute("data-srcs") || "").split("|").filter(Boolean);
+        var cur = list.indexOf(img.getAttribute("src"));
+        if (cur < 0) cur = 0;
+        if (cur + 1 < list.length) {
+          img.src = list[cur + 1];
+          return;
+        }
+        img.parentNode.classList.add("broken");
+        window.__stormMapFail = (window.__stormMapFail || 0) + 1;
+      };
       function drawStormFrames(extra) {
         if (!frames) return;
         frames.innerHTML = extra.map(function (sl, i) {
-          return '<div class="storm-frame' + (i === 0 ? " storm-wide" : "") + '"><img alt="' + sl.cap + '" src="' + bustImg(sl.src) + '" onerror="this.parentNode.classList.add(\'broken\');window.__stormMapFail=(window.__stormMapFail||0)+1"/><b>' + sl.cap + "</b></div>";
+          var srcs = (sl.srcs || [sl.src]).map(function (u) { return bustImg(u); });
+          return '<div class="storm-frame' + (i === 0 ? " storm-wide" : "") + '"><img alt="' + sl.cap + '" data-srcs="' + srcs.join("|").replace(/"/g, "") + '" src="' + srcs[0] + '" onerror="window.stormImgFallback(this)"/><b>' + sl.cap + "</b></div>";
         }).join("");
         var total = extra.length;
         setTimeout(function () {
@@ -9547,7 +9559,61 @@ function currentRotation() {
       if (/vis_/.test(u)) return "Visible";
       return "";
     }
+    function nhcUtcStamp(iso) {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return "";
+      function p(n) { return (n < 10 ? "0" : "") + n; }
+      return p(d.getUTCDate()) + p(d.getUTCHours()) + p(d.getUTCMinutes());
+    }
+    function nhcStamps(s) {
+      var times = [];
+      ["forecastGraphics", "publicAdvisory", "forecastDiscussion", "forecastAdvisory"].forEach(function (k) {
+        var o = s && s[k];
+        if (o && o.fileUpdateTime) times.push(o.fileUpdateTime);
+        if (o && o.issuance) times.push(o.issuance);
+      });
+      if (s && s.lastUpdate) times.push(s.lastUpdate);
+      var out = [], seen = {};
+      times.forEach(function (iso) {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return;
+        for (var m = -8; m <= 3; m++) {
+          var st = nhcUtcStamp(new Date(d.getTime() + m * 60000).toISOString());
+          if (st && !seen[st]) { seen[st] = 1; out.push(st); }
+        }
+      });
+      return out;
+    }
+    function stormGraphicFolder(s) {
+      var id = String((s && s.id) || "").toUpperCase();
+      var num = id.replace(/^[A-Z]+/, "").slice(0, 2);
+      var pref = /^EP/.test(id) ? "EP" : /^CP/.test(id) ? "CP" : "AT";
+      return num ? (pref + num) : "";
+    }
     function loadStormGraphics(s, done) {
+      if (!s) return done([]);
+      var id = String(s.id || "").toUpperCase();
+      var folder = stormGraphicFolder(s);
+      var stamps = nhcStamps(s);
+      var kinds = [
+        { key: "5day_cone_sm", cap: "Forecast cone" },
+        { key: "3day_cone_sm", cap: "3-day cone" },
+        { key: "wind_history_sm", cap: "Wind history" },
+        { key: "wind_probs_34_F120_sm", cap: "34-kt wind odds" },
+        { key: "current_wind_sm", cap: "Wind field" }
+      ];
+      if (!id || !folder || !stamps.length) {
+        return scrapeStormGraphics(s, done);
+      }
+      var out = kinds.map(function (k) {
+        var srcs = stamps.map(function (st) {
+          return "https://www.nhc.noaa.gov/storm_graphics/" + folder + "/refresh/" + id + "_" + k.key + "+png/" + st + "_" + k.key + ".png";
+        });
+        return { src: srcs[0], srcs: srcs, cap: k.cap };
+      });
+      done(out);
+    }
+    function scrapeStormGraphics(s, done) {
       var page = s && s.forecastGraphics && s.forecastGraphics.url;
       if (!page) return done([]);
       var tries = [page, "https://corsproxy.io/?" + encodeURIComponent(page), "https://api.allorigins.win/raw?url=" + encodeURIComponent(page)];
@@ -17359,7 +17425,8 @@ function mustEats() {
         function apply(d) {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
-          window.__nhcAllStorms = storms.slice();
+          if (storms.length) window.__nhcAllStorms = storms.slice();
+          else storms = window.__nhcAllStorms || [];
           window.__namedStorms = relevantStorms(storms);
           window.__stormPageList = homeBasinStorms(window.__nhcAllStorms || storms);
           storms = window.__namedStorms;
