@@ -3054,7 +3054,7 @@ Cart shop:</textarea>
         <div class="card" id="hurr-home" hidden><b>At the house</b><span id="live-storm-home"></span></div>
         <div class="card" id="hurr-disc"><b>NHC discussion</b><span>Waiting on the latest forecast discussion…</span></div>
         <div class="card" id="hurr-adv" hidden><b>Public advisory</b><span></span></div>
-        <div class="card"><b>Atlantic / Gulf</b><span id="live-cane">Checking the National Hurricane Center</span></div>
+        <div class="card"><b id="storm-basin-label">Basin outlook</b><span id="live-cane">Checking the National Hurricane Center</span></div>
         <div class="storm-frames" id="storm-frames">
           <div class="storm-frame storm-wide" id="storm-hero">
             <img id="hurr-frame" alt="Hurricane view" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
@@ -3077,7 +3077,7 @@ Cart shop:</textarea>
             <b>5-day outlook</b>
           </div>
         </div>
-        <p class="pill-key" id="cane-refs"><a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener">NHC Atlantic / Gulf outlook</a></p>
+        <p class="pill-key" id="cane-refs"><a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">National Hurricane Center</a></p>
       </section>
       <section id="villa" class="page">
         <h2 data-k="Season">Open / close</h2>
@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 768;
+    window.BOARD_VER = 769;
 
     
     function communityShort() {
@@ -5245,11 +5245,67 @@ Cart shop:</textarea>
       }
       return { lat: parseFloat(lat), lon: parseFloat(lon) };
     }
-    function stormThreatensHome(s) {
+    function homeStormBasin() {
+      var st = String((typeof homeState === "function" && homeState()) || (typeof getSet === "function" && (getSet().state || "")) || "").toUpperCase();
+      var lon = typeof homeLon === "function" ? homeLon() : -82;
+      var lat = typeof homeLat === "function" ? homeLat() : 27;
+      if (st === "HI" || (lon <= -154 && lon >= -179 && lat >= 18 && lat <= 29)) {
+        return { keys:["cp","ep"], label:"Central Pacific",
+          two2:"https://www.nhc.noaa.gov/xgtwo/two_cpac_2d0.png", two5:"https://www.nhc.noaa.gov/xgtwo/two_cpac_5d0.png",
+          gtwo:"https://www.nhc.noaa.gov/gtwo.php?basin=cpac",
+          sat:"https://cdn.star.nesdis.noaa.gov/GOES18/ABI/SECTOR/hi/GEOCOLOR/1000x1000.jpg", satCap:"Pacific satellite",
+          radar:"https://radar.weather.gov/ridge/standard/HAWAII_loop.gif", radarCap:"Island radar", twoType:"CP" };
+      }
+      if (["CA","OR","WA","NV","AZ","AK"].indexOf(st) >= 0 || lon <= -114) {
+        return { keys:["ep","cp"], label:"Eastern Pacific",
+          two2:"https://www.nhc.noaa.gov/xgtwo/two_epac_2d0.png", two5:"https://www.nhc.noaa.gov/xgtwo/two_epac_5d0.png",
+          gtwo:"https://www.nhc.noaa.gov/gtwo.php?basin=epac",
+          sat:"https://cdn.star.nesdis.noaa.gov/GOES18/ABI/SECTOR/eep/GEOCOLOR/1000x1000.jpg", satCap:"East Pacific satellite",
+          radar: lat < 40 ? "https://radar.weather.gov/ridge/standard/SOUTHWEST_loop.gif" : "https://radar.weather.gov/ridge/standard/PACNORTHWEST_loop.gif",
+          radarCap:"West radar", twoType:"EP" };
+      }
+      var gulfCoast = ["TX","LA","MS","AL"].indexOf(st) >= 0 || (st === "FL" && lon <= -82) || (lon <= -82 && lon >= -98 && lat <= 31);
+      var atlCoast = ["ME","NH","MA","RI","CT","NY","NJ","DE","MD","VA","NC","SC","GA","FL"].indexOf(st) >= 0 || lon > -82;
+      var label = (gulfCoast && atlCoast) ? "Atlantic and Gulf" : gulfCoast ? "Gulf of Mexico" : "Atlantic";
+      return { keys:["al","at"], label:label,
+        two2:"https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png", two5:"https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png",
+        gtwo:"https://www.nhc.noaa.gov/gtwo.php?basin=atlc",
+        sat: gulfCoast ? "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/gm/GEOCOLOR/1000x1000.jpg"
+                       : "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg",
+        satCap: gulfCoast ? "Regional satellite" : "Atlantic satellite",
+        radar: (gulfCoast || lat < 36) ? "https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif"
+                                       : "https://radar.weather.gov/ridge/standard/NORTHEAST_loop.gif",
+        radarCap:"Regional radar", twoType:"AT" };
+    }
+    function stormBasinKey(s) {
       var id = String((s && (s.id || s.binNumber)) || "").toLowerCase();
-      if (/^ep|^cp/.test(id)) return false;
+      if (/^ep/.test(id)) return "ep";
+      if (/^cp/.test(id)) return "cp";
+      if (/^al|^at/.test(id)) return "al";
+      var c = typeof stormCoords === "function" ? stormCoords(s) : { lon: NaN };
+      if (!isNaN(c.lon)) {
+        if (c.lon <= -140) return "cp";
+        if (c.lon <= -100) return "ep";
+        return "al";
+      }
+      return "";
+    }
+    function stormInHomeBasin(s) {
+      var b = homeStormBasin();
+      return b.keys.indexOf(stormBasinKey(s)) >= 0;
+    }
+    function stormIsInvest(s) {
       var name = String((s && (s.name || s.Name)) || "");
-      if (/invest/i.test(name)) return false;
+      var cls = String((s && s.classification) || "").toUpperCase();
+      return /invest/i.test(name) || /^(INVEST|DB|LO|WV)$/.test(cls);
+    }
+    function homeBasinStorms(list) {
+      return (list || []).filter(stormInHomeBasin);
+    }
+    function stormThreatensHome(s) {
+      if (typeof stormIsInvest === "function" && stormIsInvest(s)) return false;
+      if (typeof stormInHomeBasin === "function" && !stormInHomeBasin(s)) return false;
+      var name = String((s && (s.name || s.Name)) || "");
       var alerts = window.__nwsAlerts || [];
       var hitAlert = alerts.some(function (f) {
         var ev = String(((f && f.properties) || {}).event || "");
@@ -5258,7 +5314,7 @@ Cart shop:</textarea>
       });
       if (hitAlert) return true;
       var c = stormCoords(s);
-      if (isNaN(c.lat) || isNaN(c.lon)) return /^al|^at/.test(id);
+      if (isNaN(c.lat) || isNaN(c.lon)) return typeof stormInHomeBasin === "function" ? stormInHomeBasin(s) : true;
       var mi = stormMiles(s);
       if (mi <= 900) return true;
       var toward = stormHeadingTowardHome(s);
@@ -5322,7 +5378,7 @@ Cart shop:</textarea>
       return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
     }
     function pickClosestStorm() {
-      var list = window.__namedStorms || [];
+      var list = window.__stormPageList || (typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || window.__namedStorms || []) : (window.__namedStorms || []));
       var best = 0, bestM = 1e9;
       list.forEach(function (s, i) {
         var m = stormMiles(s);
@@ -5332,14 +5388,15 @@ Cart shop:</textarea>
       return list[best] || null;
     }
     function selectedStorm() {
-      var list = window.__namedStorms || [];
+      var list = window.__stormPageList || (typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || window.__namedStorms || []) : (window.__namedStorms || []));
       if (!list.length) return null;
       var i = window.__stormPick;
       if (i == null || i < 0 || i >= list.length) return pickClosestStorm();
       return list[i];
     }
     function paintStormPage() {
-      var list = window.__namedStorms || [];
+      var list = typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || window.__namedStorms || []) : (window.__namedStorms || []);
+      window.__stormPageList = list;
       if (window.__stormPick == null || window.__stormPick >= list.length) pickClosestStorm();
       var lead = document.getElementById("storm-lead");
       var picks = document.getElementById("storm-picks");
@@ -5352,9 +5409,13 @@ Cart shop:</textarea>
       var frames = document.getElementById("storm-frames");
       var place = typeof homePlace === "function" ? homePlace() : "home";
       if (lead) {
+        var b0 = typeof homeStormBasin === "function" ? homeStormBasin() : { label: "this basin" };
+        var threats = list.filter(function (x) { return typeof stormThreatensHome === "function" && stormThreatensHome(x); });
         lead.textContent = list.length
-          ? (list.length + " named storm" + (list.length > 1 ? "s" : "") + " that can reach " + place + ". Closest first. NHC graphics refresh with each advisory.")
-          : ("No named storm on a path that can reach " + place + ". Outlook maps below still update.");
+          ? (list.length + " system" + (list.length > 1 ? "s" : "") + " NHC is tracking in the " + b0.label +
+             (threats.length ? (". " + threats.length + " could reach " + place + ".") : (". None are a threat to " + place + " yet — this page stays out of rotation.")) +
+             " Graphics refresh with each advisory.")
+          : ("NHC is not tracking a " + b0.label + " system that affects " + place + ". Outlook maps below still update.");
       }
       if (picks) {
         picks.hidden = list.length < 2;
@@ -5379,8 +5440,7 @@ Cart shop:</textarea>
         if (homeC) homeC.hidden = true;
         var adv0 = document.getElementById("hurr-adv");
         if (adv0) adv0.hidden = true;
-        if (gulfF) gulfF.hidden = true;
-        if (atlF) atlF.hidden = true;
+        if (typeof paintBasinOutlookFrames === "function") paintBasinOutlookFrames(null);
         if (typeof fetchHurrDisc === "function") fetchHurrDisc(null);
         return;
       }
@@ -5438,34 +5498,40 @@ Cart shop:</textarea>
           homeT.textContent = "No hurricane or tropical-storm watch or warning is posted for the home pin right now.";
         }
       }
-      var cone = typeof nhcGraphic === "function" ? nhcGraphic(s, "cone") : "";
-      var ir = typeof nhcGraphic === "function" ? nhcGraphic(s, "ir") : "";
-      var vis = typeof nhcGraphic === "function" ? nhcGraphic(s, "vis") : "";
-      var idU = String(s.id || "").toUpperCase();
-      var bin = String(s.binNumber || "").replace(/\s/g, "").toUpperCase();
-      if (!bin && idU) {
-        var n = parseInt(idU.replace(/\D/g, "").slice(0, 2), 10);
-        if (n) bin = "AT" + n;
-      }
-      var baseG = bin ? ("https://www.nhc.noaa.gov/storm_graphics/" + bin + "/refresh/") : "";
+      paintBasinOutlookFrames(s);
+      if (typeof fetchHurrDisc === "function") fetchHurrDisc(s);
+      fetchStormAdvisory(s);
+    }
+    function paintBasinOutlookFrames(s) {
+      var b = homeStormBasin();
+      var lab = document.getElementById("storm-basin-label");
+      if (lab) lab.textContent = b.label;
+      var frames = document.getElementById("storm-frames");
       var extra = [];
-      extra.push({ src: cone || "https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png", cap: "Forecast cone" });
-      if (ir) extra.push({ src: ir, cap: "Infrared satellite" });
-      if (vis) extra.push({ src: vis, cap: "Visible satellite" });
-      if (baseG && idU) {
-        extra.push({ src: baseG + idU + "_wind_history+pngnow.png", cap: "Wind history" });
-        extra.push({ src: baseG + idU + "_wind_probs_34_F120+pngnow.png", cap: "34-kt wind odds" });
+      if (s) {
+        var cone = typeof nhcGraphic === "function" ? nhcGraphic(s, "cone") : "";
+        var ir = typeof nhcGraphic === "function" ? nhcGraphic(s, "ir") : "";
+        var vis = typeof nhcGraphic === "function" ? nhcGraphic(s, "vis") : "";
+        var idU = String(s.id || "").toUpperCase();
+        var bin = String(s.binNumber || "").replace(/\s/g, "").toUpperCase();
+        if (!bin && idU) {
+          var n = parseInt(idU.replace(/\D/g, "").slice(-2), 10);
+          var pref = /^EP/.test(idU) ? "EP" : /^CP/.test(idU) ? "CP" : "AT";
+          if (n) bin = pref + n;
+        }
+        var baseG = bin ? ("https://www.nhc.noaa.gov/storm_graphics/" + bin + "/refresh/") : "";
+        extra.push({ src: cone || b.two5, cap: stormIsInvest(s) ? "Track / outlook" : "Forecast cone" });
+        if (ir) extra.push({ src: ir, cap: "Infrared satellite" });
+        if (vis) extra.push({ src: vis, cap: "Visible satellite" });
+        if (baseG && idU && !stormIsInvest(s)) {
+          extra.push({ src: baseG + idU + "_wind_history+pngnow.png", cap: "Wind history" });
+          extra.push({ src: baseG + idU + "_wind_probs_34_F120+pngnow.png", cap: "34-kt wind odds" });
+        }
       }
-      extra.push({ src: "https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif", cap: "Southeast radar" });
-      var gulfish = !isNaN(c.lon) && c.lon <= -81;
-      extra.push({
-        src: gulfish
-          ? "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/gm/GEOCOLOR/1000x1000.jpg"
-          : "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg",
-        cap: gulfish ? "Gulf satellite" : "Atlantic satellite"
-      });
-      extra.push({ src: "https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png", cap: "2-day outlook" });
-      extra.push({ src: "https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png", cap: "5-day outlook" });
+      extra.push({ src: b.sat, cap: b.satCap });
+      extra.push({ src: b.radar, cap: b.radarCap });
+      extra.push({ src: b.two2, cap: "2-day outlook" });
+      extra.push({ src: b.two5, cap: "5-day outlook" });
       if (frames) {
         frames.innerHTML = extra.map(function (sl, i) {
           return '<div class="storm-frame' + (i === 0 ? " storm-wide" : "") + '"><img alt="' + sl.cap + '" src="' + bustImg(sl.src) + '"/><b>' + sl.cap + "</b></div>";
@@ -5473,13 +5539,10 @@ Cart shop:</textarea>
       }
       var gLink = document.getElementById("cane-refs");
       if (gLink) {
-        var href = (s.forecastGraphics && s.forecastGraphics.url) || "https://www.nhc.noaa.gov/gtwo.php?basin=atlc";
-        gLink.innerHTML = '<a href="' + href + '" target="_blank" rel="noopener">NHC graphics for ' + (s.name || "this storm") + "</a> · <a href=\"https://www.nhc.noaa.gov/gtwo.php?basin=atlc\" target=\"_blank\" rel=\"noopener\">Atlantic outlook</a>";
+        var href = (s && s.forecastGraphics && s.forecastGraphics.url) || b.gtwo;
+        var name = s ? (s.name || "this system") : b.label;
+        gLink.innerHTML = '<a href="' + href + '" target="_blank" rel="noopener">NHC graphics · ' + name + '</a> · <a href="' + b.gtwo + '" target="_blank" rel="noopener">' + b.label + " outlook</a>";
       }
-      if (typeof fetchHurrDisc === "function") fetchHurrDisc(s);
-      fetchStormAdvisory(s);
-      if (gulfF) gulfF.hidden = !gulfish;
-      if (atlF) atlF.hidden = !!gulfish;
     }
     function fetchStormAdvisory(s) {
       var el = document.getElementById("hurr-adv");
@@ -5506,11 +5569,9 @@ Cart shop:</textarea>
       return (list || []).filter(stormThreatensHome);
     }
     function farStormLine() {
-      var all = (window.__nhcAllStorms || []).filter(function (s) {
-        var id = String((s && (s.id || s.binNumber)) || "").toLowerCase();
-        return !/^ep|^cp/.test(id);
-      });
-      if (!all.length) return "No named Atlantic or Gulf storms. 2-day and 5-day outlooks below.";
+      var b = typeof homeStormBasin === "function" ? homeStormBasin() : { label: "this basin" };
+      var all = typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || []) : (window.__nhcAllStorms || []);
+      if (!all.length) return "NHC is not tracking a system in the " + b.label + " for this address. Outlook maps below.";
       var place = typeof homePlace === "function" ? homePlace() : "home";
       return all.map(function (s) {
         var cls = String(s.classification || "");
@@ -5676,7 +5737,8 @@ Cart shop:</textarea>
       }
       var cane = document.getElementById("cane-refs");
       if (cane) {
-        cane.innerHTML = a("https://www.nhc.noaa.gov/gtwo.php?basin=atlc", "NHC Atlantic / Gulf outlook") + " · " + a("https://www.nhc.noaa.gov/", "NHC home") + " · storms that can reach " + place;
+        var bb = typeof homeStormBasin === "function" ? homeStormBasin() : { gtwo: "https://www.nhc.noaa.gov/", label: "NHC" };
+        cane.innerHTML = a(bb.gtwo, "NHC " + bb.label + " outlook") + " · " + a("https://www.nhc.noaa.gov/", "NHC home") + " · systems that can reach " + place;
       }
       var news = document.getElementById("news-note");
       if (news && !/follow/i.test(news.textContent || "")) news.textContent = "Headlines follow " + place + ".";
@@ -7696,7 +7758,7 @@ function currentRotation() {
             var where = [s.latitude || "", s.longitude || ""].join(" ").trim();
             var line = word + " " + s.name + (s.intensity ? ", " + s.intensity + " kt" : "") + (where ? " · " + where : "") + ".";
             return stampTodayArt(
-              '<div class="card"><span class="place-tag place-out">Atlantic / Gulf</span><span class="kind-tag">Named</span><b>' + word + " " + s.name + "</b><span>" + line + "</span></div>",
+              '<div class="card"><span class="place-tag place-out">' + ((typeof homeStormBasin === "function" && homeStormBasin().label) || "Basin") + '</span><span class="kind-tag">' + (typeof stormIsInvest === "function" && stormIsInvest(s) ? "Watch" : "Named") + '</span><b>' + word + " " + s.name + "</b><span>" + line + "</span></div>",
               "cane"
             );
           }).join("");
@@ -9395,8 +9457,9 @@ function currentRotation() {
       var id = String((s && s.id) || "").toUpperCase();
       var bin = String((s && s.binNumber) || "").replace(/\s/g, "").toUpperCase();
       if (!bin && id) {
-        var n = parseInt(id.replace(/\D/g, "").slice(0, 2), 10);
-        if (n) bin = "AT" + n;
+        var n = parseInt(id.replace(/\D/g, "").slice(-2), 10);
+        var pref = /^EP/.test(id) ? "EP" : /^CP/.test(id) ? "CP" : "AT";
+        if (n) bin = pref + n;
       }
       if (!id || !bin) return "";
       var file = kind === "cone" ? id + "_5day_cone_with_line_and_wind+pngnow.png"
@@ -9469,7 +9532,7 @@ function currentRotation() {
       }
       function fetchTwoOutlook() {
       var hdr = { "Accept": "application/ld+json" };
-      fetch("https://api.weather.gov/products?location=AT&type=TWO", { headers: hdr })
+      fetch("https://api.weather.gov/products?location=" + ((typeof homeStormBasin === "function" && homeStormBasin().twoType) || "AT") + "&type=TWO", { headers: hdr })
         .then(function (r) { return r.json(); })
         .then(function (list) {
           var items = (list && list["@graph"]) || [];
@@ -17238,7 +17301,9 @@ function mustEats() {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
           window.__nhcAllStorms = storms.slice();
-          window.__namedStorms = relevantStorms(storms); storms = window.__namedStorms;
+          window.__namedStorms = relevantStorms(storms);
+          window.__stormPageList = homeBasinStorms(window.__nhcAllStorms || storms);
+          storms = window.__namedStorms;
           if (typeof paintStormPage === "function") paintStormPage();
           if (typeof writeTodayChips === "function") writeTodayChips();
           window.__satBasins = { gulf: false, atl: false };
