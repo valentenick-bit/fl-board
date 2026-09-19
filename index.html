@@ -4240,7 +4240,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 783;
+    window.BOARD_VER = 784;
 
     
     function communityShort() {
@@ -12966,23 +12966,29 @@ function currentRotation() {
         e.when = when;
         var allDay = !!e.allDay || (when.getHours() === 12 && when.getMinutes() === 0 && /festival|days|craft/i.test(e.sum));
         var kind = typeof eventKind === "function" ? eventKind(e.sum, e.loc, e.desc) : null;
+        if (typeof isBeachWalkEvent === "function" && isBeachWalkEvent(e)) e.inside = true;
         var live = !!(kind && kind.cls === "music") || e.live || (typeof isLiveMusic === "function" && isLiveMusic(e.sum, e.loc, e.desc));
         if (live && (!kind || (kind.cls !== "music" && kind.cls !== "comedy"))) kind = { label: "Live music", cls: "music" };
+        var split = typeof splitCommunityEvent === "function" ? splitCommunityEvent(e.sum, e.loc) : null;
         var place = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : "Englewood";
-        var at = (String(e.sum || "").match(/@\s*(.+)$/) || [])[1];
-        if (!e.inside) {
-          if (at) place = at.replace(/\s*\(.*$/, "").trim();
-          else if (e.loc) place = e.loc.split(",")[0].trim();
-        }
         if (place.length > 28) place = place.slice(0, 26).replace(/\s+\S*$/, "") + "…";
-        var title = String(e.sum || "");
+        var title = (split && split.name) || String(e.sum || "");
         if (at) title = title.replace(/\s*@\s*.+$/, "").trim();
+        title = title.replace(/^beachwalk\s*[·•:\-–—]+\s*/i, "").trim() || title;
         var pclass = e.inside ? "place-tag place-bw" : "place-tag place-out";
-        var mapQ = e.inside ? "BeachWalk by Manasota Key, Englewood FL" : ((e.loc || place || e.sum) || "");
+        var homePin = e.inside && typeof beachWalkPin === "function" ? beachWalkPin() : null;
+        var mapQ = e.inside ? ((homePin && homePin.addr) || "BeachWalk by Manasota Key, Englewood, FL 34223") : ((e.loc || place || e.sum) || "");
         var pin = typeof pinVenue === "function" ? pinVenue(e) : null;
-        if (pin && pin.lat != null) { e.lat = pin.lat; e.lon = pin.lon; }
-        if (pin && pin.onSite) e.inside = true;
-        e.addr = enrichLoc((pin && pin.q) || e.loc || mapQ || e.sum || "");
+        if (e.inside && homePin) {
+          e.lat = homePin.lat;
+          e.lon = homePin.lon;
+          e.addr = homePin.addr;
+          e.onSite = true;
+        } else {
+          if (pin && pin.lat != null) { e.lat = pin.lat; e.lon = pin.lon; }
+          if (pin && pin.onSite) e.inside = true;
+          e.addr = enrichLoc((pin && (pin.addr || pin.q)) || e.loc || mapQ || "");
+        }
         var distHtml = typeof locPillHtml === "function" ? locPillHtml(e) : "";
         var kindHtml = kind ? ('<span class="kind-tag ' + kind.cls + '">' + kind.label + "</span>") : "";
         var whenLine = allDay ? "All day" : (typeof fmtClockTime === "function" ? fmtClockTime(e.when) : "");
@@ -12993,11 +12999,9 @@ function currentRotation() {
         if (artMap[artKey]) artKey = artMap[artKey];
         var ico = (window.EV_ART && EV_ART[artKey]) || (window.EV_ART && EV_ART.fun) || "";
         var driveKey = String(e.sum || "") + "|" + (e.when && e.when.toISOString ? e.when.toISOString() : "");
-        var locLine = place || "";
-        if (e.loc && String(e.loc).split(",")[0].trim() && String(e.loc).toLowerCase().indexOf(String(place).toLowerCase()) < 0) {
-          locLine = place + " · " + e.loc;
-        }
-        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: place || e.loc || title, addr: e.addr || e.loc || mapQ, lat: e.lat, lon: e.lon, kind: "event" }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (title || "Event") + "</span>" + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
+        var locLine = title || place || "";
+        var placeLabel = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : place;
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
           (e.opens ? " · opens " + e.opens : "") +
           (e.driveMin != null ? " · " + Math.round(e.driveMin) + " min drive" : "") +
           (function () {
@@ -18968,11 +18972,28 @@ function mustEats() {
       if (!/fl\b|florida\b/i.test(raw)) raw += ", FL";
       return String(raw).replace(/\s+/g, " ").trim();
     }
+    function isBeachWalkEvent(e) {
+      if (!e) return false;
+      if (e.inside || e.onSite) return true;
+      if (String(e.src || "") === "newsletter") return true;
+      var blob = [e.sum, e.name, e.title, e.loc, e.addr, e.where, e.desc, e.src].join(" ").toLowerCase();
+      return /beach\s*walk|manasota key|coral harbour|capri club|high tide tiki|card rooms?/.test(blob);
+    }
+    function beachWalkPin() {
+      var pins = (typeof VENUE_PIN !== "undefined" && VENUE_PIN) || window.VENUE_PIN || [];
+      for (var i = 0; i < pins.length; i++) {
+        if (pins[i] && pins[i].onSite) return pins[i];
+      }
+      return { lat: 26.9595, lon: -82.3543, onSite: true, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" };
+    }
     function pinVenue(e) {
       var q = (e && typeof e === "object")
         ? venueQuery(e.sum || e.name || "", e.loc || e.addr || e.where || "")
         : venueQuery(e);
-      if (e && e.inside) return { lat: homeLat(), lon: homeLon(), onSite: true, q: q };
+      if ((typeof isBeachWalkEvent === "function" && isBeachWalkEvent(e)) || (e && e.inside)) {
+        var home = beachWalkPin();
+        return { lat: home.lat, lon: home.lon, onSite: true, q: home.addr, addr: home.addr };
+      }
       var pins = (typeof VENUE_PIN !== "undefined" && VENUE_PIN) || window.VENUE_PIN || [];
       if (!pins || !pins.length) return q ? { q: q } : null;
       for (var i = 0; i < pins.length; i++) {
