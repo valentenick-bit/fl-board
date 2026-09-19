@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 767;
+    window.BOARD_VER = 768;
 
     
     function communityShort() {
@@ -5374,7 +5374,7 @@ Cart shop:</textarea>
       var s = selectedStorm();
       if (typeof noteFeed === "function") noteFeed("storms", true, s ? ((s.name || "storm") + " · " + Math.round(stormMiles(s)) + " mi") : "none on pin");
       if (!s) {
-        if (stats) stats.innerHTML = "<b>No named storm on this pin</b><span>This page stays out of the loop until NHC lists a storm that can affect the Account address.</span>";
+        if (stats) stats.innerHTML = "<b>No threat to the house</b><span>" + (typeof farStormLine === "function" ? farStormLine() : "Quiet until NHC lists a storm that can affect the Account address.") + "</span>";
         if (grid) { grid.hidden = true; grid.innerHTML = ""; }
         if (homeC) homeC.hidden = true;
         var adv0 = document.getElementById("hurr-adv");
@@ -5504,6 +5504,20 @@ Cart shop:</textarea>
     }
     function relevantStorms(list) {
       return (list || []).filter(stormThreatensHome);
+    }
+    function farStormLine() {
+      var all = (window.__nhcAllStorms || []).filter(function (s) {
+        var id = String((s && (s.id || s.binNumber)) || "").toLowerCase();
+        return !/^ep|^cp/.test(id);
+      });
+      if (!all.length) return "No named Atlantic or Gulf storms. 2-day and 5-day outlooks below.";
+      var place = typeof homePlace === "function" ? homePlace() : "home";
+      return all.map(function (s) {
+        var cls = String(s.classification || "");
+        var word = cls === "HU" ? "Hurricane" : cls === "TS" ? "Tropical Storm" : cls === "TD" ? "Tropical Depression" : "Storm";
+        var mi = typeof stormMiles === "function" ? Math.round(stormMiles(s)) : null;
+        return word + " " + (s.name || s.id || "") + (mi ? (" · " + mi + " mi from " + place) : "") + " · not a threat to the house";
+      }).join(". ") + ". Outlook maps below.";
     }
     function homePoint() { return homeLat() + "," + homeLon(); }
     function looksLikeStreet(name) {
@@ -17223,6 +17237,7 @@ function mustEats() {
         function apply(d) {
           var storms = (d && (d.activeStorms || d.storms || d.data)) || [];
           if (!Array.isArray(storms)) storms = [];
+          window.__nhcAllStorms = storms.slice();
           window.__namedStorms = relevantStorms(storms); storms = window.__namedStorms;
           if (typeof paintStormPage === "function") paintStormPage();
           if (typeof writeTodayChips === "function") writeTodayChips();
@@ -17248,7 +17263,8 @@ function mustEats() {
           if (typeof showRadarView === "function") showRadarView(0);
           if (typeof noteFeed === "function") noteFeed("sat", !!(window.__satBasins.gulf || window.__satBasins.atl), (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "radar only");
           if (typeof noteFeed === "function") noteFeed("sat", !!(window.__satBasins.gulf || window.__satBasins.atl), (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "none");
-          touchFeed("storms", true, storms.length ? (storms.length + " named") : "none");
+          touchFeed("storms", true, storms.length ? (storms.length + " threat") : "none on pin");
+          if (typeof noteFeed === "function") noteFeed("named-storms", true, storms.length ? (storms.length + " threat") : farStormLine());
           if (typeof writeTodayChips === "function") writeTodayChips();
           window.__wxRisk.cane = storms.some(function (s) {
             var name = String((s && (s.name || s.id || s.classification)) || "");
@@ -17265,7 +17281,7 @@ function mustEats() {
                 var where = [s.latitude || "", s.longitude || ""].join(" ").trim();
                 return (word ? word + " " : "") + (s.name || s.id || "Storm") + (s.intensity ? ", " + s.intensity + " kt" : "") + (where ? " · " + where : "");
               }).join(" · ")
-            : "No named Atlantic or Gulf storms. 2-day and 5-day outlooks below.";
+            : farStormLine();
         }
         function fail() {
           if (el) el.textContent = "NHC list is quiet. Atlantic outlook maps below still update.";
