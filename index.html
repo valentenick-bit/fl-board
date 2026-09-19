@@ -126,7 +126,7 @@
             document.querySelectorAll(".page").forEach(function (p) { p.classList.toggle("on", p.id === id); });
           }
           if (typeof window.pinOrHold === "function") window.pinOrHold(id);
-          else if (typeof window.holdThenRotate === "function") window.holdThenRotate(30000);
+          else if (typeof window.holdThenRotate === "function") window.holdThenRotate(90000);
           if (typeof window.closeAllMenus === "function") window.closeAllMenus();
         }
       }, true);
@@ -3109,7 +3109,7 @@ Cart shop:</textarea>
         <div class="card" id="air-action-card" hidden><b>Air quality action</b><span id="live-air-action"></span></div>
         <div class="card" id="boil-card" hidden><b>Drinking water</b><span id="live-boil"></span></div>
         <div class="card" id="ntas-card" hidden><b>National threat level</b><span id="live-ntas"></span></div>
-        <div class="card" id="recall-card" hidden><b>Food recalls</b><span id="live-recall"></span></div>
+        <div class="card" id="recall-card" hidden><b>FDA Class I recalls</b><span id="live-recall"></span></div>
         <div class="card" id="han-card" hidden><b>Health alert</b><span id="live-han"></span></div>
         <div class="card" id="school-card" hidden><b>School emergency</b><span id="live-school"></span></div>
         <div class="card" id="nixle-card" hidden><b>Local notice</b><span id="live-nixle"></span></div>
@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 776;
+    window.BOARD_VER = 778;
 
     
     function communityShort() {
@@ -9361,7 +9361,7 @@ function currentRotation() {
       var jump = e.target && e.target.closest ? e.target.closest("#hdr-tempjump") : null;
       if (jump && typeof showPage === "function") {
         showPage("tenday");
-        if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        if (typeof holdThenRotate === "function") holdThenRotate(90000);
         return;
       }
       if (e.target && e.target.id === "hdr-radio") {
@@ -9372,12 +9372,12 @@ function currentRotation() {
         } else if (typeof showPage === "function") {
           showPage("radio");
         }
-        if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        if (typeof holdThenRotate === "function") holdThenRotate(90000);
         return;
       }
       if (e.target && e.target.id === "hdr-alert") {
         if (typeof showPage === "function") showPage("contacts");
-        if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        if (typeof holdThenRotate === "function") holdThenRotate(90000);
         return;
       }
       if (e.target && (e.target.id === "pausebtn" || e.target.id === "pausemenu")) {
@@ -9405,7 +9405,7 @@ function currentRotation() {
         if (window.__paused) return;
         window.__holdPage = false;
         startRotate(true);
-      }, ms || 30000);
+      }, ms || 90000);
     }
     window.holdThenRotate = holdThenRotate;
     function pinOrHold(id) {
@@ -9415,7 +9415,7 @@ function currentRotation() {
         return;
       }
       window.__holdPage = false;
-      holdThenRotate(30000);
+      holdThenRotate(90000);
     }
     window.pinOrHold = pinOrHold;
     function startRotate(immediate) {
@@ -16193,7 +16193,7 @@ function mustEats() {
       function leave() {
         var back = window.__fromPage && window.__fromPage !== "settings" && window.__fromPage !== "account" && (typeof pageOnRotation !== "function" || pageOnRotation(window.__fromPage)) ? window.__fromPage : "now";
         if (typeof showPage === "function") showPage(back);
-        if (typeof holdThenRotate === "function") holdThenRotate(30000);
+        if (typeof holdThenRotate === "function") holdThenRotate(90000);
         else if (typeof startRotate === "function") startRotate();
       }
       document.addEventListener("click", function (e) {
@@ -20477,8 +20477,15 @@ function homeCountyGuess() {
         });
       }
 
-      var fda = "https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22+AND+(state:%22" + st + "%22+OR+distribution_pattern:nationwide)&limit=20";
-      fetch(fda, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+      function fdaUrl(kind) {
+        return "https://api.fda.gov/" + kind + "/enforcement.json?search=status:%22Ongoing%22+AND+classification:%22Class+I%22+AND+(state:%22" + st + "%22+OR+distribution_pattern:nationwide)&limit=20";
+      }
+      Promise.all(["food","drug","device"].map(function (kind) {
+        return fetch(fdaUrl(kind), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+          return ((d && d.results) || []).map(function (x) { x._fdaKind = kind; return x; });
+        }).catch(function () { return []; });
+      })).then(function (groups) {
+        var d = { results: [].concat.apply([], groups) };
         function clsRank(c) {
           c = String(c || "").toUpperCase();
           if (/CLASS I\b/.test(c) || c === "I") return 1;
@@ -20491,7 +20498,7 @@ function homeCountyGuess() {
           s = s.replace(/^\d+\s*(oz|lb|ct|count|pack).*$/i, s);
           var cut = s.split(/[.;]/)[0] || s;
           if (cut.length > 90) cut = cut.slice(0, 87).replace(/[,;:\s]+$/, "") + "…";
-          return cut || "a food product";
+          return cut || "a recalled product";
         }
         function shortReason(s) {
           s = String(s || "").replace(/\s+/g, " ").trim();
@@ -20508,7 +20515,18 @@ function homeCountyGuess() {
           if (x.state) return "Recalled from " + x.state;
           return "May be on store shelves";
         }
+        function fdaIssuedMs(x) {
+          var raw = String((x && (x.recall_initiation_date || x.report_date)) || "").replace(/\D/g, "");
+          if (raw.length < 8) return 0;
+          var dt = new Date(Number(raw.slice(0, 4)), Number(raw.slice(4, 6)) - 1, Number(raw.slice(6, 8))).getTime();
+          return isFinite(dt) ? dt : 0;
+        }
+        var twoDays = 2 * 24 * 60 * 60 * 1000;
         var parsed = ((d && d.results) || []).filter(function (x) {
+          var issued = fdaIssuedMs(x);
+          if (!issued || Date.now() - issued >= twoDays || Date.now() < issued) return false;
+          var rank0 = clsRank(x.classification);
+          if (rank0 !== 1) return false;
           var dist = ((x && x.distribution_pattern) || "") + " " + ((x && x.state) || "") + " " + ((x && x.product_description) || "");
           return typeof textHitsHomeState === "function" ? textHitsHomeState(dist) : true;
         }).map(function (x) {
@@ -20518,7 +20536,9 @@ function homeCountyGuess() {
           var firm = String(x.recalling_firm || "").replace(/\s+/g, " ").trim();
           var cls = rank === 1 ? "Class I" : rank === 2 ? "Class II" : rank === 3 ? "Class III" : "FDA";
           var card = cls + " · " + product + (reason ? " — " + reason : "") + ". " + whereSold(x) + (firm ? ". " + firm : "") + ".";
-          var tick = cls + " food recall. " + product + ". " + (reason ? reason + ". " : "") + whereSold(x) + ". If you have it, do not eat it — throw it out or return it.";
+          var kindL = String(x._fdaKind || "product");
+          var verb = kindL === "device" ? "do not use it" : kindL === "drug" ? "do not take it" : "do not eat it";
+          var tick = cls + " FDA " + kindL + " recall. " + product + ". " + (reason ? reason + ". " : "") + whereSold(x) + ". If you have it, " + verb + " — throw it out or return it.";
           var dist = String(x.distribution_pattern || "");
           var named = false;
           try {
@@ -20533,8 +20553,8 @@ function homeCountyGuess() {
         });
         var on = parsed.length > 0;
         setQuietCard("recall-card", "live-recall", on, parsed.slice(0, 4).map(function (x) { return x.card; }).join(" "));
-        if (typeof noteFeed === "function") noteFeed("recall", true, on ? (parsed.length + " ongoing · " + (parsed[0].rank === 1 ? "Class I" : "Class " + parsed[0].rank)) : "none");
-        var forTick = parsed.filter(function (x) { return x.rank === 1 && x.named; });
+        if (typeof noteFeed === "function") noteFeed("recall", true, on ? (parsed.length + " Class I · last 2 days") : "none");
+        var forTick = parsed.filter(function (x) { return x.rank === 1; });
         setDeskBreak("FDA", forTick.slice(0, 2).map(function (x) {
           return { src: "FDA", title: x.tick };
         }));
