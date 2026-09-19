@@ -3121,8 +3121,24 @@ Cart shop:</textarea>
         </div>
         <div class="card" id="evac-card">
           <b id="evac-title">Evacuation</b>
-          <span id="evac-body">Sarasota County levels A–E. The Key itself is Level A (first out). BeachWalk is inland of the bridge. Do not go to a shelter until the county says it is open.</span>
-          <p id="evac-links"><a href="https://www.arcgis.com/apps/instant/lookup/index.html?appid=0219841617274028b5bf5867fcf4c57b" target="_blank" rel="noopener">Know your level</a> · <a href="https://www.scgov.net/government/emergency-services/emergency-management-4420" target="_blank" rel="noopener">Sarasota EM</a></p>
+          <span id="evac-body">Look up your county evacuation zone and open shelters before a storm. Do not drive to a shelter until emergency management says it is open.</span>
+          <p id="evac-links"><a href="https://www.ready.gov/evacuation" target="_blank" rel="noopener">Ready.gov evac</a></p>
+        </div>
+        <div class="card bw-only" id="bw-guide-card" hidden>
+          <b>BeachWalk · county guide</b>
+          <span id="bw-guide-body">From the 2025 Sarasota County Emergency Preparedness Guide kept with the villa papers.</span>
+        </div>
+        <div class="card bw-only" id="bw-rally-card" hidden>
+          <b>BeachWalk · if we leave</b>
+          <span id="bw-rally-body">Nearest county rally points if you need a ride to an evacuation center.</span>
+        </div>
+        <div class="card bw-only" id="bw-alert-card" hidden>
+          <b>BeachWalk · alerts</b>
+          <span id="bw-alert-body">Alert Sarasota County and the NOAA radio tone for this county.</span>
+        </div>
+        <div class="card bw-only" id="bw-county-card" hidden>
+          <b>BeachWalk · county numbers</b>
+          <span id="bw-county-body">311 and the numbers printed in the 2025 guide.</span>
         </div>
         <div class="card" id="pet-kit-card">
           <b>Pets if you have to go</b>
@@ -4207,7 +4223,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 778;
+    window.BOARD_VER = 779;
 
     
     function communityShort() {
@@ -4757,6 +4773,33 @@ Cart shop:</textarea>
       var n = String((getSet() || {}).community || "").trim();
       return n || "Commons";
     }
+    function isBeachWalkCommunity() {
+      var c = String((typeof getSet === "function" && getSet().community) || "").trim().toLowerCase();
+      if (/beach\s*walk|manasota/.test(c)) return true;
+      if (c && c !== "commons") return false;
+      var addr = "";
+      try { addr = String((getSet().address || "") + " " + (getSet().place || "") + " " + (getSet().zip || "")).toLowerCase(); } catch (eA) {}
+      return /beach\s*walk|coral harbour|manasota/.test(addr);
+    }
+    function paintBeachWalkPrep() {
+      var on = typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity();
+      document.querySelectorAll(".bw-only").forEach(function (el) { el.hidden = !on; });
+      var evacB = document.getElementById("evac-body");
+      var evacL = document.getElementById("evac-links");
+      if (on) {
+        if (evacB) evacB.textContent = "Sarasota County levels A–E. Manasota Key is Level A (first out). BeachWalk sits inland of the bridge — still look up your exact parcel. Do not go to a shelter until the county says it is open. Milton put about 10 feet of surge on the Key; do not use the last storm as the plan.";
+        if (evacL) evacL.innerHTML = '<a href="https://www.arcgis.com/apps/instant/lookup/index.html?appid=0219841617274028b5bf5867fcf4c57b" target="_blank" rel="noopener">Know your level</a> · <a href="https://www.scgov.net/government/emergency-services/emergency-management-4420" target="_blank" rel="noopener">Sarasota EM</a> · <a href="https://www.scgov.net/beprepared" target="_blank" rel="noopener">scgov.net/beprepared</a>';
+        var g = document.getElementById("bw-guide-body");
+        if (g) g.textContent = "2025 Sarasota County Emergency Preparedness Guide (villa Documents folder). Kit is 7 days, not 3 — 1 gallon of water per person per day. First responders stop assisting when winds hit 45 mph. Have meds, cash, paper maps, IDs, and insurance in a dry bag. Plan for pets. Register early for a Medical Needs evacuation center — paper apps are due well before a named storm.";
+        var r = document.getElementById("bw-rally-body");
+        if (r) r.textContent = "If you cannot drive yourself: get to a rally point at least 48 hours before landfall, or pre-register at scgov.net/beprepared. Closest printed points are Englewood Sports Complex, 1300 S. River Road, and Buchan Airport Community Park, 1390 Old Englewood Road. Two bags that fit under the seat. Cats and dogs only in carriers. County staff assign the center — you do not pick it. Breeze Transit may run with limited storm service.";
+        var a = document.getElementById("bw-alert-body");
+        if (a) a.textContent = "Sign up at AlertSarasotaCounty.com (phone, text, email, or the county app). NOAA weather radio SAME code 012115 on 162.400 MHz — that is the tone this board already uses for Sarasota warnings.";
+        var n = document.getElementById("bw-county-body");
+        if (n) n.textContent = "County EM / 311: 941-861-5000. Red Cross Sarasota 941-379-9300. Animal Services 941-861-9500. Medical Needs evac registration 311. FEMA 800-621-3362. Poison Control 800-222-1222. Florida 511 for roads. Coast Guard marine Channel 16.";
+      }
+      if (typeof noteFeed === "function") noteFeed("bw-prep", on, on ? "BeachWalk guide cards on" : "hidden · other community");
+    }
     function paintCommunity() {
       var name = communityName();
       var hdr = document.getElementById("hdr-place");
@@ -4764,6 +4807,7 @@ Cart shop:</textarea>
       document.querySelectorAll(".letter-sub").forEach(function (el) { el.textContent = name; });
       var box = document.getElementById("set-community");
       if (box && document.activeElement !== box) box.value = name;
+      if (typeof paintBeachWalkPrep === "function") paintBeachWalkPrep();
     }
 
     function geocodeHome(done) {
@@ -6280,6 +6324,7 @@ function gatorRange() {
       var place = homePlace();
       var zip = getSet().zip || "";
       if (typeof paintCommunity === "function") paintCommunity();
+        if (typeof paintBeachWalkPrep === "function") paintBeachWalkPrep();
         if (typeof paintCommNav === "function") paintCommNav();
       else {
         var hdr = document.getElementById("hdr-place");
@@ -6304,6 +6349,7 @@ function gatorRange() {
         if (evacB) evacB.textContent = "Look up your county evacuation zone and open shelters before a storm. Do not drive toward a shelter until emergency management says it is open. " + (getSet().county || place) + " is the NWS county for ZIP " + zip + ".";
         if (evacL) evacL.innerHTML = '<a href="https://www.ready.gov/evacuation" target="_blank" rel="noopener">Ready.gov evac</a> · <a href="https://www.weather.gov/" target="_blank" rel="noopener">Weather.gov</a>';
       }
+      if (typeof paintBeachWalkPrep === "function") paintBeachWalkPrep();
       paintEmerg();
     }
     function paintEmerg() {
