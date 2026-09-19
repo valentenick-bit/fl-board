@@ -1196,8 +1196,34 @@
       border-right:0;
       padding:6px 4px 4px;
     }
-    .ev-rail .ev-dow { font-size:11px; letter-spacing:.1em; font-weight:800; text-transform:uppercase; min-height:14px; line-height:14px; width:100%; text-align:center; }
-    .ev-rail .ev-num { font-size:22px; line-height:26px; min-height:26px; min-width:2.4ch; text-align:center; font-weight:800; color:var(--navy); font-family:"Source Sans 3",system-ui,sans-serif; font-variant-numeric:tabular-nums; }
+    .ev-rail .ev-dow,
+    #now .ev-rail .ev-dow,
+    #ent-list .ev-rail .ev-dow,
+    #today-do .ev-rail .ev-dow {
+      font-family:"Source Sans 3",system-ui,sans-serif !important;
+      font-size:11px !important;
+      font-weight:700 !important;
+      font-style:normal !important;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      min-height:14px; line-height:14px; width:100%; text-align:center;
+    }
+    .ev-rail .ev-num,
+    #now .ev-rail .ev-num,
+    #ent-list .ev-rail .ev-num,
+    #today-do .ev-rail .ev-num {
+      font-family:"Source Sans 3",system-ui,sans-serif !important;
+      font-size:22px !important;
+      font-weight:700 !important;
+      font-style:normal !important;
+      line-height:26px !important;
+      min-height:26px;
+      min-width:2.6ch;
+      text-align:center;
+      font-variant-numeric:tabular-nums !important;
+      font-feature-settings:"tnum" 1;
+      color:var(--navy);
+    }
     .ev-rail .ev-ico { width:44px; height:44px; display:grid; place-items:center; margin-top:4px; }
     .ev-rail .ev-ico svg { width:40px; height:40px; display:block; }
     .ev-body { min-width:0; flex:1; padding-top:2px; }
@@ -4227,6 +4253,7 @@ Cart shop:</textarea>
 
         <p class="drawer-lab">Safety</p>
         <button type="button" data-p="contacts">Emergency</button>
+        <button type="button" data-p="prep">Prep</button>
         <p class="drawer-lab">House</p>
         <button type="button" data-p="house">House</button>
         <button type="button" data-p="villa">Open / close</button>
@@ -4276,7 +4303,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 786;
+    window.BOARD_VER = 787;
 
     
     function communityShort() {
@@ -12285,8 +12312,8 @@ function currentRotation() {
         if (whenDate && isNaN(whenDate.getTime())) whenDate = null;
         var rail = {
           hot: {
-            dow: whenDate ? whenDate.toLocaleDateString("en-US", { weekday: "short" }).replace(".", "") : "",
-            num: whenDate ? String(whenDate.getDate()) : "",
+            dow: whenDate && typeof railDateParts === "function" ? railDateParts(whenDate).dow : (whenDate ? String(whenDate.toLocaleDateString("en-US", { weekday: "short" })).replace(".", "").slice(0,3).toUpperCase() : ""),
+            num: whenDate && typeof railDateParts === "function" ? railDateParts(whenDate).num : (whenDate ? String(whenDate.getDate()) : ""),
             ico: (window.EV_ART && (EV_ART.note || EV_ART.music)) || ""
           },
           table: {
@@ -13033,8 +13060,9 @@ function currentRotation() {
         var distHtml = typeof locPillHtml === "function" ? locPillHtml(e) : "";
         var kindHtml = kind ? ('<span class="kind-tag ' + kind.cls + '">' + kind.label + "</span>") : "";
         var whenLine = allDay ? "All day" : (typeof fmtClockTime === "function" ? fmtClockTime(e.when) : "");
-        var dow = (e.when.toLocaleDateString("en-US", { weekday: "short" }) || "").replace(".", "");
-        var num = e.when.getDate();
+        var rd = typeof railDateParts === "function" ? railDateParts(e.when) : { dow: "—", num: "—" };
+        var dow = rd.dow;
+        var num = rd.num;
         var artMap = { concert: "music", theater: "ticket", sports: "sport", comedy: "comedy", eat: "food" };
         var artKey = (kind && kind.cls) || (live ? "music" : "fun");
         if (artMap[artKey]) artKey = artMap[artKey];
@@ -19012,6 +19040,14 @@ function mustEats() {
       if (!hasCity && place && raw.toLowerCase().indexOf(String(place).toLowerCase()) < 0) raw += ", " + place;
       if (!/fl\b|florida\b/i.test(raw)) raw += ", FL";
       return String(raw).replace(/\s+/g, " ").trim();
+    }
+    function railDateParts(when) {
+      var d = when instanceof Date ? when : new Date(when);
+      if (!d || isNaN(d.getTime())) return { dow: "—", num: "—" };
+      var dow = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" }) || "—";
+      dow = String(dow).replace(".", "").slice(0, 3).toUpperCase();
+      var num = String(d.getDate());
+      return { dow: dow, num: num };
     }
     function isBeachWalkEvent(e) {
       if (!e) return false;
