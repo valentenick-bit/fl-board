@@ -4207,7 +4207,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 774;
+    window.BOARD_VER = 775;
 
     
     function communityShort() {
@@ -17232,8 +17232,7 @@ function mustEats() {
           }
         }).catch(function () {});
       if (!homePoint()) return;
-      fetch("https://api.weather.gov/alerts/active?point=" + homePoint(), { headers: { "Accept": "application/geo+json" } })
-        .then(function (r) { return r.json(); })
+      fetchNwsAlerts()
         .then(function (d) {
           var feats = (d && d.features) || [];
           window.__nwsAlerts = feats;
@@ -20118,8 +20117,10 @@ function homeCountyGuess() {
       var st = (typeof homeState === "function" && homeState()) || "FL";
       var raw = "https://api.weather.gov/alerts/active?point=" + pt;
       var area = "https://api.weather.gov/alerts/active?area=" + encodeURIComponent(st);
+      var q = "?point=" + encodeURIComponent(pt) + "&area=" + encodeURIComponent(st);
       var urls = [
-        "/nws-alerts?point=" + encodeURIComponent(pt) + "&area=" + encodeURIComponent(st),
+        "https://commons.valente-nick.workers.dev/nws-alerts" + q,
+        "/nws-alerts" + q,
         raw,
         area,
         "https://corsproxy.io/?" + encodeURIComponent(raw),
@@ -20131,7 +20132,10 @@ function homeCountyGuess() {
         var u = urls[i++];
         return fetch(u, { cache: "no-store" }).then(function (r) {
           if (!r.ok) throw new Error("nws " + r.status);
-          return r.json();
+          return r.text().then(function (txt) {
+            if (!txt || txt.charAt(0) === "<") throw new Error("nws html");
+            return JSON.parse(txt);
+          });
         }).then(function (d) {
           if (d && d.contents) { try { d = JSON.parse(d.contents); } catch (eP) {} }
           if (d && Array.isArray(d.features)) return d;
