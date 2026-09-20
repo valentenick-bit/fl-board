@@ -2581,6 +2581,9 @@
     #golf .land-map-frame .radar-crop {
       position:relative;
     }
+    #golf-map-frame {
+      display:block; width:100%; height:240px; border:0; border-radius:16px; background:#d7ece8; margin:0 0 12px;
+    }
     #eat-gmap, #golf-gmap, #map-pop-gmap { display:none !important; }
     #traffic-gmap.leaflet-container, #land-map-frame .leaflet-container {
       display:block !important; width:100%; height:100%; min-height:220px; border-radius:16px;
@@ -3064,6 +3067,9 @@
       <section id="golf" class="page">
         <h2 data-k="Near the pin">Golf</h2>
         <p class="pill-key" id="golf-count">Courses near home…</p>
+        <div class="land-map-frame golf-map-box">
+          <iframe id="golf-map-frame" title="Golf course map" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
         <div class="split-list" id="golf-list"></div>
       </section>
       <section id="comm" class="page">
@@ -4315,7 +4321,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 806;
+    window.BOARD_VER = 807;
 
     
     function communityShort() {
@@ -11925,19 +11931,17 @@ function currentRotation() {
       if (typeof isBeachWalkEvent === "function" && isBeachWalkEvent({ name: name, sum: name, loc: addr, addr: addr })) return true;
       return false;
     }
+    function cleanPlaceId(id) {
+      return String(id || "").replace(/^places\//, "").trim();
+    }
     function googlePlaceQuery(name, addr, lat, lon, placeId, onsite) {
+      placeId = cleanPlaceId(placeId);
+      if (placeId) return "place_id:" + placeId;
       if (typeof isBeachWalkMapTarget === "function" && isBeachWalkMapTarget(name, addr, lat, lon, onsite)) {
         return typeof beachWalkMapQuery === "function" ? beachWalkMapQuery() : "BeachWalk by Manasota Key, Englewood, FL 34223";
       }
       var blob = [name, addr].join(" ");
       if (/snook\s*haven/i.test(blob)) return "Snook Haven, 5000 E Venice Ave, Venice, FL 34292";
-      if (typeof pinVenue === "function") {
-        var hit = pinVenue({ sum: name, loc: addr || name, name: name, addr: addr });
-        if (hit && hit.addr && hit.re !== true && /snook|5000 E Venice/i.test(hit.addr + name)) return hit.addr;
-        if (hit && hit.addr && name && new RegExp(String(name).replace(/[^a-z0-9]+/ig, ".*"), "i").test(hit.addr)) return hit.addr;
-      }
-      placeId = String(placeId || "").trim();
-      if (placeId && /^ChIJ/.test(placeId)) return "place_id:" + placeId;
       var q = typeof venueQuery === "function" ? venueQuery(name, addr) : [name, addr].filter(Boolean).join(", ");
       q = String(q || "").replace(/\s+/g, " ").trim();
       if (q && q.length > 3 && !/^[-\d.,\s]+$/.test(q)) return q;
@@ -11946,10 +11950,27 @@ function currentRotation() {
       return (typeof homePlace === "function" && homePlace()) || "Englewood, FL";
     }
     function venueMapSrc(name, addr, lat, lon, placeId, onsite) {
+      var key = String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
+      placeId = (typeof cleanPlaceId === "function" ? cleanPlaceId(placeId) : String(placeId || "").trim());
+      if (key && placeId) {
+        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=place_id:" + encodeURIComponent(placeId);
+      }
+      lat = Number(lat); lon = Number(lon);
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        return "https://maps.google.com/maps?ll=" + lat + "," + lon + "&q=" + lat + "," + lon + "&z=16&hl=en&output=embed";
+      }
       var q = googlePlaceQuery(name, addr, lat, lon, placeId, onsite);
       return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&ie=UTF8&iwloc=A&output=embed";
     }
     function venueMapLink(name, addr, lat, lon, onsite, placeId) {
+      placeId = (typeof cleanPlaceId === "function" ? cleanPlaceId(placeId) : String(placeId || "").trim());
+      if (placeId) {
+        return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(name || addr || "place") + "&query_place_id=" + encodeURIComponent(placeId);
+      }
+      lat = Number(lat); lon = Number(lon);
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        return "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon;
+      }
       var q = googlePlaceQuery(name, addr, lat, lon, placeId, onsite);
       return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
     }
@@ -12063,11 +12084,13 @@ function currentRotation() {
         if (live.lon != null) row.lon = live.lon;
         if (live.name) row.name = live.name;
       }
-      var pin = typeof resolveVenuePin === "function" ? resolveVenuePin(row.name, row.addr, row.lat, row.lon) : row;
-      var src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon, row.placeId, onsite || (pin && pin.onSite)) : "";
-      var link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon, onsite || (pin && pin.onSite)) : "";
-      window.__mapPopPin = { lat: pin.lat, lon: pin.lon, name: pin.name, addr: pin.addr || row.addr || "", placeId: row.placeId };
-      src = venueMapSrc(pin.name, pin.addr || row.addr, pin.lat, pin.lon, row.placeId);
+      var pin = (row && row.placeId)
+        ? { name: row.name, addr: row.addr, lat: row.lat, lon: row.lon, placeId: row.placeId }
+        : (typeof resolveVenuePin === "function" ? resolveVenuePin(row.name, row.addr, row.lat, row.lon) : row);
+      var src = venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon, row.placeId || pin.placeId, onsite || (pin && pin.onSite));
+      var link = venueMapLink(pin.name, pin.addr, pin.lat, pin.lon, onsite || (pin && pin.onSite), row.placeId || pin.placeId);
+      window.__mapPopPin = { lat: pin.lat, lon: pin.lon, name: pin.name, addr: pin.addr || row.addr || "", placeId: row.placeId || pin.placeId };
+      src = venueMapSrc(pin.name, pin.addr || row.addr, pin.lat, pin.lon, row.placeId || pin.placeId);
       if (typeof openMapPop === "function") {
         openMapPop(pin.name || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
       }
