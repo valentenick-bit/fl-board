@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 813;
+    window.BOARD_VER = 814;
 
     
     function communityShort() {
@@ -12139,15 +12139,29 @@ function currentRotation() {
         };
       }
       if (!row) return;
-      if (row.inside && typeof beachWalkPin === "function") {
-        var home = beachWalkPin();
-        if (home) {
-          row.lat = home.lat;
-          row.lon = home.lon;
-          row.addr = home.addr || row.addr;
-          showVenueMap(row);
+      var onBw = !!(row.inside || (typeof isBeachWalkEvent === "function" && isBeachWalkEvent(row)));
+      if (onBw) {
+        if (window.__bwPlace && window.__bwPlace.placeId) {
+          showVenueMap({
+            name: window.__bwPlace.name || "BeachWalk by Manasota Key",
+            addr: window.__bwPlace.addr || "26061 Seastone Drive, Englewood, FL 34223",
+            lat: window.__bwPlace.lat,
+            lon: window.__bwPlace.lon,
+            placeId: window.__bwPlace.placeId,
+            inside: true
+          });
           return;
         }
+        row.name = "BeachWalk by Manasota Key";
+        row.addr = "26061 Seastone Drive, Englewood, FL 34223";
+        row.placeId = "";
+        if (typeof openMapPop === "function") openMapPop(row.name, "about:blank", "Finding BeachWalk on Google Maps…");
+        resolveGooglePlace(row, function (ready) {
+          ready = ready || row;
+          window.__bwPlace = { name: ready.name, addr: ready.addr, lat: ready.lat, lon: ready.lon, placeId: ready.placeId };
+          showVenueMap(ready);
+        });
+        return;
       }
       var live = lookupLiveVenue(row);
       if (live) {
@@ -19372,7 +19386,7 @@ function mustEats() {
     try { layoutBand(); } catch (eB) {}
 
     var VENUE_PIN = window.VENUE_PIN = [
-      { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 27.0010, lon: -82.3680, onSite: true, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" },
+      { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 27.0010, lon: -82.3680, onSite: true, name: "BeachWalk by Manasota Key", addr: "26061 Seastone Drive, Englewood, FL 34223" },
       { re: /englewood beach|chadwick/i, lat: 26.9247, lon: -82.3534, addr: "Chadwick Park / Englewood Beach, 2100 N Beach Rd, Englewood, FL 34223" },
       { re: /stump pass/i, lat: 26.899, lon: -82.341, addr: "Stump Pass Beach State Park, 900 Gulf Blvd, Englewood, FL 34223" },
       { re: /mccurdy|comedy theatre/i, lat: 27.336, lon: -82.5307, addr: "McCurdy's Comedy Theatre, 1923 Ringling Blvd, Sarasota, FL 34236" },
@@ -19431,7 +19445,7 @@ function mustEats() {
       for (var i = 0; i < pins.length; i++) {
         if (pins[i] && pins[i].onSite) return pins[i];
       }
-      return { lat: 27.0010, lon: -82.3680, onSite: true, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" };
+      return { lat: 27.0010, lon: -82.3680, onSite: true, name: "BeachWalk by Manasota Key", addr: "26061 Seastone Drive, Englewood, FL 34223" };
     }
     function pinVenue(e) {
       var q = (e && typeof e === "object")
