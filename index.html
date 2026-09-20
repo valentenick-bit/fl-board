@@ -3222,8 +3222,6 @@
       <section id="eats" class="page">
         <h2 data-k="Near the pin">Restaurants</h2>
         <p class="pill-key" id="eat-count">Restaurants near home…</p>
-        <p class="today-sec-h" id="eat-coupon-h">Takeout deals within 5 miles</p>
-        <div id="eat-coupons"></div>
         <div class="split-list" id="eat-list"></div>
       </section>
       <section id="golf" class="page">
@@ -4342,7 +4340,7 @@ Cart shop:</textarea>
             <button type="button" data-v="0">Off</button>
           </div>
         </div>
-        <p class="set-help">The key lives in Drive <code>key.json</code> only — not on this page. Off stops Places, traffic layer, and drive times. Nearby lists still cache 12 hours. Cap is 50 paid calls per device per day.</p>
+        <p class="set-help">The Maps key lives in Drive <code>maps.json</code> only — never GitHub, never key.json, and not on this page. Off stops Places, traffic layer, and drive times. Nearby lists still cache 12 hours. Cap is 50 paid calls per device per day.</p>
         <div class="set-line"><label>Google cache</label>
           <button type="button" id="set-gcache" class="ghost">Clear lookups</button>
         </div>
@@ -4486,7 +4484,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 823;
+    window.BOARD_VER = 827;
 
     
     function communityShort() {
@@ -12561,7 +12559,7 @@ function currentRotation() {
         openVenueMap(eatCard);
         return;
       }
-      var venueEl = e.target.closest && e.target.closest(".map-hit[data-venue], #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-coupons .card, #eat-coupons .card, #today-shop .card, #today-hh .card, #ent-list .card");
+      var venueEl = e.target.closest && e.target.closest(".map-hit[data-venue], #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-coupons .card, #today-shop .card, #today-hh .card, #ent-list .card");
       if (venueEl) {
         if (typeof openVenueMap === "function") { openVenueMap(venueEl); return; }
       }
@@ -13270,14 +13268,11 @@ function currentRotation() {
           }
           var top = list.slice(0, 5);
           var todayBox = document.getElementById("today-coupons");
-          var eatBox = document.getElementById("eat-coupons");
           var html = top.length
             ? top.map(couponCardHtml).join("")
             : '<div class="card ev-card"><div class="ev-body"><b>No takeout coupons inside 5 miles</b><span class="eat-why">When coupons.json has live deals near the home pin, the best 3–5 for today show here.</span></div></div>';
           if (todayBox) todayBox.innerHTML = html;
-          if (eatBox) eatBox.innerHTML = list.length ? list.map(couponCardHtml).join("") : html;
           if (todayBox && typeof stampLocPills === "function") stampLocPills(todayBox);
-          if (eatBox && typeof stampLocPills === "function") stampLocPills(eatBox);
           if (typeof noteFeed === "function") noteFeed("coupons", !!top.length, top.length ? (top.length + " deals") : "none inside 5 mi");
         }
         var urls = typeof gitFileUrls === "function" ? gitFileUrls("coupons.json") : ["./coupons.json"];
@@ -15284,19 +15279,6 @@ function mustEats() {
           window.__eatPick = d.eatPick;
           if (typeof window.paintEatPick === "function") window.paintEatPick();
         }
-        var gk = String(d.gmapsKey || d.mapsKey || d.googleMapsKey || d.googleKey || "").trim();
-        if (gk && gk.length > 20) {
-          var had = "";
-          try { had = String((getSet() || {}).gmapsKey || "").trim(); } catch (eK) {}
-          if (typeof putSet === "function") putSet({ gmapsKey: gk });
-          if (had !== gk) {
-            if (typeof loadGmaps === "function") loadGmaps(function () {
-              if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
-              if (typeof window.reloadEats === "function") window.reloadEats();
-              if (typeof window.reloadGolf === "function") window.reloadGolf();
-            });
-          }
-        }
       }
       function next(i) {
         if (i >= urls.length) return;
@@ -15304,6 +15286,39 @@ function mustEats() {
       }
       next(0);
       setInterval(function () { next(0); }, 60 * 60 * 1000);
+    })();
+
+    (function loadMapsJson() {
+      var MAPS_ID = "1SbVS5vyn_3BlauYniVZCnOERlBeWSIhq";
+      var urls = [
+        "/maps.json",
+        "https://drive.usercontent.google.com/download?id=" + MAPS_ID + "&export=download&confirm=t",
+        "https://drive.google.com/uc?export=download&id=" + MAPS_ID + "&confirm=t"
+      ];
+      function apply(d) {
+        if (!d) return;
+        var gk = String(d.gmapsKey || d.mapsKey || d.googleMapsKey || d.googleKey || "").trim();
+        if (!gk || gk.length < 20) return;
+        var had = "";
+        try { had = String((getSet() || {}).gmapsKey || "").trim(); } catch (eK) {}
+        if (typeof putSet === "function") putSet({ gmapsKey: gk });
+        if (had !== gk) {
+          if (typeof loadGmaps === "function") loadGmaps(function () {
+            if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
+            if (typeof window.reloadEats === "function") window.reloadEats();
+            if (typeof window.reloadGolf === "function") window.reloadGolf();
+          });
+        }
+        if (typeof noteFeed === "function") noteFeed("maps-json", true, "maps.json loaded");
+      }
+      function next(i) {
+        if (i >= urls.length) return;
+        fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          if (d) apply(d);
+          else next(i + 1);
+        }).catch(function () { next(i + 1); });
+      }
+      next(0);
     })();
     (function loadFlights() {
       var el = document.getElementById("live-flights");
