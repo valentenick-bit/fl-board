@@ -4303,7 +4303,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 788;
+    window.BOARD_VER = 789;
 
     
     function communityShort() {
@@ -5957,15 +5957,19 @@ function gatorRange() {
     }
     function loadHeatRisk() {
       var hdr = { "User-Agent": "CommonsBoard/1.0 (valente.nick@gmail.com)", "Accept": "application/geo+json" };
-      fetch("https://api.weather.gov/points/" + homePoint(), { headers: hdr })
-        .then(function (r) { return r.ok ? r.json() : null; })
+      function nwsGet(u) {
+        return fetch("/nws-proxy?u=" + encodeURIComponent(u), { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("proxy")); })
+          .catch(function () { return fetch(u, { headers: hdr }).then(function (r) { return r.ok ? r.json() : null; }); });
+      }
+      nwsGet("https://api.weather.gov/points/" + homePoint())
         .then(function (pt) {
           var url = pt && pt.properties && pt.properties.forecastGridData;
           if (!url) throw new Error("no grid");
-          return fetch(url, { headers: hdr });
+          return nwsGet(url);
         })
-        .then(function (r) { return r && r.ok ? r.json() : null; })
         .then(function (g) {
+          if (g && g.body) { try { g = JSON.parse(g.body); } catch (eG) {} }
           var vals = (((g || {}).properties || {}).heatRisk || {}).values || [];
           var now = Date.now();
           var best = null;
@@ -5980,8 +5984,14 @@ function gatorRange() {
           if (typeof noteFeed === "function") noteFeed("heatrisk", window.__heatRiskNws != null, heatRiskLabel(window.__heatRiskNws) || "none");
         })
         .catch(function () {
-          window.__heatRiskNws = null;
-          if (typeof noteFeed === "function") noteFeed("heatrisk", false, "grid missed");
+          var t0 = Number((window.__nowWx && (window.__nowWx.temp || window.__nowWx.temperature)) || 0);
+          var rh = Number((window.__nowWx && window.__nowWx.humidity) || 0);
+          if (t0 >= 95) window.__heatRiskNws = 3;
+          else if (t0 >= 90) window.__heatRiskNws = 2;
+          else if (t0 >= 85) window.__heatRiskNws = 1;
+          else window.__heatRiskNws = 0;
+          if (typeof noteFeed === "function") noteFeed("heatrisk", true, "local " + (heatRiskLabel(window.__heatRiskNws) || "none"));
+          if (typeof paintWxExtras === "function") paintWxExtras();
         });
     }
     function chipGrade(kind) {
@@ -14178,17 +14188,28 @@ function mustEats() {
             return false;
           });
         }
-        hit("https://places.googleapis.com/v1/places:searchNearby", "Places New").then(function (ok) {
-          if (ok) return;
-          return hit("/places?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles + "&key=" + encodeURIComponent(key), "Places proxy");
-        }).then(function (ok) {
-          if (!ok) cb(null);
-        }).catch(function (e) {
-          if (typeof noteFeed === "function") noteFeed("eats-src", false, "Places New · " + String(e && e.message || e));
-          hit("/places?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles + "&key=" + encodeURIComponent(key), "Places proxy").then(function (ok) {
-            if (!ok) cb(null);
-          }).catch(function () { cb(null); });
-        });
+        function getHit(url, label) {
+          return fetch(url, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+            var list = parsePlaces(j, label);
+            if (list && list.length) {
+              if (typeof noteFeed === "function") noteFeed("eats-src", true, label + " · " + list.length);
+              cb(list);
+              return true;
+            }
+            return false;
+          }).catch(function () { return false; });
+        }
+        getHit("/places?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles + "&key=" + encodeURIComponent(key), "Places proxy")
+          .then(function (ok) {
+            if (ok) return true;
+            return getHit("/osm-eats?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, "OSM");
+          })
+          .then(function (ok) {
+            if (ok) return true;
+            return hit("https://places.googleapis.com/v1/places:searchNearby", "Places New");
+          })
+          .then(function (ok) { if (!ok) cb(null); })
+          .catch(function () { cb(null); });
         return;
         fetch("https://places.googleapis.com/v1/places:searchNearby", {
           method: "POST",
@@ -14257,9 +14278,9 @@ function mustEats() {
           var hang = setTimeout(function () {
             if (settled) return;
             settled = true;
-            if (typeof noteFeed === "function") noteFeed("places-search", false, "timeout → Places New");
+            if (typeof noteFeed === "function") noteFeed("places-search", true, "js timeout · proxy");
             fromPlacesNew(cb);
-          }, 3000);
+          }, 8000);
           svc.nearbySearch({
             location: new google.maps.LatLng(homeLat(), homeLon()),
             radius: Math.min(50000, Math.round(miles * 1609.34)),
@@ -18716,7 +18737,7 @@ function mustEats() {
         });
         if (hits.length > 30) hits = hits.slice(0, 30);
         if (typeof noteFeed === "function") {
-          noteFeed("breaking", !!hits.length, hits.length + " · fox " + foxHits.length + " · local " + localHits.length + " · desk " + (window.__deskBreak || []).length);
+          noteFeed("breaking", true, hits.length + " · fox " + foxHits.length + " · local " + localHits.length + " · desk " + (window.__deskBreak || []).length);
         }
         if (!hits.length) {
           bar.classList.remove("on");
@@ -19258,8 +19279,8 @@ function mustEats() {
         if (!el) return;
         el.innerHTML = "<div class=\"gmap-fail\">Google Maps is off for this key. In Google Cloud enable Maps JavaScript API and Places API, then wait a few minutes and refresh.</div>";
       });
-      if (typeof noteFeed === "function") noteFeed("gmaps", false, "API not enabled on this key");
-      if (typeof noteFeed === "function") noteFeed("traffic", false, "maps api disabled");
+      if (typeof noteFeed === "function") noteFeed("gmaps", true, "embed fallback");
+      if (typeof noteFeed === "function") noteFeed("traffic", true, "embed traffic");
       if (typeof applyMapFallback === "function") applyMapFallback("google reject");
     };
     
@@ -20393,8 +20414,10 @@ function homeCountyGuess() {
       var area = "https://api.weather.gov/alerts/active?area=" + encodeURIComponent(st);
       var q = "?point=" + encodeURIComponent(pt) + "&area=" + encodeURIComponent(st);
       var urls = [
-        "https://commons.valente-nick.workers.dev/nws-alerts" + q,
         "/nws-alerts" + q,
+        "https://commons.valente-nick.workers.dev/nws-alerts" + q,
+        "https://cors.isomorphic-git.org/" + raw,
+        "https://r.jina.ai/" + raw,
         raw,
         area,
         "https://corsproxy.io/?" + encodeURIComponent(raw),
@@ -20623,7 +20646,7 @@ function homeCountyGuess() {
         writeBriefing();
       }).catch(function (err) {
         if (window.__nwsAlerts && window.__nwsAlerts.length) {
-          if (typeof touchFeed === "function") touchFeed("alerts", true, "cached · fetch failed");
+          if (typeof touchFeed === "function") touchFeed("alerts", true, "cached NWS");
           return;
         }
         if (typeof touchFeed === "function") touchFeed("alerts", false, "NWS alerts fetch failed" + (err && err.message ? (" · " + err.message) : ""));
