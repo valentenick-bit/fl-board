@@ -2972,7 +2972,7 @@
             <div id="traffic-gmap" class="lite gmap-box land-map-pane" hidden></div>
             <iframe class="lite land-map-pane on" id="traffic-map" title="Traffic" src="about:blank" allowfullscreen></iframe>
           </div>
-          <p class="wx-map-cap"><b>Traffic</b><span id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@26.9595,-82.3543,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></span></p>
+          <p class="wx-map-cap"><b>Traffic</b><span id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@27.0010,-82.3680,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></span></p>
         </div>
         <div class="land-top-left">
         <p class="pill-key" id="land-nowline">Ground, air you walk in, and the crust under the house.</p>
@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 798;
+    window.BOARD_VER = 799;
 
     
     function communityShort() {
@@ -4716,13 +4716,13 @@ Cart shop:</textarea>
       var s = getSet();
       var n = Number(s.lat);
       if (isFinite(n) && Math.abs(n) > 1) return n;
-      return 26.9595;
+      return 27.0010;
     }
     function homeLon() {
       var s = getSet();
       var n = Number(s.lon);
       if (isFinite(n) && Math.abs(n) > 1) return n;
-      return -82.3543;
+      return -82.3680;
     }
     function pinMatchesAddress() {
       var s = getSet();
@@ -6181,8 +6181,8 @@ function gatorRange() {
     function windyRadarUrl(lat, lon, zoom) {
       lat = Number(lat); lon = Number(lon);
       if (!isFinite(lat) || !isFinite(lon)) {
-        lat = (typeof homeLat === "function" && homeLat()) || 26.9595;
-        lon = (typeof homeLon === "function" && homeLon()) || -82.3543;
+        lat = (typeof homeLat === "function" && homeLat()) || 27.0010;
+        lon = (typeof homeLon === "function" && homeLon()) || -82.3680;
       }
       zoom = zoom || 9;
       return "https://embed.windy.com/embed2.html?lat=" + lat.toFixed(4) +
@@ -11882,10 +11882,23 @@ function currentRotation() {
       }
       return true;
     }
-    function venueMapSrc(name, addr, lat, lon, placeId) {
+    function beachWalkMapQuery() {
+      return "BeachWalk by Manasota Key, Englewood, FL 34223";
+    }
+    function isBeachWalkMapTarget(name, addr, lat, lon, onsite) {
+      if (onsite) return true;
+      var blob = [name, addr].join(" ").toLowerCase();
+      if (/beach\s*walk|manasota key|coral harbour/.test(blob)) return true;
+      if (typeof isBeachWalkEvent === "function" && isBeachWalkEvent({ name: name, sum: name, loc: addr, addr: addr })) return true;
+      return false;
+    }
+    function venueMapSrc(name, addr, lat, lon, placeId, onsite) {
+      if (isBeachWalkMapTarget(name, addr, lat, lon, onsite)) {
+        return "https://maps.google.com/maps?q=" + encodeURIComponent(beachWalkMapQuery()) + "&z=16&hl=en&ie=UTF8&output=embed";
+      }
       lat = Number(lat); lon = Number(lon);
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=17&hl=en&ie=UTF8&output=embed";
+        return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=16&hl=en&ie=UTF8&output=embed";
       }
       placeId = String(placeId || "").trim();
       var q = [name, addr].filter(Boolean).join(", ");
@@ -11894,7 +11907,10 @@ function currentRotation() {
       if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
       return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&ie=UTF8&iwloc=A&output=embed";
     }
-    function venueMapLink(name, addr, lat, lon) {
+    function venueMapLink(name, addr, lat, lon, onsite) {
+      if (isBeachWalkMapTarget(name, addr, lat, lon, onsite)) {
+        return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(beachWalkMapQuery());
+      }
       lat = Number(lat); lon = Number(lon);
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
         return "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
@@ -11905,7 +11921,7 @@ function currentRotation() {
       lat = Number(lat); lon = Number(lon);
       var guess = { name: name, sum: name, title: name, loc: addr, addr: addr, where: addr };
       if (typeof isBeachWalkEvent === "function" && isBeachWalkEvent(guess)) {
-        var home = typeof beachWalkPin === "function" ? beachWalkPin() : { lat: 26.9595, lon: -82.3543, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" };
+        var home = typeof beachWalkPin === "function" ? beachWalkPin() : { lat: 27.0010, lon: -82.3680, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" };
         return { name: name || "BeachWalk", addr: home.addr || addr || "", lat: Number(home.lat), lon: Number(home.lon) };
       }
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
@@ -11962,6 +11978,7 @@ function currentRotation() {
       if (v.lat !== "" && v.lon !== "") bits.push('data-lat="' + v.lat + '" data-lon="' + v.lon + '"');
       if (v.placeId) bits.push('data-placeid="' + esc(v.placeId) + '"');
       if (v.kind) bits.push('data-kind="' + esc(v.kind) + '"');
+      if (row.inside || row.onSite || extra.onsite) bits.push('data-onsite="1"');
       if (extra.eat) bits.push('data-eat="' + esc(extra.eat) + '"');
       if (extra.golf) bits.push('data-golf="' + esc(extra.golf) + '"');
       if (extra.buzz) bits.push('data-buzz="' + esc(extra.buzz) + '"');
@@ -11989,10 +12006,20 @@ function currentRotation() {
           lat: rowOrEl.getAttribute("data-lat"),
           lon: rowOrEl.getAttribute("data-lon"),
           placeId: rowOrEl.getAttribute("data-placeid"),
-          kind: rowOrEl.getAttribute("data-kind")
+          kind: rowOrEl.getAttribute("data-kind"),
+          inside: rowOrEl.getAttribute("data-onsite") === "1" || rowOrEl.getAttribute("data-inside") === "1"
         };
       }
-      var live = liveVenueRow(row && row.name);
+      var onsite = !!(row && (row.inside || row.onSite || row.kind === "event" && isBeachWalkMapTarget(row.name, row.addr, row.lat, row.lon, row.inside)));
+      if (onsite) {
+        var home = typeof beachWalkPin === "function" ? beachWalkPin() : null;
+        if (home) {
+          row.lat = home.lat;
+          row.lon = home.lon;
+          row.addr = home.addr;
+        }
+      }
+      var live = onsite ? null : liveVenueRow(row && row.name);
       if (live) {
         if (live.addr) row.addr = live.addr;
         if (live.placeId) row.placeId = live.placeId;
@@ -12001,8 +12028,8 @@ function currentRotation() {
         if (live.name) row.name = live.name;
       }
       var pin = typeof resolveVenuePin === "function" ? resolveVenuePin(row.name, row.addr, row.lat, row.lon) : row;
-      var src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon, row.placeId) : "";
-      var link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon) : "";
+      var src = typeof venueMapSrc === "function" ? venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon, row.placeId, onsite || (pin && pin.onSite)) : "";
+      var link = typeof venueMapLink === "function" ? venueMapLink(pin.name, pin.addr, pin.lat, pin.lon, onsite || (pin && pin.onSite)) : "";
       window.__mapPopPin = { lat: pin.lat, lon: pin.lon, name: pin.name, addr: pin.addr || row.addr || "", placeId: row.placeId };
       src = venueMapSrc(pin.name, pin.addr || row.addr, pin.lat, pin.lon, row.placeId);
       if (typeof openMapPop === "function") {
@@ -19191,7 +19218,7 @@ function mustEats() {
     try { layoutBand(); } catch (eB) {}
 
     var VENUE_PIN = window.VENUE_PIN = [
-      { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 26.9595, lon: -82.3543, onSite: true, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" },
+      { re: /beachwalk|manasota|clubhouse|on the key|coral harbour/i, lat: 27.0010, lon: -82.3680, onSite: true, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" },
       { re: /englewood beach|chadwick/i, lat: 26.9247, lon: -82.3534, addr: "Chadwick Park / Englewood Beach, 2100 N Beach Rd, Englewood, FL 34223" },
       { re: /stump pass/i, lat: 26.899, lon: -82.341, addr: "Stump Pass Beach State Park, 900 Gulf Blvd, Englewood, FL 34223" },
       { re: /mccurdy|comedy theatre/i, lat: 27.336, lon: -82.5307, addr: "McCurdy's Comedy Theatre, 1923 Ringling Blvd, Sarasota, FL 34236" },
@@ -19249,7 +19276,7 @@ function mustEats() {
       for (var i = 0; i < pins.length; i++) {
         if (pins[i] && pins[i].onSite) return pins[i];
       }
-      return { lat: 26.9595, lon: -82.3543, onSite: true, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" };
+      return { lat: 27.0010, lon: -82.3680, onSite: true, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" };
     }
     function pinVenue(e) {
       var q = (e && typeof e === "object")
