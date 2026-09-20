@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 801;
+    window.BOARD_VER = 802;
 
     
     function communityShort() {
@@ -11927,6 +11927,13 @@ function currentRotation() {
       if (typeof isBeachWalkMapTarget === "function" && isBeachWalkMapTarget(name, addr, lat, lon, onsite)) {
         return typeof beachWalkMapQuery === "function" ? beachWalkMapQuery() : "BeachWalk by Manasota Key, Englewood, FL 34223";
       }
+      var blob = [name, addr].join(" ");
+      if (/snook\s*haven/i.test(blob)) return "Snook Haven, 5000 E Venice Ave, Venice, FL 34292";
+      if (typeof pinVenue === "function") {
+        var hit = pinVenue({ sum: name, loc: addr || name, name: name, addr: addr });
+        if (hit && hit.addr && hit.re !== true && /snook|5000 E Venice/i.test(hit.addr + name)) return hit.addr;
+        if (hit && hit.addr && name && new RegExp(String(name).replace(/[^a-z0-9]+/ig, ".*"), "i").test(hit.addr)) return hit.addr;
+      }
       placeId = String(placeId || "").trim();
       if (placeId && /^ChIJ/.test(placeId)) return "place_id:" + placeId;
       var q = typeof venueQuery === "function" ? venueQuery(name, addr) : [name, addr].filter(Boolean).join(", ");
@@ -19249,9 +19256,10 @@ function mustEats() {
       { re: /englewood beach|chadwick/i, lat: 26.9247, lon: -82.3534, addr: "Chadwick Park / Englewood Beach, 2100 N Beach Rd, Englewood, FL 34223" },
       { re: /stump pass/i, lat: 26.899, lon: -82.341, addr: "Stump Pass Beach State Park, 900 Gulf Blvd, Englewood, FL 34223" },
       { re: /mccurdy|comedy theatre/i, lat: 27.336, lon: -82.5307, addr: "McCurdy's Comedy Theatre, 1923 Ringling Blvd, Sarasota, FL 34236" },
+      { re: /snook\s*haven/i, lat: 27.1005, lon: -82.3516, addr: "Snook Haven, 5000 E Venice Ave, Venice, FL 34292" },
       { re: /venice theatre/i, lat: 27.0995, lon: -82.4476, addr: "Venice Theatre, 140 W Tampa Ave, Venice, FL 34285" },
       { re: /venice beach/i, lat: 27.1003, lon: -82.4588, addr: "Venice Beach, 101 The Esplanade, Venice, FL 34285" },
-      { re: /venice/i, lat: 27.0998, lon: -82.4543, addr: "Downtown Venice, W Venice Ave, Venice, FL 34285" },
+      { re: /(?:downtown\s+)?venice(?!\s+ave)/i, lat: 27.0998, lon: -82.4543, addr: "Downtown Venice, W Venice Ave, Venice, FL 34285" },
       { re: /port charlotte/i, lat: 26.976, lon: -82.0906, addr: "Port Charlotte, FL 33948" },
       { re: /north port/i, lat: 27.0442, lon: -82.236, addr: "North Port, FL 34287" },
       { re: /boca grande/i, lat: 26.749, lon: -82.261, addr: "Boca Grande, FL 33921" },
