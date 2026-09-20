@@ -1230,8 +1230,19 @@
     .ev-body b { display:block; margin:2px 0 4px; font-size:16px; }
     .ev-when { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
     html.dark .ev-card, html.dark .card.today-card, html.dark .card.music { background:var(--card); color:var(--ink); }
-    html.dark .ev-rail .ev-num { color:#f4efe4; }
-    html.dark .ev-rail { color:#7fd1c7; }
+    html.dark .ev-rail,
+    html.dark .ev-rail .ev-dow,
+    html.dark .ev-rail .ev-num,
+    html.dark #now .ev-rail .ev-dow,
+    html.dark #now .ev-rail .ev-num,
+    html.dark #ent-list .ev-rail .ev-dow,
+    html.dark #ent-list .ev-rail .ev-num,
+    html.dark #today-do .ev-rail .ev-dow,
+    html.dark #today-do .ev-rail .ev-num {
+      color:#f4efe4 !important;
+    }
+    html.dark .ev-rail { color:#7fd1c7 !important; }
+    html.dark .ev-rail .ev-dow { color:#9be0d6 !important; }
 
     
 .music-tag, .place-tag, .kind-tag, .warn-tag,
@@ -4151,8 +4162,9 @@ Cart shop:</textarea>
         <ul id="addr-suggest" class="addr-suggest" hidden></ul>
         <button type="button" id="set-address-go" class="done" style="margin:8px 0 10px">Use this address</button>
         <p class="hint" id="addr-pin-status">Pin follows the line above after you tap Use this address.</p>
-        <label>Google Maps key <small>(optional)</small></label>
-        <input id="set-gmaps" type="text" placeholder="AIza…" autocomplete="off" />
+        <label>Google Maps key <small>shared from Drive key.json</small></label>
+        <input id="set-gmaps" type="text" placeholder="AIza… paste once, stored in Drive" autocomplete="off" />
+        <p class="set-help">This key is read from Commons Drive <code>key.json</code> so the phone and laptop stay in sync. Paste it here or into that file.</p>
         <div class="set-line"><label>Use Google key</label>
           <div class="set-row" id="set-gmapson">
             <button type="button" data-v="1">On</button>
@@ -4303,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 789;
+    window.BOARD_VER = 792;
 
     
     function communityShort() {
@@ -13012,6 +13024,16 @@ function currentRotation() {
       if (/boat|cruise|pontoon|kayak/.test(s)) return { label: "Boat", cls: "boat" };
       if (/movie|film|cinema/.test(s)) return { label: "Movie", cls: "movie" };
       if (/meeting|committee|hoa|board meeting/.test(s)) return { label: "Meeting", cls: "meeting" };
+      if (/church|worship|mass\b|bible|prayer|gospel/.test(s)) return { label: "Church", cls: "church" };
+      if (/kids|family fun|storytime|story time|children/.test(s)) return { label: "Kids", cls: "kids" };
+      if (/wine|tasting|brewery|craft beer/.test(s)) return { label: "Tasting", cls: "taste" };
+      if (/fundraiser|benefit|5k|walk-a-thon/.test(s)) return { label: "Fundraiser", cls: "give" };
+      if (/hike|nature|bird|garden tour/.test(s)) return { label: "Outdoors", cls: "out" };
+      if (/fishing tournament|fish fry/.test(s)) return { label: "Fishing", cls: "fish" };
+      if (/estate sale|garage sale|yard sale|open house/.test(s)) return { label: "Sale", cls: "sale" };
+      if (/lecture|author|book club|library/.test(s)) return { label: "Talk", cls: "talk" };
+      if (/volunteer/.test(s)) return { label: "Volunteer", cls: "give" };
+      if (/sunset|sunrise yoga|full moon/.test(s)) return { label: "Sunset", cls: "sky" };
       return { label: "Event", cls: "fun" };
     }
     function isLiveMusic(sum, loc, desc) {
@@ -13299,9 +13321,16 @@ function paint() {
         if (!lat || !lon) { if (done) done(); return; }
         var miles = Math.min(100, Number((typeof getSet === "function" && getSet().eventMiles) || 40));
         var start = new Date().toISOString().replace(/\.\d+Z$/, "Z");
-        var api = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" + encodeURIComponent(tmKey()) +
+        var tmBase = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" + encodeURIComponent(tmKey()) +
           "&latlong=" + lat + "," + lon + "&radius=" + miles + "&unit=miles&size=80&sort=date,asc&startDateTime=" + encodeURIComponent(start);
         var urls = [
+          tmBase,
+          tmBase + "&classificationName=Music",
+          tmBase + "&classificationName=Sports",
+          tmBase + "&classificationName=" + encodeURIComponent("Arts & Theatre"),
+          tmBase + "&classificationName=Family",
+          tmBase + "&classificationName=Film",
+          tmBase + "&classificationName=Miscellaneous",
           (location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles)
         ];
         function next(i) {
@@ -13793,7 +13822,7 @@ function paint() {
           });
           localStorage.setItem("bw-eat-ratings", JSON.stringify(prev));
         } catch (eS) {}
-        if (note) note.textContent = list.length ? ("Sit-down & bars · " + (window.__eatReviewFloor || 2500) + "+ reviews · " + miles + " mi") : ("Looking up sit-down restaurants inside " + miles + " mi");
+        if (note) note.textContent = list.length ? ("Sit-down & bars · " + (window.__eatReviewFloor || 1000) + "+ reviews · " + miles + " mi") : ("Looking up sit-down restaurants inside " + miles + " mi");
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants with Google ratings in range.</b><span>Nothing rated inside 25 miles of the pin.</span></div>';
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list[0].name + " " + (list[0].rating || "") + " first") : "none in range");
         eatCacheWrite(list);
@@ -14062,7 +14091,61 @@ function paint() {
       }
       
 function mustEats() {
-        return [];
+        return [
+          { name:"Farlow's on the Water", lat:26.9616, lon:-82.3526, rating:4.5, reviews:1200, addr:"Englewood", types:["restaurant"] },
+          { name:"Sharky's On the Pier", lat:27.1002, lon:-82.4588, rating:4.3, reviews:4500, addr:"Venice", types:["restaurant"] },
+          { name:"The Waverly", lat:26.9655, lon:-82.3548, rating:4.4, reviews:800, addr:"Englewood", types:["restaurant","bar"] },
+          { name:"Norma Jeans Sports Grill", lat:26.9610, lon:-82.3512, rating:4.2, reviews:900, addr:"Englewood", types:["restaurant","bar"] },
+          { name:"Rumours Bar & Grill", lat:26.9640, lon:-82.3530, rating:4.3, reviews:700, addr:"Englewood", types:["restaurant","bar"] },
+          { name:"Lock N Key Restaurant & Bar", lat:26.9588, lon:-82.3499, rating:4.4, reviews:600, addr:"Englewood", types:["restaurant"] }
+        ];
+      }
+      function fromOsmEats(cb) {
+        var lat = homeLat(), lon = homeLon();
+        var miles = Number((getSet() || {}).eventMiles || 25);
+        var rad = Math.round(Math.min(25000, miles * 1609.34));
+        var q = "[out:json][timeout:20];(node[amenity=restaurant](around:" + rad + "," + lat + "," + lon + ");node[amenity=bar](around:" + rad + "," + lat + "," + lon + "););out body 40;";
+        var urls = [
+          "/osm-eats?lat=" + lat + "&lon=" + lon + "&miles=" + miles,
+          "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q)
+        ];
+        var i = 0;
+        function next() {
+          if (i >= urls.length) return cb(null);
+          fetch(urls[i++], { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+            var places = d.places || [];
+            if (!places.length && d.elements) {
+              places = d.elements.filter(function (el) { return el.tags && el.tags.name; }).map(function (el) {
+                return {
+                  name: el.tags.name,
+                  rating: null,
+                  reviews: 0,
+                  lat: el.lat, lon: el.lon,
+                  addr: [el.tags["addr:street"], el.tags["addr:city"]].filter(Boolean).join(", "),
+                  types: [el.tags.amenity || "restaurant"],
+                  kind: kindOf((el.tags.cuisine || "") + " " + el.tags.name)
+                };
+              });
+            } else if (places.length) {
+              places = places.map(function (pl) {
+                var loc = pl.location || {};
+                return {
+                  name: (pl.displayName && pl.displayName.text) || pl.name,
+                  rating: pl.rating, reviews: pl.userRatingCount || 0,
+                  lat: loc.latitude, lon: loc.longitude,
+                  addr: pl.formattedAddress || pl.shortFormattedAddress || "",
+                  types: pl.types || ["restaurant"]
+                };
+              });
+            }
+            if (places.length) {
+              if (typeof noteFeed === "function") noteFeed("eats-src", true, "OSM · " + places.length);
+              return cb(places);
+            }
+            next();
+          }).catch(function () { next(); });
+        }
+        next();
       }
       function fromPlacesText(cb) {
         var key = String((getSet() || {}).gmapsKey || "").trim();
@@ -14208,8 +14291,17 @@ function mustEats() {
             if (ok) return true;
             return hit("https://places.googleapis.com/v1/places:searchNearby", "Places New");
           })
-          .then(function (ok) { if (!ok) cb(null); })
-          .catch(function () { cb(null); });
+          .then(function (ok) {
+            if (ok) return true;
+            return new Promise(function (res) {
+              fromOsmEats(function (list) {
+                if (list && list.length) { cb(list); res(true); }
+                else res(false);
+              });
+            });
+          })
+          .then(function (ok) { if (!ok) cb(mustEats()); })
+          .catch(function () { cb(mustEats()); });
         return;
         fetch("https://places.googleapis.com/v1/places:searchNearby", {
           method: "POST",
@@ -14714,7 +14806,7 @@ function mustEats() {
     })();
 
     (function loadKeyJson() {
-      var urls = gitFileUrls("key.json");
+      var urls = ["/key.json"].concat(gitFileUrls("key.json"));
       function apply(d) {
         if (!d) return;
         if (d.fishing && document.getElementById("live-fish")) document.getElementById("live-fish").innerHTML = d.fishing;
@@ -14744,8 +14836,8 @@ function mustEats() {
         if (gk && gk.length > 20) {
           var had = "";
           try { had = String((getSet() || {}).gmapsKey || "").trim(); } catch (eK) {}
+          if (typeof putSet === "function") putSet({ gmapsKey: gk, gmapsOn: "1" });
           if (had !== gk) {
-            if (typeof putSet === "function") putSet({ gmapsKey: gk });
             if (typeof loadGmaps === "function") loadGmaps(function () {
               if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
               if (typeof window.reloadEats === "function") window.reloadEats();
@@ -20594,10 +20686,10 @@ function homeCountyGuess() {
           } else if (window.__nwrAlert) {
             restorePrev();
           }
-                var nwrNeed = !!isWarnEarly ||
+        })(!!isWarnEarly);
+        var nwrNeed = !!isWarnEarly ||
           ((window.__publicSafety || []).length > 0) ||
           ((window.__civicAlerts || []).some(function (x) { return /amber|child/.test(String(x.kind || "")); }));
-        })(nwrNeed);
         (function syncScanner() {
           var s = typeof getSet === "function" ? getSet() : {};
           if (s.scanCivic !== "1") return;
