@@ -3012,6 +3012,10 @@
             <p class="today-sec-h" id="today-eat-h">Tonight’s table</p>
             <div id="today-eat-pick"></div>
           </div>
+          <div id="today-coupon-col">
+            <p class="today-sec-h" id="today-coupon-h">Takeout deals</p>
+            <div id="today-coupons"></div>
+          </div>
           <div id="today-deal-col">
             <p class="today-sec-h" id="today-deal-h">Happy hour</p>
             <div id="today-deal"></div>
@@ -3218,6 +3222,8 @@
       <section id="eats" class="page">
         <h2 data-k="Near the pin">Restaurants</h2>
         <p class="pill-key" id="eat-count">Restaurants near home…</p>
+        <p class="today-sec-h" id="eat-coupon-h">Takeout deals within 5 miles</p>
+        <div id="eat-coupons"></div>
         <div class="split-list" id="eat-list"></div>
       </section>
       <section id="golf" class="page">
@@ -4480,7 +4486,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 822;
+    window.BOARD_VER = 823;
 
     
     function communityShort() {
@@ -12555,7 +12561,7 @@ function currentRotation() {
         openVenueMap(eatCard);
         return;
       }
-      var venueEl = e.target.closest && e.target.closest(".map-hit[data-venue], #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-hh .card, #ent-list .card");
+      var venueEl = e.target.closest && e.target.closest(".map-hit[data-venue], #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-coupons .card, #eat-coupons .card, #today-shop .card, #today-hh .card, #ent-list .card");
       if (venueEl) {
         if (typeof openVenueMap === "function") { openVenueMap(venueEl); return; }
       }
@@ -13191,6 +13197,100 @@ function currentRotation() {
             "hot-ticket");
         });
       }
+      function seedTakeoutCoupons() {
+        return [
+          { name: "SandBar Tiki & Grille", kind: "Seafood", offer: "Call for today’s takeout board — dockside seafood and baskets.", phone: "941-474-1517", addr: "1975 Beach Rd, Englewood", lat: 26.9248, lon: -82.3535, value: 12, takeout: true },
+          { name: "Lock 'N Key", kind: "American", offer: "Weekly lunch and dinner specials — ask which plates are packed for takeout.", phone: "941-474-1517", addr: "1980 Beach Rd, Englewood", lat: 26.9252, lon: -82.3526, value: 14, takeout: true },
+          { name: "The Waverly", kind: "American", offer: "House-wine hours travel as takeout when the kitchen is packing beach dinners.", phone: "", addr: "Englewood Beach", lat: 26.9264, lon: -82.3538, value: 10, takeout: true },
+          { name: "Magnolias on the Bay", kind: "American", offer: "Dinner-for-two summer plate when posted — confirm takeout before you drive.", phone: "", addr: "Manasota Key", lat: 26.9685, lon: -82.3808, value: 16, takeout: true }
+        ];
+      }
+      function couponMiles(row) {
+        if (row.miles != null && isFinite(Number(row.miles))) return Number(row.miles);
+        if (row.lat != null && row.lon != null && typeof milesOf === "function") return milesOf(row.lat, row.lon);
+        return 99;
+      }
+      function couponStillOn(row) {
+        if (!row) return false;
+        if (row.takeout === false) return false;
+        if (row.expires) {
+          var exp = new Date(String(row.expires) + "T23:59:59");
+          if (!isNaN(exp.getTime()) && exp.getTime() < Date.now()) return false;
+        }
+        return couponMiles(row) <= 5.15;
+      }
+      function couponScore(row) {
+        var miles = couponMiles(row);
+        var val = Number(row.value) || 8;
+        var s = val * 2 + Math.max(0, 5.2 - miles) * 6;
+        if (row.expires) {
+          var exp = new Date(String(row.expires) + "T23:59:59");
+          if (!isNaN(exp.getTime())) {
+            var days = (exp.getTime() - Date.now()) / 86400000;
+            if (days >= 0 && days <= 1) s += 18;
+            else if (days > 1 && days <= 3) s += 8;
+          }
+        }
+        if (row.phone) s += 3;
+        return s;
+      }
+      function couponCardHtml(row) {
+        if (!row) return "";
+        var miles = couponMiles(row);
+        row.miles = miles;
+        var attrs = typeof venueDataAttrs === "function" ? venueDataAttrs(row, "eat", { eat: row.name, drive: row.drive || "" }) : "";
+        function esc(s) {
+          return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
+        }
+        var phone = String(row.phone || "").replace(/[^\d+]/g, "");
+        var tel = phone ? ("<a class=\"kind-tag\" href=\"tel:" + esc(row.phone) + "\" onclick=\"event.stopPropagation()\">" + esc(row.phone) + "</a>") : "";
+        var kind = row.kind ? ("<span class=\"kind-tag\">" + esc(row.kind) + "</span>") : "";
+        var dist = isFinite(miles) && miles < 90 ? ("<span class=\"loc-pill\" data-lat=\"" + esc(row.lat) + "\" data-lon=\"" + esc(row.lon) + "\" data-loc=\"" + esc(row.addr) + "\">" + miles.toFixed(1) + " mi</span>") : "";
+        var drive = row.drive ? ("<span class=\"kind-tag\">" + esc(row.drive) + "</span>") : "";
+        return '<div class="card ev-card coupon-card" ' + attrs + ">" +
+          '<div class="ev-body">' +
+          kind + dist + drive + tel +
+          "<div class=\"ev-title\">" + esc(row.name) + "</div>" +
+          "<div class=\"ev-time\">" + esc(row.offer || "Takeout deal") + "</div>" +
+          "</div></div>";
+      }
+      function paintTakeoutDeals() {
+        function finish(list) {
+          list = (list || []).filter(couponStillOn).sort(function (a, b) { return couponScore(b) - couponScore(a); });
+          var day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+          var seed = 0;
+          for (var i = 0; i < day.length; i++) seed += day.charCodeAt(i);
+          if (list.length > 5) {
+            list = list.slice();
+            list.sort(function (a, b) {
+              var da = (couponScore(a) * 10 + (String(a.name).length + seed) % 7);
+              var db = (couponScore(b) * 10 + (String(b.name).length + seed) % 7);
+              return db - da;
+            });
+          }
+          var top = list.slice(0, 5);
+          var todayBox = document.getElementById("today-coupons");
+          var eatBox = document.getElementById("eat-coupons");
+          var html = top.length
+            ? top.map(couponCardHtml).join("")
+            : '<div class="card ev-card"><div class="ev-body"><b>No takeout coupons inside 5 miles</b><span class="eat-why">When coupons.json has live deals near the home pin, the best 3–5 for today show here.</span></div></div>';
+          if (todayBox) todayBox.innerHTML = html;
+          if (eatBox) eatBox.innerHTML = list.length ? list.map(couponCardHtml).join("") : html;
+          if (todayBox && typeof stampLocPills === "function") stampLocPills(todayBox);
+          if (eatBox && typeof stampLocPills === "function") stampLocPills(eatBox);
+          if (typeof noteFeed === "function") noteFeed("coupons", !!top.length, top.length ? (top.length + " deals") : "none inside 5 mi");
+        }
+        var urls = typeof gitFileUrls === "function" ? gitFileUrls("coupons.json") : ["./coupons.json"];
+        function next(i) {
+          if (i >= urls.length) { finish(seedTakeoutCoupons()); return; }
+          fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+            var rows = (d && (d.deals || d.coupons || d.items)) || (Array.isArray(d) ? d : null);
+            if (rows && rows.length) finish(rows);
+            else next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
+      }
       function seedHappyHours() {
         return [
           { name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood", lat: 26.9248, lon: -82.3535, start: 11, end: 18, deal: "Happy hour at the bar 11 AM–6 PM daily. Live music most afternoons and evenings on the dock.", phone: "941-474-1517", url: "https://sandbartiki.com/", closed: [] },
@@ -13344,6 +13444,7 @@ function currentRotation() {
         try { if (typeof layoutTodayBands === "function") layoutTodayBands(); paintNext3(); if (typeof writeBriefing === "function") writeBriefing(); } catch (e) {}
         try { paintHotTicket(); } catch (e2) {}
         try { paintEatDeal(); } catch (e3) {}
+        try { paintTakeoutDeals(); } catch (eC) {}
         try { paintShopDeal(); } catch (eShop) {}
         try { paintDayParts(); } catch (e4) {}
       }
