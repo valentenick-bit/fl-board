@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 810;
+    window.BOARD_VER = 811;
 
     
     function communityShort() {
@@ -5836,7 +5836,7 @@ Cart shop:</textarea>
       var wl = s.wlStation || "8725520";
       var wlName = s.wlName || ({ "8725520": "Fort Myers, Caloosahatchee River, FL", "8725809": "Englewood, Lemon Bay, FL" }[wl] || wl);
       var rows = [
-        { id: "wx", group: "Weather", title: "Air, wind, humidity, pressure, UV, rain, hourly, 10-day", source: "Open-Meteo forecast (ECMWF / GFS blend). Not a thermometer on the property.", site: pin, feeds: ["wx", "now-line", "greeting", "wind", "gusts", "humidity", "dew", "pressure", "uv", "hourly", "10-day", "rain-month", "humid-chart", "rain-chart", "pres-chart"] },
+        { id: "wx", group: "Weather", title: "Air, wind, humidity, pressure, UV, rain, hourly, 10-day", source: "Google Weather at the home pin when the key works. Open-Meteo + NWS stay on as backup. Not a thermometer on the property.", site: pin, feeds: ["wx", "gwx", "now-line", "greeting", "wind", "gusts", "humidity", "dew", "pressure", "uv", "hourly", "10-day", "rain-month", "humid-chart", "rain-chart", "pres-chart"] },
         { id: "aqi", group: "Weather", title: "Air quality", source: "Open-Meteo air-quality API (CAMS / satellite + ground blend).", site: pin, feeds: ["aqi"] },
         { id: "nws", group: "Weather", title: "NWS forecast text and alerts", source: "api.weather.gov /points, then the local forecast office.", site: "Office " + (s.wfo || "") + " · " + pin, feeds: ["alerts"] },
         { id: "radar", group: "Weather", title: "Radar loop", source: "NWS RIDGE GIF from radar.weather.gov.", site: radar + " — " + radarName, feeds: ["radar"] },
@@ -18386,10 +18386,171 @@ function mustEats() {
       return hours.length > 0;
     }
 
+    function gwxKey() {
+      return String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
+    }
+    function gwxUrl(path, extra) {
+      var key = gwxKey();
+      if (!key || !isFinite(homeLat()) || !isFinite(homeLon())) return "";
+      return "https://weather.googleapis.com/v1/" + path +
+        "?key=" + encodeURIComponent(key) +
+        "&location.latitude=" + homeLat() +
+        "&location.longitude=" + homeLon() +
+        "&unitsSystem=IMPERIAL" + (extra || "");
+    }
+    function gwxDeg(obj) {
+      if (obj == null) return null;
+      if (typeof obj === "number") return obj;
+      if (obj.degrees != null) return Number(obj.degrees);
+      if (obj.value != null) return Number(obj.value);
+      return null;
+    }
+    function gwxWhen(h) {
+      if (!h) return "";
+      if (h.interval && h.interval.startTime) return h.interval.startTime;
+      var d = h.displayDateTime || h.display_date_time;
+      if (!d) return "";
+      if (typeof d === "string") return d;
+      var y = d.year, m = d.month, day = d.day, hr = d.hours != null ? d.hours : 0;
+      if (!y || !m || !day) return "";
+      var pad = function (n) { return String(n).padStart(2, "0"); };
+      return y + "-" + pad(m) + "-" + pad(day) + "T" + pad(hr) + ":00:00";
+    }
+    function hoursFromGwx(pack) {
+      var list = (pack && pack.hours && (pack.hours.forecastHours || pack.hours.forecast_hours)) || [];
+      return list.map(function (h) {
+        var pop = h.precipitation && h.precipitation.probability
+          ? (h.precipitation.probability.percent != null ? h.precipitation.probability.percent : h.precipitation.probability)
+          : null;
+        var qpf = h.precipitation && h.precipitation.qpf && (h.precipitation.qpf.quantity != null ? h.precipitation.qpf.quantity : h.precipitation.qpf);
+        var word = (h.weatherCondition && h.weatherCondition.description && (h.weatherCondition.description.text || h.weatherCondition.description)) ||
+          (h.weatherCondition && h.weatherCondition.type) || "";
+        var wind = gwxDeg(h.wind && (h.wind.speed || h.wind.windSpeed));
+        var rh = h.relativeHumidity != null ? (h.relativeHumidity.percent != null ? h.relativeHumidity.percent : h.relativeHumidity) : null;
+        return {
+          startTime: gwxWhen(h),
+          shortForecast: String(word || "").replace(/_/g, " "),
+          temperature: gwxDeg(h.temperature),
+          apparent: gwxDeg(h.feelsLikeTemperature),
+          wetBulb: gwxDeg(h.wetBulbTemperature),
+          heatIndex: gwxDeg(h.heatIndex),
+          qpf: qpf,
+          windSpeed: wind != null && isFinite(wind) ? Math.round(wind) + " mph" : "",
+          probabilityOfPrecipitation: { value: pop },
+          relativeHumidity: { value: rh },
+          dewpoint: { value: gwxDeg(h.dewPoint) },
+          src: "google"
+        };
+      }).filter(function (h) { return h.startTime && h.temperature != null; });
+    }
+    function daysFromGwx(pack) {
+      var list = (pack && pack.days && (pack.days.forecastDays || pack.days.forecast_days)) || [];
+      return list.map(function (d, i) {
+        var dayPart = d.daytimeForecast || d.daytime_forecast || {};
+        var nightPart = d.nighttimeForecast || d.nighttime_forecast || {};
+        var hi = gwxDeg(d.maxTemperature || d.max_temperature || dayPart.temperature);
+        var lo = gwxDeg(d.minTemperature || d.min_temperature || nightPart.temperature);
+        var word = (dayPart.weatherCondition && dayPart.weatherCondition.description && dayPart.weatherCondition.description.text) ||
+          (d.weatherCondition && d.weatherCondition.description && d.weatherCondition.description.text) || "";
+        var pop = (dayPart.precipitation && dayPart.precipitation.probability && dayPart.precipitation.probability.percent) || 0;
+        var start = (d.interval && d.interval.startTime) || gwxWhen(d) || "";
+        if (!start && d.displayDate) {
+          var dd = d.displayDate;
+          start = dd.year + "-" + String(dd.month).padStart(2, "0") + "-" + String(dd.day).padStart(2, "0") + "T12:00:00";
+        }
+        return {
+          name: i === 0 ? "Today" : "",
+          startTime: start,
+          temperature: hi,
+          lo: lo,
+          shortForecast: String(word || "").replace(/_/g, " "),
+          probabilityOfPrecipitation: { value: pop },
+          src: "google"
+        };
+      }).filter(function (d) { return d.temperature != null; });
+    }
+    function applyGwxNow(pack) {
+      var now = pack && pack.now;
+      if (!now || now.error) return false;
+      var tempF = gwxDeg(now.temperature);
+      var feelF = gwxDeg(now.feelsLikeTemperature);
+      if (tempF == null || !isFinite(tempF)) return false;
+      if (feelF == null) feelF = gwxDeg(now.heatIndex) || tempF;
+      window.__nowTempF = Math.round(tempF);
+      window.__nowFeelF = Math.round(feelF);
+      window.__nowWx = window.__nowWx || {};
+      window.__nowWx.temp = window.__nowTempF;
+      window.__nowWx.feel = window.__nowFeelF;
+      window.__nowWx.src = "google";
+      var tempEl = document.getElementById("live-temp");
+      var feelEl = document.getElementById("live-feels");
+      if (tempEl) { tempEl.innerHTML = fmtTempN(window.__nowTempF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(tempEl, window.__nowTempF); }
+      if (feelEl) { feelEl.innerHTML = fmtTempN(window.__nowFeelF) + "&deg;"; if (typeof paintTemp === "function") paintTemp(feelEl, window.__nowFeelF); }
+      var rh = now.relativeHumidity != null ? (now.relativeHumidity.percent != null ? now.relativeHumidity.percent : now.relativeHumidity) : null;
+      if (rh != null) {
+        window.__nowRh = Math.round(Number(rh));
+        var rhEl = document.getElementById("live-rh");
+        if (rhEl) rhEl.textContent = window.__nowRh + "%";
+      }
+      var dew = gwxDeg(now.dewPoint);
+      if (dew != null) {
+        var dewEl = document.getElementById("live-dew");
+        if (dewEl) dewEl.textContent = "Dew " + Math.round(dew) + "°";
+      }
+      var uv = now.uvIndex != null ? now.uvIndex : (now.uv_index != null ? now.uv_index : null);
+      if (uv != null) {
+        var uvEl = document.getElementById("live-uv");
+        if (uvEl && typeof uvWord === "function") uvEl.textContent = uvWord(uv) + " " + Math.round(Number(uv));
+        else if (uvEl) uvEl.textContent = String(Math.round(Number(uv)));
+      }
+      window.__obsAt = Date.now();
+      window.__gwxOn = true;
+      if (typeof syncWxMetricNow === "function") try { syncWxMetricNow(); } catch (eM) {}
+      if (typeof paintHdrWind === "function") try { paintHdrWind(); } catch (eW) {}
+      return true;
+    }
+    function pullGoogleWx() {
+      var nowU = gwxUrl("currentConditions:lookup");
+      if (!nowU) {
+        window.__gwxOn = false;
+        if (typeof noteFeed === "function") noteFeed("gwx", true, "off · no key · NWS/OM");
+        return Promise.resolve(null);
+      }
+      var hrU = gwxUrl("forecast/hours:lookup", "&hours=48");
+      var dyU = gwxUrl("forecast/days:lookup", "&days=10");
+      return Promise.all([
+        fetch(nowU).then(function (r) { return r.json(); }).catch(function () { return null; }),
+        fetch(hrU).then(function (r) { return r.json(); }).catch(function () { return null; }),
+        fetch(dyU).then(function (r) { return r.json(); }).catch(function () { return null; })
+      ]).then(function (bits) {
+        var now = bits[0], hours = bits[1], days = bits[2];
+        function dead(j) {
+          return !j || j.error || (j.error && j.error.message) || (typeof j.status === "string" && /INVALID|PERMISSION|NOT_FOUND|PERMISSION_DENIED/i.test(j.status));
+        }
+        if (now && now.error) now = null;
+        if (hours && hours.error) hours = null;
+        if (days && days.error) days = null;
+        if (!now && !(hours && (hours.forecastHours || hours.forecast_hours || []).length)) {
+          window.__gwxOn = false;
+          var why = (bits[0] && bits[0].error && (bits[0].error.message || bits[0].error.status)) || "off";
+          if (typeof noteFeed === "function") noteFeed("gwx", true, "off · " + String(why).slice(0, 48) + " · NWS/OM");
+          return null;
+        }
+        window.__gwxOn = true;
+        if (typeof noteFeed === "function") noteFeed("gwx", true, "google pin");
+        return { now: now, hours: hours, days: days };
+      }).catch(function () {
+        window.__gwxOn = false;
+        if (typeof noteFeed === "function") noteFeed("gwx", true, "off · fetch · NWS/OM");
+        return null;
+      });
+    }
+
     window.loadWx = refreshWeather;
     function refreshWeather() {
       if (!isFinite(homeLat()) || !isFinite(homeLon())) return;
       var hdr = { "Accept": "application/geo+json", "User-Agent": "CommonsBoard/1.0 (valente.nick@gmail.com)" };
+      var gwxP = pullGoogleWx();
       var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,uv_index,relative_humidity_2m,dew_point_2m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .catch(function () { return null; });
@@ -18415,8 +18576,15 @@ function mustEats() {
           return omP.then(function (om) { return { pair: pair, om: om }; });
         })
         .then(function (pack) {
+          return gwxP.then(function (gwx) {
+            pack.gwx = gwx;
+            return pack;
+          });
+        })
+        .then(function (pack) {
           var pair = pack.pair || [];
           var om = pack.om || {};
+          var gwx = pack.gwx || null;
           var days = (((pair[0] || {}).properties || {}).periods) || [];
           var hours = (((pair[1] || {}).properties || {}).periods) || [];
           var obs = ((pair[2] || {}).properties) || {};
@@ -18439,9 +18607,14 @@ function mustEats() {
           var tempF = nowH.temperature != null ? nowH.temperature : c2f(obs.temperature && obs.temperature.value);
           if (om.current && om.current.temperature_2m != null) tempF = Math.round(om.current.temperature_2m);
           else if (obs.temperature && obs.temperature.value != null && obs.timestamp && (nowMs - new Date(obs.timestamp).getTime()) < 2 * 3600 * 1000) tempF = c2f(obs.temperature.value);
+          if (gwx && gwx.now && gwxDeg(gwx.now.temperature) != null) tempF = Math.round(gwxDeg(gwx.now.temperature));
           var dewF = nowH.dewpoint && nowH.dewpoint.value != null ? Math.round(nowH.dewpoint.value) : c2f(obs.dewpoint && obs.dewpoint.value);
           if (nowH.dewpoint && nowH.dewpoint.unitCode && /degC/.test(nowH.dewpoint.unitCode)) dewF = c2f(nowH.dewpoint.value);
           var rh = (nowH.relativeHumidity && nowH.relativeHumidity.value != null) ? Math.round(nowH.relativeHumidity.value) : (obs.relativeHumidity && obs.relativeHumidity.value != null ? Math.round(obs.relativeHumidity.value) : null);
+          if (gwx && gwx.now && gwx.now.relativeHumidity != null) {
+            var grh = gwx.now.relativeHumidity.percent != null ? gwx.now.relativeHumidity.percent : gwx.now.relativeHumidity;
+            if (grh != null) rh = Math.round(Number(grh));
+          }
           if (rh == null && om.current && om.current.relative_humidity_2m != null) rh = Math.round(om.current.relative_humidity_2m);
           if ((dewF == null || isNaN(dewF)) && om.current && om.current.dew_point_2m != null) dewF = Math.round(om.current.dew_point_2m);
           var windTxt = nowH.windSpeed || "";
@@ -18460,7 +18633,8 @@ function mustEats() {
           else window.__obsAt = Date.now();
           window.__nowTempF = tempF;
           var feelF = null;
-          if (om.current && om.current.apparent_temperature != null) feelF = Math.round(om.current.apparent_temperature);
+          if (gwx && gwx.now && gwxDeg(gwx.now.feelsLikeTemperature) != null) feelF = Math.round(gwxDeg(gwx.now.feelsLikeTemperature));
+          else if (om.current && om.current.apparent_temperature != null) feelF = Math.round(om.current.apparent_temperature);
           else if (obs.heatIndex && obs.heatIndex.value != null) {
             feelF = /degC/.test(obs.heatIndex.unitCode || "") ? Math.round(obs.heatIndex.value * 9/5 + 32) : Math.round(obs.heatIndex.value);
           } else feelF = heatIndexF(tempF, rh);
@@ -18688,6 +18862,23 @@ function mustEats() {
               }
             }).catch(function () {});
           saveWxSnap();
+          var gHours = hoursFromGwx(gwx);
+          var gDays = daysFromGwx(gwx);
+          if (gHours.length >= 6) hours = gHours;
+          if (gDays.length >= 5) {
+            days = gDays.map(function (d, i) {
+              return {
+                name: i === 0 ? "Today" : (d.name || ""),
+                startTime: d.startTime,
+                temperature: d.temperature,
+                temperatureTrend: null,
+                shortForecast: d.shortForecast,
+                probabilityOfPrecipitation: d.probabilityOfPrecipitation,
+                lo: d.lo
+              };
+            });
+          }
+          if (gwx && gwx.now) applyGwxNow(gwx);
           try { refreshMarineSky(days, hours, obs); } catch (e) {}
           try { writeBriefing(); } catch (e) {}
           try { refreshExtras(hours, days); } catch (e) {}
@@ -18699,10 +18890,24 @@ function mustEats() {
         });
     }
     function applyOpenMeteoFallback() {
+      pullGoogleWx().then(function (g) {
+        if (g && applyGwxNow(g)) {
+          var gh = hoursFromGwx(g);
+          var gd = daysFromGwx(g);
+          if (gh.length) {
+            window.__hours = gh;
+            try { if (typeof refreshExtras === "function") refreshExtras(gh, gd); } catch (eG) {}
+            return true;
+          }
+        }
+        return false;
+      }).then(function (usedG) {
+        if (usedG) return;
       omP = (typeof omP !== "undefined" && omP && omP.then) ? omP : fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,uv_index&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m&daily=temperature_2m_max,temperature_2m_min,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York").then(function (r) { return r.json(); }).catch(function () { return null; });
       Promise.resolve(omP).then(function (om) {
         if (!fillFromOm(om)) loadWxSnap("offline");
       }).catch(function () { loadWxSnap("offline"); });
+      });
     }
 
 
