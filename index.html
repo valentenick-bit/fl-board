@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 803;
+    window.BOARD_VER = 804;
 
     
     function communityShort() {
@@ -14498,82 +14498,146 @@ function mustEats() {
           cb(null);
         });
       }
+      function startEats() {
+        if (typeof fromPlacesNew === "function") fromPlacesNew(function (rows) { if (rows && rows.length && typeof paint === "function") paint(rows); });
+        if (typeof fromPlacesText === "function") fromPlacesText(function (rows) { if (rows && rows.length && typeof paint === "function") paint(rows); });
+        if (typeof fromOsmEats === "function") fromOsmEats(function (rows) { if (rows && rows.length && typeof paint === "function") paint(rows); });
+      }
+      window.reloadEats = startEats;
+      setTimeout(startEats, 900);
+    }
+    (function loadGolf() {
+      function milesOf(lat, lon) {
+        if (typeof window.milesOf === "function") return window.milesOf(lat, lon);
+        if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) return null;
+        var R = 3958.8, toR = Math.PI / 180;
+        var dLat = (lat - homeLat()) * toR, dLon = (lon - homeLon()) * toR;
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+      }
+      function isGolfName(name, tags, types) {
+        var n = String(name || "").toLowerCase();
+        var blob = n + " " + String((types || []).join(" ")).toLowerCase();
+        if (/hospital|medical|clinic|urgent care|pharmacy|veterinary|rehab/.test(blob)) return false;
+        if ((types || []).indexOf("golf_course") >= 0) return true;
+        return /\bgolf\b|country club|\blinks\b/.test(n);
+      }
+      function golfMiles() { return Math.max(25, Number((getSet() || {}).eventMiles || 25)); }
+      function golfKey(n) {
+        return String(n || "").toLowerCase().replace(/\b(the|golf|club|country|course|at|and|cc)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+      }
+      function golfNamesMatch(a, b) {
+        var ka = golfKey(a), kb = golfKey(b);
+        if (!ka || !kb) return false;
+        if (ka === kb || ka.indexOf(kb) >= 0 || kb.indexOf(ka) >= 0) return true;
+        var ta = ka.split(" ").filter(function (w) { return w.length > 2; });
+        var tb = kb.split(" ").filter(function (w) { return w.length > 2; });
+        if (!ta.length || !tb.length) return false;
+        var hit = ta.filter(function (w) { return tb.indexOf(w) >= 0; });
+        return hit.length >= Math.min(2, ta.length, tb.length);
+      }
+      function dedupe(list) {
+        var seen = {}, out = [];
+        (list || []).forEach(function (r) {
+          var k = golfKey(r.name);
+          if (!k || seen[k]) return;
+          seen[k] = true;
+          out.push(r);
+        });
+        return out;
+      }
+      function rank(list) {
+        var cap = golfMiles();
+        return dedupe(list).filter(function (r) {
+          if (!isGolfName(r.name, null, r.types)) return false;
+          if (r.rating == null || !isFinite(Number(r.rating))) return false;
+          if (!r.ogId || !r.placeId) return false;
+          if (r.miles == null && r.lat != null) r.miles = milesOf(r.lat, r.lon);
+          return r.miles == null || r.miles <= cap;
+        }).sort(function (a, b) {
+          var ra = Number(a.rating) || 0, rb = Number(b.rating) || 0;
+          if (rb !== ra) return rb - ra;
+          return (a.miles || 99) - (b.miles || 99);
+        });
+      }
+      function card(r) {
+        var reviews = r.reviews ? (r.reviews + " reviews") : "";
+        var kcls = ({ Public:"golf-pub", Private:"golf-priv", Resort:"golf-res", Executive:"golf-exec", "Semi-Private":"golf-pub" }[r.kind] || "golf-course");
+        var addr = r.addr || r.area || "";
+        var pills = '<span class="kind-tag ' + kcls + '">' + (r.kind || "Course") + "</span>";
+        pills += (typeof window.locPillHtml === "function" ? window.locPillHtml(r) : "");
+        if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
+        var stars = r.rating != null ? Number(r.rating).toFixed(1) : "—";
+        var stats = [r.slope ? ("Slope " + r.slope) : "", r.cr ? ("Rating " + r.cr) : "", r.par ? ("Par " + r.par) : ""].filter(Boolean).join(" · ");
+        return '<div class="card ev-card eat-card map-hit" ' + (typeof venueDataAttrs === "function" ? venueDataAttrs(r, r.kind || "golf", { golf: r.name, busy: r.name }) : "") + '>' +
+          '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + '</span><span class="ev-ico" aria-hidden="true">⛳</span></div>' +
+          '<div class="ev-body"><div class="ev-pills">' + pills + "</div>" +
+          "<b>" + String(r.name || "Golf").replace(/</g, "") + "</b>" +
+          (addr ? '<span class="ev-when">' + String(addr).replace(/</g, "") + "</span>" : "") +
+          (stats ? '<span class="ev-when">' + stats + "</span>" : "") +
+          "</div></div>";
+      }
+      function draw(list) {
+        var box = document.getElementById("golf-list");
+        var note = document.getElementById("golf-count");
+        var miles = golfMiles();
+        list = rank(list || window.__golfPool || []);
+        window.__golfs = list;
+        if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Need both a Google rating and an OpenGolf listing inside ' + miles + " miles.</span></div>";
+        if (note) note.textContent = list.length ? (list.length + " courses in " + miles + " mi · Google + OpenGolf · sorted by rating") : ("No courses in " + miles + " mi with both sources");
+        if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " · " + list[0].rating + " " + list[0].name) : "none");
+        if (list[0] && typeof selectGolf === "function") selectGolf(list[0]);
+        if (typeof window.stampLocPills === "function") window.stampLocPills(box || document);
+      }
       function fromPlaces(cb) {
         function fail() { cb([]); }
-        var gkey = "golf:" + eatsNearCacheKey();
-        var cached = gCacheGet("golf-near", gkey, 12 * 3600 * 1000);
-        if (cached && cached.length) return cb(cached);
+        var gkey = "golf:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : homeLat());
+        if (typeof gCacheGet === "function") {
+          var cached = gCacheGet("golf-near", gkey, 12 * 3600 * 1000);
+          if (cached && cached.length) return cb(cached);
+        }
         function mapRows(results) {
           return (results || []).map(function (p) {
             var loc = p.geometry && p.geometry.location;
             var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
             var lon = loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng);
-            if (!isGolfName(p.name, null, p.types)) return null;
-            if (p.rating == null) return null;
-            return {
-              name: p.name,
-              kind: /country club|private/i.test(p.name || "") ? "Private" : "Course",
-              rating: p.rating,
-              reviews: p.user_ratings_total || 0,
-              src: "places",
-              miles: milesOf(lat, lon),
-              lat: lat, lon: lon,
-              addr: p.vicinity || "",
-              placeId: p.place_id || ""
-            };
+            if (!isGolfName(p.name, null, p.types) || p.rating == null) return null;
+            return { name: p.name, kind: /private|country club/i.test(p.name || "") ? "Private" : "Course", rating: p.rating, reviews: p.user_ratings_total || 0, src: "places", miles: milesOf(lat, lon), lat: lat, lon: lon, addr: p.vicinity || "", placeId: p.place_id || "", types: p.types || ["golf_course"] };
           }).filter(Boolean);
         }
-        if (typeof loadGmaps === "function") {
-          loadGmaps(function (ok) {
-            if (!ok || !window.google || !google.maps || !google.maps.places) return fail();
-            if (!gmapsCanSpend("nearby-golf", 1)) return fail();
-            try {
-              var miles = golfMiles();
-              var svc = new google.maps.places.PlacesService(document.createElement("div"));
-              gmapsSpend("nearby-golf", 1);
-              var bag = [];
-              svc.nearbySearch({
-                location: new google.maps.LatLng(homeLat(), homeLon()),
-                radius: Math.min(50000, Math.round(miles * 1609.34)),
-                type: "golf_course"
-              }, function (results, status, pagination) {
-                if (status === google.maps.places.PlacesServiceStatus.OK && results) bag = bag.concat(mapRows(results));
-                if (pagination && pagination.hasNextPage) {
-                  setTimeout(function () { try { pagination.nextPage(); } catch (eN) { finish(); } }, 2100);
-                  return;
-                }
-                finish();
-                function finish() {
-                  gCacheSet("golf-near", gkey, bag);
-                  cb(bag);
-                }
-              });
-            } catch (e) { fail(); }
-          });
-        } else fail();
+        if (typeof loadGmaps !== "function") return fail();
+        loadGmaps(function (ok) {
+          if (!ok || !window.google || !google.maps || !google.maps.places) return fail();
+          try {
+            var miles = golfMiles();
+            var svc = new google.maps.places.PlacesService(document.createElement("div"));
+            var bag = [];
+            svc.nearbySearch({ location: new google.maps.LatLng(homeLat(), homeLon()), radius: Math.min(50000, Math.round(miles * 1609.34)), type: "golf_course" }, function (results, status, pagination) {
+              if (status === google.maps.places.PlacesServiceStatus.OK && results) bag = bag.concat(mapRows(results));
+              if (pagination && pagination.hasNextPage) {
+                setTimeout(function () { try { pagination.nextPage(); } catch (eN) { done(); } }, 2100);
+                return;
+              }
+              done();
+              function done() {
+                if (typeof gCacheSet === "function") gCacheSet("golf-near", gkey, bag);
+                cb(bag);
+              }
+            });
+          } catch (e) { fail(); }
+        });
       }
       function fromOpenGolf(cb) {
         var miles = golfMiles();
         var url = "https://api.opengolfapi.org/api/v1/courses/search?lat=" + homeLat() + "&lng=" + homeLon() + "&radius_mi=" + miles + "&limit=100";
         fetch(url).then(function (r) { return r.json(); }).then(function (d) {
-          var rows = (d && d.courses) || [];
-          var seen = {};
-          var out = [];
-          rows.forEach(function (c) {
+          var seen = {}, out = [];
+          ((d && d.courses) || []).forEach(function (c) {
             var name = c.course_name || c.club_name || "";
             var k = golfKey(name);
             if (!k || seen[k]) return;
             seen[k] = true;
-            out.push({
-              name: name,
-              ogId: c.id,
-              kind: c.type || "Course",
-              src: "opengolf",
-              lat: c.lat, lon: c.lng,
-              miles: c.distance_mi != null ? Number(c.distance_mi) : milesOf(c.lat, c.lng),
-              addr: [c.city, c.state].filter(Boolean).join(", "),
-              par: c.par, holes: c.holes
-            });
+            out.push({ name: name, ogId: c.id, kind: c.type || "Course", lat: c.lat, lon: c.lng, miles: c.distance_mi != null ? Number(c.distance_mi) : milesOf(c.lat, c.lng), addr: [c.city, c.state].filter(Boolean).join(", "), par: c.par, holes: c.holes });
           });
           cb(out);
         }).catch(function () { cb([]); });
@@ -14583,54 +14647,41 @@ function mustEats() {
         function next() {
           if (i >= list.length) return done(list);
           var r = list[i++];
-          if (!r.ogId || r.slope) return setTimeout(next, 10);
+          if (!r.ogId || r.slope) return setTimeout(next, 20);
           fetch("https://api.opengolfapi.org/api/v1/courses/" + encodeURIComponent(r.ogId)).then(function (res) { return res.json(); }).then(function (d) {
             var tees = (d && d.tees) || [];
-            var prefer = tees.filter(function (x) { return Number(x.par || 0) >= 70; });
-            var tee = prefer[0] || tees[0];
-            if (tee) {
-              if (tee.slope != null) r.slope = tee.slope;
-              if (tee.course_rating != null) r.cr = tee.course_rating;
-              if (tee.par != null) r.par = tee.par;
-            }
+            var tee = tees.filter(function (x) { return Number(x.par || 0) >= 70; })[0] || tees[0];
+            if (tee) { r.slope = tee.slope; r.cr = tee.course_rating; if (tee.par) r.par = tee.par; }
             if (d && d.address) r.addr = d.address;
-            setTimeout(next, 60);
-          }).catch(function () { setTimeout(next, 60); });
+            setTimeout(next, 80);
+          }).catch(function () { setTimeout(next, 80); });
         }
         next();
       }
       function pairPlacesOg(places, og) {
         return (places || []).filter(function (p) { return p.rating != null && p.placeId; }).map(function (p) {
           var hit = null;
-          (og || []).forEach(function (o) {
-            if (!hit && golfNamesMatch(p.name, o.name)) hit = o;
-          });
+          (og || []).forEach(function (o) { if (!hit && golfNamesMatch(p.name, o.name)) hit = o; });
           if (!hit) return null;
           p.ogId = hit.ogId;
           p.kind = hit.kind || p.kind;
           if (hit.par) p.par = hit.par;
-          if (hit.holes) p.holes = hit.holes;
           return p;
         }).filter(Boolean);
       }
       function run() {
-        window.__golfPool = [];
         draw([]);
         fromOpenGolf(function (og) {
           fromPlaces(function (places) {
             var paired = pairPlacesOg(places, og);
             window.__golfPool = paired;
             draw(paired);
-            attachSlope(paired, function (rich) {
-              window.__golfPool = rich;
-              draw(rich);
-              if (typeof noteFeed === "function") noteFeed("golf-rate", !!rich.length, rich.length + " Google+OpenGolf");
-            });
+            attachSlope(paired, function (rich) { window.__golfPool = rich; draw(rich); });
           });
         });
       }
       window.reloadGolf = run;
-      setTimeout(run, 1600);
+      setTimeout(run, 1800);
       setInterval(run, 20 * 60 * 1000);
     })();
 
