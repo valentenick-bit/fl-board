@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 809;
+    window.BOARD_VER = 810;
 
     
     function communityShort() {
@@ -11945,8 +11945,7 @@ function currentRotation() {
     function venueMapSrc(name, addr, lat, lon, placeId, onsite) {
       lat = Number(lat); lon = Number(lon);
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        var label = encodeURIComponent(String(name || "Place").replace(/[()]/g, " "));
-        return "https://maps.google.com/maps?ll=" + lat + "," + lon + "&q=" + lat + "," + lon + "+(" + label + ")&z=16&hl=en&output=embed";
+        return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=16&t=m&hl=en&output=embed";
       }
       var q = [name, addr].filter(Boolean).join(", ");
       if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood, FL";
@@ -12047,6 +12046,20 @@ function currentRotation() {
     function openVenueMap(rowOrEl) {
       var row = rowOrEl;
       if (rowOrEl && rowOrEl.getAttribute) {
+        var golfName = rowOrEl.getAttribute("data-golf") || "";
+        if (golfName && window.__golfs && window.__golfs.length) {
+          var gHit = null;
+          window.__golfs.forEach(function (g) {
+            if (!gHit && g && g.name === golfName) gHit = g;
+          });
+          if (gHit && gHit.lat != null && gHit.lon != null) {
+            var gSrc = venueMapSrc(gHit.name, gHit.addr, gHit.lat, gHit.lon, gHit.placeId);
+            var gLink = venueMapLink(gHit.name, gHit.addr, gHit.lat, gHit.lon, false, gHit.placeId);
+            window.__mapPopPin = { lat: gHit.lat, lon: gHit.lon, name: gHit.name, addr: gHit.addr || "", placeId: gHit.placeId };
+            if (typeof openMapPop === "function") openMapPop(gHit.name || "Golf", gSrc, '<a href="' + gLink + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+            return;
+          }
+        }
         row = {
           name: rowOrEl.getAttribute("data-name") || rowOrEl.getAttribute("data-eat") || rowOrEl.getAttribute("data-golf") || rowOrEl.getAttribute("data-buzz") || "",
           addr: rowOrEl.getAttribute("data-loc") || "",
@@ -12066,7 +12079,8 @@ function currentRotation() {
           row.addr = home.addr;
         }
       }
-      var live = onsite ? null : liveVenueRow(row && row.name);
+      var havePin = isFinite(Number(row && row.lat)) && Math.abs(Number(row.lat)) > 1 && isFinite(Number(row && row.lon));
+      var live = (onsite || havePin) ? null : liveVenueRow(row && row.name);
       if (live) {
         if (live.addr) row.addr = live.addr;
         if (live.placeId) row.placeId = live.placeId;
