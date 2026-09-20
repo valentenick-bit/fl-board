@@ -1272,6 +1272,9 @@
     .card span.kind-tag.cars { background:#3d6b8a; color:#fff; }
     .card span.kind-tag.fest { background:#6a3d7a; color:#fff; }
     .card span.kind-tag.lodge { background:#7a5a12; color:#fff; }
+    .card span.kind-tag.sunset { background:#e07a5f; color:#fff; }
+    .card span.kind-tag.sunrise { background:#c4a35a; color:#1b2a4a; }
+    .card span.kind-tag.moon { background:#1b2a4a; color:#efe4c8; }
     html.dark .card span.kind-tag,
     html.dark .card span.music-tag,
     html.dark .card span.place-tag.place-bw { color:#fff; }
@@ -4312,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 797;
+    window.BOARD_VER = 798;
 
     
     function communityShort() {
@@ -11880,6 +11883,10 @@ function currentRotation() {
       return true;
     }
     function venueMapSrc(name, addr, lat, lon, placeId) {
+      lat = Number(lat); lon = Number(lon);
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
+        return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=17&hl=en&ie=UTF8&output=embed";
+      }
       placeId = String(placeId || "").trim();
       var q = [name, addr].filter(Boolean).join(", ");
       if (!q && typeof venueQuery === "function") q = venueQuery(name, addr);
@@ -11896,6 +11903,11 @@ function currentRotation() {
     }
     function resolveVenuePin(name, addr, lat, lon) {
       lat = Number(lat); lon = Number(lon);
+      var guess = { name: name, sum: name, title: name, loc: addr, addr: addr, where: addr };
+      if (typeof isBeachWalkEvent === "function" && isBeachWalkEvent(guess)) {
+        var home = typeof beachWalkPin === "function" ? beachWalkPin() : { lat: 26.9595, lon: -82.3543, addr: "BeachWalk by Manasota Key, Englewood, FL 34223" };
+        return { name: name || "BeachWalk", addr: home.addr || addr || "", lat: Number(home.lat), lon: Number(home.lon) };
+      }
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
         return { name: name || "", addr: addr || "", lat: lat, lon: lon };
       }
@@ -13106,9 +13118,9 @@ function currentRotation() {
       if (/estate sale|garage sale|yard sale|open house/.test(s)) return { label: "Sale", cls: "sale" };
       if (/lecture|author|book club|library/.test(s)) return { label: "Talk", cls: "talk" };
       if (/volunteer/.test(s)) return { label: "Volunteer", cls: "give" };
-      if (/sunrise yoga|sunrise stretch|sunrise on the/.test(s)) return { label: "Sunrise", cls: "sky" };
-      if (/\bfull moon\b|moonlight paddle|moonrise/.test(s)) return { label: "Moon", cls: "sky" };
-      if (/\bsunset\b/.test(s) && !/sunset grill|pops sunset/.test(s)) return { label: "Sunset", cls: "sky" };
+      if (/sunrise yoga|sunrise stretch|sunrise on the/.test(s)) return { label: "Sunrise", cls: "sunrise" };
+      if (/\bfull moon\b|moonlight paddle|moonrise/.test(s)) return { label: "Moon", cls: "moon" };
+      if (/\bsunset\b/.test(s) && !/sunset grill|pops sunset/.test(s)) return { label: "Sunset", cls: "sunset" };
       return { label: "Event", cls: "fun" };
     }
     function isLiveMusic(sum, loc, desc) {
