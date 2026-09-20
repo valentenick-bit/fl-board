@@ -4162,16 +4162,13 @@ Cart shop:</textarea>
         <ul id="addr-suggest" class="addr-suggest" hidden></ul>
         <button type="button" id="set-address-go" class="done" style="margin:8px 0 10px">Use this address</button>
         <p class="hint" id="addr-pin-status">Pin follows the line above after you tap Use this address.</p>
-        <label>Google Maps key <small>shared from Drive key.json</small></label>
-        <input id="set-gmaps" type="text" placeholder="AIza… paste once, stored in Drive" autocomplete="off" />
-        <p class="set-help">This key is read from Commons Drive <code>key.json</code> so the phone and laptop stay in sync. Paste it here or into that file.</p>
-        <div class="set-line"><label>Use Google key</label>
+        <div class="set-line"><label>Use Google Maps</label>
           <div class="set-row" id="set-gmapson">
             <button type="button" data-v="1">On</button>
             <button type="button" data-v="0">Off</button>
           </div>
         </div>
-        <p class="hint">Optional. Turn Use Google key On for live traffic colors on Land. Event, restaurant, and golf pins use Google Maps without this key. If you use a key, enable Maps JavaScript API and Places API, and add this site as an HTTP referrer.</p>
+        <p class="set-help">The key lives in Drive <code>key.json</code> only — not on this page. Off stops Places, traffic layer, and drive times. Nearby lists still cache 12 hours. Cap is 50 paid calls per device per day.</p>
         <div class="set-line"><label>Google cache</label>
           <button type="button" id="set-gcache" class="ghost">Clear lookups</button>
         </div>
@@ -4315,7 +4312,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 795;
+    window.BOARD_VER = 797;
 
     
     function communityShort() {
@@ -4860,6 +4857,43 @@ Cart shop:</textarea>
     }
     function gCacheSet(kind, extra, data) {
       try { localStorage.setItem(gCacheKey(kind, extra), JSON.stringify({ at: Date.now(), data: data })); } catch (e) {}
+    }
+    function gmapsDayKey() {
+      return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+    }
+    function gmapsBudgetCap() {
+      var n = Number((typeof getSet === "function" && getSet().gmapsCap) || 50);
+      return isFinite(n) && n > 0 ? Math.min(200, n) : 50;
+    }
+    function gmapsBudgetRead() {
+      try {
+        var o = JSON.parse(localStorage.getItem("commons-gmaps-budget") || "null") || {};
+        if (o.day !== gmapsDayKey()) o = { day: gmapsDayKey(), n: 0, by: {} };
+        return o;
+      } catch (e) { return { day: gmapsDayKey(), n: 0, by: {} }; }
+    }
+    function gmapsCanSpend(kind, cost) {
+      if (typeof mapsPaidOn === "function" && !mapsPaidOn()) return false;
+      cost = cost || 1;
+      var o = gmapsBudgetRead();
+      if (o.n + cost > gmapsBudgetCap()) {
+        if (typeof noteFeed === "function") noteFeed("gmaps-budget", false, "cap " + o.n + "/" + gmapsBudgetCap() + " · skip " + (kind || "call"));
+        return false;
+      }
+      return true;
+    }
+    function gmapsSpend(kind, cost) {
+      if (!gmapsCanSpend(kind, cost)) return false;
+      cost = cost || 1;
+      var o = gmapsBudgetRead();
+      o.n += cost;
+      o.by[kind] = (o.by[kind] || 0) + cost;
+      try { localStorage.setItem("commons-gmaps-budget", JSON.stringify(o)); } catch (e) {}
+      if (typeof noteFeed === "function") noteFeed("gmaps-budget", true, o.n + "/" + gmapsBudgetCap() + " · " + (kind || "call"));
+      return true;
+    }
+    function eatsNearCacheKey() {
+      return String(Math.round(homeLat() * 200) / 200) + "," + String(Math.round(homeLon() * 200) / 200) + ":" + String((getSet() || {}).eventMiles || 25);
     }
     function communityName() {
       var n = String((getSet() || {}).community || "").trim();
@@ -14249,8 +14283,11 @@ function mustEats() {
         });
       }
       function fromPlacesNew(cb) {
+        var cachedNear = gCacheGet("eats-near", eatsNearCacheKey(), 12 * 3600 * 1000);
+        if (cachedNear && cachedNear.length) return cb(cachedNear);
         var key = String((getSet() || {}).gmapsKey || "").trim();
         if (!key || (typeof mapsPaidOn === "function" && !mapsPaidOn())) return cb(null);
+        if (!gmapsCanSpend("places-new", 1)) return cb(null);
         var miles = Number((getSet() || {}).eventMiles || 25);
         var body = {
           includedTypes: ["restaurant", "bar", "american_restaurant", "seafood_restaurant", "mexican_restaurant", "steak_house", "italian_restaurant", "mediterranean_restaurant"],
@@ -14294,6 +14331,7 @@ function mustEats() {
           });
         }
         function hit(url, label) {
+          if (!gmapsSpend("places-new", 1)) return Promise.resolve(null);
           return fetch(url, {
             method: "POST",
             headers: {
@@ -14388,6 +14426,12 @@ function mustEats() {
         });
       }
       function fromPlaces(cb) {
+        var cachedNear = gCacheGet("eats-near", eatsNearCacheKey(), 12 * 3600 * 1000);
+        if (cachedNear && cachedNear.length) {
+          if (typeof noteFeed === "function") noteFeed("places-search", true, "cache " + cachedNear.length);
+          return cb(cachedNear);
+        }
+        if (!gmapsCanSpend("nearby-eats", 1)) return cb(null);
         var loader = (typeof loadGmapsLib === "function") ? loadGmapsLib : loadGmaps;
         if (typeof loader !== "function") return fromPlacesNew(cb);
         loader(function (ok) {
@@ -14414,6 +14458,7 @@ function mustEats() {
             if (typeof noteFeed === "function") noteFeed("places-search", true, "js timeout · proxy");
             fromPlacesNew(cb);
           }, 8000);
+          gmapsSpend("nearby-eats", 1);
           svc.nearbySearch({
             location: new google.maps.LatLng(homeLat(), homeLon()),
             radius: Math.min(50000, Math.round(miles * 1609.34)),
@@ -14441,29 +14486,13 @@ function mustEats() {
                 placeId: p.place_id || ""
               };
             });
-            var need = list.slice(0, 10);
-            var left = need.length;
             function finish() {
               eatCacheWrite(list);
-              if (typeof noteFeed === "function") noteFeed("eats-src", true, "Google Places · " + list.length);
+              gCacheSet("eats-near", eatsNearCacheKey(), list);
+              if (typeof noteFeed === "function") noteFeed("eats-src", true, "Google Places · " + list.length + " · cached 12h");
               cb(list);
             }
-            if (!left) return finish();
-            need.forEach(function (r) {
-              if (!r.placeId) { if (!--left) finish(); return; }
-              svc.getDetails({
-                placeId: r.placeId,
-                fields: ["formatted_address", "rating", "user_ratings_total", "types", "name", "vicinity"]
-              }, function (d, st) {
-                if (st === google.maps.places.PlacesServiceStatus.OK && d) {
-                  r.addr = d.formatted_address || d.vicinity || r.addr;
-                  if (d.rating != null) r.rating = d.rating;
-                  if (d.user_ratings_total) r.reviews = d.user_ratings_total;
-                  r.kind = kindOf(((d.types || []).join(" ")) + " " + (d.name || r.name || ""));
-                }
-                if (!--left) finish();
-              });
-            });
+            finish();
           });
         });
       }
@@ -14542,12 +14571,6 @@ function mustEats() {
             noteFeed("eats-src", n > 0, "Google · " + n + " sit-down · " + (window.__eatReviewFloor || 2500) + "+ reviews");
           }
         }
-        fromPlacesNew(function (places) {
-          if (places && places.length) ingestEats(places);
-        });
-        fromPlacesText(function (places) {
-          if (places && places.length) ingestEats(places);
-        });
         if (typeof fromPlaces === "function") fromPlaces(function (places) {
           if (places && places.length) ingestEats(places);
         });
@@ -14751,17 +14774,22 @@ function mustEats() {
       }
       function fromPlaces(cb) {
         function fail() { cb([]); }
+        var gkey = "golf:" + eatsNearCacheKey();
+        var cached = gCacheGet("golf-near", gkey, 12 * 3600 * 1000);
+        if (cached && cached.length) return cb(cached);
         if (!window.google || !google.maps || !google.maps.places) return fail();
+        if (!gmapsCanSpend("nearby-golf", 1)) return fail();
         try {
           var miles = golfMiles();
           var svc = new google.maps.places.PlacesService(document.createElement("div"));
+          gmapsSpend("nearby-golf", 1);
           svc.nearbySearch({
             location: new google.maps.LatLng(homeLat(), homeLon()),
             radius: Math.min(50000, Math.round(miles * 1609.34)),
             type: "golf_course"
           }, function (results, status) {
             if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return fail();
-            cb(results.map(function (p) {
+            var rows = results.map(function (p) {
               var loc = p.geometry && p.geometry.location;
               var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
               var lon = loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng);
@@ -14777,7 +14805,9 @@ function mustEats() {
                 addr: p.vicinity || "",
                 placeId: p.place_id || ""
               };
-            }).filter(Boolean));
+            }).filter(Boolean);
+            gCacheSet("golf-near", "golf:" + eatsNearCacheKey(), rows);
+            cb(rows);
           });
         } catch (e) { fail(); }
       }
@@ -14877,7 +14907,7 @@ function mustEats() {
         if (gk && gk.length > 20) {
           var had = "";
           try { had = String((getSet() || {}).gmapsKey || "").trim(); } catch (eK) {}
-          if (typeof putSet === "function") putSet({ gmapsKey: gk, gmapsOn: "1" });
+          if (typeof putSet === "function") putSet({ gmapsKey: gk });
           if (had !== gk) {
             if (typeof loadGmaps === "function") loadGmaps(function () {
               if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
@@ -15391,8 +15421,7 @@ function mustEats() {
         })();
         var addr = document.getElementById("set-address");
         if (addr) addr.value = s.address || addr.value;
-        var gm = document.getElementById("set-gmaps");
-        if (gm) gm.value = s.gmapsKey || "";
+
         var comm = document.getElementById("set-community");
         if (comm && document.activeElement !== comm) comm.value = s.community || "BeachWalk by Manasota Key";
         if (typeof paintCommunity === "function") paintCommunity();
@@ -15657,14 +15686,7 @@ function mustEats() {
           }
         });
         /* Maps loads on Fun / traffic, not when Settings paints */
-        var gmIn = document.getElementById("set-gmaps");
-        if (gmIn && !gmIn.dataset.bound) {
-          gmIn.dataset.bound = "1";
-          gmIn.addEventListener("change", function () {
-            putSet({ gmapsKey: String(gmIn.value || "").trim() });
-            if (typeof applyLocalMaps === "function") applyLocalMaps();
-          });
-        }
+
       }
       var reset = document.getElementById("set-dockreset");
       if (reset) reset.addEventListener("click", function () {
@@ -19481,6 +19503,10 @@ function mustEats() {
     function driveMinutesToLatLng(lat, lon, cb) {
       if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon)) { cb(null); return; }
       if (typeof gmapsKey === "function" ? !gmapsKey() : true) { cb(null); return; }
+      var dkey = String(Number(lat).toFixed(4) + "," + Number(lon).toFixed(4));
+      var hit = gCacheGet("drive", dkey, 30 * 60 * 1000);
+      if (hit != null) { cb(hit); return; }
+      if (!gmapsCanSpend("matrix", 1)) { cb(null); return; }
       loadGmaps(function (ok) {
         if (!ok || !window.google || !google.maps || !google.maps.DistanceMatrixService) { cb(null); return; }
         try {
@@ -19500,10 +19526,13 @@ function mustEats() {
                 return;
               }
               var sec = (el.duration_in_traffic && el.duration_in_traffic.value) || (el.duration && el.duration.value) || 0;
-              cb({
+              var out = {
                 min: Math.max(1, Math.round(sec / 60)),
                 miles: el.distance ? el.distance.value / 1609.34 : null
-              });
+              };
+              gmapsSpend("matrix", 1);
+              try { gCacheSet("drive", String(Number(lat).toFixed(4) + "," + Number(lon).toFixed(4)), out); } catch (eC) {}
+              cb(out);
             } catch (e2) { cb(null); }
           });
         } catch (e1) { cb(null); }
