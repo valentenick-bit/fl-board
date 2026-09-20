@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 814;
+    window.BOARD_VER = 815;
 
     
     function communityShort() {
@@ -13342,7 +13342,15 @@ function currentRotation() {
           if (pin && pin.onSite) e.inside = true;
           e.addr = enrichLoc((pin && (pin.addr || pin.q)) || e.loc || mapQ || "");
         }
+        if (e.miles == null && typeof eventMilesFromHome === "function") {
+          var mi0 = eventMilesFromHome(e);
+          if (mi0 != null && !isNaN(mi0)) e.miles = mi0;
+        }
         var distHtml = typeof locPillHtml === "function" ? locPillHtml(e) : "";
+        if (!distHtml) {
+          var fallback = e.inside ? "On site" : (typeof fmtDrivePill === "function" ? fmtDrivePill(e) : "");
+          distHtml = '<span class="dist-tag loc-pill">' + (fallback || "Drive…") + "</span>";
+        }
         var kindHtml = kind ? ('<span class="kind-tag ' + kind.cls + '">' + kind.label + "</span>") : "";
         var whenLine = allDay ? "All day" : (typeof fmtClockTime === "function" ? fmtClockTime(e.when) : "");
         var rd = typeof railDateParts === "function" ? railDateParts(e.when) : { dow: "—", num: "—" };
@@ -13357,7 +13365,6 @@ function currentRotation() {
         var placeLabel = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : place;
         return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
           (e.opens ? " · opens " + e.opens : "") +
-          (e.driveMin != null ? " · " + Math.round(e.driveMin) + " min drive" : "") +
           (function () {
             if (!e.when || e.inside) return "";
             var leave = typeof eventLeaveMs === "function" ? eventLeaveMs(e) : 0;
@@ -19567,10 +19574,12 @@ function mustEats() {
       var lat = row.lat, lon = row.lon;
       var loc = enrichLoc(row.addr || row.address || row.loc || row.where || row.area || row.mapQ || "");
       if (!onsite && !locHasFix(lat, lon, loc) && row.name) loc = enrichLoc(row.name);
-      if (!onsite && !locHasFix(lat, lon, loc)) return "";
+      if (!onsite && row.miles == null && typeof eventMilesFromHome === "function") {
+        var guess = eventMilesFromHome(row);
+        if (guess != null && !isNaN(guess)) row.miles = guess;
+      }
       var drive = fmtDrivePill(row);
-      if (!onsite && !drive) return "";
-      var label = onsite ? "On site" : drive;
+      var label = onsite ? "On site" : (drive || "Drive…");
       var attrs = ' class="dist-tag loc-pill"';
       if (lat != null && lon != null && !isNaN(Number(lat))) attrs += ' data-lat="' + Number(lat) + '" data-lon="' + Number(lon) + '"';
       if (loc) attrs += ' data-loc="' + String(loc).replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '"';
@@ -19955,7 +19964,6 @@ function mustEats() {
         seen[key] = row;
         dests.push(row);
       });
-      dests = dests.slice(0, 25);
       function nextChunk() {
         if (!dests.length) {
           if (typeof noteFeed === "function") noteFeed("event-drive", true, "google drive · events");
