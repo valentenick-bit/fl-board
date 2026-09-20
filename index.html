@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 793;
+    window.BOARD_VER = 795;
 
     
     function communityShort() {
@@ -9648,6 +9648,37 @@ function currentRotation() {
       var cls = (s && s.classification) || "";
       return cls === "HU" ? "Hurricane" : cls === "TS" ? "Tropical Storm" : cls === "TD" ? "Tropical Depression" : cls === "PTC" ? "Potential tropical" : cls || "Storm";
     }
+    function parseNhcHeadline(txt) {
+      var m = String(txt || "").match(/\b(Hurricane|Tropical Storm|Tropical Depression|Post-Tropical Cyclone|Remnant Low|Potential Tropical Cyclone)\s+([A-Za-z]+|\d+)\b/i);
+      if (!m) return null;
+      var cls = /hurricane/i.test(m[1]) ? "HU" : /tropical storm/i.test(m[1]) ? "TS" : /depression/i.test(m[1]) ? "TD" : /potential/i.test(m[1]) ? "PTC" : "TS";
+      return { word: m[1], name: m[2], classification: cls };
+    }
+    function stormNameIsNumbered(name) {
+      return /^(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Eleven|Twelve|Thirteen|Fourteen|Fifteen|Sixteen|Seventeen|Eighteen|Nineteen|Twenty|\d+)$/i.test(String(name || "").trim());
+    }
+    function applyStormRename(s, parsed) {
+      if (!s || !parsed || !parsed.name) return false;
+      var old = String(s.name || "");
+      var newer = String(parsed.name || "");
+      var changed = false;
+      if (stormNameIsNumbered(old) && !stormNameIsNumbered(newer)) {
+        s.__was = old;
+        s.name = newer;
+        changed = true;
+      } else if (old && newer && old.toLowerCase() === newer.toLowerCase()) {
+        /* same name, maybe class upgraded */
+      } else if (!stormNameIsNumbered(newer) && newer && old.toLowerCase() !== newer.toLowerCase()) {
+        s.__was = old;
+        s.name = newer;
+        changed = true;
+      }
+      if (parsed.classification && parsed.classification !== s.classification) {
+        s.classification = parsed.classification;
+        changed = true;
+      }
+      return changed;
+    }
     function nhcGraphic(s, kind) {
       var id = String((s && s.id) || "").toUpperCase();
       var bin = String((s && s.binNumber) || "").replace(/\s/g, "").toUpperCase();
@@ -9880,6 +9911,12 @@ function currentRotation() {
         return;
       }
       var body = txt.length > 1400 ? txt.slice(0, 1380).replace(/\s+\S*$/, "") + "…" : txt;
+      var parsed = typeof parseNhcHeadline === "function" ? parseNhcHeadline(txt) : null;
+      if (parsed && s && typeof applyStormRename === "function" && applyStormRename(s, parsed)) {
+        try { if (typeof saveNhcCache === "function") saveNhcCache(window.__nhcAllStorms || []); } catch (eC) {}
+        if (typeof paintStormPage === "function") paintStormPage();
+        if (typeof writeTodayChips === "function") writeTodayChips();
+      }
       el.innerHTML = "<b>NHC discussion</b><span style=\"white-space:pre-wrap\">" + body.replace(/</g, "&lt;") + "</span>";
       if (typeof noteFeed === "function") noteFeed("nhc-disc", true, (s && s.name ? s.name + " TCD" : "TCD"));
     }
@@ -13035,7 +13072,9 @@ function currentRotation() {
       if (/estate sale|garage sale|yard sale|open house/.test(s)) return { label: "Sale", cls: "sale" };
       if (/lecture|author|book club|library/.test(s)) return { label: "Talk", cls: "talk" };
       if (/volunteer/.test(s)) return { label: "Volunteer", cls: "give" };
-      if (/sunset|sunrise yoga|full moon/.test(s)) return { label: "Sunset", cls: "sky" };
+      if (/sunrise yoga|sunrise stretch|sunrise on the/.test(s)) return { label: "Sunrise", cls: "sky" };
+      if (/\bfull moon\b|moonlight paddle|moonrise/.test(s)) return { label: "Moon", cls: "sky" };
+      if (/\bsunset\b/.test(s) && !/sunset grill|pops sunset/.test(s)) return { label: "Sunset", cls: "sky" };
       return { label: "Event", cls: "fun" };
     }
     function isLiveMusic(sum, loc, desc) {
@@ -17285,7 +17324,7 @@ function mustEats() {
             function hh(iso) {
               return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
             }
-            if (lab) lab.textContent = hh(rise) + " to " + hh(set) + " at the house";
+            if (lab) lab.textContent = "Sunrise " + hh(rise) + " · Sunset " + hh(set);
             applySunDark();
             drawSunChart(rise, set);
             drawMoonChart();
@@ -17301,7 +17340,7 @@ function mustEats() {
           }
           var lab = document.getElementById("live-sun-label");
           var watch = document.getElementById("live-sky-watch");
-          if (lab && r.sunrise && r.sunset) lab.textContent = hh(r.sunrise) + " to " + hh(r.sunset) + " at the house";
+          if (lab && r.sunrise && r.sunset) lab.textContent = "Sunrise " + hh(r.sunrise) + " · Sunset " + hh(r.sunset);
           var tw = document.getElementById("live-twilight");
           if (tw && r.civil_twilight_end && r.nautical_twilight_end) {
             tw.textContent = "Beach goes dim " + hh(r.civil_twilight_end) + " · dark " + hh(r.nautical_twilight_end) + ". Morning civil " + (r.civil_twilight_begin ? hh(r.civil_twilight_begin) : "—") + ".";
@@ -20140,7 +20179,7 @@ function mustEats() {
       if (kind === "air")
         return "Sensitive groups should limit outdoor time.";
       if (kind === "nixle")
-        return "This is a local notice. Details are on the Emergency page.";
+        return "This is a local notice for this area.";
       if (kind === "break")
         return "Open Local News if you want the full story.";
       return "";
@@ -20414,6 +20453,12 @@ function homeCountyGuess() {
       return out;
     }
     function paintCivic(items) {
+      items = (items || []).filter(function (x) {
+        var blob = [x.kind, x.title, x.body].join(" ").toLowerCase();
+        if (/amber|silver alert|\bpurple\b|\bblue alert\b|missing person|abduct|endangered/.test(blob)) return true;
+        if (/weather|forecast|thunderstorm|heat index|wccb|radar|traffic stop/.test(blob)) return false;
+        return false;
+      });
       var bar = document.getElementById("civicbar");
       var txt = document.getElementById("civictext");
       var lab = document.getElementById("civiclab");
