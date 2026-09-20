@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 800;
+    window.BOARD_VER = 801;
 
     
     function communityShort() {
@@ -11838,6 +11838,9 @@ function currentRotation() {
       var place = (typeof homePlace === "function" && homePlace()) || "";
       var a = String(addr || "").replace(/\s+/g, " ").trim();
       var n = String(name || "").replace(/\s+/g, " ").trim();
+      var at = n.match(/@\s*(.+)$/);
+      if (at && (!a || a.length < 4)) { n = at[1].replace(/\s*\(.*$/, "").trim(); }
+      if (/\b(live|trivia|bingo|karaoke|party|concert|show|music)\b/i.test(n) && a) n = "";
       var hasStreet = /\d/.test(a) && /,/.test(a);
       var hasCity = /englewood|placida|rotonda|venice|port charlotte|north port|punta gorda|sarasota|manasota|boca grande|lake suzy/i.test(a || n);
       var raw = "";
@@ -11920,30 +11923,26 @@ function currentRotation() {
       if (typeof isBeachWalkEvent === "function" && isBeachWalkEvent({ name: name, sum: name, loc: addr, addr: addr })) return true;
       return false;
     }
-    function venueMapSrc(name, addr, lat, lon, placeId, onsite) {
-      if (isBeachWalkMapTarget(name, addr, lat, lon, onsite)) {
-        return "https://maps.google.com/maps?q=" + encodeURIComponent(beachWalkMapQuery()) + "&z=16&hl=en&ie=UTF8&output=embed";
-      }
-      lat = Number(lat); lon = Number(lon);
-      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=16&hl=en&ie=UTF8&output=embed";
+    function googlePlaceQuery(name, addr, lat, lon, placeId, onsite) {
+      if (typeof isBeachWalkMapTarget === "function" && isBeachWalkMapTarget(name, addr, lat, lon, onsite)) {
+        return typeof beachWalkMapQuery === "function" ? beachWalkMapQuery() : "BeachWalk by Manasota Key, Englewood, FL 34223";
       }
       placeId = String(placeId || "").trim();
-      var q = [name, addr].filter(Boolean).join(", ");
-      if (!q && typeof venueQuery === "function") q = venueQuery(name, addr);
-      if (!q && placeId && /^ChIJ/.test(placeId)) q = "place_id:" + placeId;
-      if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood FL";
+      if (placeId && /^ChIJ/.test(placeId)) return "place_id:" + placeId;
+      var q = typeof venueQuery === "function" ? venueQuery(name, addr) : [name, addr].filter(Boolean).join(", ");
+      q = String(q || "").replace(/\s+/g, " ").trim();
+      if (q && q.length > 3 && !/^[-\d.,\s]+$/.test(q)) return q;
+      lat = Number(lat); lon = Number(lon);
+      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) return lat + "," + lon;
+      return (typeof homePlace === "function" && homePlace()) || "Englewood, FL";
+    }
+    function venueMapSrc(name, addr, lat, lon, placeId, onsite) {
+      var q = googlePlaceQuery(name, addr, lat, lon, placeId, onsite);
       return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&ie=UTF8&iwloc=A&output=embed";
     }
-    function venueMapLink(name, addr, lat, lon, onsite) {
-      if (isBeachWalkMapTarget(name, addr, lat, lon, onsite)) {
-        return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(beachWalkMapQuery());
-      }
-      lat = Number(lat); lon = Number(lon);
-      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        return "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lon;
-      }
-      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(venueQuery(name, addr));
+    function venueMapLink(name, addr, lat, lon, onsite, placeId) {
+      var q = googlePlaceQuery(name, addr, lat, lon, placeId, onsite);
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
     }
     function resolveVenuePin(name, addr, lat, lon) {
       lat = Number(lat); lon = Number(lon);
