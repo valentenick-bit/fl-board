@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 812;
+    window.BOARD_VER = 813;
 
     
     function communityShort() {
@@ -11943,13 +11943,26 @@ function currentRotation() {
       return (typeof homePlace === "function" && homePlace()) || "Englewood, FL";
     }
     function venueMapSrc(name, addr, lat, lon, placeId, onsite) {
+      var key = String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
+      placeId = (typeof cleanPlaceId === "function" ? cleanPlaceId(placeId) : String(placeId || "").replace(/^places\//, "").trim());
       lat = Number(lat); lon = Number(lon);
-      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=16&t=m&hl=en&output=embed";
+      var hasPin = isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1;
+      if (key && placeId) {
+        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=place_id:" + encodeURIComponent(placeId);
+      }
+      if (key && hasPin) {
+        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=" + lat + "," + lon;
+      }
+      if (placeId) {
+        return "https://www.google.com/maps?q=place_id:" + encodeURIComponent(placeId) + "&output=embed";
+      }
+      if (hasPin) {
+        return "https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=17&t=m&hl=en&output=embed";
       }
       var q = [name, addr].filter(Boolean).join(", ");
       if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood, FL";
-      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&ie=UTF8&iwloc=A&output=embed";
+      if (key) return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=" + encodeURIComponent(q);
+      return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&output=embed";
     }
     function venueMapLink(name, addr, lat, lon, onsite, placeId) {
       placeId = (typeof cleanPlaceId === "function" ? cleanPlaceId(placeId) : String(placeId || "").trim());
@@ -12043,23 +12056,78 @@ function currentRotation() {
       });
       return hit;
     }
+    function lookupLiveVenue(row) {
+      if (!row) return null;
+      var needle = String(row.name || "").toLowerCase().replace(/\s+/g, " ").trim();
+      var pid = String(row.placeId || "").replace(/^places\//, "").trim();
+      var pools = [].concat(window.__golfs || [], window.__eats || [], window.__eatPool || []);
+      var hit = null;
+      pools.forEach(function (x) {
+        if (hit || !x) return;
+        var xid = String(x.placeId || x.id || "").replace(/^places\//, "").trim();
+        if (pid && xid && pid === xid) { hit = x; return; }
+        if (needle && String(x.name || "").toLowerCase().replace(/\s+/g, " ").trim() === needle) hit = x;
+      });
+      return hit;
+    }
+    function showVenueMap(row) {
+      if (!row) return;
+      var src = venueMapSrc(row.name, row.addr, row.lat, row.lon, row.placeId, row.inside);
+      var link = venueMapLink(row.name, row.addr, row.lat, row.lon, row.inside, row.placeId);
+      window.__mapPopPin = { lat: row.lat, lon: row.lon, name: row.name, addr: row.addr || "", placeId: row.placeId };
+      var note = row.placeId ? "" : (row.lat ? "Dropped on coordinates — Place ID not on this card." : "");
+      if (typeof openMapPop === "function") {
+        openMapPop(row.name || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>', note);
+      }
+    }
+    function resolveGooglePlace(row, cb) {
+      if (!row) { cb(row); return; }
+      if (row.placeId && isFinite(Number(row.lat)) && Math.abs(Number(row.lat)) > 1) { cb(row); return; }
+      var q = [row.name, row.addr].filter(Boolean).join(" ");
+      if (!q) { cb(row); return; }
+      function applyPlace(pl) {
+        if (!pl) { cb(row); return; }
+        var id = pl.id || pl.place_id || (pl.placeId) || "";
+        id = String(id).replace(/^places\//, "");
+        var loc = pl.location || (pl.geometry && pl.geometry.location) || {};
+        var lat = loc.latitude != null ? loc.latitude : (typeof loc.lat === "function" ? loc.lat() : loc.lat);
+        var lon = loc.longitude != null ? loc.longitude : (typeof loc.lng === "function" ? loc.lng() : loc.lng);
+        if (id) row.placeId = id;
+        if (isFinite(Number(lat))) row.lat = Number(lat);
+        if (isFinite(Number(lon))) row.lon = Number(lon);
+        if (pl.formattedAddress) row.addr = pl.formattedAddress;
+        if (pl.displayName && pl.displayName.text) row.name = pl.displayName.text;
+        cb(row);
+      }
+      try {
+        if (window.google && google.maps && google.maps.places && google.maps.places.PlacesService) {
+          var svc = new google.maps.places.PlacesService(document.createElement("div"));
+          svc.findPlaceFromQuery({ query: q, fields: ["place_id", "geometry", "name", "formatted_address"] }, function (res, status) {
+            var ok = status === google.maps.places.PlacesServiceStatus.OK && res && res[0];
+            if (!ok) { applyPlace(null); return; }
+            applyPlace({
+              place_id: res[0].place_id,
+              geometry: res[0].geometry,
+              formattedAddress: res[0].formatted_address,
+              displayName: { text: res[0].name }
+            });
+          });
+          return;
+        }
+      } catch (e0) {}
+      var key = String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
+      if (!key) { cb(row); return; }
+      fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + (row.lat || (typeof homeLat === "function" ? homeLat() : "")) + "&lon=" + (row.lon || (typeof homeLon === "function" ? homeLon() : "")), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ textQuery: q, pageSize: 1, radius: 20000 })
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        applyPlace(j && j.places && j.places[0]);
+      }).catch(function () { cb(row); });
+    }
     function openVenueMap(rowOrEl) {
       var row = rowOrEl;
       if (rowOrEl && rowOrEl.getAttribute) {
-        var golfName = rowOrEl.getAttribute("data-golf") || "";
-        if (golfName && window.__golfs && window.__golfs.length) {
-          var gHit = null;
-          window.__golfs.forEach(function (g) {
-            if (!gHit && g && g.name === golfName) gHit = g;
-          });
-          if (gHit && gHit.lat != null && gHit.lon != null) {
-            var gSrc = venueMapSrc(gHit.name, gHit.addr, gHit.lat, gHit.lon, gHit.placeId);
-            var gLink = venueMapLink(gHit.name, gHit.addr, gHit.lat, gHit.lon, false, gHit.placeId);
-            window.__mapPopPin = { lat: gHit.lat, lon: gHit.lon, name: gHit.name, addr: gHit.addr || "", placeId: gHit.placeId };
-            if (typeof openMapPop === "function") openMapPop(gHit.name || "Golf", gSrc, '<a href="' + gLink + '" target="_blank" rel="noopener">Open in Google Maps</a>');
-            return;
-          }
-        }
         row = {
           name: rowOrEl.getAttribute("data-name") || rowOrEl.getAttribute("data-eat") || rowOrEl.getAttribute("data-golf") || rowOrEl.getAttribute("data-buzz") || "",
           addr: rowOrEl.getAttribute("data-loc") || "",
@@ -12070,35 +12138,29 @@ function currentRotation() {
           inside: rowOrEl.getAttribute("data-onsite") === "1" || rowOrEl.getAttribute("data-inside") === "1"
         };
       }
-      var onsite = !!(row && (row.inside || row.onSite || row.kind === "event" && isBeachWalkMapTarget(row.name, row.addr, row.lat, row.lon, row.inside)));
-      if (onsite) {
-        var home = typeof beachWalkPin === "function" ? beachWalkPin() : null;
+      if (!row) return;
+      if (row.inside && typeof beachWalkPin === "function") {
+        var home = beachWalkPin();
         if (home) {
           row.lat = home.lat;
           row.lon = home.lon;
-          row.addr = home.addr;
+          row.addr = home.addr || row.addr;
+          showVenueMap(row);
+          return;
         }
       }
-      var havePin = isFinite(Number(row && row.lat)) && Math.abs(Number(row.lat)) > 1 && isFinite(Number(row && row.lon));
-      var live = (onsite || havePin) ? null : liveVenueRow(row && row.name);
+      var live = lookupLiveVenue(row);
       if (live) {
-        if (live.addr) row.addr = live.addr;
         if (live.placeId) row.placeId = live.placeId;
         if (live.lat != null) row.lat = live.lat;
         if (live.lon != null) row.lon = live.lon;
+        if (live.addr) row.addr = live.addr;
         if (live.name) row.name = live.name;
       }
-      var pin = (row && row.placeId)
-        ? { name: row.name, addr: row.addr, lat: row.lat, lon: row.lon, placeId: row.placeId }
-        : (typeof resolveVenuePin === "function" ? resolveVenuePin(row.name, row.addr, row.lat, row.lon) : row);
-      var src = venueMapSrc(pin.name, pin.addr, pin.lat, pin.lon, row.placeId || pin.placeId, onsite || (pin && pin.onSite));
-      var link = venueMapLink(pin.name, pin.addr, pin.lat, pin.lon, onsite || (pin && pin.onSite), row.placeId || pin.placeId);
-      window.__mapPopPin = { lat: pin.lat, lon: pin.lon, name: pin.name, addr: pin.addr || row.addr || "", placeId: row.placeId || pin.placeId };
-      src = venueMapSrc(pin.name, pin.addr || row.addr, pin.lat, pin.lon, row.placeId || pin.placeId);
-      if (typeof openMapPop === "function") {
-        openMapPop(pin.name || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
-      }
+      if (typeof openMapPop === "function") openMapPop(row.name || "Map", "about:blank", "Finding the Google Place…");
+      resolveGooglePlace(row, function (ready) { showVenueMap(ready || row); });
     }
+    
     window.normalizeVenue = normalizeVenue;
     window.venueDataAttrs = venueDataAttrs;
     window.openVenueMap = openVenueMap;
