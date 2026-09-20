@@ -4321,7 +4321,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 807;
+    window.BOARD_VER = 808;
 
     
     function communityShort() {
@@ -11950,16 +11950,13 @@ function currentRotation() {
       return (typeof homePlace === "function" && homePlace()) || "Englewood, FL";
     }
     function venueMapSrc(name, addr, lat, lon, placeId, onsite) {
-      var key = String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
-      placeId = (typeof cleanPlaceId === "function" ? cleanPlaceId(placeId) : String(placeId || "").trim());
-      if (key && placeId) {
-        return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=place_id:" + encodeURIComponent(placeId);
-      }
       lat = Number(lat); lon = Number(lon);
       if (isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1) {
-        return "https://maps.google.com/maps?ll=" + lat + "," + lon + "&q=" + lat + "," + lon + "&z=16&hl=en&output=embed";
+        var label = encodeURIComponent(String(name || "Place").replace(/[()]/g, " "));
+        return "https://maps.google.com/maps?ll=" + lat + "," + lon + "&q=" + lat + "," + lon + "+(" + label + ")&z=16&hl=en&output=embed";
       }
-      var q = googlePlaceQuery(name, addr, lat, lon, placeId, onsite);
+      var q = [name, addr].filter(Boolean).join(", ");
+      if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood, FL";
       return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&ie=UTF8&iwloc=A&output=embed";
     }
     function venueMapLink(name, addr, lat, lon, onsite, placeId) {
