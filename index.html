@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 799;
+    window.BOARD_VER = 800;
 
     
     function communityShort() {
@@ -6888,10 +6888,12 @@ function currentRotation() {
         hideScan();
         if (!opts.keepSaved) saveRadio("");
         if (status) status.textContent = "Muted.";
+        if (typeof paintHdrRadio === "function") paintHdrRadio();
         return;
       }
       if (String(url).indexOf("scan:") === 0) {
         window.__radioWant = { url: url, label: label || "" };
+        rememberRadio(url, label || "");
       if (typeof paintHdrRadio === "function") paintHdrRadio();
         clearInterval(window.__nwrKeep);
         hideScan();
@@ -6911,6 +6913,7 @@ function currentRotation() {
       }
       hideScan();
       window.__radioWant = { url: url, label: label || "" };
+      rememberRadio(url, label || "");
       if (typeof paintHdrRadio === "function") paintHdrRadio();
       if (!opts.keepSaved) saveRadio(url);
       if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert) {
@@ -7595,26 +7598,56 @@ function currentRotation() {
       if (!dest) return;
       dest.textContent = fmtWindLine((src && src.textContent) || "");
     }
+    function radioLast() {
+      try { return JSON.parse(localStorage.getItem("bw-radio-last") || "null"); } catch (e) { return null; }
+    }
+    function rememberRadio(url, label) {
+      if (!url) return;
+      try { localStorage.setItem("bw-radio-last", JSON.stringify({ url: url, label: label || "" })); } catch (e) {}
+    }
+    function radioShortName(label) {
+      label = String(label || "").trim();
+      if (!label || /mute/i.test(label)) return "Radio";
+      var freq = label.match(/\d{2,3}\.\d/);
+      if (freq) return freq[0];
+      if (/NOAA|NWR/i.test(label)) return "NOAA";
+      if (/police/i.test(label)) return "PD";
+      if (/fire/i.test(label)) return "FD";
+      return label.split(/\s+/)[0].slice(0, 8);
+    }
+    function radioIsPlaying() {
+      var audio = document.getElementById("radioPlayer");
+      var want = window.__radioWant || {};
+      var url = want.url || "";
+      return !!(url && audio && !audio.paused && audio.getAttribute("src"));
+    }
+    function toggleHdrRadio() {
+      var want = window.__radioWant || {};
+      var last = radioLast() || {};
+      if (radioIsPlaying()) {
+        rememberRadio(want.url || last.url, want.label || last.label);
+        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+      } else {
+        var url = last.url || want.url || (typeof savedRadio === "function" ? savedRadio() : "") || "";
+        var label = last.label || want.label || "";
+        if (!url) url = "https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac";
+        if (!label) label = "94.9 Magic";
+        if (typeof playStation === "function") playStation(url, label);
+      }
+      if (typeof paintHdrRadio === "function") paintHdrRadio();
+    }
     function paintHdrRadio() {
       var el = document.getElementById("hdr-radio");
       if (!el) return;
-      var audio = document.getElementById("radioPlayer");
       var want = window.__radioWant || {};
-      var url = want.url || (typeof savedRadio === "function" ? (savedRadio() || "") : "");
-      var label = want.label || "";
-      var playing = !!(url && audio && !audio.paused && audio.getAttribute("src"));
-      var short = "Mute";
-      if (playing && label && !/mute/i.test(label)) {
-        short = (label.match(/\d{2,3}\.\d/) || [label.split(/\s+/)[0]])[0];
-        if (/NOAA|NWR|scanner|police|fire/i.test(label) && !/\d{2,3}\.\d/.test(short)) {
-          short = /NOAA|NWR/i.test(label) ? "NOAA" : (/police/i.test(label) ? "PD" : (/fire/i.test(label) ? "FD" : short.slice(0, 6)));
-        }
-      } else if (!playing && label && url && !/mute/i.test(label)) {
-        short = (label.match(/\d{2,3}\.\d/) || [label.split(/\s+/)[0]])[0] || "Mute";
-      }
+      var last = radioLast() || {};
+      var playing = radioIsPlaying();
+      var label = want.label || last.label || "";
       el.hidden = false;
-      el.classList.add("on");
-      el.textContent = String(short).slice(0, 8);
+      el.classList.toggle("on", playing);
+      el.classList.toggle("muted", !playing);
+      el.textContent = playing ? "Mute" : radioShortName(label);
+      el.title = playing ? "Mute radio" : ("Play " + (label || "radio"));
     }
     function paintHdrAlert(keep, isWarn) {
       var el = document.getElementById("hdr-alert");
@@ -9553,14 +9586,9 @@ function currentRotation() {
         return;
       }
       if (e.target && e.target.id === "hdr-radio") {
-        var setOn = document.getElementById("settings") && document.getElementById("settings").classList.contains("on");
-        if (setOn) {
-          var back = window.__fromPage || "now";
-          if (typeof showPage === "function") showPage(back);
-        } else if (typeof showPage === "function") {
-          showPage("radio");
-        }
-        if (typeof holdThenRotate === "function") holdThenRotate(90000);
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof toggleHdrRadio === "function") toggleHdrRadio();
         return;
       }
       if (e.target && e.target.id === "hdr-alert") {
