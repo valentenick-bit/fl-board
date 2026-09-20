@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 811;
+    window.BOARD_VER = 812;
 
     
     function communityShort() {
@@ -13497,20 +13497,10 @@ function paint() {
         var lon = (typeof homeLon === "function" && homeLon()) || 0;
         if (!lat || !lon) { if (done) done(); return; }
         var miles = Math.min(100, Number((typeof getSet === "function" && getSet().eventMiles) || 40));
-        var start = new Date().toISOString().replace(/\.\d+Z$/, "Z");
-        var tmBase = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" + encodeURIComponent(tmKey()) +
-          "&latlong=" + lat + "," + lon + "&radius=" + miles + "&unit=miles&size=80&sort=date,asc&startDateTime=" + encodeURIComponent(start);
         var urls = [
-          tmBase,
-          tmBase + "&classificationName=Music",
-          tmBase + "&classificationName=Sports",
-          tmBase + "&classificationName=" + encodeURIComponent("Arts & Theatre"),
-          tmBase + "&classificationName=Family",
-          tmBase + "&classificationName=Film",
-          tmBase + "&classificationName=Miscellaneous",
-          (location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles)
+          location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles + "&key=" + encodeURIComponent(tmKey())
         ];
-        function next(i) {
+                function next(i) {
           if (i >= urls.length) {
             var localN = (window.__localEvents && window.__localEvents.length) || (window.__entAll && window.__entAll.length) || 0;
             var ok = !!(bag.eng && bag.eng.length) || localN > 0;
@@ -14099,17 +14089,13 @@ function paint() {
       function googlePlaceRateNew(r, cb) {
         var key = String((getSet() || {}).gmapsKey || "").trim();
         if (!key || (typeof mapsPaidOn === "function" && !mapsPaidOn())) { cb(null); return; }
-        fetch("https://places.googleapis.com/v1/places:searchText", {
+        fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + (r.lat || homeLat()) + "&lon=" + (r.lon || homeLon()), {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": key,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.formattedAddress,places.location"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             textQuery: String(r.name) + " " + String(r.addr || "Englewood FL"),
             pageSize: 1,
-            locationBias: { circle: { center: { latitude: r.lat || homeLat(), longitude: r.lon || homeLon() }, radius: 12000 } }
+            radius: 12000
           })
         }).then(function (res) { return res.json(); }).then(function (j) {
           var pl = j && j.places && j.places[0];
@@ -14365,13 +14351,9 @@ function mustEats() {
             pageSize: 20,
             locationRestriction: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(32000, miles * 1609.34) } }
           };
-          fetch("https://places.googleapis.com/v1/places:searchText", {
+          fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Goog-Api-Key": key,
-              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.priceLevel,places.location,places.types"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
           }).then(function (r) { return r.json(); }).then(function (j) {
             all = all.concat(parse(j));
