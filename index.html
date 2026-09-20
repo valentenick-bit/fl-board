@@ -4315,7 +4315,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 805;
+    window.BOARD_VER = 806;
 
     
     function communityShort() {
@@ -11812,7 +11812,9 @@ function currentRotation() {
       if (!r) return;
       var mapA = document.getElementById("golf-map-open");
       fillVenueMap("golf-gmap", "golf-map-frame", r.name, r.addr, r.lat, r.lon, r.placeId);
-      if (mapA) mapA.href = placeMapLink(r.name, r.addr, r.lat, r.lon);
+      if (mapA) mapA.href = (typeof venueMapLink === "function")
+        ? venueMapLink(r.name, r.addr, r.lat, r.lon, false, r.placeId)
+        : placeMapLink(r.name, r.addr, r.lat, r.lon);
     }
     window.selectEat = selectEat;
     window.selectGolf = selectGolf;
@@ -14589,22 +14591,66 @@ function mustEats() {
         if (list[0] && typeof selectGolf === "function") selectGolf(list[0]);
         if (typeof window.stampLocPills === "function") window.stampLocPills(box || document);
       }
-      function fromPlaces(cb) {
+      function placesKey() { return String((getSet() || {}).gmapsKey || "").trim(); }
+      function mapNewPlace(pl) {
+        if (!pl || pl.rating == null) return null;
+        var loc = pl.location || {};
+        var name = (pl.displayName && (pl.displayName.text || pl.displayName)) || pl.name || "";
+        if (!isGolfName(name, null, pl.types)) return null;
+        return {
+          name: name,
+          kind: /private|country club/i.test(name) ? "Private" : "Course",
+          rating: pl.rating,
+          reviews: pl.userRatingCount || 0,
+          src: "places",
+          miles: milesOf(loc.latitude, loc.longitude),
+          lat: loc.latitude, lon: loc.longitude,
+          addr: pl.formattedAddress || pl.shortFormattedAddress || "",
+          placeId: String(pl.id || "").replace(/^places\//, ""),
+          types: pl.types || ["golf_course"]
+        };
+      }
+      function fetchPlacesNearby(cb) {
+        var key = placesKey();
+        if (!key) return cb([]);
+        var miles = golfMiles();
+        fetch("https://places.googleapis.com/v1/places:searchNearby", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.location,places.types" },
+          body: JSON.stringify({
+            includedTypes: ["golf_course"],
+            maxResultCount: 20,
+            rankPreference: "DISTANCE",
+            locationRestriction: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(50000, miles * 1609.34) } }
+          })
+        }).then(function (r) { return r.json(); }).then(function (j) {
+          cb(((j && j.places) || []).map(mapNewPlace).filter(Boolean));
+        }).catch(function () { cb([]); });
+      }
+      function fetchPlacesText(cb) {
+        var key = placesKey();
+        if (!key) return cb([]);
+        var pin = (typeof homeAddress === "function" && homeAddress()) || (typeof homePlace === "function" && homePlace()) || "Englewood FL";
+        var miles = golfMiles();
+        var queries = ["golf courses near " + pin, "golf club near " + pin, "country club golf near " + pin];
+        var all = [], left = queries.length;
+        queries.forEach(function (q) {
+          fetch("https://places.googleapis.com/v1/places:searchText", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.location,places.types" },
+            body: JSON.stringify({
+              textQuery: q,
+              pageSize: 20,
+              locationBias: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(50000, miles * 1609.34) } }
+            })
+          }).then(function (r) { return r.json(); }).then(function (j) {
+            all = all.concat(((j && j.places) || []).map(mapNewPlace).filter(Boolean));
+            if (--left <= 0) cb(all);
+          }).catch(function () { if (--left <= 0) cb(all); });
+        });
+      }
+      function fetchPlacesJs(cb) {
         function fail() { cb([]); }
-        var gkey = "golf:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : homeLat());
-        if (typeof gCacheGet === "function") {
-          var cached = gCacheGet("golf-near", gkey, 12 * 3600 * 1000);
-          if (cached && cached.length) return cb(cached);
-        }
-        function mapRows(results) {
-          return (results || []).map(function (p) {
-            var loc = p.geometry && p.geometry.location;
-            var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
-            var lon = loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng);
-            if (!isGolfName(p.name, null, p.types) || p.rating == null) return null;
-            return { name: p.name, kind: /private|country club/i.test(p.name || "") ? "Private" : "Course", rating: p.rating, reviews: p.user_ratings_total || 0, src: "places", miles: milesOf(lat, lon), lat: lat, lon: lon, addr: p.vicinity || "", placeId: p.place_id || "", types: p.types || ["golf_course"] };
-          }).filter(Boolean);
-        }
         if (typeof loadGmaps !== "function") return fail();
         loadGmaps(function (ok) {
           if (!ok || !window.google || !google.maps || !google.maps.places) return fail();
@@ -14613,18 +14659,76 @@ function mustEats() {
             var svc = new google.maps.places.PlacesService(document.createElement("div"));
             var bag = [];
             svc.nearbySearch({ location: new google.maps.LatLng(homeLat(), homeLon()), radius: Math.min(50000, Math.round(miles * 1609.34)), type: "golf_course" }, function (results, status, pagination) {
-              if (status === google.maps.places.PlacesServiceStatus.OK && results) bag = bag.concat(mapRows(results));
+              (results || []).forEach(function (p) {
+                var loc = p.geometry && p.geometry.location;
+                var lat = loc && (typeof loc.lat === "function" ? loc.lat() : loc.lat);
+                var lon = loc && (typeof loc.lng === "function" ? loc.lng() : loc.lng);
+                if (!isGolfName(p.name, null, p.types) || p.rating == null) return;
+                bag.push({ name: p.name, kind: /private|country club/i.test(p.name || "") ? "Private" : "Course", rating: p.rating, reviews: p.user_ratings_total || 0, src: "places", miles: milesOf(lat, lon), lat: lat, lon: lon, addr: p.vicinity || p.formatted_address || "", placeId: p.place_id || "", types: p.types || ["golf_course"] });
+              });
               if (pagination && pagination.hasNextPage) {
-                setTimeout(function () { try { pagination.nextPage(); } catch (eN) { done(); } }, 2100);
+                setTimeout(function () { try { pagination.nextPage(); } catch (eN) { cb(bag); } }, 2100);
                 return;
               }
-              done();
-              function done() {
-                if (typeof gCacheSet === "function") gCacheSet("golf-near", gkey, bag);
-                cb(bag);
-              }
+              cb(bag);
             });
           } catch (e) { fail(); }
+        });
+      }
+      function mergeGoogle(a, b) {
+        var seen = {}, out = [];
+        [].concat(a || [], b || []).forEach(function (r) {
+          var k = r.placeId || golfKey(r.name);
+          if (!k || seen[k]) {
+            if (seen[k] && r.reviews > (seen[k].reviews || 0)) {
+              var i = out.indexOf(seen[k]);
+              if (i >= 0) out[i] = r;
+              seen[k] = r;
+            }
+            return;
+          }
+          seen[k] = r;
+          out.push(r);
+        });
+        return out;
+      }
+      function rateOpenGolfGaps(og, google, done) {
+        var key = placesKey();
+        var have = google || [];
+        var missing = (og || []).filter(function (o) {
+          return !have.some(function (g) { return golfNamesMatch(g.name, o.name); });
+        }).slice(0, 24);
+        if (!key || !missing.length) return done(have);
+        var i = 0;
+        function next() {
+          if (i >= missing.length) return done(have);
+          var o = missing[i++];
+          fetch("https://places.googleapis.com/v1/places:searchText", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.location,places.types" },
+            body: JSON.stringify({ textQuery: o.name + " golf " + (o.addr || "Florida"), pageSize: 3, locationBias: { circle: { center: { latitude: o.lat || homeLat(), longitude: o.lon || homeLon() }, radius: 8000 } } })
+          }).then(function (r) { return r.json(); }).then(function (j) {
+            var hit = ((j && j.places) || []).map(mapNewPlace).filter(Boolean)[0];
+            if (hit) have.push(hit);
+            setTimeout(next, 120);
+          }).catch(function () { setTimeout(next, 120); });
+        }
+        next();
+      }
+      function fromPlaces(cb) {
+        var gkey = "golf-v3:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : homeLat());
+        if (typeof gCacheGet === "function") {
+          var cached = gCacheGet("golf-near", gkey, 12 * 3600 * 1000);
+          if (cached && cached.length > 2) return cb(cached);
+        }
+        fetchPlacesNearby(function (a) {
+          fetchPlacesText(function (b) {
+            fetchPlacesJs(function (c) {
+              var bag = mergeGoogle(mergeGoogle(a, b), c);
+              if (typeof gCacheSet === "function") gCacheSet("golf-near", gkey, bag);
+              cb(bag);
+            });
+          });
         });
       }
       function fromOpenGolf(cb) {
@@ -14633,7 +14737,8 @@ function mustEats() {
         fetch(url).then(function (r) { return r.json(); }).then(function (d) {
           var seen = {}, out = [];
           ((d && d.courses) || []).forEach(function (c) {
-            var name = c.course_name || c.club_name || "";
+            var name = c.club_name && c.club_name.length > 3 ? c.club_name : (c.course_name || c.club_name || "");
+            if (/ at /i.test(c.course_name || "") && c.club_name) name = c.club_name;
             var k = golfKey(name);
             if (!k || seen[k]) return;
             seen[k] = true;
@@ -14666,6 +14771,7 @@ function mustEats() {
           p.ogId = hit.ogId;
           p.kind = hit.kind || p.kind;
           if (hit.par) p.par = hit.par;
+          if (p.lat == null && hit.lat != null) { p.lat = hit.lat; p.lon = hit.lon; }
           return p;
         }).filter(Boolean);
       }
@@ -14673,10 +14779,12 @@ function mustEats() {
         draw([]);
         fromOpenGolf(function (og) {
           fromPlaces(function (places) {
-            var paired = pairPlacesOg(places, og);
-            window.__golfPool = paired;
-            draw(paired);
-            attachSlope(paired, function (rich) { window.__golfPool = rich; draw(rich); });
+            rateOpenGolfGaps(og, places, function (richGoogle) {
+              var paired = pairPlacesOg(richGoogle, og);
+              window.__golfPool = paired;
+              draw(paired);
+              attachSlope(paired, function (rich) { window.__golfPool = rich; draw(rich); });
+            });
           });
         });
       }
