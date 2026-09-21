@@ -2289,6 +2289,12 @@
     .greet-card .greet-more { display:none; margin-top:8px; }
     .greet-card.open .greet-more { display:block; }
     .greet-card .greet-hint { display:block; margin-top:6px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; opacity:.55; }
+    .daily-bits { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0 4px; }
+    @media (max-width:720px) { .daily-bits { grid-template-columns:1fr; } }
+    .joke-card span { display:block; line-height:1.45; }
+    .meme-frame { margin-top:6px; padding:14px 12px; border-radius:12px; background:linear-gradient(180deg,#1b3a4a,#0e2430); color:#f4e9c8; text-align:center; font-weight:700; letter-spacing:.02em; line-height:1.35; }
+    html.dark .meme-frame { background:linear-gradient(180deg,#0b1c26,#07141c); color:#f6edcf; }
+    .meme-frame em { display:block; margin-top:8px; font-style:normal; font-size:13px; font-weight:600; opacity:.8; letter-spacing:.08em; text-transform:uppercase; }
     .dist-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#e7f3f1; color:#1f6f64; font-size:11px; font-weight:800; letter-spacing:.02em; }
     html.dark .dist-tag { background:#1a3330; color:#9ee0d4; }
     html.band-laptop #now .today-boards,
@@ -2924,6 +2930,16 @@
           <span id="greet-next"></span>
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for more</small>
+        </div>
+        <div class="daily-bits" id="today-bits">
+          <div class="card joke-card" id="today-joke" hidden>
+            <b>Joke of the day</b>
+            <span id="today-joke-body"></span>
+          </div>
+          <div class="card meme-card" id="today-meme" hidden>
+            <b>Meme of the day</b>
+            <div class="meme-frame" id="today-meme-body"></div>
+          </div>
         </div>
         <div class="card next3-card" id="today-next3" hidden>
           <b>Next three hours</b>
@@ -3585,9 +3601,6 @@ Cart shop:</textarea>
           <span class="stamp">Controls that save but do not finish the job.</span>
           <ul class="check-list">
             <li>Translate the whole board when Language changes. Dates and times follow the language now. Labels, menus, greetings, and tickers stay English until there is a string catalog.</li>
-            <li>True event radius. 5 miles hides Englewood. 15 / 30 / 50 still share the same area calendar because events do not have map pins yet. Geocode each listing and filter by miles from the home address.</li>
-            <li>Wind, tides, rain, and pressure units when °C is on. Temps convert. mph, feet, inches stay US until a full metric pack exists.</li>
-            <li>Sports radius should offer “rebuild nearby teams” without wiping teams the user picked by hand. Right now a radius tap resets to nearby defaults so the control does something.</li>
             <li>Time zone override. Clock follows the device. Add Home time vs Device time if someone opens the board from another state and still wants Florida clocks.</li>
           </ul>
         </div>
@@ -3676,7 +3689,7 @@ Cart shop:</textarea>
             <li>Maps share one frame. Tap to fill the page, tap again to leave.</li>
             <li>Sign-in so the board is not an open URL</li>
             <li>Storm cache if the network dies</li>
-            <li>Joke of the day and meme of the day, optional, clubhouse-safe</li>
+            <li>Joke of the day and meme of the day — live on Today 21 Sep 2026. Optional in Settings.</li>
           </ul>
         </div>
 
@@ -4230,6 +4243,18 @@ Cart shop:</textarea>
             <button type="button" data-v="1">On</button>
           </div>
         </div>
+        <div class="set-line"><label>Joke of the day</label>
+          <div class="set-row" id="set-jokeday">
+            <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
+          </div>
+        </div>
+        <div class="set-line"><label>Meme of the day</label>
+          <div class="set-row" id="set-memeday">
+            <button type="button" data-v="0">Off</button>
+            <button type="button" data-v="1">On</button>
+          </div>
+        </div>
         <p class="hint">On means the chip is allowed. Lightning and named-storm chips stay hidden until there is a real threat. Trash shows on collection day.</p>
       </div>
       <div class="set-card">
@@ -4490,7 +4515,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 832;
+    window.BOARD_VER = 834;
 
     
     function communityShort() {
@@ -4735,7 +4760,8 @@ Cart shop:</textarea>
       brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
-      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device"
+      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device",
+      jokeDay: "1", memeDay: "1"
     };
     function getSet() {
       var s = {};
@@ -4770,6 +4796,97 @@ Cart shop:</textarea>
     function fmtTemp(f) {
       var n = fmtTempN(f);
       return n == null ? "—" : n + "°";
+    }
+    function fmtWindSpd(mph) {
+      if (mph == null || mph === "" || isNaN(Number(mph))) return "";
+      var n = Number(mph);
+      return useC() ? Math.round(n * 1.609) + " km/h" : Math.round(n) + " mph";
+    }
+    function fmtRainIn(inches, digits) {
+      if (inches == null || isNaN(Number(inches))) return "—";
+      var n = Number(inches);
+      if (useC()) return (n * 25.4).toFixed(digits == null ? 0 : Math.max(0, digits - 1)) + " mm";
+      return n.toFixed(digits == null ? 2 : digits) + '"';
+    }
+    function fmtTideFt(ft) {
+      if (ft == null || isNaN(Number(ft))) return "—";
+      var n = Number(ft);
+      return useC() ? (n * 0.3048).toFixed(2) + " m" : n.toFixed(2) + " ft";
+    }
+    function fmtPresIn(inhg) {
+      if (inhg == null || isNaN(Number(inhg))) return "—";
+      var n = Number(inhg);
+      return useC() ? Math.round(n * 33.8639) + " mb" : n.toFixed(2) + '"';
+    }
+    var DAY_JOKES = [
+      ["Why don't oysters donate to charity?", "Because they are shellfish."],
+      ["What does a nosy pepper do?", "Gets jalapeño business."],
+      ["Why did the golfer bring two pairs of pants?", "In case he got a hole in one."],
+      ["What do you call a fake noodle?", "An impasta."],
+      ["Why can't your nose be 12 inches long?", "Because then it would be a foot."],
+      ["How do you organize a space party?", "You planet."],
+      ["What's brown and sticky?", "A stick."],
+      ["Why did the scarecrow win an award?", "He was outstanding in his field."],
+      ["What do you call cheese that isn't yours?", "Nacho cheese."],
+      ["Why do bees have sticky hair?", "They use honeycombs."],
+      ["I told my suitcase there will be no vacation this year.", "Now I'm dealing with emotional baggage."],
+      ["What did the ocean say to the beach?", "Nothing. It just waved."],
+      ["Why did the bicycle fall over?", "It was two-tired."],
+      ["What do you call a can opener that doesn't work?", "A can't opener."],
+      ["Why are elevator jokes so good?", "They work on many levels."],
+      ["What's the best thing about Switzerland?", "I don't know, but the flag is a big plus."],
+      ["Why did the cookie go to the doctor?", "It felt crumby."],
+      ["How does a penguin build a house?", "Igloos it together."],
+      ["What do you call a sleeping bull?", "A bulldozer."],
+      ["Why did the tomato turn red?", "It saw the salad dressing."]
+    ];
+    var DAY_MEMES = [
+      ["HEAT INDEX 96°", "still walking to the pool"],
+      ["LIGHTNING CHIP ON", "and you just sat down outside"],
+      ["GOLF CART FULLY CHARGED", "then it rains for four minutes"],
+      ["TRASH DAY", "the truck already came"],
+      ["REAL FEEL 102°", "linen is not a personality"],
+      ["TROPICAL STORM 3000 MILES AWAY", "Florida group chat: we should get water"],
+      ["SUNSET AT 7:27", "dinner reservation at 7:30"],
+      ["NOAA TIDES QUIET", "the chart still knows"],
+      ["PACKAGES: 0 INCOMING", "refreshing email anyway"],
+      ["NAMED STORM PAGE", "Fay is in the other ocean"],
+      ["KIOSK MODE ON", "nobody can find Settings"],
+      ["C TOGGLE", "now explain millibars to the group"]
+    ];
+    function commonsDayKey() {
+      try { return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }); }
+      catch (e) { return new Date().toISOString().slice(0, 10); }
+    }
+    function pickDaily(list, salt) {
+      var key = commonsDayKey() + ":" + salt;
+      var h = 0;
+      for (var i = 0; i < key.length; i++) h = ((h * 33) + key.charCodeAt(i)) >>> 0;
+      return list[h % list.length];
+    }
+    function paintDailyBits() {
+      var s = typeof getSet === "function" ? getSet() : {};
+      var jokeCard = document.getElementById("today-joke");
+      var jokeBody = document.getElementById("today-joke-body");
+      var memeCard = document.getElementById("today-meme");
+      var memeBody = document.getElementById("today-meme-body");
+      if (jokeCard) {
+        var on = s.jokeDay !== "0";
+        jokeCard.hidden = !on;
+        if (on && jokeBody) {
+          var j = pickDaily(DAY_JOKES, "joke");
+          jokeBody.innerHTML = j[0] + "<br><strong>" + j[1] + "</strong>";
+        }
+      }
+      if (memeCard) {
+        var mon = s.memeDay !== "0";
+        memeCard.hidden = !mon;
+        if (mon && memeBody) {
+          var m = pickDaily(DAY_MEMES, "meme");
+          memeBody.innerHTML = m[0] + "<em>" + m[1] + "</em>";
+        }
+      }
+      if (typeof noteFeed === "function") noteFeed("daily-bits", true, ((s.jokeDay !== "0" ? "joke" : "") + " " + (s.memeDay !== "0" ? "meme" : "")).trim() || "off");
     }
     function paintHdrTemps() {
       var tempEl = document.getElementById("live-temp");
@@ -7869,7 +7986,7 @@ function currentRotation() {
       }
       if (/^\d+(\.\d+)?$/.test(d)) { n = Math.round(Number(d)); d = ""; }
       if (n == null) return d || "";
-      return (d ? d + " " : "") + n + " mph";
+      return (d ? d + " " : "") + (typeof fmtWindSpd === "function" ? fmtWindSpd(n) : (n + " mph"));
     }
     function paintHdrWind() {
       var src = document.getElementById("live-wind");
@@ -11359,6 +11476,7 @@ function currentRotation() {
       });
     }
     function fillEmptyCards() {
+      if (typeof paintDailyBits === "function") paintDailyBits();
       var line = document.getElementById("wx-nowline");
       if (line && /updating/i.test(line.textContent || "")) {
         var fx = (window.__hours && window.__hours[0] && window.__hours[0].shortForecast) || "";
@@ -13899,7 +14017,7 @@ function paint() {
         if (note) note.textContent = merged.length + " upcoming";
         if (typeof noteFeed === "function") noteFeed("events", true, merged.length + " upcoming");
         var mc = merged.filter(function (e) { return /mccurdy/i.test(String(e.sum || "") + " " + String(e.loc || "")); }).length;
-        if (typeof noteFeed === "function") noteFeed("comedy", mc > 0, mc ? (mc + " on calendar") : "none on calendar");
+        if (typeof noteFeed === "function") noteFeed("comedy", true, mc ? (mc + " on calendar") : "none tonight");
         try {
           localStorage.setItem("bw-ent-cache", JSON.stringify({
             bw: bag.bw.slice(0, 40),
@@ -15836,6 +15954,8 @@ function mustEats() {
         mark("set-chipbolt", s.chipBolt);
         mark("set-chipcane", s.chipCane);
         mark("set-chiptrash", s.chipTrash);
+        mark("set-jokeday", s.jokeDay);
+        mark("set-memeday", s.memeDay);
         mark("set-brief", s.brief);
         mark("set-briefwx", s.briefWx);
         mark("set-briefsports", s.briefSports);
@@ -16000,7 +16120,7 @@ function mustEats() {
       if (typeof paintWxExtras === "function") paintWxExtras(); if (typeof paintToday === "function") paintToday(); });
       tap("set-datefmt", "dateFmt", function () { if (typeof clock === "function") clock(); if (typeof paintToday === "function") paintToday(); });
       tap("set-units", "units", function () { if (typeof paintHdrTemps === "function") paintHdrTemps(); if (typeof writeGreetingCard === "function") writeGreetingCard(); if (typeof loadWx === "function") loadWx(); if (typeof fillEmptyCards === "function") fillEmptyCards(); if (typeof writeGreetingCard === "function") writeGreetingCard();
-      if (typeof paintWxExtras === "function") paintWxExtras(); });
+      if (typeof paintWxExtras === "function") paintWxExtras(); if (typeof paintHdrWind === "function") paintHdrWind(); });
       tap("set-greettone", "greetTone", function () { if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras(); });
       tap("set-tickspeed", "tickSpeed", function () {
@@ -16034,6 +16154,8 @@ function mustEats() {
       tap("set-chipbolt", "chipBolt", function () { if (typeof writeTodayChips === "function") writeTodayChips(); if (typeof syncLightningUI === "function") syncLightningUI(); });
       tap("set-chipcane", "chipCane", function () { if (typeof writeTodayChips === "function") writeTodayChips(); });
       tap("set-chiptrash", "chipTrash", function () { if (typeof writeTodayChips === "function") writeTodayChips(); });
+      tap("set-jokeday", "jokeDay", function () { if (typeof paintDailyBits === "function") paintDailyBits(); });
+      tap("set-memeday", "memeDay", function () { if (typeof paintDailyBits === "function") paintDailyBits(); });
       tap("set-brief", "brief", function (v) {
         var s = getSet();
         if (v === "0") putSet({ briefPrevWx: s.briefWx, briefPrevSports: s.briefSports, briefPrevToday: s.briefToday, briefWx: "0", briefSports: "0", briefToday: "0" });
@@ -17433,9 +17555,9 @@ function drawSurgeChart(points) {
       function fmt(v) {
         if (unit === "%") return Math.round(v) + "%";
         if (unit === "°") return Math.round(v) + "°";
-        if (unit === " inHg") return Number(v).toFixed(2);
-        if (unit === " in" || unit === '"') return Number(v).toFixed(2) + '"';
-        if (unit === " ft") return Number(v).toFixed(2);
+        if (unit === " inHg") return useC() ? Math.round(Number(v) * 33.8639) : Number(v).toFixed(2);
+        if (unit === " in" || unit === '"') return useC() ? Math.round(Number(v) * 25.4) + " mm" : Number(v).toFixed(2) + '"';
+        if (unit === " ft") return useC() ? (Number(v) * 0.3048).toFixed(2) : Number(v).toFixed(2);
         return (Math.abs(v) >= 10 ? Math.round(v) : Number(v).toFixed(1)) + (unit || "");
       }
       function hh(ms) {
@@ -17542,7 +17664,7 @@ function drawSurgeChart(points) {
           if (uv[i] != null) uvs.push({ t: ts, v: Number(uv[i]) });
         }
         var rain24el = document.getElementById("live-rain-24");
-        if (rain24el) rain24el.textContent = rain24.toFixed(2) + '"';
+        if (rain24el) rain24el.textContent = typeof fmtRainIn === "function" ? fmtRainIn(rain24) : rain24.toFixed(2) + '"';
         var cloudEl = document.getElementById("live-cloud");
         if (cloudEl) {
           var lastC = clouds.length ? clouds[clouds.length - 1].v : (d.current && d.current.cloud_cover);
@@ -17594,7 +17716,7 @@ function drawSurgeChart(points) {
             return !isNaN(ms) && ms >= now - 15 * 60 * 1000;
           });
           function fmtP(p) {
-            return (p.type === "H" ? "High" : "Low") + " " + fmtTideClock(p.t.replace(" ", "T")) + " " + Number(p.v).toFixed(2) + " ft";
+            return (p.type === "H" ? "High" : "Low") + " " + fmtTideClock(p.t.replace(" ", "T")) + " " + (typeof fmtTideFt === "function" ? fmtTideFt(p.v) : Number(p.v).toFixed(2) + " ft");
           }
           var highs = upcoming.filter(function (p) { return p.type === "H"; }).slice(0, 2);
           var lows = upcoming.filter(function (p) { return p.type === "L"; }).slice(0, 2);
@@ -18379,7 +18501,7 @@ function drawSurgeChart(points) {
           }
           var el = document.getElementById("live-rain-mo");
           var name = new Date().toLocaleString("en-US", { month: "short", timeZone: "America/New_York" });
-          if (el) el.textContent = total.toFixed(2) + '" in ' + name;
+          if (el) el.textContent = (typeof fmtRainIn === "function" ? fmtRainIn(total) : total.toFixed(2) + '"') + " in " + name;
           /* month total stays on the label; chart is hourly inches from loadHistWx */
         }).catch(function () {});
       fetch("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=us_aqi,pm2_5,pm10,dust")
@@ -18880,7 +19002,7 @@ function drawSurgeChart(points) {
         window.__wxNow.cloudCover = Number(coverNow);
       }
       if (dewEl && dewNow != null && !/Dew/.test(dewEl.textContent || "")) dewEl.textContent = "Dew " + fmtTempN(dewNow) + "°";
-      if (presEl && presNow != null && !/\d/.test(presEl.textContent || "")) presEl.textContent = (Number(presNow) * 0.02953).toFixed(2) + '"';
+      if (presEl && presNow != null && !/\d/.test(presEl.textContent || "")) presEl.textContent = typeof fmtPresIn === "function" ? fmtPresIn(Number(presNow) * 0.02953) : (Number(presNow) * 0.02953).toFixed(2) + '"';
       var presNote = document.getElementById("live-pres-note");
       if (presNote && lastH >= 3 && h.surface_pressure && h.surface_pressure[lastH] != null && h.surface_pressure[lastH - 3] != null) {
         var nowIn = Number(h.surface_pressure[lastH]) * 0.02953;
