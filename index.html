@@ -4490,7 +4490,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 830;
+    window.BOARD_VER = 831;
 
     
     function communityShort() {
@@ -5481,8 +5481,13 @@ Cart shop:</textarea>
       window.__gmapsLoading = false;
       var good = !!(ok && gmapsReady());
       if (typeof noteFeed === "function") {
-        noteFeed("gmaps", good && !!(getSet() && getSet().gmapsKey), good ? "maps js" : (!String((getSet() || {}).gmapsKey || "").trim() ? "no Maps key" : "script not ready"));
-        noteFeed("places", !!String((getSet() || {}).gmapsKey || "").trim(), String((getSet() || {}).gmapsKey || "").trim() ? "autocomplete + details" : "no Maps key");
+        if (typeof mapsPaidOn === "function" && !mapsPaidOn()) {
+          noteFeed("gmaps", false, "Maps toggle off");
+          noteFeed("places", false, "Maps toggle off");
+        } else {
+          noteFeed("gmaps", good && !!(getSet() && getSet().gmapsKey), good ? "maps js" : (!String((getSet() || {}).gmapsKey || "").trim() ? "no Maps key" : "script not ready"));
+          noteFeed("places", !!String((getSet() || {}).gmapsKey || "").trim(), String((getSet() || {}).gmapsKey || "").trim() ? "autocomplete + details" : "no Maps key");
+        }
       }
       var fns = window.__gmapsWait || [];
       window.__gmapsWait = [];
@@ -16004,6 +16009,7 @@ function mustEats() {
         });
       });
       tap("set-gmapson", "gmapsOn", function () {
+        if (typeof syncMapsToggleStatus === "function") syncMapsToggleStatus();
         if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
         if (typeof mapsPaidOn === "function" && mapsPaidOn() && typeof loadGmaps === "function") {
           loadGmaps(function () {
@@ -16878,6 +16884,7 @@ function mustEats() {
       var probed = null;
       try {
         if (typeof noteDarkMode === "function") noteDarkMode();
+        if (typeof syncMapsToggleStatus === "function") syncMapsToggleStatus();
         try { probed = typeof probeBoardCards === "function" ? probeBoardCards() : null; } catch (eP) { probed = null; }
         var buildEl = document.getElementById("health-build");
         if (buildEl) {
@@ -20192,6 +20199,28 @@ function drawSurgeChart(points) {
     function mapsPaidOn() {
       var s = typeof getSet === "function" ? getSet() : {};
       return !!(String(s.gmapsKey || "").trim() && s.gmapsOn !== "0");
+    }
+    function syncMapsToggleStatus() {
+      if (typeof noteFeed !== "function") return;
+      var on = mapsPaidOn();
+      var hasKey = !!(typeof getSet === "function" && String((getSet().gmapsKey || "")).trim());
+      if (!hasKey) {
+        noteFeed("gmaps", false, "no Maps key");
+        noteFeed("places", false, "no Maps key");
+        noteFeed("eat-drive", false, "no Maps key");
+        noteFeed("event-drive", false, "no Maps key");
+        return;
+      }
+      if (!on) {
+        noteFeed("gmaps", false, "Maps toggle off");
+        noteFeed("places", false, "Maps toggle off");
+        noteFeed("eat-drive", false, "Maps toggle off");
+        noteFeed("event-drive", false, "Maps toggle off");
+        noteFeed("traffic", true, "embed only · toggle off");
+        return;
+      }
+      noteFeed("gmaps", true, "Maps toggle on");
+      noteFeed("places", true, "Places allowed");
     }
     function driveMinutesToLatLng(lat, lon, cb) {
       if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon)) { cb(null); return; }
