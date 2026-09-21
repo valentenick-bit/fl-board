@@ -4515,7 +4515,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 834;
+    window.BOARD_VER = 835;
 
     
     function communityShort() {
@@ -8397,10 +8397,13 @@ function currentRotation() {
         }
       }
       if (cane) {
-        var storms = window.__namedStorms || [];
+        var storms = (typeof homeBasinStorms === "function"
+          ? homeBasinStorms(window.__nhcAllStorms || window.__namedStorms || [])
+          : (window.__namedStorms || []));
         var gulfAtl = storms.filter(function (s) {
           var name = s.name || s.Name || s.stormName || "";
           if (!name) return false;
+          if (typeof stormIsInvest === "function" && stormIsInvest(s)) return false;
           if (/invest|^one$|^two$|^three$|^four$|^five$/i.test(name)) return false;
           if ((s.classification || "") === "DB") return false;
           return true;
@@ -8415,7 +8418,9 @@ function currentRotation() {
             var cls = s.classification || "";
             var word = cls === "HU" ? "Hurricane" : cls === "TS" ? "Tropical Storm" : cls === "TD" ? "Tropical Depression" : cls === "PTC" ? "Potential tropical cyclone" : "Storm";
             var where = [s.latitude || "", s.longitude || ""].join(" ").trim();
-            var line = word + " " + s.name + (s.intensity ? ", " + s.intensity + " kt" : "") + (where ? " · " + where : "") + ".";
+            var mi = typeof stormMiles === "function" ? stormMiles(s) : NaN;
+            var threat = typeof stormThreatensHome === "function" && stormThreatensHome(s);
+            var line = word + " " + s.name + (s.intensity ? ", " + s.intensity + " kt" : "") + (isFinite(mi) ? " · " + Math.round(mi) + " mi" : (where ? " · " + where : "")) + (threat ? "." : " · no watch at the house.");
             return stampTodayArt(
               '<div class="card"><span class="place-tag place-out">' + ((typeof homeStormBasin === "function" && homeStormBasin().label) || "Basin") + '</span><span class="kind-tag">' + (typeof stormIsInvest === "function" && stormIsInvest(s) ? "Watch" : "Named") + '</span><b>' + word + " " + s.name + "</b><span>" + line + "</span></div>",
               "cane"
