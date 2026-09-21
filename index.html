@@ -4490,7 +4490,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 831;
+    window.BOARD_VER = 832;
 
     
     function communityShort() {
@@ -14796,6 +14796,7 @@ function mustEats() {
         next();
       }
       function fromPlacesText(cb) {
+        if (typeof mapsPaidOn === "function" && !mapsPaidOn()) return cb(null);
         var key = String((getSet() || {}).gmapsKey || "").trim();
         if (!key) return cb(null);
         var miles = Number((getSet() || {}).eventMiles || 25);
@@ -16563,7 +16564,8 @@ function mustEats() {
       function verdict(s) {
         s = String(s || "").replace(/\s+/g, " ").trim();
         if (/none upcoming|no upcoming flights|none on calendar|none current|scan empty/i.test(s)) return "ok";
-        if (/did not load|timed out|not wired|video unavailable|no data was found|no live report|drive file blocked|gmail scan|no Maps key|traffic layer off|embed only|no headline|none in range/i.test(s)) return "failed";
+        if (/Maps toggle off|embed only · toggle off|Places allowed/i.test(s)) return "ok";
+        if (/did not load|timed out|not wired|video unavailable|no data was found|no live report|drive file blocked|gmail scan|no Maps key|traffic layer off|embed only — no traffic layer|no headline|none in range/i.test(s)) return "failed";
         if (/NHC list is quiet|no named|outlook maps below still update/i.test(s)) return "ok";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
         if (/\bG0\b|space weather|flare [A-Z]\d/i.test(s)) return "ok";
@@ -16640,6 +16642,7 @@ function mustEats() {
           ["traffic", (function(){
             var key = "";
             try { key = String((getSet() || {}).gmapsKey || "").trim(); } catch (eT) {}
+            if (typeof mapsPaidOn === "function" && !mapsPaidOn()) return "embed only · toggle off";
             if (!key) return "no Maps key — traffic layer off";
             if (window.__trafficLayer && window.__trafficMap) return "traffic layer";
             var src = ((document.getElementById("traffic-map") || {}).src || "") + " " + ((document.getElementById("traffic-gmap") || {}).hidden === false ? "gmaps-js" : "");
