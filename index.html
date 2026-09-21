@@ -3277,9 +3277,9 @@ Cart shop:</textarea>
         <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
         <div class="card" id="hurr-stats"><b>No named storm on this pin</b><span>Quiet until NHC lists a storm that can affect the address on Account.</span></div>
         <div class="metric-table storm-metrics" id="storm-grid" hidden>
-          <div class="metric-row has-chart"><label>Winds</label><strong id="live-storm-wind">—</strong><div class="metric-spark hist" id="storm-wind-chart"></div></div>
-          <div class="metric-row has-chart"><label>Pressure</label><strong id="live-storm-pres">—</strong><div class="metric-spark hist" id="storm-pres-chart"></div></div>
-          <div class="metric-row has-chart"><label>From home</label><strong id="live-storm-mi">—</strong><div class="metric-spark hist" id="storm-dist-chart"></div></div>
+          <div class="metric-row"><label>Winds</label><strong id="live-storm-wind">—</strong><div></div></div>
+          <div class="metric-row"><label>Pressure</label><strong id="live-storm-pres">—</strong><div></div></div>
+          <div class="metric-row"><label>From home</label><strong id="live-storm-mi">—</strong><div></div></div>
           <div class="metric-row"><label>Movement</label><strong id="live-storm-move">—</strong><div></div></div>
           <div class="metric-row"><label>Advisory</label><strong id="live-storm-adv">—</strong><div></div></div>
         </div>
@@ -4490,7 +4490,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 828;
+    window.BOARD_VER = 830;
 
     
     function communityShort() {
@@ -5381,7 +5381,7 @@ Cart shop:</textarea>
       q = String(q || "").trim();
       if (q.length < 4) { hideAddrSuggest(); return; }
       var key = googleKey();
-      if (key) {
+      if (key && !(typeof mapsPaidOn === "function" && !mapsPaidOn())) {
         fetch("https://places.googleapis.com/v1/places:autocomplete", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key },
@@ -5438,7 +5438,7 @@ Cart shop:</textarea>
     }
     function fillGooglePlace(placeId, done) {
       var key = googleKey();
-      if (!key || !placeId) { if (done) done(false); return; }
+      if (!key || !placeId || (typeof mapsPaidOn === "function" && !mapsPaidOn())) { if (done) done(false); return; }
       fetch("https://places.googleapis.com/v1/places/" + encodeURIComponent(placeId), {
         headers: {
           "X-Goog-Api-Key": key,
@@ -5491,6 +5491,11 @@ Cart shop:</textarea>
     }
     window.__commonsGmaps = function () { finishGmaps(true); };
     function loadGmaps(done) {
+      if (typeof mapsPaidOn === "function" && !mapsPaidOn()) {
+        if (typeof noteFeed === "function") noteFeed("gmaps", false, "Maps toggle off");
+        if (done) done(false);
+        return;
+      }
       if (gmapsReady()) { if (done) done(true); return; }
       var key = String((typeof getSet === "function" && getSet().gmapsKey) || "").trim();
       if (!key) {
@@ -5543,10 +5548,13 @@ Cart shop:</textarea>
         if (typeof noteFeed === "function") noteFeed("traffic", !!(getSet() && getSet().gmapsKey), (getSet() && getSet().gmapsKey) ? "google embed" : "no Maps key");
         return;
       }
-      if (!String((getSet() || {}).gmapsKey || "").trim()) {
+      if (!String((getSet() || {}).gmapsKey || "").trim() || (typeof mapsPaidOn === "function" && !mapsPaidOn())) {
         if (box) box.hidden = true;
         if (frame) { frame.style.display = ""; frame.src = embed; }
-        if (typeof noteFeed === "function") noteFeed("traffic", false, "no Maps key — traffic layer off");
+        try {
+          if (window.__trafficLayer) window.__trafficLayer.setMap(null);
+        } catch (eOff) {}
+        if (typeof noteFeed === "function") noteFeed("traffic", false, mapsPaidOn() ? "no Maps key — traffic layer off" : "Maps toggle off · embed only");
         return;
       }
       loadGmaps(function (ok) {
@@ -15072,7 +15080,10 @@ function mustEats() {
         if (list[0] && typeof selectGolf === "function") selectGolf(list[0]);
         if (typeof window.stampLocPills === "function") window.stampLocPills(box || document);
       }
-      function placesKey() { return String((getSet() || {}).gmapsKey || "").trim(); }
+      function placesKey() {
+        if (typeof mapsPaidOn === "function" && !mapsPaidOn()) return "";
+        return String((getSet() || {}).gmapsKey || "").trim();
+      }
       function mapNewPlace(pl) {
         if (!pl || pl.rating == null) return null;
         var loc = pl.location || {};
@@ -15994,6 +16005,12 @@ function mustEats() {
       });
       tap("set-gmapson", "gmapsOn", function () {
         if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
+        if (typeof mapsPaidOn === "function" && mapsPaidOn() && typeof loadGmaps === "function") {
+          loadGmaps(function () {
+            if (typeof window.reloadEats === "function") window.reloadEats();
+            if (typeof window.reloadGolf === "function") window.reloadGolf();
+          });
+        }
       });
       tap("set-vol", "vol", function () {
         var audio = document.getElementById("radioPlayer");
@@ -20178,7 +20195,7 @@ function drawSurgeChart(points) {
     }
     function driveMinutesToLatLng(lat, lon, cb) {
       if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon)) { cb(null); return; }
-      if (typeof gmapsKey === "function" ? !gmapsKey() : true) { cb(null); return; }
+      if (typeof mapsPaidOn === "function" ? !mapsPaidOn() : (typeof gmapsKey === "function" ? !gmapsKey() : true)) { cb(null); return; }
       var dkey = String(Number(lat).toFixed(4) + "," + Number(lon).toFixed(4));
       var hit = gCacheGet("drive", dkey, 30 * 60 * 1000);
       if (hit != null) { cb(hit); return; }
