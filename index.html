@@ -4379,7 +4379,7 @@ Cart shop:</textarea>
             <button type="button" data-v="0">Off</button>
           </div>
         </div>
-        <p class="set-help">The Maps key lives in Drive <code>maps.json</code> only — never GitHub, never key.json, and not on this page. Off stops Places, traffic layer, and drive times. Nearby lists still cache 12 hours. Cap is 50 paid calls per device per day.</p>
+        <p class="set-help">The Maps key lives in Drive <code>maps.json</code> only — never GitHub, never key.json, and not on this page. Off stops billed Places lookups, the live traffic layer, and drive times. Map pins stay on Google. Restaurant and golf lists keep the last Google cache from this device (ratings, names, pins) until you turn Maps back on. Cap is 50 paid calls per device per day.</p>
         <div class="set-line"><label>Google cache</label>
           <button type="button" id="set-gcache" class="ghost">Clear lookups</button>
         </div>
@@ -4523,7 +4523,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 844;
+    window.BOARD_VER = 846;
 
     
     function communityShort() {
@@ -5055,9 +5055,14 @@ Cart shop:</textarea>
       if (typeof paintStormPage === "function") paintStormPage();
       if (typeof paintPrepList === "function") paintPrepList();
       if (typeof applySkin === "function") applySkin();
-      try { localStorage.removeItem("bw-eats-live"); } catch (eEat) {}
-      window.__eatPool = [];
+      var pinNow = (typeof homeLat === "function" ? homeLat() : "") + "," + (typeof homeLon === "function" ? homeLon() : "");
+      if (window.__eatPinKey && window.__eatPinKey !== pinNow) {
+        try { localStorage.removeItem("bw-eats-live"); } catch (eEat) {}
+        window.__eatPool = [];
+      }
+      window.__eatPinKey = pinNow;
       if (typeof loadEats === "function") loadEats();
+      else if (typeof window.reloadEats === "function") window.reloadEats();
       window.__entAll = [];
       window.__localEvents = [];
       if (typeof window.reloadTown === "function") window.reloadTown();
@@ -5178,8 +5183,20 @@ Cart shop:</textarea>
     function gCacheGet(kind, extra, maxAge) {
       try {
         var row = JSON.parse(localStorage.getItem(gCacheKey(kind, extra)) || "null");
-        if (!row || !row.at || Date.now() - row.at > (maxAge || 24 * 3600 * 1000)) return null;
+        if (!row || row.data == null) return null;
+        var ttl = maxAge;
+        if (ttl == null) ttl = 24 * 3600 * 1000;
+        if (ttl > 0 && row.at && Date.now() - row.at > ttl) {
+          if (typeof mapsPaidOn === "function" && !mapsPaidOn()) return row.data;
+          return null;
+        }
         return row.data;
+      } catch (e) { return null; }
+    }
+    function gCacheAgeMs(kind, extra) {
+      try {
+        var row = JSON.parse(localStorage.getItem(gCacheKey(kind, extra)) || "null");
+        return row && row.at ? Date.now() - row.at : null;
       } catch (e) { return null; }
     }
     function gCacheSet(kind, extra, data) {
@@ -11203,6 +11220,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v846 — Maps Off keeps the last Google Places cache for restaurants and golf instead of wiping it. Fresh billed lookups only run when the toggle is On.",
+      "v845 — Maps Off still uses Google map embeds and the Google restaurant/golf lists. OSM is no longer a fallback. Off only stops billed Places, traffic-layer, and drive-time calls.",
       "v844 — Big moon disk removed. Today shows upcoming events if nothing is dated today. Restaurants list OSM + local spots without a 2,500-review cutoff. Golf lists OpenGolf/OSM courses even when Maps is off.",
       "v843 — Meme of the day is gone. Moon card draws a larger phase disk with a dark face so waxing/waning is readable.",
       "v499 — Deliveries pull the Sept 9 Gmail scan file, not the old Sept 6 list.",
@@ -12446,13 +12465,14 @@ function currentRotation() {
     }
     function venueMapSrc(name, addr, lat, lon, placeId, onsite) {
       var key = String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
+      var paid = typeof mapsPaidOn === "function" ? mapsPaidOn() : !!key;
       placeId = (typeof cleanPlaceId === "function" ? cleanPlaceId(placeId) : String(placeId || "").replace(/^places\//, "").trim());
       lat = Number(lat); lon = Number(lon);
       var hasPin = isFinite(lat) && isFinite(lon) && Math.abs(lat) > 1 && Math.abs(lon) > 1;
-      if (key && placeId) {
+      if (paid && key && placeId) {
         return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=place_id:" + encodeURIComponent(placeId);
       }
-      if (key && hasPin) {
+      if (paid && key && hasPin) {
         return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=" + lat + "," + lon;
       }
       if (placeId) {
@@ -12463,7 +12483,7 @@ function currentRotation() {
       }
       var q = [name, addr].filter(Boolean).join(", ");
       if (!q) q = (typeof homePlace === "function" && homePlace()) || "Englewood, FL";
-      if (key) return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=" + encodeURIComponent(q);
+      if (paid && key) return "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=" + encodeURIComponent(q);
       return "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&output=embed";
     }
     function venueMapLink(name, addr, lat, lon, onsite, placeId) {
@@ -14686,8 +14706,9 @@ function paint() {
           });
           localStorage.setItem("bw-eat-ratings", JSON.stringify(prev));
         } catch (eS) {}
+        var mapsOn = typeof mapsPaidOn === "function" ? mapsPaidOn() : true;
         if (note) note.textContent = list.length
-          ? (list.length + " sit-down & bars · " + miles + " mi" + (window.__eatReviewFloor ? " · " + window.__eatReviewFloor + "+ reviews first" : " · near the pin"))
+          ? (list.length + " sit-down & bars · " + miles + " mi" + (mapsOn ? (window.__eatReviewFloor ? " · " + window.__eatReviewFloor + "+ reviews first" : "") : " · last Google cache"))
           : ("Looking up sit-down restaurants inside " + miles + " mi");
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants in range.</b><span>Nothing sit-down inside ' + miles + " miles of the pin.</span></div>";
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list[0].name + " " + (list[0].rating || "") + " first") : "none in range");
@@ -15075,10 +15096,12 @@ function mustEats() {
         });
       }
       function fromPlacesNew(cb) {
-        var cachedNear = gCacheGet("eats-near", eatsNearCacheKey(), 12 * 3600 * 1000);
+        var paid = typeof mapsPaidOn === "function" ? mapsPaidOn() : true;
+        var ttl = paid ? 12 * 3600 * 1000 : 90 * 86400000;
+        var cachedNear = typeof gCacheGet === "function" ? gCacheGet("eats-near", eatsNearCacheKey(), ttl) : null;
         if (cachedNear && cachedNear.length) return cb(cachedNear);
         var key = String((getSet() || {}).gmapsKey || "").trim();
-        if (!key || (typeof mapsPaidOn === "function" && !mapsPaidOn())) return cb(null);
+        if (!key || !paid) return cb(null);
         if (!gmapsCanSpend("places-new", 1)) return cb(null);
         var miles = Number((getSet() || {}).eventMiles || 25);
         var body = {
@@ -15135,6 +15158,7 @@ function mustEats() {
           }).then(function (r) { return r.json(); }).then(function (j) {
             var list = parsePlaces(j, label);
             if (list && list.length) {
+              if (typeof gCacheSet === "function") gCacheSet("eats-near", eatsNearCacheKey(), list);
               if (typeof noteFeed === "function") noteFeed("eats-src", true, label + " · " + list.length);
               cb(list);
               return true;
@@ -15146,6 +15170,7 @@ function mustEats() {
           return fetch(url, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
             var list = parsePlaces(j, label);
             if (list && list.length) {
+              if (typeof gCacheSet === "function") gCacheSet("eats-near", eatsNearCacheKey(), list);
               if (typeof noteFeed === "function") noteFeed("eats-src", true, label + " · " + list.length);
               cb(list);
               return true;
@@ -15156,20 +15181,7 @@ function mustEats() {
         getHit("/places?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles + "&key=" + encodeURIComponent(key), "Places proxy")
           .then(function (ok) {
             if (ok) return true;
-            return getHit("/osm-eats?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, "OSM");
-          })
-          .then(function (ok) {
-            if (ok) return true;
             return hit("https://places.googleapis.com/v1/places:searchNearby", "Places New");
-          })
-          .then(function (ok) {
-            if (ok) return true;
-            return new Promise(function (res) {
-              fromOsmEats(function (list) {
-                if (list && list.length) { cb(list); res(true); }
-                else res(false);
-              });
-            });
           })
           .then(function (ok) { if (!ok) cb(mustEats()); })
           .catch(function () { cb(mustEats()); });
@@ -15218,9 +15230,21 @@ function mustEats() {
         });
       }
       function startEats() {
-        if (typeof fromPlacesNew === "function") fromPlacesNew(function (rows) { if (rows && rows.length && typeof paint === "function") paint(rows); });
-        if (typeof fromPlacesText === "function") fromPlacesText(function (rows) { if (rows && rows.length && typeof paint === "function") paint(rows); });
-        if (typeof fromOsmEats === "function") fromOsmEats(function (rows) { if (rows && rows.length && typeof paint === "function") paint(rows); });
+        var paid = typeof mapsPaidOn === "function" && mapsPaidOn();
+        var cached = dedupeEats((eatCacheRead() || []).concat(
+          (typeof gCacheGet === "function" ? gCacheGet("eats-near", eatsNearCacheKey(), paid ? 12 * 3600 * 1000 : 90 * 86400000) : []) || []
+        ));
+        if (cached.length && typeof paint === "function") {
+          if (typeof noteFeed === "function") noteFeed("eats-src", true, paid ? ("cache · " + cached.length) : ("Google cache · API off · " + cached.length));
+          paint(cached);
+        }
+        if (paid) {
+          if (typeof fromPlacesNew === "function") fromPlacesNew(function (rows) { if (rows && rows.length && typeof paint === "function") paint(rows); });
+          if (typeof fromPlacesText === "function") fromPlacesText(function (rows) { if (rows && rows.length && typeof paint === "function") paint(rows); });
+        } else if (!cached.length && typeof paint === "function") {
+          if (typeof noteFeed === "function") noteFeed("eats-src", true, "Google list · no cache yet");
+          paint(mustEats());
+        }
       }
       window.reloadEats = startEats;
       setTimeout(startEats, 900);
@@ -15436,15 +15460,17 @@ function mustEats() {
       }
       function fromPlaces(cb) {
         var gkey = "golf-v3:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : homeLat());
+        var paid = typeof mapsPaidOn === "function" ? mapsPaidOn() : true;
         if (typeof gCacheGet === "function") {
-          var cached = gCacheGet("golf-near", gkey, 12 * 3600 * 1000);
-          if (cached && cached.length > 2) return cb(cached);
+          var cached = gCacheGet("golf-near", gkey, paid ? 12 * 3600 * 1000 : 90 * 86400000);
+          if (cached && cached.length) return cb(cached);
         }
+        if (!paid) return cb([]);
         fetchPlacesNearby(function (a) {
           fetchPlacesText(function (b) {
             fetchPlacesJs(function (c) {
               var bag = mergeGoogle(mergeGoogle(a, b), c);
-              if (typeof gCacheSet === "function") gCacheSet("golf-near", gkey, bag);
+              if (bag.length && typeof gCacheSet === "function") gCacheSet("golf-near", gkey, bag);
               cb(bag);
             });
           });
@@ -15543,14 +15569,12 @@ function mustEats() {
       function run() {
         draw([]);
         fromOpenGolf(function (og) {
-          fromOsmGolf(function (osm) {
-            fromPlaces(function (places) {
-              rateOpenGolfGaps(og, places, function (richGoogle) {
-                var paired = pairPlacesOg(richGoogle, (og || []).concat(osm || [], mustGolfs()));
-                window.__golfPool = paired;
-                draw(paired);
-                attachSlope(paired, function (rich) { window.__golfPool = rich; draw(rich); });
-              });
+          fromPlaces(function (places) {
+            rateOpenGolfGaps(og, places, function (richGoogle) {
+              var paired = pairPlacesOg(richGoogle, (og || []).concat(mustGolfs()));
+              window.__golfPool = paired;
+              draw(paired);
+              attachSlope(paired, function (rich) { window.__golfPool = rich; draw(rich); });
             });
           });
         });
@@ -16282,12 +16306,9 @@ function mustEats() {
       tap("set-gmapson", "gmapsOn", function () {
         if (typeof syncMapsToggleStatus === "function") syncMapsToggleStatus();
         if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
-        if (typeof mapsPaidOn === "function" && mapsPaidOn() && typeof loadGmaps === "function") {
-          loadGmaps(function () {
-            if (typeof window.reloadEats === "function") window.reloadEats();
-            if (typeof window.reloadGolf === "function") window.reloadGolf();
-          });
-        }
+        if (typeof window.reloadEats === "function") window.reloadEats();
+        if (typeof window.reloadGolf === "function") window.reloadGolf();
+        if (typeof mapsPaidOn === "function" && mapsPaidOn() && typeof loadGmaps === "function") loadGmaps(function () {});
       });
       tap("set-vol", "vol", function () {
         var audio = document.getElementById("radioPlayer");
