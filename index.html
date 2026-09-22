@@ -301,6 +301,11 @@
     .palm.p6 { width:40px; height:62px; }
     .palm.p6 .trunk { stroke-width:3.8; }
     .palm .crown, .palm .crown path, .palm .frond path { fill:#1a5a2e; stroke:#102e18; stroke-width:.8; }
+    .palm.tree-maple .trunk, .palm.tree-oak .trunk { stroke-width:4.1; stroke:#3d2a14; }
+    .palm.tree-pine .trunk { stroke-width:2.3; stroke:#3a2a16; }
+    .palm.tree-pine .frond path { fill:#163f24; }
+    .palm.tree-desert .trunk { stroke-width:2.2; stroke:#6a5430; }
+    .palm.tree-desert .frond path { fill:#7f9a3c; stroke:#4e6424; }
     header.sky-night .palm .trunk { stroke:#c4a35a; }
     header.sky-night .palm .crown,
     header.sky-night .palm .crown path,
@@ -4523,7 +4528,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 852;
+    window.BOARD_VER = 853;
 
     
     function communityShort() {
@@ -6942,7 +6947,87 @@ function gatorRange() {
         fd: { id: "2039", name: "Fire", note: "Same regional feed — Fire/EMS when they are on." }
       }
     };
+    function headerTreeKind() {
+      var st = (typeof homeState === "function" && homeState()) || "";
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      var blob = ((typeof homeBlob === "function" ? homeBlob() : "") + " " + st).toLowerCase();
+      if (st === "HI" || st === "PR" || /hawaii|puerto rico/.test(blob)) return "palm";
+      if (st === "FL" || /florida|englewood,?\s*fl|manasota|34223/.test(blob)) return "palm";
+      if (isFinite(lat) && isFinite(lon) && lat < 30.6 && lon > -98 && lon < -79.8) return "palm";
+      if (st === "CA" && isFinite(lat) && lat < 34.6 && lon < -116.8) return "palm";
+      if (st === "TX" && isFinite(lat) && lat < 28.6 && lon > -98.2) return "palm";
+      if (st === "LA" && isFinite(lat) && lat < 30.4) return "palm";
+      if (/AZ|NM|NV/.test(st) || (isFinite(lat) && lat > 31 && lat < 37.5 && lon < -109 && lon > -118.8)) return "desert";
+      if (/ME|NH|VT|OR|WA|ID|MT|WY|AK|CO/.test(st) || (isFinite(lat) && lat > 44.8) || (isFinite(lon) && lon < -104 && isFinite(lat) && lat > 36.5)) return "pine";
+      if (/VA|NC|SC|GA|TN|KY|AL|MS|AR|MO|OK|WV|LA/.test(st)) return "oak";
+      return "maple";
+    }
+    function headerTreeSvg(kind) {
+      var trunks = {
+        palm: ["M23 72 C20 58 18 44 22 24","M24 72 C28 56 31 40 27 21","M25 72 C17 55 21 38 24 25","M22 72 C26 60 19 42 26 22","M24 72 C21 52 29 38 21 28"],
+        maple: ["M24 72 C23 52 23 36 24 26","M24 72 C26 54 25 38 25 25","M24 72 C22 50 24 36 23 26","M24 72 C25 56 23 40 24 24","M24 72 C23 48 25 34 24 28"],
+        oak: ["M24 72 C23 54 24 38 24 28","M24 72 C26 52 25 36 25 27","M24 72 C22 50 23 36 24 28","M24 72 C25 55 24 40 24 26","M24 72 C23 49 25 35 24 29"],
+        pine: ["M24 72 L24 40","M24 72 L25 38","M24 72 L23 42","M24 72 L24 36","M24 72 L25 44"],
+        desert: ["M24 72 C24 52 24 40 24 30","M24 72 C25 54 25 40 25 28","M24 72 C23 50 23 38 24 30","M24 72 C24 56 25 42 24 28","M24 72 C24 48 24 36 24 32"]
+      };
+      var leaves = {
+        palm: [
+          "M24 24 C12 8 2 10 1 22 C11 14 17 18 24 24Z",
+          "M24 24 C18 4 22 -2 24 2 C26 -2 30 4 24 24Z",
+          "M24 24 C36 8 46 10 47 22 C37 14 31 18 24 24Z",
+          "M24 24 C8 28 0 40 2 52 C12 38 18 30 24 24Z",
+          "M24 24 C40 28 48 40 46 52 C36 38 30 30 24 24Z"
+        ],
+        maple: [
+          "M24 24 C10 14 2 16 4 28 C12 22 18 24 24 24Z",
+          "M24 24 C14 6 18 -2 24 4 C30 -2 34 6 24 24Z",
+          "M24 24 C38 14 46 16 44 28 C36 22 30 24 24 24Z",
+          "M24 24 C10 32 6 44 14 50 C18 38 20 30 24 24Z",
+          "M24 24 C38 32 42 44 34 50 C30 38 28 30 24 24Z"
+        ],
+        oak: [
+          "M24 28 C8 18 2 10 12 6 C16 16 20 22 24 28Z",
+          "M24 28 C16 8 20 0 24 6 C28 0 32 8 24 28Z",
+          "M24 28 C40 18 46 10 36 6 C32 16 28 22 24 28Z",
+          "M24 28 C8 34 4 46 14 52 C18 40 20 32 24 28Z",
+          "M24 28 C40 34 44 46 34 52 C30 40 28 32 24 28Z"
+        ],
+        pine: [
+          "M24 10 L16 24 L32 24 Z",
+          "M24 16 L12 32 L36 32 Z",
+          "M24 22 L8 42 L40 42 Z",
+          "M24 14 L18 28 L30 28 Z",
+          "M24 20 L14 36 L34 36 Z"
+        ],
+        desert: [
+          "M24 22 C16 16 12 18 14 26 C18 22 22 22 24 22Z",
+          "M24 18 C20 8 22 4 24 8 C26 4 28 8 24 18Z",
+          "M24 22 C32 16 36 18 34 26 C30 22 26 22 24 22Z",
+          "M24 26 C16 30 14 38 20 42 C22 34 22 28 24 26Z",
+          "M24 26 C32 30 34 38 28 42 C26 34 26 28 24 26Z"
+        ]
+      };
+      var pack = leaves[kind] || leaves.maple;
+      var tpack = trunks[kind] || trunks.maple;
+      var shifts = ["translate(-2,0)","translate(3,-3)","","translate(2,-2)","translate(-3,4)"];
+      var cls = ["p2","p3","p4","p5","p6"];
+      return cls.map(function (c, i) {
+        var fr = pack.map(function (d) { return '<g class="frond"><path d="' + d + '"/></g>'; }).join("");
+        return '<svg class="palm ' + c + ' tree-' + kind + '" viewBox="0 0 48 72" aria-hidden="true"><g class="bend"><path class="trunk" d="' + tpack[i] + '"/><g class="crown" transform="' + shifts[i] + '">' + fr + "</g></g></svg>";
+      }).join("");
+    }
+    function paintHeaderTrees() {
+      var box = document.querySelector("header .palms");
+      if (!box) return;
+      var kind = typeof headerTreeKind === "function" ? headerTreeKind() : "palm";
+      if (box.getAttribute("data-trees") === kind && box.querySelector(".palm")) return;
+      box.setAttribute("data-trees", kind);
+      box.innerHTML = headerTreeSvg(kind);
+      if (typeof noteFeed === "function") noteFeed("hdr-trees", true, kind);
+    }
     function paintHomeChrome() {
+      if (typeof paintHeaderTrees === "function") paintHeaderTrees();
       var place = homePlace();
       var zip = getSet().zip || "";
       if (typeof paintCommunity === "function") paintCommunity();
@@ -11233,6 +11318,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v853 — Header trees follow the home pin: palms on the Gulf and southern coasts, maples in New England, oaks inland South, pines north and mountains, desert trees in the Southwest. Same sway.",
       "v852 — Header moon draws only the lit portion. The dark face is left out so the sky shows through.",
       "v851 — Header moon uses the same phase glyph as the Sky card. Dropped the broken SVG mask that made the header look like a crescent.",
       "v850 — Community name owns the Community page, BeachWalk calendar, and in-community events. Home address is only the map pin.",
