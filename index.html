@@ -4545,7 +4545,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 838;
+    window.BOARD_VER = 839;
 
     
     function communityShort() {
@@ -5629,8 +5629,8 @@ Cart shop:</textarea>
       var good = !!(ok && gmapsReady());
       if (typeof noteFeed === "function") {
         if (typeof mapsPaidOn === "function" && !mapsPaidOn()) {
-          noteFeed("gmaps", false, "Maps toggle off");
-          noteFeed("places", false, "Maps toggle off");
+          noteFeed("gmaps", true, "Maps toggle off");
+          noteFeed("places", true, "Maps toggle off");
         } else {
           noteFeed("gmaps", good && !!(getSet() && getSet().gmapsKey), good ? "maps js" : (!String((getSet() || {}).gmapsKey || "").trim() ? "no Maps key" : "script not ready"));
           noteFeed("places", !!String((getSet() || {}).gmapsKey || "").trim(), String((getSet() || {}).gmapsKey || "").trim() ? "autocomplete + details" : "no Maps key");
@@ -5644,7 +5644,7 @@ Cart shop:</textarea>
     window.__commonsGmaps = function () { finishGmaps(true); };
     function loadGmaps(done) {
       if (typeof mapsPaidOn === "function" && !mapsPaidOn()) {
-        if (typeof noteFeed === "function") noteFeed("gmaps", false, "Maps toggle off");
+        if (typeof noteFeed === "function") noteFeed("gmaps", true, "Maps toggle off");
         if (done) done(false);
         return;
       }
@@ -5772,14 +5772,25 @@ Cart shop:</textarea>
       });
     }
 
+    function nhcCoord(v, lon) {
+      if (v == null || v === "") return NaN;
+      if (typeof v === "number") return v;
+      var s = String(v).trim();
+      var n = parseFloat(s.replace(/[nsew°]/ig, ""));
+      if (isNaN(n)) return NaN;
+      if (/[wW]/.test(s) && n > 0) n = -n;
+      if (/[sS]/.test(s) && n > 0 && !lon) n = -n;
+      if (/[eE]/.test(s) && lon) n = Math.abs(n);
+      if (/[nN]/.test(s) && !lon) n = Math.abs(n);
+      return n;
+    }
     function stormCoords(s) {
       if (!s) return { lat: NaN, lon: NaN };
-      var lat = s.latitudeNumeric != null ? Number(s.latitudeNumeric) : parseFloat(String(s.latitude || s.lat || "").replace(/[nsew]/ig, ""));
-      var lon = s.longitudeNumeric != null ? Number(s.longitudeNumeric) : (s.longitude != null ? s.longitude : s.lon);
-      if (typeof lon === "string") {
-        var west = /w/i.test(lon);
-        lon = parseFloat(lon);
-        if (west && lon > 0) lon = -lon;
+      var lat = s.latitudeNumeric != null ? Number(s.latitudeNumeric) : nhcCoord(s.latitude != null ? s.latitude : s.lat, false);
+      var lon = s.longitudeNumeric != null ? Number(s.longitudeNumeric) : nhcCoord(s.longitude != null ? s.longitude : s.lon, true);
+      if ((isNaN(lat) || isNaN(lon)) && s.center) {
+        if (isNaN(lat)) lat = nhcCoord(s.center.latitude || s.center.lat, false);
+        if (isNaN(lon)) lon = nhcCoord(s.center.longitude || s.center.lon, true);
       }
       return { lat: parseFloat(lat), lon: parseFloat(lon) };
     }
@@ -5933,7 +5944,7 @@ Cart shop:</textarea>
 
     function stormMiles(s) {
       var c = typeof stormCoords === "function" ? stormCoords(s) : { lat: NaN, lon: NaN };
-      if (isNaN(c.lat) || isNaN(c.lon)) return 99999;
+      if (isNaN(c.lat) || isNaN(c.lon)) return NaN;
       var R = 3958.8, toR = Math.PI / 180;
       var dLat = (c.lat - homeLat()) * toR, dLon = (c.lon - homeLon()) * toR;
       var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(c.lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
@@ -16732,7 +16743,7 @@ function mustEats() {
           return grace ? "placeholder" : "failed";
         if (!s || /^(—|–|…|\.{1,3}|n\/a|See |None)$/i.test(s)) return "ok";
         if (/\b1 days\b/.test(s)) return "failed";
-        if (/off but|radar only with/.test(s)) return "failed";
+        if (/off but/.test(s)) return "failed";
         if (/MISMATCH/.test(s)) return "failed";
         if (/\b(idle|dry|clear|radar only|now off|pinned|in rotation|prep ·|now ·|off|after bolt|open|closed|cards|ideas|gulf|atl)\b/i.test(s)) return "ok";
         return "ok";
@@ -18613,8 +18624,8 @@ function drawSurgeChart(points) {
             lon = parseFloat(lon);
             var gulf = !isNaN(lon) && lon <= -81 && lon >= -100 && (isNaN(lat) || (lat >= 15 && lat <= 34));
             var atl = !isNaN(lon) && lon > -81 && lon < 20;
-            if (gulf || (/^al|^at/.test(id) && !isNaN(lon) && lon <= -81)) window.__satBasins.gulf = true;
-            if (atl) window.__satBasins.atl = true;
+            if (gulf || (/^al|^at/.test(id) && !isNaN(lon) && lon <= -81 && lon >= -100)) window.__satBasins.gulf = true;
+            if (atl || (/^al|^at/.test(id) && !gulf)) window.__satBasins.atl = true;
           });
           if (typeof paintStormPage === "function") paintStormPage();
           if (typeof applyRadar === "function") applyRadar();
@@ -20381,10 +20392,10 @@ function drawSurgeChart(points) {
         return;
       }
       if (!on) {
-        noteFeed("gmaps", false, "Maps toggle off");
-        noteFeed("places", false, "Maps toggle off");
-        noteFeed("eat-drive", false, "Maps toggle off");
-        noteFeed("event-drive", false, "Maps toggle off");
+        noteFeed("gmaps", true, "Maps toggle off");
+        noteFeed("places", true, "Maps toggle off");
+        noteFeed("eat-drive", true, "Maps toggle off");
+        noteFeed("event-drive", true, "Maps toggle off");
         noteFeed("traffic", true, "embed only · toggle off");
         return;
       }
