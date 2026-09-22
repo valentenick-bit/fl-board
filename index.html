@@ -4545,7 +4545,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 839;
+    window.BOARD_VER = 842;
 
     
     function communityShort() {
@@ -5038,12 +5038,16 @@ Cart shop:</textarea>
       var s = getSet();
       var n = Number(s.lat);
       if (isFinite(n) && Math.abs(n) > 1) return n;
+      var a = ((s.address || "") + " " + (s.zip || "") + " " + (s.place || "")).toLowerCase();
+      if (/06074|south windsor|hartford|wethersfield|connecticut|\bct\b/.test(a)) return 41.8490;
       return 27.0010;
     }
     function homeLon() {
       var s = getSet();
       var n = Number(s.lon);
       if (isFinite(n) && Math.abs(n) > 1) return n;
+      var a = ((s.address || "") + " " + (s.zip || "") + " " + (s.place || "")).toLowerCase();
+      if (/06074|south windsor|hartford|wethersfield|connecticut|\bct\b/.test(a)) return -72.5215;
       return -82.3680;
     }
     function pinMatchesAddress() {
@@ -5097,6 +5101,20 @@ Cart shop:</textarea>
       if (typeof paintStormPage === "function") paintStormPage();
       if (typeof paintPrepList === "function") paintPrepList();
       if (typeof applySkin === "function") applySkin();
+      try { localStorage.removeItem("bw-eats-live"); } catch (eEat) {}
+      window.__eatPool = [];
+      if (typeof loadEats === "function") loadEats();
+      window.__entAll = [];
+      window.__localEvents = [];
+      if (typeof window.reloadTown === "function") window.reloadTown();
+      if (typeof loadGolf === "function") loadGolf();
+      if (typeof pollFpl === "function") pollFpl();
+      if (typeof fishReport === "function") fishReport();
+      if (typeof gatorWatch === "function") gatorWatch();
+      if (typeof paintCivic === "function") paintCivic();
+      if (typeof refreshKeyCam === "function") refreshKeyCam(true);
+      if (typeof window.__reloadLocalNews === "function") window.__reloadLocalNews();
+      if (typeof paintRed === "function") paintRed("");
     }
     function homeAddress() {
       var s = getSet();
@@ -6208,6 +6226,7 @@ Cart shop:</textarea>
         showAdv(txt);
       });
       function showAdv(txt) {
+        if (typeof applyTcpToStorm === "function") applyTcpToStorm(s, txt);
         var cut = txt;
         var sum = txt.search(/SUMMARY OF/i);
         if (sum >= 0) cut = txt.slice(sum);
@@ -6215,7 +6234,39 @@ Cart shop:</textarea>
         el.hidden = false;
         el.innerHTML = "<b>Public advisory</b><span style=\"white-space:pre-wrap\">" + cut.replace(/</g, "&lt;") + "</span>";
         if (typeof noteFeed === "function") noteFeed("hurr-adv", true, (s.name || "storm") + " TCP");
+        if (typeof paintStormPage === "function") paintStormPage();
+        if (typeof writeTodayChips === "function") writeTodayChips();
       }
+    }
+
+    function applyTcpToStorm(s, txt) {
+      if (!s || !txt) return s;
+      var raw = String(txt);
+      var loc = raw.match(/LOCATION\.{2,}\s*(\d+(?:\.\d+)?)\s*([NS])\s*,?\s*(\d+(?:\.\d+)?)\s*([EW])/i)
+        || raw.match(/latitude\s+(\d+(?:\.\d+)?)\s*(North|South)[\s\S]{0,80}longitude\s+(\d+(?:\.\d+)?)\s*(East|West)/i)
+        || raw.match(/INIT\s+\S+\s+(\d+(?:\.\d+)?)([NS])\s+(\d+(?:\.\d+)?)([EW])/i);
+      if (loc) {
+        var lat = parseFloat(loc[1]); var ns = loc[2];
+        var lon = parseFloat(loc[3]); var ew = loc[4];
+        if (/s/i.test(ns)) lat = -Math.abs(lat); else lat = Math.abs(lat);
+        if (/w/i.test(ew)) lon = -Math.abs(lon); else lon = Math.abs(lon);
+        s.latitude = Math.abs(parseFloat(loc[1])) + (/s/i.test(ns) ? "S" : "N");
+        s.longitude = Math.abs(parseFloat(loc[3])) + (/w/i.test(ew) ? "W" : "E");
+        s.latitudeNumeric = lat;
+        s.longitudeNumeric = lon;
+      }
+      var ktM = raw.match(/(\d+)\s*KT\b/i);
+      var mphM = raw.match(/MAXIMUM SUSTAINED WINDS\.{2,}\s*(\d+)\s*MPH/i);
+      if (ktM) s.intensity = String(ktM[1]);
+      else if (mphM) s.intensity = String(Math.round(Number(mphM[1]) / 1.15078));
+      var pres = raw.match(/MINIMUM CENTRAL PRESSURE\.{2,}\s*(\d{3,4})\s*MB/i);
+      if (pres) s.pressure = String(pres[1]);
+      var mv = raw.match(/(\d{2,3})\s*DEGREES AT\s*(\d+(?:\.\d+)?)\s*MPH/i);
+      if (mv) {
+        s.movementDir = Number(mv[1]);
+        s.movementSpeed = Number(mv[2]) / 1.15078;
+      }
+      return s;
     }
 
     function relevantStorms(list) {
@@ -6236,6 +6287,14 @@ Cart shop:</textarea>
     function homePoint() { return homeLat() + "," + homeLon(); }
     function looksLikeStreet(name) {
       return /\b(drive|dr|road|rd|street|st|lane|ln|court|ct|way|circle|cir|blvd|avenue|ave|terrace|place|pl|trail|parkway|pkwy|harbour|harbor)\b/i.test(String(name || ""));
+    }
+    function homeNearKey() {
+      var s = typeof getSet === "function" ? getSet() : {};
+      var zip = String(s.zip || "").slice(0, 5);
+      if (/^3422[0-9]$/.test(zip) || zip === "33981" || zip === "33950") return true;
+      var lat = typeof homeLat === "function" ? homeLat() : 0;
+      var lon = typeof homeLon === "function" ? homeLon() : 0;
+      return lat > 26.72 && lat < 27.22 && lon < -82.12 && lon > -82.55;
     }
     function homePlace() {
       var s = getSet();
@@ -7120,13 +7179,29 @@ function gatorRange() {
       }
       if (typeof noteFeed === "function") noteFeed("cam", true, "unloaded");
     }
+    function homeCam() {
+      var near = typeof homeNearKey === "function" && homeNearKey();
+      if (near) {
+        return { src: "https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1", label: "Siesta Key Beach live" };
+      }
+      var lat = typeof homeLat === "function" ? homeLat() : 0;
+      var lon = typeof homeLon === "function" ? homeLon() : 0;
+      var place = (typeof homePlace === "function" && homePlace()) || "Home";
+      return {
+        src: "https://embed.windy.com/embed.html?type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph&zoom=10&overlay=satellite&product=satellite&level=surface&lat=" + lat + "&lon=" + lon + "&detailLat=" + lat + "&detailLon=" + lon + "&detail=true",
+        label: place + " satellite"
+      };
+    }
     function refreshKeyCam(force) {
       var yt = document.getElementById("keycam-yt");
       var cap = document.getElementById("keycam-cap");
-      var base = (yt && yt.getAttribute("data-cam")) || "https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1";
-      if (yt && force) yt.src = base + (base.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
-      if (cap) cap.textContent = "Siesta Key Beach live";
-      if (typeof noteFeed === "function") noteFeed("cam", true, "siesta youtube");
+      var cam = typeof homeCam === "function" ? homeCam() : { src: "", label: "Live view" };
+      if (yt && (force || !yt.getAttribute("src") || yt.getAttribute("src").indexOf("about:blank") === 0 || (cam.src && yt.src.indexOf(cam.src.slice(0, 40)) < 0))) {
+        yt.src = cam.src;
+        yt.setAttribute("data-cam", cam.src);
+      }
+      if (cap) cap.textContent = cam.label || "";
+      if (typeof noteFeed === "function") noteFeed("cam", true, cam.label || "cam");
     }
 
     function showRadarView(id, bust) {
@@ -13473,7 +13548,7 @@ function currentRotation() {
             : '<div class="card ev-card"><div class="ev-body"><b>No takeout coupons inside 5 miles</b><span class="eat-why">When coupons.json has live deals near the home pin, the best 3–5 for today show here.</span></div></div>';
           if (todayBox) todayBox.innerHTML = html;
           if (todayBox && typeof stampLocPills === "function") stampLocPills(todayBox);
-          if (typeof noteFeed === "function") noteFeed("coupons", !!top.length, top.length ? (top.length + " deals") : "none inside 5 mi");
+          if (typeof noteFeed === "function") noteFeed("coupons", true, top.length ? (top.length + " deals") : "none inside 5 mi");
         }
         var urls = typeof gitFileUrls === "function" ? gitFileUrls("coupons.json") : ["./coupons.json"];
         function next(i) {
@@ -14204,12 +14279,12 @@ function paint() {
       try { paint(); } catch (ePaint) { try { console.warn(ePaint); } catch (e0) {} }
       loadLocal();
       if (typeof window.reloadTown === "function") window.reloadTown();
-      load(BW, "bw", true);
+      if (typeof homeNearKey !== "function" || homeNearKey()) load(BW, "bw", true);
       loadLocal();
       setInterval(function () {
         loadLocal();
         if (typeof window.reloadTown === "function") window.reloadTown();
-        load(BW, "bw", true);
+        if (typeof homeNearKey !== "function" || homeNearKey()) load(BW, "bw", true);
         }, 15 * 60 * 1000);
     })();
 
@@ -18352,6 +18427,12 @@ function drawSurgeChart(points) {
       } else if (red && /^$|^…$|Checking FWC/i.test(red.textContent||"")) red.textContent = "No FWC bloom note";
       if (homeState() === "FL") {
       function paintRed(html) {
+        if (typeof homeIsSWFL === "function" && !homeIsSWFL()) {
+          var off = document.getElementById("live-redtide");
+          if (off) off.textContent = "Gulf-only";
+          if (typeof noteFeed === "function") noteFeed("red-tide", true, "not Gulf");
+          return;
+        }
         var text = String(html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
         var sw = /In Southwest Florida[\s\S]{0,180}|Southwest Florida[\s\S]{0,180}/i.exec(text);
         var line = sw ? sw[0] : text;
@@ -18717,6 +18798,11 @@ function drawSurgeChart(points) {
       })();
       (function pollFpl() {
         function set(id, txt) { var n = document.getElementById(id); if (n) n.textContent = txt; }
+        if (typeof homeState === "function" && homeState() !== "FL") {
+          set("live-fpl", "Not an FPL market. Check your local utility.");
+          if (typeof noteFeed === "function") noteFeed("power", true, "not FPL");
+          return;
+        }
         function fmt(n) { return Number(n || 0).toLocaleString("en-US"); }
         function pick(rows, name) {
           for (var i = 0; i < rows.length; i++) {
@@ -20144,8 +20230,11 @@ function drawSurgeChart(points) {
     }
     function eventInRange(e) {
       var limit = Number((typeof getSet === "function" && getSet().eventMiles) || 25) || 15;
-      if (e && e.inside) return true;
-      if (e && (e.src === "local" || e.src === "town")) return true;
+      var nearKey = typeof homeNearKey === "function" && homeNearKey();
+      if (e && e.inside) return !!nearKey;
+      var blob = String((e && (e.title || e.sum || e.name)) || "") + " " + String((e && (e.where || e.loc || e.addr || e.venue)) || "");
+      blob = blob.toLowerCase();
+      if (!nearKey && /englewood|manasota|beachwalk|venice fl|venice, fl|north port|port charlotte|boca grande|rotonda/.test(blob)) return false;
       var mi = eventMilesFromHome(e);
       if (mi == null || !isFinite(mi)) return true;
       return mi <= limit + 0.35;
