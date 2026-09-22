@@ -1165,8 +1165,9 @@
     .tile.wide { grid-column:1 / -1; }
     .card.chart { margin-bottom:8px; }
     .card.chart > b { font-family:"Fraunces",Georgia,serif; font-size:18px; font-weight:600; letter-spacing:0; text-transform:none; color:var(--navy); display:flex; align-items:center; gap:8px; }
-    .moon-face { display:inline-block; width:28px; height:28px; flex:none; border-radius:50%; overflow:hidden; font-style:normal; }
+    .moon-face { display:inline-block; width:36px; height:36px; flex:none; border-radius:50%; overflow:hidden; font-style:normal; background:#1a2230; box-shadow:0 0 0 1px rgba(212,190,130,.55); }
     .moon-face svg { display:block; width:100%; height:100%; }
+    html.dark .moon-face { background:#0b1016; box-shadow:0 0 0 1px rgba(230,211,154,.4); }
     .card.chart > span { display:block; margin:0 0 8px; font-size:15px; line-height:1.45; color:var(--muted); font-weight:400; }
     .card.chart .tide { margin-top:4px; }
     .status-row { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 10px; }
@@ -4523,7 +4524,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 846;
+    window.BOARD_VER = 847;
 
     
     function communityShort() {
@@ -11220,6 +11221,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v847 — Sky moon icon sits on a dark disk with a gold rim so the phase does not wash out on the cream card.",
       "v846 — Maps Off keeps the last Google Places cache for restaurants and golf instead of wiping it. Fresh billed lookups only run when the toggle is On.",
       "v845 — Maps Off still uses Google map embeds and the Google restaurant/golf lists. OSM is no longer a fallback. Off only stops billed Places, traffic-layer, and drive-time calls.",
       "v844 — Big moon disk removed. Today shows upcoming events if nothing is dated today. Restaurants list OSM + local spots without a 2,500-review cutoff. Golf lists OpenGolf/OSM courses even when Maps is off.",
@@ -17511,29 +17513,24 @@ function mustEats() {
     function paintMoonFace(el) {
       if (!el) return;
       var ph = moonPhase();
+      var name = moonPhaseName(ph);
       var illum = (1 - Math.cos(ph * Math.PI * 2)) / 2;
       var waxing = ph < 0.5;
-      el.title = moonPhaseName(ph) + " · " + Math.round(illum * 100) + "% lit";
-      el.style.background = "transparent";
-      el.style.boxShadow = "none";
-      var uid = "moonmask-" + (el.id || "x") + "-" + Math.round(ph * 1000);
-      if (illum < 0.08) {
-        el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="#1b2433" stroke="#d8c48a" stroke-width="1.4"/></svg>';
-        el.setAttribute("data-moon", "new");
-        return;
-      }
-      var ox = (waxing ? -1 : 1) * (20 - illum * 20);
-      var shadow = illum > 0.96 ? "" : '<circle cx="' + (11 + ox).toFixed(2) + '" cy="11" r="10" fill="#000"/>';
-      el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><defs><mask id="' + uid + '">' +
-        '<rect width="22" height="22" fill="#000"/>' +
-        '<circle cx="11" cy="11" r="10" fill="#fff"/>' +
-        shadow +
-        '</mask></defs>' +
-        '<circle cx="11" cy="11" r="10" fill="#f0e0b0" mask="url(#' + uid + ')"/>' +
-        '<circle cx="8.2" cy="9.2" r="1.1" fill="#e4d8c4" opacity=".35" mask="url(#' + uid + ')"/>' +
-        '<circle cx="13.4" cy="12.6" r="1.6" fill="#e4d8c4" opacity=".28" mask="url(#' + uid + ')"/>' +
+      el.title = name + " · " + Math.round(illum * 100) + "% lit";
+      el.setAttribute("data-moon", name);
+      var uid = "moonclip-" + String(el.id || "x").replace(/[^a-z0-9_-]/gi, "") + "-" + Math.round(ph * 1000);
+      var night = "#141c28";
+      var lit = "#f7e7b0";
+      var rim = "#c4a35a";
+      var ox = (waxing ? -1 : 1) * (18 - illum * 18);
+      var cover = illum > 0.96 ? "" : '<circle cx="' + (11 + ox).toFixed(2) + '" cy="11" r="9.2" fill="' + night + '"/>';
+      el.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><defs><clipPath id="' + uid + '"><circle cx="11" cy="11" r="9"/></clipPath></defs>' +
+        '<circle cx="11" cy="11" r="9" fill="' + night + '"/>' +
+        '<g clip-path="url(#' + uid + ')">' +
+        (illum < 0.08 ? "" : '<circle cx="11" cy="11" r="9" fill="' + lit + '"/>' + cover) +
+        '</g>' +
+        '<circle cx="11" cy="11" r="9" fill="none" stroke="' + rim + '" stroke-width="1.3"/>' +
         '</svg>';
-      el.setAttribute("data-moon", moonPhaseName(ph));
     }
     function seedStars() {
       var box = document.getElementById("hdr-stars");
