@@ -4516,7 +4516,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 836;
+    window.BOARD_VER = 837;
 
     
     function communityShort() {
@@ -6209,7 +6209,8 @@ Cart shop:</textarea>
     }
     function homeTide() {
       var id = String((getSet() || {}).tide || "").trim();
-      return id;
+      if (id) return id;
+      return "8725809";
     }
     function homeRadar() { return getSet().radar || ""; }
     window.watchSource = function (row) {
@@ -17788,7 +17789,14 @@ function drawSurgeChart(points) {
           window.__bwCharts.surge = vs;
           drawSurgeChart(vs);
           var lab = document.getElementById("live-surge");
-          if (lab && label) lab.textContent = (lab.textContent || "") + " · " + label;
+          if (lab) {
+            var base = String(lab.textContent || "").replace(/\s·\s.*$/, "").trim();
+            if (!base || !/ft|m\b|predicted/i.test(base)) {
+              var last = vs[vs.length - 1] && vs[vs.length - 1].v;
+              if (isFinite(last)) base = (last >= 0 ? "+" : "") + Number(last).toFixed(2) + (typeof useC === "function" && useC() ? " m vs predicted tide" : " ft vs predicted tide");
+            }
+            lab.textContent = label ? (base + " · " + label) : base;
+          }
           return true;
         }).catch(function () { return false; });
       }
@@ -17824,8 +17832,9 @@ function drawSurgeChart(points) {
         var lab = document.getElementById("live-surge");
         if (lab) lab.textContent = "Predicted tide shape · Fort Myers gauge offline";
       }
-      var surgeFirst = (getSet().wlStation || (homeState() === "FL" ? "8725520" : homeTide()));
-      surgeFromStation(surgeFirst, surgeFirst === "8725520" ? "Fort Myers" : "water level")
+      var surgeFirst = homeTide() || "8725809";
+      var surgeFirstName = surgeFirst === "8725520" ? "Fort Myers" : surgeFirst === "8725809" ? "Lemon Bay" : "water level";
+      surgeFromStation(surgeFirst, surgeFirstName)
         .then(function (ok) {
           if (ok) return true;
           return fetch("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/lat/" + homeLat() + "/lng/" + homeLon() + "/radius/80/stations.json?type=waterlevels")
