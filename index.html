@@ -4528,7 +4528,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 854;
+    window.BOARD_VER = 855;
 
     
     function communityShort() {
@@ -11318,6 +11318,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v855 — Gulf-only copy and Englewood deal seeds stay off a non-Gulf pin. CT no longer inherits villa fishing, red tide, or Dearborn Street shops.",
       "v854 — Header moon phase uses an on-disk terminator so waxing gibbous reads as ~87% lit on the right, not a clipped crescent.",
       "v853 — Header trees follow the home pin: palms on the Gulf and southern coasts, maples in New England, oaks inland South, pines north and mountains, desert trees in the Southwest. Same sway.",
       "v852 — Header moon draws only the lit portion. The dark face is left out so the sky shows through.",
@@ -13400,21 +13401,31 @@ function currentRotation() {
         }
         if (!(pack.hh && pack.hh.length) && typeof seedHappyHours === "function") {
           seedHappyHours().forEach(function (r) {
+            var mi = (r.lat != null && typeof milesOf === "function") ? milesOf(r.lat, r.lon) : 99;
+            if (mi > 25) return;
             pack.hh.push(asItem(r.name + " happy hour",
               (r.deal || "Happy hour near home.") + " near home.",
-              { where: r.addr, addr: r.addr, lat: r.lat, lon: r.lon }));
+              { where: r.addr, addr: r.addr, lat: r.lat, lon: r.lon, miles: mi }));
           });
         }
         if (!(pack.shop && pack.shop.length) && typeof seedShopDeals === "function") {
           seedShopDeals().forEach(function (r) {
+            var mi = (r.lat != null && typeof milesOf === "function") ? milesOf(r.lat, r.lon) : 99;
+            if (mi > 25) return;
             pack.shop.push(asItem(r.name,
               (r.deal || "Store near home.") + " near home.",
-              { where: r.addr, addr: r.addr, lat: r.lat, lon: r.lon }));
+              { where: r.addr, addr: r.addr, lat: r.lat, lon: r.lon, miles: mi }));
           });
         }
       }
       function firstBuzz(kind) {
         var list = (window.__buzz && window.__buzz[kind]) || [];
+        list = list.filter(function (row) {
+          var x = row && row.extra;
+          if (!x || x.lat == null || x.lon == null) return true;
+          if (typeof milesOf !== "function") return true;
+          return milesOf(x.lat, x.lon) <= 25;
+        });
         if (!list.length) return null;
         var pool = list.slice(0, Math.min(8, list.length));
         var row = pool[buzzPickIndex(kind, pool.length)];
@@ -13754,7 +13765,7 @@ function currentRotation() {
         function line(kind, block) {
           if (block === "eve" && kind === "go") return "Good night out";
           if (block === "eve") return kind === "win" ? "Keep it close" : "Stay in";
-          if (kind === "go") return block === "am" ? "Beach morning" : "Get outside";
+          if (kind === "go") return block === "am" ? ((typeof homeIsSWFL === "function" && homeIsSWFL()) ? "Beach morning" : "Good morning") : "Get outside";
           if (kind === "win") return "Pick a window";
           return block === "am" ? "Slow start" : "Stay cool inside";
         }
@@ -15463,7 +15474,11 @@ function mustEatsFL() {
         window.__golfs = list;
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Nothing golf-shaped inside ' + miles + " miles of the pin.</span></div>";
         if (note) note.textContent = list.length ? (list.length + " courses in " + miles + " mi · nearest first") : ("No courses in " + miles + " mi");
-        if (typeof noteFeed === "function") noteFeed("golf", !!list.length, list.length ? (list.length + " · " + list[0].rating + " " + list[0].name) : "none");
+        if (typeof noteFeed === "function") {
+          var topG = list[0] || {};
+          var gbit = (topG.rating != null && isFinite(Number(topG.rating)) ? Number(topG.rating).toFixed(1) + " " : "") + (topG.name || "");
+          noteFeed("golf", !!list.length, list.length ? (list.length + " · " + gbit) : "none");
+        }
         if (list[0] && typeof selectGolf === "function") selectGolf(list[0]);
         if (typeof window.stampLocPills === "function") window.stampLocPills(box || document);
       }
@@ -15724,8 +15739,8 @@ function mustEatsFL() {
       var urls = ["/key.json"].concat(gitFileUrls("key.json"));
       function apply(d) {
         if (!d) return;
-        if (d.fishing && document.getElementById("live-fish")) document.getElementById("live-fish").innerHTML = d.fishing;
-        if (d.redtide && document.getElementById("live-redtide")) {
+        if (d.fishing && document.getElementById("live-fish") && typeof homeIsSWFL === "function" && homeIsSWFL()) document.getElementById("live-fish").innerHTML = d.fishing;
+        if (d.redtide && document.getElementById("live-redtide") && typeof homeIsSWFL === "function" && homeIsSWFL()) {
           var rt = String(d.redtide);
           if (/not observed|not seen|none/i.test(rt)) rt = "Not seen";
           else if (/background|very low|low/i.test(rt)) rt = "Very low";
@@ -15736,7 +15751,7 @@ function mustEatsFL() {
           var when = d.redtideWhen || d.redtideAt || d.sampled || d.updated || d.when;
           if (ageEl) ageEl.textContent = sampleAgeLabel(when);
         }
-        if (d.bacteria && document.getElementById("live-bacteria")) {
+        if (d.bacteria && document.getElementById("live-bacteria") && typeof homeIsSWFL === "function" && homeIsSWFL()) {
           document.getElementById("live-bacteria").textContent = d.bacteria;
           var bAge = document.getElementById("live-bacteria-age");
           var bWhen = d.bacteriaWhen || d.bacteriaAt || d.sampled || d.updated || d.when;
@@ -16769,7 +16784,7 @@ function mustEatsFL() {
           }).join("<br>");
             touchFeed("fishing", true, rows.length + " items");
         }).catch(function () {
-          el.textContent = "Check Fishin Franks or Florida Sportsman SW for this week’s bite.";
+          el.textContent = "No fishing report loaded for " + (typeof homePlace === "function" ? homePlace() : "home") + ". Try a local bait shop.";
           touchFeed("fishing", true, "fallback");
         });
       }
@@ -18233,12 +18248,14 @@ function drawSurgeChart(points) {
           if (!seas && /ft/i.test(seasEl)) seas = seasEl;
           if (!wind && windEl2) wind = windEl2;
           var craft = /advisory|small craft/i.test(raw + " " + craftEl) && !/none/i.test(craftEl) ? "Small-craft warning — stay in." : "No small-craft warning.";
-          var line = "Gulf waters off the beach, for a boat ride: seas " + (seas || "about 1–2 ft") + ", wind " + (wind || "light") + ". " + craft;
+          var gulf = typeof homeIsSWFL === "function" && homeIsSWFL();
+          var line = (gulf ? "Gulf waters off the beach, for a boat ride: seas " : "Waters near home: seas ") + (seas || "about 1–2 ft") + ", wind " + (wind || "light") + ". " + craft;
           if (coast) coast.textContent = line;
           if (nwrM) nwrM.textContent = line;
         }).catch(function () {
           var seasEl = (document.getElementById("live-seas") || {}).textContent || "1–2 ft";
-          var line = "Gulf waters off the beach: seas " + seasEl + ". Check the tide and boat row before you go.";
+          var gulf = typeof homeIsSWFL === "function" && homeIsSWFL();
+          var line = (gulf ? "Gulf waters off the beach: seas " : "Waters near home: seas ") + seasEl + ". Check the tide and marine row before you go.";
           if (coast) coast.textContent = line;
           if (nwrM) nwrM.textContent = "See Marine page.";
         });
@@ -18253,13 +18270,15 @@ function drawSurgeChart(points) {
         }).catch(function () {});
       (function inletTemp() {
         var el = document.getElementById("live-wtemp");
-        var stations = [homeTide(), "8725110", "8725520", "8720218"];
+        var stations = (typeof homeIsSWFL === "function" && homeIsSWFL())
+          ? [homeTide(), "8725110", "8725520", "8720218"]
+          : [homeTide()];
         function tryS(i) {
           if (!el) return;
           if (i >= stations.length) {
             var sst = document.getElementById("live-sst");
-            if (sst && /°/.test(sst.textContent||"")) el.textContent = sst.textContent.replace(/\s+/g," ").trim() + " Gulf";
-            else if (/^$|^—$/.test((el.textContent||"").trim())) el.textContent = "See Gulf water";
+            if (sst && /°/.test(sst.textContent||"") && typeof homeIsSWFL === "function" && homeIsSWFL()) el.textContent = sst.textContent.replace(/\s+/g," ").trim() + " Gulf";
+            else if (/^$|^—$/.test((el.textContent||"").trim())) el.textContent = (typeof homeIsSWFL === "function" && homeIsSWFL()) ? "See Gulf water" : "No station";
             return;
           }
           fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=" + stations[i] + "&product=water_temperature&units=english&time_zone=lst_ldt&format=json")
@@ -18329,7 +18348,8 @@ function drawSurgeChart(points) {
           if (lab && r.sunrise && r.sunset) lab.textContent = "Sunrise " + hh(r.sunrise) + " · Sunset " + hh(r.sunset);
           var tw = document.getElementById("live-twilight");
           if (tw && r.civil_twilight_end && r.nautical_twilight_end) {
-            tw.textContent = "Beach goes dim " + hh(r.civil_twilight_end) + " · dark " + hh(r.nautical_twilight_end) + ". Morning civil " + (r.civil_twilight_begin ? hh(r.civil_twilight_begin) : "—") + ".";
+            var duskWord = (typeof homeIsSWFL === "function" && homeIsSWFL()) ? "Beach goes dim " : "Sky goes dim ";
+            tw.textContent = duskWord + hh(r.civil_twilight_end) + " · dark " + hh(r.nautical_twilight_end) + ". Morning civil " + (r.civil_twilight_begin ? hh(r.civil_twilight_begin) : "—") + ".";
             if (typeof noteFeed === "function") noteFeed("live-twilight", true, tw.textContent);
           }
           var riseDay = r.sunrise ? new Date(r.sunrise).toLocaleDateString("en-CA", { timeZone: "America/New_York" }) : "";
@@ -18652,7 +18672,7 @@ function drawSurgeChart(points) {
         }).catch(function () {});
       var red = document.getElementById("live-redtide");
       if (red && homeState() !== "FL") {
-        red.textContent = "FL Gulf only";
+        red.textContent = "Not at this pin";
       } else if (red && /^$|^…$|Checking FWC/i.test(red.textContent||"")) red.textContent = "No FWC bloom note";
       if (homeState() === "FL") {
       function paintRed(html) {
@@ -18697,7 +18717,7 @@ function drawSurgeChart(points) {
       (function loadBacteria() {
         var el = document.getElementById("live-bacteria");
         if (!el) return;
-        if (homeState() !== "FL") { el.textContent = "FL beaches"; return; }
+        if (homeState() !== "FL") { el.textContent = "Not at this pin"; return; }
         var q = encodeURIComponent(homePlace() + " beach water quality (advisory OR enterococcus OR bacteria) when:21d");
         var raw = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
         fetch("https://corsproxy.io/?" + encodeURIComponent(raw)).then(function (r) { return r.text(); }).then(function (xml) {
