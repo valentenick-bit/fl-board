@@ -4528,7 +4528,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 853;
+    window.BOARD_VER = 854;
 
     
     function communityShort() {
@@ -11318,6 +11318,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v854 — Header moon phase uses an on-disk terminator so waxing gibbous reads as ~87% lit on the right, not a clipped crescent.",
       "v853 — Header trees follow the home pin: palms on the Gulf and southern coasts, maples in New England, oaks inland South, pines north and mountains, desert trees in the Southwest. Same sway.",
       "v852 — Header moon draws only the lit portion. The dark face is left out so the sky shows through.",
       "v851 — Header moon uses the same phase glyph as the Sky card. Dropped the broken SVG mask that made the header look like a crescent.",
@@ -17668,22 +17669,31 @@ function mustEatsFL() {
         el.textContent = moonGlyph(ph);
         return;
       }
-      if (illum < 0.04) { el.innerHTML = ""; return; }
       var lit = "#f4ead0";
+      if (illum < 0.03) { el.innerHTML = ""; return; }
       if (illum > 0.97) {
         el.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="' + lit + '"/></svg>';
         return;
       }
       var waxing = ph < 0.5;
       var C = 20, R = 16;
-      var scx = C + (waxing ? -1 : 1) * (2 * R * illum);
-      var uid = "hdr-moon-lit-" + Math.round(ph * 1000);
-      el.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><defs><mask id="' + uid + '">' +
-        '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="#fff"/>' +
-        '<circle cx="' + scx.toFixed(2) + '" cy="' + C + '" r="' + R + '" fill="#000"/>' +
-        '</mask></defs>' +
-        '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="' + lit + '" mask="url(#' + uid + ')"/>' +
-        '</svg>';
+      var uid = "hdr-moon-" + Math.round(ph * 1000);
+      var rx = Math.max(0.35, R * Math.abs(Math.cos(ph * Math.PI * 2)));
+      var halfX = waxing ? C : C - R;
+      var half = '<rect x="' + halfX + '" y="' + (C - R) + '" width="' + R + '" height="' + (2 * R) + '" fill="' + lit + '"/>';
+      var ell = '<ellipse cx="' + C + '" cy="' + C + '" rx="' + rx.toFixed(2) + '" ry="' + R + '" fill="' + lit + '"/>';
+      var inner;
+      if (illum >= 0.5) {
+        inner = half + ell;
+      } else {
+        inner = '<defs><mask id="' + uid + '" maskUnits="userSpaceOnUse">' +
+          '<rect x="' + halfX + '" y="' + (C - R) + '" width="' + R + '" height="' + (2 * R) + '" fill="#fff"/>' +
+          '<ellipse cx="' + C + '" cy="' + C + '" rx="' + rx.toFixed(2) + '" ry="' + R + '" fill="#000"/>' +
+          '</mask></defs>' +
+          '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="' + lit + '" mask="url(#' + uid + ')"/>';
+      }
+      el.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><defs><clipPath id="' + uid + 'd"><circle cx="' + C + '" cy="' + C + '" r="' + R + '"/></clipPath></defs>' +
+        '<g clip-path="url(#' + uid + 'd)">' + inner + "</g></svg>";
     }
     function seedStars() {
       var box = document.getElementById("hdr-stars");
