@@ -4523,7 +4523,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 851;
+    window.BOARD_VER = 852;
 
     
     function communityShort() {
@@ -11233,6 +11233,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v852 — Header moon draws only the lit portion. The dark face is left out so the sky shows through.",
       "v851 — Header moon uses the same phase glyph as the Sky card. Dropped the broken SVG mask that made the header look like a crescent.",
       "v850 — Community name owns the Community page, BeachWalk calendar, and in-community events. Home address is only the map pin.",
       "v849 — Account address is the pin for this device only. Any US address. Curated FL/CT restaurant lists stay in those regions. Other cities use Google cache or a one-time Maps On pull.",
@@ -17577,7 +17578,26 @@ function mustEatsFL() {
       el.setAttribute("data-moon", name);
       el.style.background = "transparent";
       el.style.boxShadow = "none";
-      el.textContent = moonGlyph(ph);
+      if (el.id !== "hdr-moon") {
+        el.textContent = moonGlyph(ph);
+        return;
+      }
+      if (illum < 0.04) { el.innerHTML = ""; return; }
+      var lit = "#f4ead0";
+      if (illum > 0.97) {
+        el.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="' + lit + '"/></svg>';
+        return;
+      }
+      var waxing = ph < 0.5;
+      var C = 20, R = 16;
+      var scx = C + (waxing ? -1 : 1) * (2 * R * illum);
+      var uid = "hdr-moon-lit-" + Math.round(ph * 1000);
+      el.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><defs><mask id="' + uid + '">' +
+        '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="#fff"/>' +
+        '<circle cx="' + scx.toFixed(2) + '" cy="' + C + '" r="' + R + '" fill="#000"/>' +
+        '</mask></defs>' +
+        '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="' + lit + '" mask="url(#' + uid + ')"/>' +
+        '</svg>';
     }
     function seedStars() {
       var box = document.getElementById("hdr-stars");
