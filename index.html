@@ -1544,6 +1544,10 @@
     .radar-tools { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:8px; }
     .radar-legend { margin:0; font-size:13px; opacity:.8; }
     .radar-tools .cam-pills { position:static; }
+    .storm-charts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:8px; }
+    .storm-chart-col label { display:block; font-size:12px; opacity:.7; margin-bottom:4px; }
+    .storm-hist-card .metric-spark { min-height:88px; }
+    @media (max-width:720px) { .storm-charts { grid-template-columns:1fr; } }
     .storm-picks { margin:0 0 10px; }
     .storm-frames { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; }
     .storm-frame { position:relative; border-radius:14px; overflow:hidden; background:#0b1c28; min-height:220px; }
@@ -3433,6 +3437,15 @@ Cart shop:</textarea>
           <div class="metric-row"><label>Movement</label><strong id="live-storm-move">—</strong><div></div></div>
           <div class="metric-row"><label>Advisory</label><strong id="live-storm-adv">—</strong><div></div></div>
         </div>
+        <div class="card storm-hist-card" id="storm-hist-card">
+          <b id="storm-hist-title">Advisory history</b>
+          <span class="hint" id="storm-hist-note">Each point is an NHC fix / public advisory. The lines grow as new advisories post.</span>
+          <div class="storm-charts">
+            <div class="storm-chart-col"><label>Winds</label><div class="metric-spark hist" id="storm-wind-chart"></div></div>
+            <div class="storm-chart-col"><label>Pressure</label><div class="metric-spark hist" id="storm-pres-chart"></div></div>
+            <div class="storm-chart-col"><label>From home</label><div class="metric-spark hist" id="storm-dist-chart"></div></div>
+          </div>
+        </div>
         <div class="card" id="hurr-home" hidden><b>At the house</b><span id="live-storm-home"></span></div>
         <div class="card" id="hurr-disc" hidden><b>NHC discussion</b><span></span></div>
         <div class="card" id="hurr-adv" hidden><b>Public advisory</b><span></span></div>
@@ -4656,7 +4669,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 870;
+    window.BOARD_VER = 871;
 
     
     function communityShort() {
@@ -6506,7 +6519,115 @@ Cart shop:</textarea>
     function saveStormHist(map) {
       try { localStorage.setItem("commons-storm-hist", JSON.stringify(map)); } catch (e) {}
     }
-    function recordStormSample(s, mph, mi) {
+    function stormAtcfFile(s) {
+      var id = String((s && (s.id || s.stormId || "")) || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (/^[a-z]{2}\d{6}$/.test(id)) return "b" + id + ".dat";
+      return "";
+    }
+    function parseAtcfLatLon(tok, isLon) {
+      var t = String(tok || "").trim().toUpperCase();
+      var n = parseFloat(t);
+      if (!isFinite(n)) return NaN;
+      if (/N$/.test(t) || /E$/.test(t)) n = Math.abs(n) / (n > 900 ? 10 : 1);
+      if (/S$/.test(t) || /W$/.test(t)) n = -Math.abs(n) / (Math.abs(n) > 900 ? 10 : 1);
+      if (!/[NSEW]$/.test(t)) n = n / (Math.abs(n) > 900 ? 10 : 1);
+      return n;
+    }
+    function parseAtcfBtk(txt) {
+      var by = {};
+      String(txt || "").split(/\n/).forEach(function (line) {
+        var p = line.split(",").map(function (x) { return String(x || "").trim(); });
+        if ((p[4] || "").toUpperCase() !== "BEST") return;
+        if (Number(p[5]) !== 0) return;
+        var code = p[2];
+        if (!/^\d{10}$/.test(code)) return;
+        var kt = Number(p[8]);
+        var mb = Number(p[9]);
+        var prev = by[code];
+        if (prev && isFinite(prev.kt) && isFinite(kt) && kt < prev.kt) return;
+        var y = +code.slice(0, 4), mo = +code.slice(4, 6), d = +code.slice(6, 8), h = +code.slice(8, 10);
+        var t = Date.UTC(y, mo - 1, d, h);
+        var latRaw = String(p[6] || "");
+        var lonRaw = String(p[7] || "");
+        var lat = parseFloat(latRaw);
+        var lon = parseFloat(lonRaw);
+        if (/S/i.test(latRaw)) lat = -Math.abs(lat);
+        else lat = Math.abs(lat);
+        if (Math.abs(lat) > 90) lat = lat / 10;
+        if (/W/i.test(lonRaw)) lon = -Math.abs(lon);
+        else if (/E/i.test(lonRaw)) lon = Math.abs(lon);
+        if (Math.abs(lon) > 180) lon = lon / 10;
+        by[code] = {
+          t: t,
+          kt: kt,
+          wind: isFinite(kt) ? Math.round(kt * 1.15078) : null,
+          pres: isFinite(mb) ? mb : null,
+          cls: p[10] || "",
+          lat: lat,
+          lon: lon,
+          src: "atcf"
+        };
+      });
+      return Object.keys(by).sort().map(function (k) { return by[k]; });
+    }
+    function mergeStormHistPoints(s, pts) {
+      if (!s || !pts || !pts.length) return;
+      var key = stormHistKey(s);
+      var map = loadStormHist();
+      var rows = map[key] || [];
+      pts.forEach(function (p) {
+        if (!p || !p.t) return;
+        var hit = null;
+        for (var i = 0; i < rows.length; i++) {
+          if (Math.abs(rows[i].t - p.t) < 2 * 3600000) { hit = rows[i]; break; }
+        }
+        var mi = p.mi;
+        if (mi == null && typeof stormMiles === "function" && isFinite(p.lat) && isFinite(p.lon) && typeof homeLat === "function") {
+          try {
+            var fake = { latitudeNumeric: p.lat, longitudeNumeric: p.lon, latitude: p.lat, longitude: p.lon };
+            mi = stormMiles(fake);
+          } catch (eM) {}
+        }
+        if (hit) {
+          if (p.wind != null) hit.wind = p.wind;
+          if (p.pres != null) hit.pres = p.pres;
+          if (mi != null && isFinite(mi)) hit.mi = mi;
+          if (p.adv) hit.adv = p.adv;
+          if (p.src) hit.src = p.src;
+        } else {
+          rows.push({ t: p.t, wind: p.wind, pres: p.pres, mi: mi, adv: p.adv || "", src: p.src || "atcf" });
+        }
+      });
+      rows.sort(function (a, b) { return a.t - b.t; });
+      map[key] = rows.slice(-120);
+      saveStormHist(map);
+    }
+    function loadStormBtk(s, done) {
+      var file = stormAtcfFile(s);
+      if (!file) { if (done) done([]); return; }
+      if (window.__btkAt && window.__btkFile === file && Date.now() - window.__btkAt < 20 * 60 * 1000 && window.__btkPts) {
+        mergeStormHistPoints(s, window.__btkPts);
+        if (done) done(window.__btkPts);
+        return;
+      }
+      var raw = "https://ftp.nhc.noaa.gov/atcf/btk/" + file;
+      var urls = [raw, "https://corsproxy.io/?" + encodeURIComponent(raw)];
+      function next(i) {
+        if (i >= urls.length) { if (done) done([]); return; }
+        fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+          if (!txt || txt.length < 40 || /<html/i.test(txt)) return next(i + 1);
+          var pts = parseAtcfBtk(txt);
+          window.__btkFile = file;
+          window.__btkAt = Date.now();
+          window.__btkPts = pts;
+          mergeStormHistPoints(s, pts);
+          if (typeof noteFeed === "function") noteFeed("storm-hist", !!pts.length, (s.name || file) + " · " + pts.length + " fixes");
+          if (done) done(pts);
+        }).catch(function () { next(i + 1); });
+      }
+      next(0);
+    }
+        function recordStormSample(s, mph, mi) {
       if (!s) return;
       var key = stormHistKey(s);
       var map = loadStormHist();
@@ -6520,11 +6641,14 @@ Cart shop:</textarea>
         if (pres != null && isFinite(pres)) last.pres = pres;
         if (mi != null && isFinite(mi)) last.mi = mi;
       } else {
+        var advN = (s.publicAdvisory && s.publicAdvisory.advNum) || (s.forecastAdvisory && s.forecastAdvisory.advNum) || "";
         rows.push({
           t: now,
           wind: mph != null ? Number(mph) : null,
           pres: pres != null && isFinite(pres) ? pres : null,
-          mi: mi != null && isFinite(mi) ? Number(mi) : null
+          mi: mi != null && isFinite(mi) ? Number(mi) : null,
+          adv: advN ? String(advN).replace(/^0+/, "") : "",
+          src: "live"
         });
       }
       var cut = now - 8 * 86400000;
@@ -6599,6 +6723,18 @@ Cart shop:</textarea>
         if (disc0) disc0.hidden = true;
         if (typeof paintBasinOutlookFrames === "function") paintBasinOutlookFrames(null);
         if (typeof fetchHurrDisc === "function") fetchHurrDisc(null);
+        var last = (window.__nhcAllStorms || []).filter(function (x) {
+          return typeof stormInHomeBasin === "function" ? stormInHomeBasin(x) : true;
+        })[0];
+        if (last && typeof loadStormBtk === "function") {
+          loadStormBtk(last, function () {
+            if (typeof paintStormCharts === "function") paintStormCharts(last);
+            var note = document.getElementById("storm-hist-note");
+            var ttl = document.getElementById("storm-hist-title");
+            if (ttl) ttl.textContent = "Last system · " + (last.name || "Atlantic");
+            if (note) note.textContent = (last.name || "Last storm") + " is no longer an active tropical cyclone. Graph is the official NHC fix history.";
+          });
+        }
         return;
       }
       var c = stormCoords(s);
@@ -6635,7 +6771,15 @@ Cart shop:</textarea>
         setTxt("live-storm-move", moveTxt);
         setTxt("live-storm-adv", (advN ? ("#" + String(advN).replace(/^0+/, "")) : "—") + (issuedTxt ? (" · " + issuedTxt) : ""));
         if (typeof recordStormSample === "function") recordStormSample(s, mph, mi);
-        if (typeof paintStormCharts === "function") paintStormCharts(s);
+        if (typeof loadStormBtk === "function") {
+          loadStormBtk(s, function () {
+            if (typeof paintStormCharts === "function") paintStormCharts(s);
+            var note = document.getElementById("storm-hist-note");
+            var rows = (typeof loadStormHist === "function" && typeof stormHistKey === "function") ? (loadStormHist()[stormHistKey(s)] || []) : [];
+            var advN = (s.publicAdvisory && s.publicAdvisory.advNum) || "";
+            if (note) note.textContent = (s.name || "Storm") + (advN ? (" · public advisory #" + String(advN).replace(/^0+/, "")) : "") + " · " + rows.length + " NHC fixes. Wind, pressure, and distance update when the next advisory posts.";
+          });
+        } else if (typeof paintStormCharts === "function") paintStormCharts(s);
       }
       var nwsHits = (window.__nwsAlerts || []).filter(function (f) {
         var p = (f && f.properties) || {};
@@ -11984,6 +12128,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v871 — Storm page graphs NHC advisory history: wind, pressure, and distance from each official 6-hour fix as new advisories post.",
       "v870 — Package popup loads live scan events in-board via 17TRACK, plus the email status line. Official carrier link stays as backup.",
       "v869 — Header trees stay on the left/right edges so the title stays clear. Maples get a canopy, not palm fronds. Layout is seeded by pin, not reshuffled every refresh.",
       "v868 — Tap a package card with a tracking number to open carrier, number, status, and the official tracker.",
