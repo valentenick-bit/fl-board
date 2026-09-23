@@ -4683,7 +4683,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 878;
+    window.BOARD_VER = 879;
 
     
     function communityShort() {
@@ -12244,10 +12244,14 @@ function currentRotation() {
     }
     function pollNearbyStrikes() {
       connectBlitzWs();
+      if (document.hidden) return;
+      if (window.__bzWs && window.__bzWs.readyState === 1 && window.__lsrAt && Date.now() - window.__lsrAt < 10 * 60 * 1000) return;
       var lat = typeof homeLat === "function" ? homeLat() : 26.97;
       var lon = typeof homeLon === "function" ? homeLon() : -82.36;
-      var url = "https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=2";
+      var url = "https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=1&minlat=" + (lat - 1.5).toFixed(2) + "&maxlat=" + (lat + 1.5).toFixed(2) + "&minlon=" + (lon - 1.5).toFixed(2) + "&maxlon=" + (lon + 1.5).toFixed(2);
+      window.__lsrAt = Date.now();
       fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
+        if (txt && txt.length > 800000) { publishStrikes(); return; }
         var d = null;
         try { d = txt ? JSON.parse(txt) : null; } catch (e) { d = null; }
         var feats = (d && d.features) || [];
@@ -12291,6 +12295,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v879 — Stop parsing the national storm-report file every minute (that freeze). Lightning stays on the live socket. Charts skip when the tab is hidden.",
       "v878 — Don’t drop the rotation timer when a page is held; cap NHC fetches at 6s so a dead proxy can’t freeze the wall.",
       "v877 — Design pass: pin titles, Today leads like Land, same list cards, slim ticker, developer pages live on Status.",
       "v876 — Audit pass: pin-only events, no Englewood fallback, radio stays off unless kiosk, rotation pauses in background, storm copy matches distance, C2/dev pages out of the loop.",
@@ -18613,7 +18618,7 @@ function mustEatsFL() {
         localStorage.setItem("bw-cam-slot", "sky-roads");
       } catch (e) {}
     })();
-    if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 60 * 1000);
+    if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 10 * 60 * 1000);
     setInterval(function () {
       var quiet = Date.now() - (window.__bzLastHit || 0) > 90 * 1000;
       var hours = window.__hours || [];
@@ -21351,11 +21356,12 @@ function drawSurgeChart(points) {
       }, 3 * 60 * 1000);
     })();
     setInterval(function () {
+      if (document.hidden) return;
       if (window.__bwCharts && window.__bwCharts.preds) drawTideChart(window.__bwCharts.preds);
       if (window.__bwCharts && window.__bwCharts.surge) drawSurgeChart(window.__bwCharts.surge);
       if (window.__bwCharts && window.__bwCharts.rise) drawSunChart(window.__bwCharts.rise, window.__bwCharts.set);
       drawMoonChart();
-    }, 60 * 1000);
+    }, 5 * 60 * 1000);
 
     function spaceSentences(s) {
       return String(s || "")
