@@ -1168,6 +1168,30 @@
     .tile strong { font-family:"Fraunces",Georgia,serif; font-size:22px; line-height:1.15; }
     .tile small { display:block; font-size:11px; color:var(--muted); margin-top:4px; }
     .tile.wide { grid-column:1 / -1; }
+    .sea-x { display:none; }
+    #marine[data-sea="gulf"] .sea-x[data-sea*="gulf"],
+    #marine[data-sea="coast"] .sea-x[data-sea*="coast"],
+    #marine[data-sea="sound"] .sea-x[data-sea*="sound"],
+    #marine[data-sea="atlantic"] .sea-x[data-sea*="atlantic"],
+    #marine[data-sea="pacific"] .sea-x[data-sea*="pacific"],
+    #marine[data-sea="inland"] .sea-x[data-sea*="inland"] { display:flex; }
+    #marine .sea-x-kicker[hidden] { display:none; }
+    .sea-cam-frame { position:relative; width:100%; aspect-ratio:16 / 9; max-height:220px; overflow:hidden; border-radius:12px; background:#15202b; margin:8px 0 6px; }
+    .sea-cam-frame iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+    .sea-cam-cap { display:block; font-size:13px; opacity:.8; }
+    .boat-go { display:block; margin:2px 0 6px; font-family:"Fraunces",Georgia,serif; font-size:20px; font-weight:600; color:var(--navy); }
+    .boat-go.go { color:#1a5a2e; }
+    .boat-go.win { color:#8a5a12; }
+    .boat-go.no { color:#8a2a18; }
+    html.dark .boat-go.go { color:#8fcaa4; }
+    html.dark .boat-go.win { color:#e0c27a; }
+    html.dark .boat-go.no { color:#e08a7a; }
+    .boat-alerts { margin:4px 0 6px; }
+    .boat-alerts .boat-alert { display:block; margin:3px 0; font-size:14px; line-height:1.35; }
+    .boat-alerts .boat-alert em { font-style:normal; font-weight:700; letter-spacing:.04em; text-transform:uppercase; font-size:11px; margin-right:6px; color:#8a2a18; }
+    .boat-facts { display:grid; grid-template-columns:1fr 1fr; gap:3px 14px; margin-top:6px; font-size:13px; color:var(--muted); }
+    .boat-facts b { color:var(--navy); font-weight:700; }
+    html.dark .boat-facts b { color:#f7f1e6; }
     .card.chart { margin-bottom:8px; }
     .card.chart > b { font-family:"Fraunces",Georgia,serif; font-size:18px; font-weight:600; letter-spacing:0; text-transform:none; color:var(--navy); display:flex; align-items:center; gap:8px; }
     .moon-face { display:inline-block; width:28px; height:28px; flex:none; line-height:28px; text-align:center; font-style:normal; font-size:26px; background:transparent; box-shadow:none; }
@@ -1500,6 +1524,13 @@
     .wx-map-frame .wx-map-pane { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:#0b1220; object-fit:contain; object-position:center; }
     .wx-map-frame .wx-map-pane.on { display:block; }
     .wx-map-frame iframe.wx-map-pane { width:100%; height:100%; }
+    .sea-map-pills { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 0; }
+    .sea-map-pills button { appearance:none; border:0; background:rgba(8,16,28,.08); color:inherit; border-radius:999px; padding:4px 10px; font:inherit; font-size:12px; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; }
+    .sea-map-pills button.on { background:var(--navy); color:#f7f1e6; }
+    html.dark .sea-map-pills button { background:rgba(247,241,230,.12); }
+    html.dark .sea-map-pills button.on { background:#f7f1e6; color:#121820; }
+    #sky-map-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:16px; background:#05070d; }
+    #sea-chart { position:absolute; inset:0; width:100%; height:100%; border-radius:16px; z-index:2; background:#d8e0e8; }
     .wx-map-cap { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:6px 0 0; font-size:13px; opacity:.85; }
     .wx-map-cap b { letter-spacing:.06em; text-transform:uppercase; font-size:11px; }
     .radar-crop { width:100%; height:52vh; overflow:hidden; border-radius:16px; background:#0b1220; }
@@ -3148,12 +3179,25 @@
           <div class="radar-crop radar-stage" id="land-traffic-stage">
             <div id="traffic-gmap" class="lite gmap-box land-map-pane" hidden></div>
             <iframe class="lite land-map-pane on" id="traffic-map" title="Traffic" src="about:blank" allowfullscreen></iframe>
+            <iframe class="lite land-map-pane" id="land-map-extra" title="Land map" src="about:blank" hidden></iframe>
           </div>
-          <p class="wx-map-cap"><b>Traffic</b><span id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@27.0010,-82.3680,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a> · <a href="https://fl511.com/" target="_blank" rel="noopener">FL511</a></span></p>
+                    <div class="sea-map-pills" id="land-map-pills">
+            <button type="button" data-land-map="traffic" class="on">Traffic</button>
+            <button type="button" data-land-map="sat">Satellite</button>
+            <button type="button" data-land-map="air">Air</button>
+            <button type="button" data-land-map="rain">Rain</button>
+          </div>
+          <p class="wx-map-cap"><b id="land-map-kind">Traffic</b><span id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@27.0010,-82.3680,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a></span></p>
         </div>
         <div class="land-top-left">
-        <p class="pill-key" id="land-nowline">Air, heat, and anything on the ground worth leaving the house for.</p>
         <p class="sheet-kicker">On the ground</p>
+        <div class="card boat-card" id="land-call-card">
+          <b>Land report</b>
+          <strong id="land-go" class="boat-go">Checking the ground…</strong>
+          <span id="land-nowline">Air, heat, flood, and NWS alerts for the home pin.</span>
+          <div id="land-alerts" class="boat-alerts"></div>
+          <div id="land-facts" class="boat-facts"></div>
+        </div>
         <div class="metric-table" id="land-metrics">
           <div class="metric-row has-chart"><label>Air quality</label><div><strong id="live-aqi">—</strong><small id="live-aqi-note"></small></div><div class="metric-spark hist" id="aqi-chart"></div></div>
           <div class="metric-row" id="tile-heatrisk"><label>Heat risk</label><strong id="live-heatrisk">—</strong><div></div></div>
@@ -3181,29 +3225,60 @@
         <div class="sea-map-frame sheet-map" id="sea-map-frame">
           <div class="radar-crop radar-stage" id="sea-map-stage">
             <iframe class="sheet-map-pane on" id="sea-map" title="Marine map" src="about:blank" allowfullscreen></iframe>
+            <div class="sheet-map-pane" id="sea-chart" hidden></div>
           </div>
-          <p class="wx-map-cap"><b>Waves</b><span id="sea-map-note">Pinned on home</span></p>
+          <div class="sea-map-pills" id="sea-map-pills">
+            <button type="button" data-sea-map="waves" class="on">Waves</button>
+            <button type="button" data-sea-map="swell">Swell</button>
+            <button type="button" data-sea-map="currents">Current</button>
+            <button type="button" data-sea-map="chart">Chart</button>
+            <button type="button" data-sea-map="ais">Traffic</button>
+          </div>
+          <p class="wx-map-cap"><b id="sea-map-kind">Waves</b><span id="sea-map-note">Pinned on home</span></p>
         </div>
         <div class="sea-top-left">
-        <p class="sheet-kicker">On the water</p>
+        <p class="sheet-kicker">Boating</p>
+        <div class="card boat-card" id="boat-card">
+          <b id="coast-title">Boating</b>
+          <strong id="boat-go" class="boat-go">Checking the water…</strong>
+          <span id="live-coastal">Wind, seas, tide, and NWS marine alerts for the home pin.</span>
+          <div id="boat-alerts" class="boat-alerts"></div>
+          <div id="boat-facts" class="boat-facts"></div>
+        </div>
+        <p class="sheet-kicker">Conditions</p>
         <div class="metric-table" id="sea-metrics">
-          <div class="metric-row has-chart"><label>Tide</label><div><strong id="live-tide-today">Loading tides…</strong><small id="live-tide-station"></small></div><div class="metric-spark hist tide" id="tide-chart"></div></div>
-          <div class="metric-row has-chart"><label>Surge</label><strong id="live-surge">Loading…</strong><div class="metric-spark hist" id="surge-chart"></div></div>
-          <div class="metric-row has-chart"><label>Gulf water</label><strong id="live-sst">—</strong><div class="metric-spark hist" id="wtemp-chart"></div></div>
-          <div class="metric-row has-chart"><label>Inlet</label><strong id="live-wtemp">—</strong><div class="metric-spark hist" id="inlet-chart"></div></div>
+          <div class="metric-row"><label>Wind</label><strong id="live-sea-wind">—</strong><div></div></div>
           <div class="metric-row has-chart"><label>Seas</label><strong id="live-seas">—</strong><div class="metric-spark hist" id="wave-chart"></div></div>
-          <div class="metric-row"><label>Small craft</label><strong id="live-craft">None</strong><div></div></div>
-          <div class="metric-row"><label>Rip tide</label><strong id="live-rip">Typical</strong><div></div></div>
-          <div class="metric-row"><label>Red tide</label><div><strong id="live-redtide">Checking</strong><em id="live-redtide-age"></em></div><div></div></div>
-          <div class="metric-row"><label>Bacteria</label><div><strong id="live-bacteria">—</strong><em id="live-bacteria-age"></em></div><div></div></div>
+          <div class="metric-row"><label>Period</label><strong id="live-period">—</strong><div></div></div>
+          <div class="metric-row has-chart"><label>Water</label><strong id="live-sst">—</strong><div class="metric-spark hist" id="wtemp-chart"></div></div>
+          <div class="metric-row has-chart"><label>Tide</label><div><strong id="live-tide-today">Loading tides…</strong><small id="live-tide-station"></small></div><div class="metric-spark hist tide" id="tide-chart"></div></div>
+          <div class="metric-row"><label>Visibility</label><strong id="live-sea-vis">—</strong><div></div></div>
+          <div class="metric-row"><label>Drift</label><strong id="live-drift">—</strong><div></div></div>
+          <div class="metric-row"><label>Barometer</label><div><strong id="live-sea-pres">—</strong><small id="live-sea-pres-note"></small></div><div></div></div>
+          <div class="metric-row"><label>Lightning</label><strong id="live-sea-bolt">—</strong><div></div></div>
+        </div>
+        <p class="sheet-kicker sea-x-kicker" id="sea-extra-kicker" hidden>Local water</p>
+        <div class="metric-table" id="sea-extras">
+          <div class="metric-row has-chart sea-x" data-sea="gulf coast sound atlantic pacific"><label>Surge</label><strong id="live-surge">—</strong><div class="metric-spark hist" id="surge-chart"></div></div>
+          <div class="metric-row has-chart sea-x" data-sea="gulf"><label>Inlet</label><strong id="live-wtemp">—</strong><div class="metric-spark hist" id="inlet-chart"></div></div>
+          <div class="metric-row sea-x" data-sea="gulf coast sound atlantic pacific"><label>Rip</label><strong id="live-rip">—</strong><div></div></div>
+          <div class="metric-row sea-x" data-sea="gulf"><label>Red tide</label><div><strong id="live-redtide">—</strong><em id="live-redtide-age"></em></div><div></div></div>
+          <div class="metric-row sea-x" data-sea="gulf"><label>Bacteria</label><div><strong id="live-bacteria">—</strong><em id="live-bacteria-age"></em></div><div></div></div>
+          <div class="metric-row sea-x" data-sea="inland sound"><label>River</label><strong id="live-sea-river">—</strong><div></div></div>
+          <div class="metric-row sea-x" hidden><label>Small craft</label><strong id="live-craft">None</strong><div></div></div>
         </div>
         </div>
         </div>
         <div class="sheet-notes">
-        <div class="card"><b id="coast-title">Coastal waters</b><span id="live-coastal">Gulf snapshot for a boat ride off the beach — seas, wind, and whether small craft should stay in.</span></div>
         <div class="card"><b id="fish-title">What’s biting</b><span id="live-fish">Loading the local bite…</span></div>
+        <div class="card" id="sea-uscg-card"><b>USCG</b><span id="live-sea-uscg">Checking notices for this pin…</span></div>
+        <div class="card sea-cam-card" id="sea-cam-card">
+          <b id="sea-cam-title">Water cam</b>
+          <div class="sea-cam-frame"><iframe id="sea-cam" title="Water camera" src="about:blank" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
+          <span class="sea-cam-cap" id="sea-cam-cap"></span>
+        </div>
         <div class="card" id="king-card" hidden><b>King / nuisance tide</b><span id="live-king"></span></div>
-        <div class="card wx-extra" id="tsunami-card"><b>Tsunami</b><span id="live-tsunami">No advisory.</span></div>
+        <div class="card wx-extra" id="tsunami-card" hidden><b>Tsunami</b><span id="live-tsunami">No advisory.</span></div>
         </div>
         <p class="pill-key" id="marine-refs">Sources follow the home address.</p>
       </section>
@@ -3214,29 +3289,53 @@
         <div class="sky-map-frame sheet-map" id="sky-map-frame">
           <div class="radar-crop radar-stage" id="sky-map-stage">
             <iframe class="sheet-map-pane on" id="sky-map" title="Night sky from home" src="about:blank" allowfullscreen></iframe>
+            <img class="sheet-map-pane" id="sky-map-img" alt="" hidden>
           </div>
-          <p class="wx-map-cap"><b>Night sky</b><span id="sky-map-note">Pinned on home</span></p>
+          <div class="sea-map-pills" id="sky-map-pills">
+            <button type="button" data-sky-map="sky" class="on">Sky</button>
+            <button type="button" data-sky-map="clouds">Clouds</button>
+            <button type="button" data-sky-map="aurora">Aurora</button>
+            <button type="button" data-sky-map="sun">Sun</button>
+          </div>
+          <p class="wx-map-cap"><b id="sky-map-kind">Night sky</b><span id="sky-map-note">Pinned on home</span></p>
         </div>
         <div class="sky-top-left">
+        <p class="sheet-kicker">Tonight</p>
+        <div class="card boat-card" id="sky-call-card">
+          <b id="sky-call-title">Astronomer report</b>
+          <strong id="sky-go" class="boat-go">Checking the sky…</strong>
+          <span id="live-sky-watch">Clouds, seeing, moon, and aurora for the home pin.</span>
+          <div id="sky-alerts" class="boat-alerts"></div>
+          <div id="sky-events" class="boat-alerts sky-events"></div>
+          <div id="sky-facts" class="boat-facts"></div>
+        </div>
         <div class="sky-graphs">
         <div class="card chart"><b>Sun</b><span id="live-sun-label">Rise and set at the house</span>
-          <span id="live-twilight" class="pill-key">Twilight after sunset is when the beach goes dark.</span>
-          <div class="sunpath" id="sun-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#c4a35a" stroke-width="3"/><circle cx="20" cy="70" r="4" fill="#c4a35a"/><circle cx="200" cy="70" r="4" fill="#1b2a4a"/><circle cx="95" cy="22" r="5" fill="#e07a5f"/><text x="8" y="84" font-size="9" fill="#5c6b7a">7:07a</text><text x="168" y="84" font-size="9" fill="#5c6b7a">7:52p</text><text x="86" y="14" font-size="9" fill="#1b2a4a">now</text></svg></div>
+          <span id="live-twilight" class="pill-key">Twilight after sunset.</span>
+          <div class="sunpath" id="sun-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M20,70 C70,10 150,10 200,70" fill="none" stroke="#c4a35a" stroke-width="3"/><circle cx="20" cy="70" r="4" fill="#c4a35a"/><circle cx="200" cy="70" r="4" fill="#1b2a4a"/><circle cx="95" cy="22" r="5" fill="#e07a5f"/><text x="8" y="84" font-size="9" fill="#5c6b7a">rise</text><text x="168" y="84" font-size="9" fill="#5c6b7a">set</text></svg></div>
         </div>
         <div class="card chart moon-card"><b>Moon <i id="sky-moon-face" class="moon-face" aria-hidden="true"></i></b><span id="live-moon-label">Rise and set at the house</span>
-          <div class="moonpath" id="moon-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/><circle cx="118" cy="52" r="5" fill="#2a9d8f"/><text x="8" y="84" font-size="8" fill="#5c6b7a">New</text><text x="62" y="12" font-size="8" fill="#5c6b7a">1st</text><text x="118" y="84" font-size="8" fill="#5c6b7a">Full 28th</text><text x="178" y="12" font-size="8" fill="#5c6b7a">3rd</text></svg></div>
+          <div class="moonpath" id="moon-chart"><svg viewBox="0 0 220 90"><line x1="10" y1="70" x2="210" y2="70" stroke="#d7cdbb"/><path d="M10,70 C35,70 45,18 70,18 C95,18 105,70 130,70 C155,70 165,18 190,18 C210,18 210,70" fill="none" stroke="#1b2a4a" stroke-width="3"/><circle cx="118" cy="52" r="5" fill="#2a9d8f"/></svg></div>
         </div>
         </div>
         <div class="status-row" id="sky-planets">
-          <div class="status-chip"><label>Tonight</label><strong id="live-planet1">Venus</strong><em id="live-planet1d" class="compass" data-dir="W"></em></div>
+          <div class="status-chip"><label>Dusk</label><strong id="live-planet1">Venus</strong><em id="live-planet1d" class="compass" data-dir="W"></em></div>
           <div class="status-chip"><label>Overnight</label><strong id="live-planet2">Saturn</strong><em id="live-planet2d" class="compass" data-dir="S"></em></div>
           <div class="status-chip"><label>Dawn</label><strong id="live-planet3">Jupiter</strong><em id="live-planet3d" class="compass" data-dir="E"></em></div>
           <div class="status-chip"><label>Stars</label><strong id="live-planet4">Summer Triangle</strong><em id="live-planet4d" class="compass" data-dir="S"></em></div>
-          <div class="status-chip" id="chip-space"><label>Space weather</label><strong id="live-space">Quiet</strong></div>
-          <div class="status-chip wx-extra" id="chip-meteor"><label>Meteor shower</label><strong id="live-meteor">—</strong></div>
+          <div class="status-chip wx-extra" id="chip-meteor"><label>Meteors</label><strong id="live-meteor">—</strong></div>
         </div>
         </div>
         </div>
+        <p class="sheet-kicker">Conditions</p>
+        <div class="metric-table" id="sky-obs-metrics">
+          <div class="metric-row"><label>Cloud</label><strong id="live-sky-cloud">—</strong><div></div></div>
+          <div class="metric-row"><label>Seeing</label><strong id="live-seeing">—</strong><div></div></div>
+          <div class="metric-row"><label>Transparency</label><strong id="live-transp">—</strong><div></div></div>
+          <div class="metric-row"><label>Moon</label><strong id="live-sky-moonpct">—</strong><div></div></div>
+          <div class="metric-row"><label>Aurora</label><strong id="live-aurora">—</strong><div></div></div>
+        </div>
+        <p class="sheet-kicker">Space weather</p>
         <div class="metric-table" id="sky-metrics">
           <div class="metric-row has-chart"><label>Kp</label><strong id="live-kp">—</strong><div class="metric-spark hist" id="kp-chart"></div></div>
           <div class="metric-row has-chart"><label>Solar wind</label><strong id="live-swind">—</strong><div class="metric-spark hist" id="swind-chart"></div></div>
@@ -3245,6 +3344,7 @@
           <div class="tile"><label>X-ray flare</label><strong id="live-flare">—</strong></div>
           <div class="tile"><label>10.7 cm flux</label><strong id="live-f107">—</strong></div>
           <div class="tile"><label>Sunspots</label><strong id="live-spots">—</strong></div>
+          <div class="tile" id="chip-space"><label>Space weather</label><strong id="live-space">Quiet</strong></div>
         </div>
         <div class="card"><b id="iss-title">ISS</b><span id="live-iss">Looking up the next pass</span></div>
         <div id="horo-box"></div>
@@ -4528,7 +4628,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 855;
+    window.BOARD_VER = 863;
 
     
     function communityShort() {
@@ -5141,24 +5241,417 @@ Cart shop:</textarea>
     window.gmapThemeOpts = gmapThemeOpts;
     window.applyGmapsTheme = applyGmapsTheme;
 
+
+    function landAlertKind(ev, headline, desc) {
+      var t = [ev, headline, desc].join(" ").toLowerCase();
+      if (/tornado|hurricane|blizzard|ice storm|flash flood warning/.test(t)) return "hard";
+      if (/flood|river flood|coastal flood/.test(t)) return "flood";
+      if (/red flag|fire weather|wildfire/.test(t)) return "fire";
+      if (/air quality|aqi|smoke/.test(t)) return "air";
+      if (/heat|excessive heat/.test(t)) return "heat";
+      if (/dense fog|freezing fog/.test(t)) return "fog";
+      if (/winter storm|ice|freezing rain|snow squall/.test(t)) return "ice";
+      if (/wind chill|freeze|frost|hard freeze/.test(t)) return "cold";
+      if (/high wind|wind advisory/.test(t)) return "wind";
+      return "";
+    }
+    function paintLandReport() {
+      var goEl = document.getElementById("land-go");
+      var lineEl = document.getElementById("land-nowline");
+      var alertBox = document.getElementById("land-alerts");
+      var factBox = document.getElementById("land-facts");
+      var place = typeof homePlace === "function" ? homePlace() : "home";
+      function txt(id) { return ((document.getElementById(id) || {}).textContent || "").trim(); }
+      var aqi = txt("live-aqi");
+      var heat = txt("live-heatrisk");
+      var flood = txt("live-flood");
+      var fog = txt("live-fog");
+      var fire = txt("live-firewx");
+      var pollen = txt("live-pollen");
+      var frost = txt("live-frost");
+      var ice = txt("live-ice");
+      var snow = txt("live-snow");
+      var aqiN = parseInt(String(aqi).replace(/[^\d]/g, ""), 10);
+      var alerts = [];
+      var seen = {};
+      (window.__nwsHigh || []).concat(window.__nwsLow || []).concat(window.__nwsAlerts || []).forEach(function (f) {
+        var p = f.properties || f || {};
+        var ev = p.event || p.headline || "";
+        var kind = landAlertKind(ev, p.headline || "", p.description || "");
+        if (!kind || seen[ev]) return;
+        seen[ev] = 1;
+        alerts.push({ kind: kind, event: ev, line: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 140) });
+      });
+      var hard = alerts.some(function (a) { return a.kind === "hard"; });
+      var badAir = isFinite(aqiN) && aqiN >= 151;
+      var badHeat = /extreme|major/i.test(heat);
+      var badIce = ice && ice !== "—" && !/^none|^no\b|^0/i.test(ice);
+      var badFlood = flood && /warning|advisory|flood/i.test(flood);
+      var stay = hard || badIce || /blizzard/i.test(alerts.map(function (a) { return a.event; }).join(" "));
+      var caution = alerts.length || badAir || badHeat || badFlood || /dense|advisory/i.test(fog) || /red flag|critical/i.test(fire);
+      var rank = stay ? "no" : caution ? "win" : "go";
+      var verdict = stay ? "Stay in" : caution ? "Go careful" : "Good to go out";
+      var bits = [];
+      if (aqi) bits.push("AQI " + aqi);
+      if (heat && heat !== "—") bits.push("heat " + heat.toLowerCase());
+      if (flood && flood !== "—" && !/^none/i.test(flood)) bits.push("river " + flood.toLowerCase());
+      if (fog && fog !== "—" && !/^none/i.test(fog)) bits.push(fog.toLowerCase());
+      if (fire && fire !== "—" && !/^none|^no\b/i.test(fire)) bits.push("fire wx " + fire.toLowerCase());
+      var line = "From " + place + (bits.length ? ": " + bits.join(" · ") + "." : ".");
+      if (!alerts.length) line += " No flood, freeze, fire, or air advisory on this pin.";
+      if (goEl) { goEl.textContent = verdict; goEl.className = "boat-go " + rank; }
+      if (lineEl) lineEl.textContent = line;
+      if (alertBox) {
+        alertBox.innerHTML = alerts.slice(0, 4).map(function (a) {
+          return '<span class="boat-alert"><em>' + String(a.event).replace(/</g, "") + "</em>" + String(a.line || "").replace(/</g, "") + "</span>";
+        }).join("");
+      }
+      if (factBox) {
+        var facts = [];
+        facts.push("<div><b>Air</b> " + (aqi || "—") + "</div>");
+        facts.push("<div><b>Heat</b> " + (heat || "—") + "</div>");
+        facts.push("<div><b>River</b> " + (flood || "—") + "</div>");
+        facts.push("<div><b>Fog</b> " + (fog || "—") + "</div>");
+        if (fire && fire !== "—") facts.push("<div><b>Fire</b> " + fire + "</div>");
+        if (pollen && pollen !== "—" && pollen !== "") facts.push("<div><b>Pollen</b> " + pollen + "</div>");
+        if (snow && snow !== "—" && !/^0|^none/i.test(snow)) facts.push("<div><b>Snow</b> " + snow + "</div>");
+        if (ice && ice !== "—" && !/^none/i.test(ice)) facts.push("<div><b>Ice</b> " + ice + "</div>");
+        factBox.innerHTML = facts.join("");
+      }
+      var polRow = document.getElementById("tile-pollen");
+      if (polRow) polRow.hidden = !(pollen && pollen !== "—" && pollen !== "");
+      if (typeof noteFeed === "function") noteFeed("land-call", true, verdict);
+    }
+    window.paintLandReport = paintLandReport;
+    function showLandMap(id) {
+      var views = {
+        traffic: { label: "Traffic", kind: "traffic" },
+        sat: { label: "Satellite", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("satellite") : "" },
+        air: { label: "Air", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("airquality") : "" },
+        rain: { label: "Rain", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("rain") : "" }
+      };
+      if (!views[id]) id = "traffic";
+      window.__landMapView = id;
+      var v = views[id];
+      var kindEl = document.getElementById("land-map-kind");
+      if (kindEl) kindEl.textContent = v.label;
+      document.querySelectorAll("#land-map-pills button").forEach(function (b) {
+        b.className = b.getAttribute("data-land-map") === id ? "on" : "";
+      });
+      var g = document.getElementById("traffic-gmap");
+      var traf = document.getElementById("traffic-map");
+      var extra = document.getElementById("land-map-extra");
+      function hide(el) { if (el) { el.hidden = true; el.classList.remove("on"); el.style.display = "none"; } }
+      function show(el) { if (el) { el.hidden = false; el.classList.add("on"); el.style.display = "block"; } }
+      if (v.kind === "traffic") {
+        hide(extra);
+        if (g && g.childNodes && g.childNodes.length) { hide(traf); show(g); }
+        else { hide(g); show(traf); if (typeof applyLocalMaps === "function") applyLocalMaps(); }
+      } else {
+        hide(g); hide(traf); show(extra);
+        if (extra && v.url && extra.getAttribute("data-src") !== v.url) {
+          extra.src = v.url;
+          extra.setAttribute("data-src", v.url);
+        }
+      }
+      if (typeof noteFeed === "function") noteFeed("land-map", true, id);
+    }
+    window.showLandMap = showLandMap;
     function homeTrafficEmbed() {
       var lat = homeLat(), lon = homeLon();
       return "https://maps.google.com/maps?ll=" + lat.toFixed(5) + "," + lon.toFixed(5) +
         "&q=" + lat.toFixed(5) + "," + lon.toFixed(5) +
         "&z=12&hl=en&layer=t&t=m&output=embed";
     }
-    function homeWavesEmbed() {
+    function homeWavesEmbed() { return homeWindyEmbed("waves"); }
+    function homeWindyEmbed(overlay) {
       var lat = homeLat(), lon = homeLon();
+      overlay = overlay || "waves";
+      var product = overlay === "currents" ? "currents" : (overlay === "satellite" ? "satellite" : (overlay === "airquality" ? "ecmwf" : "ecmwf"));
       return "https://embed.windy.com/embed2.html?lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) +
         "&detailLat=" + lat.toFixed(4) + "&detailLon=" + lon.toFixed(4) +
-        "&zoom=12&overlay=waves&product=ecmwf&level=surface&marker=true&message=false&calendar=now&pressure=false&type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph";
+        "&zoom=12&overlay=" + overlay + "&product=" + product + "&level=surface&marker=true&message=false&calendar=now&pressure=false&type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph";
     }
+    function homeAisEmbed() {
+      var lat = homeLat(), lon = homeLon();
+      return "https://www.marinetraffic.com/en/ais/embed/zoom:11/centery:" + lat.toFixed(4) + "/centerx:" + lon.toFixed(4) + "/maptype:4/shownames:true/mmsi:0/showmenu:false";
+    }
+    function paintSeaChart() {
+      var el = document.getElementById("sea-chart");
+      if (!el || typeof L === "undefined") return;
+      var lat = homeLat(), lon = homeLon();
+      if (window.__seaChart && window.__seaChart.map) {
+        window.__seaChart.map.setView([lat, lon], window.__seaChart.map.getZoom() || 12);
+        return;
+      }
+      el.innerHTML = "";
+      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OSM" }).addTo(map);
+      L.tileLayer("https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.92, attribution: "NOAA RNC" }).addTo(map);
+      L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "OpenSeaMap" }).addTo(map);
+      L.circleMarker([lat, lon], { radius: 6, color: "#c45c26", fillColor: "#f2b05e", fillOpacity: 1, weight: 2 }).addTo(map);
+      window.__seaChart = { map: map, pin: lat + "," + lon };
+      setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 200);
+    }
+    function showSeaMap(id) {
+      var views = {
+        waves: { label: "Waves", note: "Windy swell and wind waves on the home pin", url: homeWindyEmbed("waves"), chart: false },
+        swell: { label: "Swell", note: "Windy swell overlay on the home pin", url: homeWindyEmbed("swell"), chart: false },
+        currents: { label: "Current", note: "Windy surface current on the home pin", url: homeWindyEmbed("currents"), chart: false },
+        chart: { label: "Chart", note: "NOAA raster chart + channel marks + soundings", url: "", chart: true },
+        ais: { label: "Traffic", note: "Ships and tows near the pin", url: homeAisEmbed(), chart: false }
+      };
+      if (!views[id]) id = "waves";
+      window.__seaMapView = id;
+      var v = views[id];
+      var frame = document.getElementById("sea-map");
+      var chart = document.getElementById("sea-chart");
+      var kind = document.getElementById("sea-map-kind");
+      var note = document.getElementById("sea-map-note");
+      if (kind) kind.textContent = v.label;
+      if (note) note.textContent = v.note + " · " + (homePlace() || "home");
+      document.querySelectorAll("#sea-map-pills button").forEach(function (b) {
+        b.className = b.getAttribute("data-sea-map") === id ? "on" : "";
+      });
+      if (v.chart) {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
+        paintSeaChart();
+      } else {
+        if (chart) { chart.hidden = true; chart.classList.remove("on"); chart.style.display = "none"; }
+        if (frame) {
+          frame.classList.add("on");
+          frame.style.display = "block";
+          if (v.url && frame.getAttribute("data-src") !== v.url) {
+            frame.src = v.url;
+            frame.setAttribute("data-src", v.url);
+          }
+        }
+      }
+      if (typeof noteFeed === "function") noteFeed("sea-map", true, id);
+    }
+    window.showSeaMap = showSeaMap;
+
+    function showSkyMap(id) {
+      var lat = homeLat(), lon = homeLon();
+      var views = {
+        sky: { label: "Night sky", note: "Live sky from the home pin", kind: "iframe", url: typeof homeSkyEmbed === "function" ? homeSkyEmbed() : "" },
+        clouds: { label: "Clouds", note: "Satellite and cloud cover on the pin", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("satellite") : "" },
+        aurora: { label: "Aurora", note: "NOAA OVATION northern oval", kind: "img", url: "https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg?" + Date.now() },
+        sun: { label: "Sun", note: "SDO AIA 193 — flares and holes", kind: "img", url: "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg?" + Date.now() }
+      };
+      if (!views[id]) id = "sky";
+      window.__skyMapView = id;
+      var v = views[id];
+      var frame = document.getElementById("sky-map");
+      var img = document.getElementById("sky-map-img");
+      var kindEl = document.getElementById("sky-map-kind");
+      var note = document.getElementById("sky-map-note");
+      if (kindEl) kindEl.textContent = v.label;
+      if (note) note.textContent = v.note + " · " + (homePlace() || "home");
+      document.querySelectorAll("#sky-map-pills button").forEach(function (b) {
+        b.className = b.getAttribute("data-sky-map") === id ? "on" : "";
+      });
+      if (v.kind === "img") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.src = v.url; img.alt = v.label; }
+      } else {
+        if (img) { img.hidden = true; img.classList.remove("on"); img.style.display = "none"; }
+        if (frame) {
+          frame.classList.add("on");
+          frame.style.display = "block";
+          if (v.url && frame.getAttribute("data-src") !== v.url) {
+            frame.src = v.url;
+            frame.setAttribute("data-src", v.url);
+          }
+        }
+      }
+      if (typeof noteFeed === "function") noteFeed("sky-map", true, id);
+    }
+    window.showSkyMap = showSkyMap;
+    function skyAlertKind(ev, headline, desc) {
+      var t = [ev, headline, desc].join(" ").toLowerCase();
+      if (/tornado|severe thunderstorm|hurricane|tropical storm|blizzard|ice storm/.test(t)) return "hard";
+      if (/dense fog|freezing fog|fog advisory/.test(t)) return "fog";
+      if (/smoke|haze|dust/.test(t)) return "haze";
+      if (/high wind|wind advisory|gale/.test(t)) return "wind";
+      if (/thunderstorm|lightning/.test(t)) return "storm";
+      if (/frost|freeze|winter weather/.test(t)) return "cold";
+      return "";
+    }
+    function paintSkyCall() {
+      var goEl = document.getElementById("sky-go");
+      var watch = document.getElementById("live-sky-watch");
+      var alertBox = document.getElementById("sky-alerts");
+      var factBox = document.getElementById("sky-facts");
+      var cloudEl = document.getElementById("live-sky-cloud");
+      var seeEl = document.getElementById("live-seeing");
+      var trEl = document.getElementById("live-transp");
+      var moonEl = document.getElementById("live-sky-moonpct");
+      var aurEl = document.getElementById("live-aurora");
+      var place = typeof homePlace === "function" ? homePlace() : "home";
+      var cloudTxt = ((document.getElementById("live-cloud") || {}).textContent || "").replace(/[^\d.]/g, "");
+      var cloud = cloudTxt ? Number(cloudTxt) : (window.__wxNow && window.__wxNow.cloudCover != null ? Number(window.__wxNow.cloudCover) : null);
+      var windN = parseFloat(((document.getElementById("live-wind") || {}).textContent || "").replace(/[^\d.]/g, ""));
+      var gustN = parseFloat(((document.getElementById("live-gusts") || {}).textContent || "").replace(/[^\d.]/g, ""));
+      var visT = ((document.getElementById("live-vis") || {}).textContent || "");
+      var visM = window.__visMiles;
+      if (visM == null && /mi/.test(visT)) visM = parseFloat(visT);
+      var ph = typeof moonPhase === "function" ? moonPhase() : 0.5;
+      var illum = (1 - Math.cos(ph * Math.PI * 2)) / 2;
+      var moonName = typeof moonPhaseName === "function" ? moonPhaseName(ph) : "";
+      var kp = window.__kp != null ? Number(window.__kp) : null;
+      var rain = !!(window.__wxNow && window.__wxNow.rain);
+      var seeing = "—";
+      if (isFinite(windN) || cloud != null) {
+        if ((isFinite(gustN) && gustN >= 22) || (isFinite(windN) && windN >= 16) || (cloud != null && cloud >= 70)) seeing = "Poor";
+        else if ((isFinite(windN) && windN >= 9) || (isFinite(gustN) && gustN >= 14) || (cloud != null && cloud >= 35)) seeing = "Fair";
+        else seeing = "Good";
+      }
+      var transp = "—";
+      if (visM != null) transp = visM >= 10 ? "Excellent" : visM >= 6 ? "Clear" : visM >= 2 ? "Hazy" : "Poor";
+      else if (cloud != null) transp = cloud < 25 ? "Clear" : cloud < 60 ? "Milky" : "Washed";
+      var aurora = "Unlikely";
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : 30;
+      if (kp != null) {
+        if (kp >= 7) aurora = "Possible";
+        else if (kp >= 5 && lat >= 38) aurora = "Watch north";
+        else if (kp >= 6 && lat >= 34) aurora = "Watch far north";
+        else aurora = "Quiet";
+      }
+      if (cloudEl) cloudEl.textContent = cloud != null ? (Math.round(cloud) + "%") : "—";
+      if (seeEl) seeEl.textContent = seeing;
+      if (trEl) trEl.textContent = transp;
+      if (moonEl) moonEl.textContent = Math.round(illum * 100) + "% lit";
+      if (aurEl) aurEl.textContent = aurora + (kp != null ? " · Kp " + kp : "");
+
+      var alerts = [];
+      var feats = (window.__nwsHigh || []).concat(window.__nwsLow || []).concat(window.__nwsAlerts || []);
+      var seen = {};
+      feats.forEach(function (f) {
+        var p = f.properties || f || {};
+        var ev = p.event || p.headline || "";
+        var kind = skyAlertKind(ev, p.headline || "", p.description || "");
+        if (!kind || seen[ev]) return;
+        seen[ev] = 1;
+        alerts.push({ kind: kind, event: ev, line: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 140) });
+      });
+
+      var windowLine = "";
+      var hours = window.__hours || [];
+      var now = Date.now();
+      var best = null;
+      hours.forEach(function (h) {
+        if (!h || !h.startTime) return;
+        var t = new Date(h.startTime).getTime();
+        if (t < now - 20 * 60000 || t > now + 14 * 3600000) return;
+        var c = h.cloudCover != null ? Number(h.cloudCover) : null;
+        if (c == null && h.skyCover != null) c = Number(h.skyCover);
+        if (c == null) return;
+        if (c <= 35 && (!best || c < best.c)) best = { t: t, c: c };
+      });
+      if (best) {
+        var hh = new Date(best.t).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+        windowLine = "Clearest window around " + hh + " (" + Math.round(best.c) + "% cloud).";
+      }
+
+      var target = ((document.getElementById("live-planet1") || {}).textContent || "").trim();
+      var iss = ((document.getElementById("live-iss") || {}).textContent || "").trim();
+      var hard = alerts.some(function (a) { return a.kind === "hard" || a.kind === "storm"; });
+      var stay = rain || hard || (cloud != null && cloud >= 80);
+      var caution = alerts.length || (cloud != null && cloud >= 40) || seeing === "Poor" || transp === "Poor" || transp === "Hazy";
+      var moonHit = illum >= 0.7;
+      var rank = stay ? "no" : caution ? "win" : "go";
+      var verdict = stay ? "Clouded out" : caution ? "Pick a window" : (moonHit ? "Good · bright moon" : "Good night");
+
+      var body = [];
+      if (cloud != null) body.push(Math.round(cloud) + "% cloud");
+      if (seeing !== "—") body.push("seeing " + seeing.toLowerCase());
+      if (transp !== "—") body.push(transp.toLowerCase() + " transparency");
+      body.push(Math.round(illum * 100) + "% " + (moonName || "moon").toLowerCase());
+      if (aurora !== "Unlikely" && aurora !== "Quiet") body.push("aurora " + aurora.toLowerCase());
+      var line = "From " + place + ": " + body.join(" · ") + ".";
+      if (windowLine) line += " " + windowLine;
+      var events = typeof skyEventList === "function" ? skyEventList() : [];
+      var evBox = document.getElementById("sky-events");
+      if (evBox) {
+        evBox.innerHTML = events.slice(0, 6).map(function (e) {
+          return '<span class="boat-alert"><em>' + String(e.title).replace(/</g, "") + " · " + e.status + "</em>" + String(e.line || "").replace(/</g, "") + "</span>";
+        }).join("");
+      }
+      var met = events.filter(function (e) { return e.kind === "meteor"; })[0];
+      var comet = events.filter(function (e) { return e.kind === "comet"; })[0];
+      var extra = events.filter(function (e) { return e.kind !== "meteor" && e.kind !== "comet"; })[0];
+      if (met) line += " " + met.title + " " + met.status + " — " + met.line;
+      else if (comet) line += " " + comet.title + " — " + comet.line;
+      else if (extra) line += " " + extra.title + " — " + extra.line;
+      if (target) line += " Dusk target " + target + ".";
+      if (moonHit && !stay) line += " Moon will wash faint DSOs — planets and clusters still work.";
+      if (!alerts.length) line += " No NWS fog, wind, or storm advisory on this pin.";
+
+      if (goEl) { goEl.textContent = verdict; goEl.className = "boat-go " + rank; }
+      if (watch) watch.textContent = line;
+      if (alertBox) {
+        alertBox.innerHTML = alerts.length
+          ? alerts.slice(0, 4).map(function (a) {
+              return '<span class="boat-alert"><em>' + String(a.event || "Alert").replace(/</g, "") + "</em>" + String(a.line || "").replace(/</g, "") + "</span>";
+            }).join("")
+          : "";
+      }
+      if (factBox) {
+        var facts = [];
+        facts.push("<div><b>Cloud</b> " + (cloud != null ? Math.round(cloud) + "%" : "—") + "</div>");
+        facts.push("<div><b>Seeing</b> " + seeing + "</div>");
+        facts.push("<div><b>Transparency</b> " + transp + "</div>");
+        facts.push("<div><b>Moon</b> " + Math.round(illum * 100) + "% lit</div>");
+        facts.push("<div><b>Aurora</b> " + aurora + "</div>");
+        if (iss && !/looking up/i.test(iss)) facts.push("<div><b>ISS</b> " + iss.replace(/^Next pass /i, "") + "</div>");
+        if (met) facts.push("<div><b>Shower</b> " + met.title + "</div>");
+        if (comet) facts.push("<div><b>Comet</b> " + comet.title + "</div>");
+        factBox.innerHTML = facts.join("");
+      }
+      if (typeof noteFeed === "function") noteFeed("sky-call", true, verdict + (alerts.length ? " · " + alerts.length + " alerts" : ""));
+    }
+    window.paintSkyCall = paintSkyCall;
     function homeSkyEmbed() {
       var lat = homeLat(), lon = homeLon();
       return "https://virtualsky.lco.global/embed/index.html?longitude=" + lon.toFixed(4) +
         "&latitude=" + lat.toFixed(4) +
         "&constellations=true&constellationlabels=true&showstarlabels=false&showplanets=true&showplanetlabels=true&gridlines_az=false&live=true&az=180&fov=70&projection=stereo";
     }
+
+    (function bindSeaMapPills() {
+      var box = document.getElementById("sea-map-pills");
+      if (!box || box.getAttribute("data-bound")) return;
+      box.setAttribute("data-bound", "1");
+      box.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest ? e.target.closest("button[data-sea-map]") : null;
+        if (!b) return;
+        if (typeof showSeaMap === "function") showSeaMap(b.getAttribute("data-sea-map"));
+      });
+    })();
+
+    (function bindSkyMapPills() {
+      var box = document.getElementById("sky-map-pills");
+      if (!box || box.getAttribute("data-bound")) return;
+      box.setAttribute("data-bound", "1");
+      box.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest ? e.target.closest("button[data-sky-map]") : null;
+        if (!b) return;
+        if (typeof showSkyMap === "function") showSkyMap(b.getAttribute("data-sky-map"));
+      });
+    })();
+
+    (function bindLandMapPills() {
+      var box = document.getElementById("land-map-pills");
+      if (!box || box.getAttribute("data-bound")) return;
+      box.setAttribute("data-bound", "1");
+      box.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest ? e.target.closest("button[data-land-map]") : null;
+        if (!b) return;
+        if (typeof showLandMap === "function") showLandMap(b.getAttribute("data-land-map"));
+      });
+    })();
     function applySheetMaps() {
       function setFrame(id, url) {
         var el = document.getElementById(id);
@@ -5167,10 +5660,10 @@ Cart shop:</textarea>
         el.src = url;
         el.setAttribute("data-src", url);
       }
-      try { setFrame("sea-map", typeof homeWavesEmbed === "function" ? homeWavesEmbed() : ""); } catch (e1) {}
-      try { setFrame("sky-map", typeof homeSkyEmbed === "function" ? homeSkyEmbed() : ""); } catch (e2) {}
+      try { if (typeof showSeaMap === "function") showSeaMap(window.__seaMapView || "waves"); } catch (e1) {}
+      try { if (typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky"); else setFrame("sky-map", typeof homeSkyEmbed === "function" ? homeSkyEmbed() : ""); } catch (e2) {}
       var seaNote = document.getElementById("sea-map-note");
-      if (seaNote) seaNote.textContent = "Waves · pin on " + (homePlace() || "home");
+      if (seaNote && !window.__seaMapView) seaNote.textContent = "Waves · pin on " + (homePlace() || "home");
       var skyNote = document.getElementById("sky-map-note");
       if (skyNote) skyNote.textContent = "Live sky from " + (homePlace() || "home");
     }
@@ -7028,6 +7521,9 @@ function gatorRange() {
     }
     function paintHomeChrome() {
       if (typeof paintHeaderTrees === "function") paintHeaderTrees();
+      if (typeof paintSeaChrome === "function") paintSeaChrome();
+      if (typeof paintSkyCall === "function") paintSkyCall();
+      if (typeof paintLandReport === "function") paintLandReport();
       var place = homePlace();
       var zip = getSet().zip || "";
       if (typeof paintCommunity === "function") paintCommunity();
@@ -7375,6 +7871,14 @@ function currentRotation() {
       });
       if (id === "storms" && typeof paintStormPage === "function") paintStormPage();
       if (id === "land" && typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
+      if (id === "land" && typeof paintLandReport === "function") paintLandReport();
+      if (id === "land" && typeof showLandMap === "function") showLandMap(window.__landMapView || "traffic");
+      if (id === "sky" && typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky");
+      if (id === "sky" && typeof paintSkyCall === "function") paintSkyCall();
+      if (id === "marine" && typeof showSeaMap === "function") {
+        showSeaMap(window.__seaMapView || "waves");
+        if (window.__seaChart && window.__seaChart.map) setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (eS) {} }, 220);
+      }
       if (jump) {
         requestAnimationFrame(function () {
           setTimeout(function () {
@@ -10828,27 +11332,61 @@ function currentRotation() {
       var days = Math.round(hrs / 24);
       return "Sampled " + days + "d ago";
     }
-    function meteorThisWeek() {
-      var showers = [
-        { name: "Quadrantids", m0: 1, d0: 2, m1: 1, d1: 4 },
-        { name: "Lyrids", m0: 4, d0: 21, m1: 4, d1: 23 },
-        { name: "Eta Aquariids", m0: 5, d0: 4, m1: 5, d1: 7 },
-        { name: "Perseids", m0: 8, d0: 10, m1: 8, d1: 14 },
-        { name: "Orionids", m0: 10, d0: 20, m1: 10, d1: 22 },
-        { name: "Leonids", m0: 11, d0: 16, m1: 11, d1: 18 },
-        { name: "Geminids", m0: 12, d0: 12, m1: 12, d1: 15 },
-        { name: "Ursids", m0: 12, d0: 21, m1: 12, d1: 23 }
-      ];
+    function mdMs(y, m, d) { return new Date(y, m - 1, d).getTime(); }
+    function skyEventList() {
       var now = new Date();
       var y = now.getFullYear();
       var t0 = now.getTime();
-      for (var i = 0; i < showers.length; i++) {
-        var s = showers[i];
-        var a = new Date(y, s.m0 - 1, s.d0 - 3).getTime();
-        var b = new Date(y, s.m1 - 1, s.d1 + 2).getTime();
-        if (t0 >= a && t0 <= b) return s.name;
-      }
-      return "";
+      var showers = [
+        { name: "Quadrantids", m0:1,d0:1, m1:1,d1:5, peak:"Jan 3–4", zhr:"80", radiant:"Bootes / north", when:"After midnight", look:"Face north after midnight. Fast blue-white meteors." },
+        { name: "Lyrids", m0:4,d0:16, m1:4,d1:25, peak:"Apr 22", zhr:"18", radiant:"Lyra, NE", when:"Predawn", look:"Look northeast before dawn. Bright, some with trains." },
+        { name: "Eta Aquariids", m0:4,d0:19, m1:5,d1:28, peak:"May 6", zhr:"40", radiant:"Aquarius, E", when:"Predawn", look:"Low in the east before sunrise. Halley debris." },
+        { name: "Southern Delta Aquariids", m0:7,d0:12, m1:8,d1:23, peak:"Jul 30", zhr:"20", radiant:"Aquarius, S", when:"After midnight", look:"South after midnight. Steady faint stream." },
+        { name: "Perseids", m0:7,d0:17, m1:8,d1:24, peak:"Aug 12–13", zhr:"90", radiant:"Perseus, NE", when:"Late night to dawn", look:"Northeast after 11p. Bright and fast." },
+        { name: "September ε-Perseids", m0:9,d0:5, m1:9,d1:21, peak:"Sep 9", zhr:"8", radiant:"Perseus, NE", when:"Predawn", look:"Northeast before dawn. Minor shower." },
+        { name: "Southern Taurids", m0:9,d0:10, m1:11,d1:20, peak:"Oct 10", zhr:"5", radiant:"Taurus, E", when:"Evening to overnight", look:"East after dusk. Slow, sometimes fireballs." },
+        { name: "Draconids", m0:10,d0:6, m1:10,d1:10, peak:"Oct 8–9", zhr:"5–10", radiant:"Draco, NW", when:"Evening", look:"High northwest at nightfall. Best right after dark." },
+        { name: "Orionids", m0:10,d0:2, m1:11,d1:7, peak:"Oct 21", zhr:"20", radiant:"Orion, E", when:"Predawn", look:"East before sunrise. Fast Halley meteors." },
+        { name: "Northern Taurids", m0:10,d0:20, m1:12,d1:10, peak:"Nov 12", zhr:"5", radiant:"Taurus, E", when:"Evening", look:"East after dusk. Slow bright meteors." },
+        { name: "Leonids", m0:11,d0:6, m1:11,d1:30, peak:"Nov 17–18", zhr:"15", radiant:"Leo, E", when:"Predawn", look:"East before dawn. Fast and bright." },
+        { name: "Geminids", m0:12,d0:4, m1:12,d1:20, peak:"Dec 14", zhr:"100", radiant:"Gemini, E", when:"Evening to dawn", look:"East after 9p, overhead by midnight. Best shower of the year." },
+        { name: "Ursids", m0:12,d0:17, m1:12,d1:26, peak:"Dec 22", zhr:"10", radiant:"Ursa Minor, N", when:"Overnight", look:"Due north all night." }
+      ];
+      var out = [];
+      showers.forEach(function (sh) {
+        var a = mdMs(y, sh.m0, sh.d0);
+        var b = mdMs(y, sh.m1, sh.d1);
+        if (b < a) b = mdMs(y + 1, sh.m1, sh.d1);
+        if (t0 < a - 5 * 86400000 || t0 > b + 1 * 86400000) return;
+        var days = Math.round((a + (b - a) / 2 - t0) / 86400000);
+        var status = (t0 >= a && t0 <= b) ? (Math.abs(t0 - mdMs(y, parseInt(String(sh.peak).replace(/\D/g," ").trim().split(" ")[0] || sh.m0), parseInt((String(sh.peak).match(/\d+/)||[sh.d0])[0]))) < 2 * 86400000 ? "peaking" : "active") : (t0 < a ? "upcoming" : "fading");
+        out.push({
+          kind: "meteor",
+          title: sh.name,
+          status: status,
+          line: sh.when + " · look " + sh.radiant + ". Peak " + sh.peak + " · ~" + sh.zhr + "/hr. " + sh.look
+        });
+      });
+      var specials = [
+        { t0: mdMs(y,9,22), t1: mdMs(y,9,23), kind:"season", title:"Autumn equinox", line:"Sun crosses the equator tonight. Night and day nearly even. Good calendar mark, not a viewing target." },
+        { t0: mdMs(y,9,26), t1: mdMs(y,9,27), kind:"planet", title:"Neptune at opposition", line:"All night in Pisces. Telescope only — it will not look like a disc to the eye." },
+        { t0: mdMs(y,3,2), t1: mdMs(y,3,4), kind:"eclipse", title:"Total lunar eclipse", line:"Moon in Earth's shadow. Best from central and western North America before dawn." },
+        { t0: mdMs(y,8,12), t1: mdMs(y,8,12), kind:"eclipse", title:"Total solar eclipse", line:"Totality over Greenland, Iceland, Spain. Partial in far northern U.S. and Canada." },
+        { t0: mdMs(y,8,27), t1: mdMs(y,8,28), kind:"eclipse", title:"Partial lunar eclipse", line:"Visible across most of North America in the evening." },
+        { t0: mdMs(2026,9,1), t1: mdMs(2026,10,20), kind:"comet", title:"Comet 10P/Tempel", line:"Evening, low south in Piscis Austrinus. Binoculars from a dark site, about mag 9 and fading." },
+        { t0: mdMs(2026,9,1), t1: mdMs(2026,10,31), kind:"comet", title:"Comet 220P/McNaught", line:"Morning in Taurus. Small telescope, about mag 11 after its August outburst." }
+      ];
+      specials.forEach(function (ev) {
+        if (t0 < ev.t0 - 7 * 86400000 || t0 > ev.t1 + 2 * 86400000) return;
+        var status = (t0 >= ev.t0 && t0 <= ev.t1 + 86400000) ? "now" : (t0 < ev.t0 ? "upcoming" : "recent");
+        out.push({ kind: ev.kind, title: ev.title, status: status, line: ev.line });
+      });
+      return out;
+    }
+    function meteorThisWeek() {
+      var list = typeof skyEventList === "function" ? skyEventList() : [];
+      var hit = list.filter(function (e) { return e.kind === "meteor" && (e.status === "active" || e.status === "peaking"); })[0];
+      return hit ? hit.title : "";
     }
     function paintMeteorChip() {
       var name = meteorThisWeek();
@@ -10931,6 +11469,8 @@ function currentRotation() {
         .then(function (fl) {
           var f = (fl && fl[0] && (fl[0].max_class || fl[0].current_class)) || "";
           paintSpaceWeather(window.__kp || 0, f);
+          if (typeof paintSkyCall === "function") paintSkyCall();
+      if (typeof paintLandReport === "function") paintLandReport();
         })
         .catch(function () {
           paintSpaceWeather(window.__kp || 0, "");
@@ -11191,6 +11731,13 @@ function currentRotation() {
           : (h25.length ? (h25.length + " live strikes within 25mi") : "no live strikes within 25mi"));
       }
       if (typeof syncLightningUI === "function") syncLightningUI();
+      var bolt = document.getElementById("live-sea-bolt");
+      if (bolt && window.__strikesNear) {
+        var near = window.__strikesNear;
+        if (near.closest) bolt.textContent = near.closest + " mi" + (near.count ? " · " + near.count + " in 10 mi" : "");
+        else if (near.close25) bolt.textContent = "Inside 25 mi";
+        else bolt.textContent = "None inside 25 mi";
+      }
     }
     function addBzHit(lat, lon, t) {
       lat = Number(lat); lon = Number(lon);
@@ -11318,6 +11865,14 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v863 — Land page gets a go-outside report, NWS ground alerts, and map rotation: traffic, satellite, air, rain.",
+      "v862 — Astronomer report names meteor showers, binocular comets, and nearby sky events with when and where to look.",
+      "v861 — Sky observing card is a full astronomer report: call, NWS sky alerts, best window, targets, ISS.",
+      "v860 — Sky page is an observing board: go/no-go, seeing, transparency, moon percent. Map rotates live sky, clouds, aurora, and the sun.",
+      "v859 — Sea map rotates waves, swell, current, NOAA chart with channel marks, and AIS traffic on the home pin.",
+      "v858 — Sea page adds drift, barometer trend, lightning distance, USCG notices, and a ramp/inlet or waves cam.",
+      "v857 — Sea page reorganized: boating call first, then wind/seas/water/tide. Gulf-only hazards tuck under extras. Added visibility and wave period.",
+      "v856 — Sea page On the water card is a pin-based boating report: go/caution/stay-in, NWS marine alerts, wind, seas, water, tide.",
       "v855 — Gulf-only copy and Englewood deal seeds stay off a non-Gulf pin. CT no longer inherits villa fishing, red tide, or Dearborn Street shops.",
       "v854 — Header moon phase uses an on-disk terminator so waxing gibbous reads as ~87% lit on the right, not a clipped crescent.",
       "v853 — Header trees follow the home pin: palms on the Gulf and southern coasts, maples in New England, oaks inland South, pines north and mountains, desert trees in the Southwest. Same sway.",
@@ -11742,7 +12297,7 @@ function currentRotation() {
         if (el && /loading/i.test(el.textContent || "")) el.textContent = "Tide station did not answer. See the chart.";
       });
       var marine = "https://marine-api.open-meteo.com/v1/marine?latitude=" + homeLat() + "&longitude=" + homeLon() +
-        "&current=sea_surface_temperature,wave_height,wind_wave_height,swell_wave_height&temperature_unit=fahrenheit&length_unit=imperial";
+        "&current=sea_surface_temperature,wave_height,wind_wave_height,swell_wave_height,wave_period,swell_wave_period,ocean_current_velocity,ocean_current_direction&temperature_unit=fahrenheit&length_unit=imperial";
       fetch(marine).then(function (r) { return r.text(); }).then(function (txt) {
         var d = null; try { d = JSON.parse(txt); } catch (e) { return; }
         var cur = (d && d.current) || {};
@@ -11760,6 +12315,30 @@ function currentRotation() {
           if (windW != null && swellW != null) seas.textContent = "Wind " + ftlab(windW) + " · swell " + ftlab(swellW);
           else if (tot != null) seas.textContent = ftlab(tot);
         }
+        var per = document.getElementById("live-period");
+        if (per) {
+          var perV = cur.swell_wave_period != null ? Number(cur.swell_wave_period) : (cur.wave_period != null ? Number(cur.wave_period) : null);
+          per.textContent = perV != null && isFinite(perV) ? (Math.round(perV) + " s") : "—";
+        }
+        var drift = document.getElementById("live-drift");
+        if (drift) {
+          var spd = cur.ocean_current_velocity != null ? Number(cur.ocean_current_velocity) : null;
+          var dir = cur.ocean_current_direction != null ? Number(cur.ocean_current_direction) : null;
+          function compass(deg) {
+            var pts = ["N","NE","E","SE","S","SW","W","NW"];
+            return pts[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+          }
+          if (spd != null && isFinite(spd) && spd > 0.05) {
+            var kn = spd * 1.94384;
+            drift.textContent = (kn < 0.3 ? kn.toFixed(2) : kn.toFixed(1)) + " kt" + (dir != null ? " " + compass(dir) : "");
+          } else {
+            var river = document.getElementById("live-sea-river");
+            drift.textContent = (river && river.textContent && river.textContent !== "—") ? ("River " + river.textContent) : "Slack / none";
+          }
+        }
+        if (typeof paintSeaChrome === "function") paintSeaChrome();
+      if (typeof paintSkyCall === "function") paintSkyCall();
+      if (typeof paintLandReport === "function") paintLandReport();
         if (coast && (/loading/i.test(coast.textContent || "") || !coast.textContent.trim())) {
           var wave = seas && seas.textContent !== "—" ? seas.textContent : "light";
           var water = sst && /°/.test(sst.textContent || "") ? sst.textContent : "";
@@ -11771,6 +12350,10 @@ function currentRotation() {
           noteFeed("seas", !!(seas && /ft/.test(seas.textContent || "")), seas ? seas.textContent : "");
           noteFeed("coastal", !!(coast && !/loading/i.test(coast.textContent || "")), coast ? coast.textContent : "");
         }
+        if (typeof paintBoatReport === "function") paintBoatReport();
+      if (typeof paintSeaChrome === "function") paintSeaChrome();
+      if (typeof paintSkyCall === "function") paintSkyCall();
+      if (typeof paintLandReport === "function") paintLandReport();
       }).catch(function () {});
     }
     function settleBoardGaps() {
@@ -18068,6 +18651,297 @@ function drawSurgeChart(points) {
         }
       });
     }
+
+    function marineAlertKind(ev, headline, desc) {
+      var t = [ev, headline, desc].join(" ").toLowerCase();
+      if (/special marine|waterspout/.test(t)) return "smw";
+      if (/gale warning|storm warning|hurricane force|hazardous seas warning/.test(t)) return "gale";
+      if (/small craft|brisk wind|lake wind|rough bar/.test(t)) return "sca";
+      if (/dense fog/.test(t)) return "fog";
+      if (/coastal flood|high surf|rip current/.test(t)) return "shore";
+      if (/tornado|severe thunderstorm warning/.test(t)) return "storm";
+      if (/hurricane|tropical storm/.test(t)) return "cane";
+      if (/marine weather statement|marine/.test(t)) return "stmt";
+      return "";
+    }
+
+    function seaKind() {
+      if (typeof homeIsSWFL === "function" && homeIsSWFL()) return "gulf";
+      var st = (typeof homeState === "function" && homeState()) || "";
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      if (st === "HI" || st === "PR") return "pacific";
+      if (st === "FL" && isFinite(lat) && lat < 30.6) return "gulf";
+      if (st === "FL") return "atlantic";
+      if (/CA|OR|WA|AK/.test(st) && isFinite(lon) && lon < -116) return "pacific";
+      if (/ME|NH|MA|RI|CT|NY|NJ|DE|MD|VA|NC|SC|GA/.test(st) && isFinite(lon) && lon > -78.5) {
+        if (/CT|NY|RI/.test(st) && isFinite(lon) && lon > -73.8 && lon < -71.8 && lat > 40.8 && lat < 41.6) return "sound";
+        if (st === "CT" && lon > -73.2) return "inland";
+        if (isFinite(lon) && lon > -73.2 && lat > 40.9 && lat < 42.1 && lon < -72.2) return "inland";
+        return "atlantic";
+      }
+      if (/TX|LA|MS|AL/.test(st) && isFinite(lat) && lat < 30.8 && lon > -98) return "gulf";
+      return "inland";
+    }
+
+    function uscgDistrict() {
+      var kind = typeof seaKind === "function" ? seaKind() : "";
+      var st = (typeof homeState === "function" && homeState()) || "";
+      if (kind === "gulf" && /TX|LA/.test(st)) return "8";
+      if (kind === "gulf") return "7";
+      if (kind === "pacific" && /OR|WA|AK/.test(st)) return st === "AK" ? "17" : "13";
+      if (kind === "pacific") return "11";
+      if (/MI|WI|IL|IN|OH|MN/.test(st)) return "9";
+      if (/ME|NH|MA|RI|CT|NY/.test(st)) return "1";
+      if (/NJ|DE|MD|VA|NC/.test(st)) return "5";
+      if (/SC|GA|FL/.test(st)) return "7";
+      return "";
+    }
+    function loadSeaUscg() {
+      var el = document.getElementById("live-sea-uscg");
+      if (!el) return;
+      if (el.getAttribute("data-pin") === String(homeLat()) + "," + String(homeLon()) && el.textContent && !/checking/i.test(el.textContent)) return;
+      el.setAttribute("data-pin", String(homeLat()) + "," + String(homeLon()));
+      var place = typeof homePlace === "function" ? homePlace() : "";
+      var st = (typeof homeState === "function" && homeState()) || "";
+      var dist = typeof uscgDistrict === "function" ? uscgDistrict() : "";
+      var q = "(\"local notice to mariners\" OR LNM OR \"notice to mariners\" OR \"urgent marine\") (" + place + " OR " + st + (dist ? (" OR \"District " + dist + "\"") : "") + ") when:7d";
+      if (typeof fetchNewsQuery !== "function") {
+        el.textContent = "No USCG notice loaded.";
+        return;
+      }
+      fetchNewsQuery(q, function (items) {
+        items = (items || []).filter(function (x) {
+          return /marine|mariner|uscg|coast guard|lnm|channel|inlet|shoal|buoy|hazard/i.test((x.title || "") + " " + (x.desc || ""));
+        });
+        if (!items.length) {
+          el.textContent = "No Local Notice to Mariners for " + (place || "this pin") + " in the last week.";
+          if (typeof noteFeed === "function") noteFeed("uscg-ntm", true, "none");
+          return;
+        }
+        var top = items[0];
+        el.innerHTML = "<b>" + String(top.title || "Marine notice").replace(/</g, "") + "</b>" + (top.link ? ' <a href="' + String(top.link).replace(/"/g, "") + '" target="_blank" rel="noopener">Open</a>' : "");
+        if (typeof noteFeed === "function") noteFeed("uscg-ntm", true, items.length + " notices");
+      });
+    }
+    function seaCam() {
+      var kind = typeof seaKind === "function" ? seaKind() : "inland";
+      var lat = typeof homeLat === "function" ? homeLat() : 0;
+      var lon = typeof homeLon === "function" ? homeLon() : 0;
+      var place = (typeof homePlace === "function" && homePlace()) || "Home";
+      if (kind === "gulf" || (typeof homeNearKey === "function" && homeNearKey())) {
+        return { src: "https://www.youtube-nocookie.com/embed/NLhxcyzXQxM?autoplay=1&mute=1&playsinline=1", label: "Siesta Key beach / inlet live", title: "Inlet cam" };
+      }
+      var overlay = kind === "inland" ? "wind" : "waves";
+      return {
+        src: "https://embed.windy.com/embed.html?type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph&zoom=10&overlay=" + overlay + "&product=ecmwf&level=surface&lat=" + lat + "&lon=" + lon + "&detailLat=" + lat + "&detailLon=" + lon + "&detail=true",
+        label: overlay === "waves" ? ("Waves near " + place) : ("Wind over water near " + place),
+        title: overlay === "waves" ? "Waves cam" : "Water wind"
+      };
+    }
+    function paintSeaCam() {
+      var frame = document.getElementById("sea-cam");
+      var cap = document.getElementById("sea-cam-cap");
+      var title = document.getElementById("sea-cam-title");
+      var cam = seaCam();
+      if (title && cam.title) title.textContent = cam.title;
+      if (cap) cap.textContent = cam.label || "";
+      if (frame && cam.src && frame.getAttribute("data-src") !== cam.src) {
+        frame.src = cam.src;
+        frame.setAttribute("data-src", cam.src);
+      }
+      if (typeof noteFeed === "function") noteFeed("sea-cam", true, cam.label || "cam");
+    }
+    function paintSeaChrome() {
+      var page = document.getElementById("marine");
+      var kind = typeof seaKind === "function" ? seaKind() : "inland";
+      if (page) page.setAttribute("data-sea", kind);
+      var kick = document.getElementById("sea-extra-kicker");
+      var extras = document.querySelectorAll("#sea-extras .sea-x[data-sea]");
+      var shown = 0;
+      extras.forEach(function (row) {
+        var need = String(row.getAttribute("data-sea") || "");
+        if (need.indexOf(kind) >= 0) shown++;
+      });
+      if (kick) kick.hidden = shown === 0;
+      var tsu = document.getElementById("tsunami-card");
+      if (tsu) {
+        var txt = ((document.getElementById("live-tsunami") || {}).textContent || "");
+        var active = txt && !/no advisory|none|^$/i.test(txt);
+        tsu.hidden = !(kind === "pacific" || active);
+      }
+      var wind = document.getElementById("live-sea-wind");
+      var srcW = document.getElementById("live-wind");
+      var srcG = document.getElementById("live-gusts");
+      if (wind && srcW) {
+        var w = (srcW.textContent || "").trim();
+        var g = srcG ? (srcG.textContent || "").trim() : "";
+        wind.textContent = w + (g && g !== w ? " · gust " + g : "");
+      }
+      var vis = document.getElementById("live-sea-vis");
+      var srcV = document.getElementById("live-vis");
+      if (vis && srcV) vis.textContent = (srcV.textContent || "—").trim() || "—";
+      var river = document.getElementById("live-sea-river");
+      if (river) {
+        var land = document.getElementById("live-river") || document.getElementById("river-now") || document.getElementById("land-river");
+        river.textContent = land && land.textContent ? land.textContent.trim() : (river.textContent || "—");
+      }
+      var h2 = document.querySelector("#marine h2");
+      if (h2) {
+        var label = { gulf: "Gulf and inlet", sound: "Sound and river", atlantic: "Coast", pacific: "Pacific", inland: "Lakes and rivers", coast: "Coast" }[kind] || "Sea";
+        h2.setAttribute("data-k", label);
+      }
+      var pres = document.getElementById("live-sea-pres");
+      var presN = document.getElementById("live-sea-pres-note");
+      var srcP = document.getElementById("live-pres");
+      var srcPN = document.getElementById("live-pres-note");
+      if (pres && srcP) pres.textContent = (srcP.textContent || "—").trim() || "—";
+      if (presN) presN.textContent = srcPN && srcPN.textContent ? srcPN.textContent.trim() : "";
+      var bolt = document.getElementById("live-sea-bolt");
+      if (bolt) {
+        var near = window.__strikesNear || {};
+        var prep = typeof lightningPrep === "function" ? lightningPrep() : { on: false, why: "" };
+        if (near.closest) bolt.textContent = near.closest + " mi" + (near.count ? " · " + near.count + " in 10 mi" : "");
+        else if (near.close25) bolt.textContent = "Inside 25 mi";
+        else if (prep.on) bolt.textContent = prep.why || "Nearby";
+        else bolt.textContent = "None inside 25 mi";
+      }
+      var uscgCard = document.getElementById("live-uscg");
+      var seaUscg = document.getElementById("live-sea-uscg");
+      if (seaUscg && uscgCard && uscgCard.textContent && !/checking|none|^$/i.test(uscgCard.textContent) && /checking/i.test(seaUscg.textContent || "")) {
+        seaUscg.textContent = uscgCard.textContent.trim();
+      }
+      if (typeof paintSeaCam === "function") paintSeaCam();
+      if (typeof loadSeaUscg === "function") loadSeaUscg();
+      if (typeof noteFeed === "function") noteFeed("sea-kind", true, kind);
+    }
+    function paintBoatReport() {
+      var title = document.getElementById("coast-title");
+      var goEl = document.getElementById("boat-go");
+      var coast = document.getElementById("live-coastal");
+      var alertBox = document.getElementById("boat-alerts");
+      var factBox = document.getElementById("boat-facts");
+      var nwrM = document.getElementById("live-nwr-marine");
+      var place = typeof homePlace === "function" ? homePlace() : "home";
+      var gulf = typeof homeIsSWFL === "function" && homeIsSWFL();
+      if (title) title.textContent = "Boating";
+      function numOf(id) {
+        var t = ((document.getElementById(id) || {}).textContent || "");
+        var m = t.match(/(\d+(?:\.\d+)?)/);
+        return m ? Number(m[1]) : null;
+      }
+      function txt(id) {
+        return String(((document.getElementById(id) || {}).textContent || "")).replace(/\s+/g, " ").trim();
+      }
+      var wind = txt("live-wind") || txt("live-venf-wind");
+      var gusts = txt("live-gusts") || txt("live-venf-gust");
+      var seas = txt("live-seas");
+      var water = txt("live-sst");
+      if (!/°/.test(water)) water = txt("live-wtemp");
+      var tide = txt("live-tide-today");
+      var craft = txt("live-craft");
+      var vis = txt("live-vis");
+      var windN = numOf("live-wind");
+      var gustN = numOf("live-gusts");
+      var seasN = null;
+      var sm = seas.match(/(\d+(?:\.\d+)?)/g);
+      if (sm) seasN = Math.max.apply(null, sm.map(Number));
+      function apply(alerts, cwfLine) {
+        alerts = alerts || [];
+        var kinds = alerts.map(function (a) { return a.kind; });
+        var bolt = typeof lightningPrep === "function" && lightningPrep().on;
+        var stay = bolt || kinds.indexOf("smw") >= 0 || kinds.indexOf("gale") >= 0 || kinds.indexOf("storm") >= 0 || kinds.indexOf("cane") >= 0 || (gustN != null && gustN >= 33) || (seasN != null && seasN >= 6);
+        var caution = kinds.indexOf("sca") >= 0 || kinds.indexOf("fog") >= 0 || kinds.indexOf("shore") >= 0 || /advisory/i.test(craft) || (gustN != null && gustN >= 20) || (seasN != null && seasN >= 3.5) || (windN != null && windN >= 18);
+        var rank = stay ? "no" : caution ? "win" : "go";
+        var verdict = stay ? "Stay in" : caution ? "Go careful" : "Good to go";
+        var where = gulf ? ("Gulf waters off " + place) : ("Waters near " + place);
+        var bits = [];
+        if (wind) bits.push("wind " + wind + (gusts && gusts !== wind ? ", gusts " + gusts : ""));
+        if (seas && seas !== "—") bits.push("seas " + seas);
+        if (water && /°/.test(water)) bits.push("water " + water);
+        if (vis && vis !== "—") bits.push("vis " + vis);
+        var body = where + (bits.length ? " · " + bits.join(" · ") : "") + ".";
+        if (cwfLine) body += " " + cwfLine;
+        if (bolt) body += " Lightning is close — get off the water.";
+        else if (!alerts.length) body += " No NWS marine warning or small-craft advisory on this pin.";
+        if (goEl) { goEl.textContent = verdict; goEl.className = "boat-go " + rank; }
+        if (coast) coast.textContent = body;
+        if (nwrM) nwrM.textContent = verdict + " · " + body;
+        if (alertBox) {
+          alertBox.innerHTML = alerts.length
+            ? alerts.slice(0, 4).map(function (a) {
+                return '<span class="boat-alert"><em>' + String(a.event || "Alert").replace(/</g, "") + "</em>" + String(a.line || "").replace(/</g, "") + "</span>";
+              }).join("")
+            : "";
+        }
+        if (factBox) {
+          var facts = [];
+          if (wind) facts.push("<div><b>Wind</b> " + wind + (gusts ? " · gust " + gusts : "") + "</div>");
+          if (seas && seas !== "—") facts.push("<div><b>Seas</b> " + seas + "</div>");
+          if (water && /°/.test(water)) facts.push("<div><b>Water</b> " + water + "</div>");
+          if (tide && !/loading|did not/i.test(tide)) facts.push("<div><b>Tide</b> " + tide.replace(/\s+/g, " ").slice(0, 48) + "</div>");
+          if (craft) facts.push("<div><b>Small craft</b> " + craft + "</div>");
+          factBox.innerHTML = facts.join("");
+        }
+        var craftEl = document.getElementById("live-craft");
+        if (craftEl && alerts.some(function (a) { return a.kind === "sca" || a.kind === "gale"; })) {
+          var top = alerts.filter(function (a) { return a.kind === "sca" || a.kind === "gale"; })[0];
+          craftEl.textContent = (top && top.event) || "Advisory";
+        }
+        if (typeof noteFeed === "function") noteFeed("coastal", true, verdict + " · " + (alerts.length ? alerts.length + " marine alerts" : "no marine alerts"));
+      }
+      function alertsFromFeats(feats) {
+        var out = [];
+        (feats || []).forEach(function (f) {
+          var p = f.properties || {};
+          var ev = p.event || p.headline || "";
+          var kind = marineAlertKind(ev, p.headline || "", p.description || "");
+          if (!kind) return;
+          out.push({
+            kind: kind,
+            event: ev,
+            line: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 140)
+          });
+        });
+        var rank = { smw: 0, gale: 1, storm: 2, cane: 3, sca: 4, fog: 5, shore: 6, stmt: 7 };
+        out.sort(function (a, b) { return (rank[a.kind] || 9) - (rank[b.kind] || 9); });
+        return out;
+      }
+      function loadCwf() {
+        var wfo = (typeof getSet === "function" && getSet().wfo) || "";
+        if (!wfo) return Promise.resolve("");
+        return fetch("https://api.weather.gov/products?location=" + wfo + "&type=CWF", { headers: { "Accept": "application/ld+json", "User-Agent": "CommonsBoard" } })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var id = d && d["@graph"] && d["@graph"][0] && d["@graph"][0].id;
+            if (!id) return "";
+            return fetch(id, { headers: { "Accept": "application/ld+json", "User-Agent": "CommonsBoard" } }).then(function (r) { return r.json(); });
+          })
+          .then(function (prod) {
+            var raw = String((prod && (prod.productText || prod.product_text)) || "").replace(/\s+/g, " ");
+            if (!raw) return "";
+            var sm = raw.match(/SEAS?\s+([0-9]+(?:\s+to\s+[0-9]+)?\s*(?:ft|feet))/i);
+            var wm = raw.match(/WINDS?\s+([A-Z]+\s+[0-9]+(?:\s+to\s+[0-9]+)?\s*(?:KT|KNOTS|MPH))/i);
+            var bits = [];
+            if (wm) bits.push("NWS winds " + wm[1].replace(/KT|KNOTS/ig, "kt"));
+            if (sm) bits.push("NWS seas " + sm[1].replace(/feet/i, "ft"));
+            return bits.length ? bits.join(", ") + "." : "";
+          })
+          .catch(function () { return ""; });
+      }
+      var featsP = (typeof fetchNwsAlerts === "function")
+        ? fetchNwsAlerts().catch(function () { return { features: window.__nwsAlerts || [] }; })
+        : Promise.resolve({ features: window.__nwsAlerts || [] });
+      Promise.all([featsP, loadCwf()]).then(function (pair) {
+        var data = pair[0] || {};
+        var feats = data.features || window.__nwsAlerts || [];
+        apply(alertsFromFeats(feats), pair[1] || "");
+      }).catch(function () {
+        apply([], "");
+      });
+    }
+    window.paintBoatReport = paintBoatReport;
+    window.paintSeaChrome = paintSeaChrome;
     function refreshMarineSky(days, hours, obs) {
       var tideDay = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
       fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=CommonsBoard&begin_date=" +
@@ -18216,49 +19090,10 @@ function drawSurgeChart(points) {
         .catch(function () { surgeFallbackTide(); });
       var windEl = document.getElementById("live-venf-wind");
       var gustEl = document.getElementById("live-venf-gust");
-      var coast = document.getElementById("live-coastal");
-      var nwrM = document.getElementById("live-nwr-marine");
-      var coastTitle = document.getElementById("coast-title");
-      if (coastTitle) coastTitle.textContent = "On the water";
-      fetch("https://api.weather.gov/products?location=" + (getSet().wfo || "") + "&type=CWF", { headers: { "Accept": "application/ld+json", "User-Agent": "CommonsBoard" } })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var id = d && d["@graph"] && d["@graph"][0] && d["@graph"][0].id;
-          if (!id) return null;
-          return fetch(id, { headers: { "Accept": "application/ld+json", "User-Agent": "CommonsBoard" } }).then(function (r) { return r.json(); });
-        })
-        .then(function (prod) {
-          var raw = (prod && (prod.productText || prod.product_text)) || "";
-          var seasEl = (document.getElementById("live-seas") || {}).textContent || "";
-          var craftEl = (document.getElementById("live-craft") || {}).textContent || "";
-          var windEl2 = (document.getElementById("live-wind") || {}).textContent || "";
-          var seas = "";
-          var wind = "";
-          if (raw) {
-            var slice = raw.replace(/\s+/g, " ");
-            var sm = slice.match(/SEAS?\s+([0-9]+(?:\s+to\s+[0-9]+)?\s*(?:ft|feet))/i);
-            seas = sm ? sm[1].replace(/feet/i, "ft") : "";
-            var wm = slice.match(/WINDS?\s+([A-Z]+\s+[0-9]+(?:\s+to\s+[0-9]+)?\s*(?:KT|KNOTS|MPH))/i);
-            if (wm) {
-              wind = wm[1].replace(/KT|KNOTS/ig, "kt");
-              var kt = parseInt(wm[1].replace(/.*?(\d+).*/, "$1"), 10);
-              if (/kt/i.test(wind) && kt) wind += " (~" + Math.round(kt * 1.15) + " mph)";
-            }
-          }
-          if (!seas && /ft/i.test(seasEl)) seas = seasEl;
-          if (!wind && windEl2) wind = windEl2;
-          var craft = /advisory|small craft/i.test(raw + " " + craftEl) && !/none/i.test(craftEl) ? "Small-craft warning — stay in." : "No small-craft warning.";
-          var gulf = typeof homeIsSWFL === "function" && homeIsSWFL();
-          var line = (gulf ? "Gulf waters off the beach, for a boat ride: seas " : "Waters near home: seas ") + (seas || "about 1–2 ft") + ", wind " + (wind || "light") + ". " + craft;
-          if (coast) coast.textContent = line;
-          if (nwrM) nwrM.textContent = line;
-        }).catch(function () {
-          var seasEl = (document.getElementById("live-seas") || {}).textContent || "1–2 ft";
-          var gulf = typeof homeIsSWFL === "function" && homeIsSWFL();
-          var line = (gulf ? "Gulf waters off the beach: seas " : "Waters near home: seas ") + seasEl + ". Check the tide and marine row before you go.";
-          if (coast) coast.textContent = line;
-          if (nwrM) nwrM.textContent = "See Marine page.";
-        });
+      if (typeof paintBoatReport === "function") paintBoatReport();
+      if (typeof paintSeaChrome === "function") paintSeaChrome();
+      if (typeof paintSkyCall === "function") paintSkyCall();
+      if (typeof paintLandReport === "function") paintLandReport();
       if (windEl && document.getElementById("live-wind")) windEl.textContent = document.getElementById("live-wind").textContent;
       if (gustEl && document.getElementById("live-gusts")) gustEl.textContent = document.getElementById("live-gusts").textContent;
       fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=sea_surface_temperature&temperature_unit=fahrenheit")
@@ -18796,6 +19631,8 @@ function drawSurgeChart(points) {
         askSky(dusk, 1, "Dusk");
         askSky(mid.toISOString(), 2, "Overnight");
         askSky(dawn, 3, "Dawn");
+        if (typeof paintSkyCall === "function") paintSkyCall();
+      if (typeof paintLandReport === "function") paintLandReport();
         function fillHoro(sign, id) {
           function clip(s) {
             return String(s || "").replace(/\s+/g, " ").trim();
@@ -21857,6 +22694,10 @@ function homeCountyGuess() {
       fetchNwsAlerts().then(function (data) {
         var feats = (data && data.features) || [];
         window.__nwsAlerts = feats;
+        if (typeof paintBoatReport === "function") paintBoatReport();
+      if (typeof paintSeaChrome === "function") paintSeaChrome();
+      if (typeof paintSkyCall === "function") paintSkyCall();
+      if (typeof paintLandReport === "function") paintLandReport();
         if (typeof touchFeed === "function") touchFeed("alerts", true, feats.length ? (feats.length + " NWS alerts") : "no warnings");
         if (!bar || !txt) return;
         var high = [];
