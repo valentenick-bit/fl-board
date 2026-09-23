@@ -2867,7 +2867,15 @@
     }
     .track-pop button.ghost { background:transparent; color:inherit; border:1px solid rgba(27,42,74,.2); }
     html.dark .track-pop button.ghost { border-color:#4a5560; }
+    .deliv-card.has-track { cursor:pointer; }
+    .deliv-card.has-track:hover { box-shadow:0 8px 24px rgba(20,30,40,.16); }
     .deliv-track { margin-top:8px; border:0; border-radius:999px; padding:6px 10px; background:#1b6b62; color:#f7f1e4; font-weight:700; }
+    .track-pop .track-num { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:16px; letter-spacing:.04em; margin:0 0 8px; }
+    .track-pop .track-meta { opacity:.8; font-size:13px; margin:0 0 10px; }
+    .track-back {
+      display:none; position:fixed; inset:0; z-index:81; background:rgba(12,18,28,.45);
+    }
+    .track-back.on { display:block; }
     .price-tag { display:inline-block; margin-left:4px; letter-spacing:.04em; font-weight:700; color:var(--teal,#1b6b62); }
     html.dark .price-tag { color:#7fd1c4; }
 
@@ -4553,11 +4561,15 @@ Cart shop:</textarea>
     </div>
 
     
+    <div class="track-back" id="track-back" hidden></div>
     <div class="track-pop" id="track-pop" hidden>
       <b id="track-title">Tracking</b>
+      <p class="track-num" id="track-num"></p>
       <p id="track-body"></p>
+      <p class="track-meta" id="track-meta"></p>
       <div class="ask-row">
         <button type="button" class="ghost" id="track-close">Close</button>
+        <button type="button" class="ghost" id="track-copy">Copy number</button>
         <a id="track-link" class="go" href="#" target="_blank" rel="noopener">Open tracker</a>
       </div>
     </div>
@@ -4636,7 +4648,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 866;
+    window.BOARD_VER = 868;
 
     
     function communityShort() {
@@ -9804,46 +9816,86 @@ function currentRotation() {
     function pkgTrack(item) {
       if (!item) return null;
       if (item.trackUrl) return { carrier: item.carrier || "Tracker", num: item.tracking || item.track || "", url: item.trackUrl };
-      var blob = [item.tracking, item.track, item.number, item.detail, item.title].filter(Boolean).join(" ");
+      var blob = [item.who, item.carrier, item.tracking, item.track, item.number, item.detail, item.title].filter(Boolean).join(" ");
       var ups = blob.match(/\b1Z[0-9A-Z]{16}\b/i);
-      if (ups) return { carrier: "UPS", num: ups[0], url: "https://www.ups.com/track?tracknum=" + encodeURIComponent(ups[0]) };
+      if (ups) return { carrier: "UPS", num: ups[0].toUpperCase(), url: "https://www.ups.com/track?tracknum=" + encodeURIComponent(ups[0]) };
+      if (/fedex/i.test(blob)) {
+        var fedex = blob.match(/\b(?:96\d{20}|\d{12,15})\b/);
+        if (fedex) return { carrier: "FedEx", num: fedex[0], url: "https://www.fedex.com/fedextrack/?trknbr=" + encodeURIComponent(fedex[0]) };
+      }
       var tba = blob.match(/\bTBA[0-9]{8,}\b/i);
-      if (tba) return { carrier: "Amazon", num: tba[0], url: "https://www.amazon.com/progress-tracker/package/" + encodeURIComponent(tba[0]) };
+      if (tba) return { carrier: "Amazon", num: tba[0].toUpperCase(), url: "https://www.amazon.com/progress-tracker/package/" + encodeURIComponent(tba[0]) };
       var amz = blob.match(/\b(\d{3}-\d{7}-\d{7})\b/);
-      if (amz) return { carrier: "Amazon order", num: amz[1], url: "https://www.amazon.com/gp/your-account/order-details?orderID=" + encodeURIComponent(amz[1]) };
-      var usps = blob.match(/\b9[0-9]{21,21}\b/) || blob.match(/\b9[0-9]{15,21}\b/);
-      if (usps && /usps|mail|post/i.test(blob + (item.who || ""))) return { carrier: "USPS", num: usps[0], url: "https://tools.usps.com/go/TrackConfirmAction?tLabels=" + encodeURIComponent(usps[0]) };
+      if (amz) return { carrier: "Amazon", num: amz[1], url: "https://www.amazon.com/gp/your-account/order-details?orderID=" + encodeURIComponent(amz[1]) };
+      var usps = blob.match(/\b9[0-9]{21}\b/) || blob.match(/\b9[0-9]{15,21}\b/);
+      if (usps && (/usps|mail|post|priority|ground advantage/i.test(blob) || usps[0].length >= 20)) {
+        return { carrier: "USPS", num: usps[0], url: "https://tools.usps.com/go/TrackConfirmAction?tLabels=" + encodeURIComponent(usps[0]) };
+      }
       if (item.tracking) return { carrier: item.carrier || "Tracker", num: item.tracking, url: "https://www.google.com/search?q=" + encodeURIComponent(item.tracking + " tracking") };
       return null;
     }
+    function trackPayload(item) {
+      var tr = pkgTrack(item);
+      if (!tr) return "";
+      var pack = {
+        who: item.who || "",
+        title: item.title || "",
+        detail: item.detail || "",
+        when: item.when || item.at || "",
+        tracking: item.tracking || item.track || tr.num || "",
+        trackUrl: item.trackUrl || tr.url || "",
+        carrier: item.carrier || tr.carrier || ""
+      };
+      try { return encodeURIComponent(JSON.stringify(pack)); } catch (e) { return ""; }
+    }
+    window.pkgTrack = pkgTrack;
+    window.trackPayload = trackPayload;
     function openTrackPop(item) {
       var tr = pkgTrack(item);
       if (!tr) return;
       var pop = document.getElementById("track-pop");
+      var back = document.getElementById("track-back");
       var ttl = document.getElementById("track-title");
+      var num = document.getElementById("track-num");
       var body = document.getElementById("track-body");
+      var meta = document.getElementById("track-meta");
       var link = document.getElementById("track-link");
       if (!pop) return;
-      if (ttl) ttl.textContent = tr.carrier + " tracking";
-      if (body) body.textContent = (item.title || item.who || "Package") + (tr.num ? " · " + tr.num : "") + (item.detail ? " — " + item.detail : "");
-      if (link) { link.href = tr.url; link.hidden = false; }
+      window.__trackLast = tr;
+      if (ttl) ttl.textContent = (item.who ? item.who + " · " : "") + tr.carrier;
+      if (num) num.textContent = tr.num || "No number on file";
+      if (body) body.textContent = [item.title, item.detail].filter(Boolean).join(" — ") || "Tracking on file.";
+      var bits = [];
+      if (item.when) bits.push(item.when);
+      if (/shipped/i.test(item.detail || "")) bits.push("in transit");
+      if (/left at|delivered|front door|porch/i.test(item.detail || "")) bits.push("delivered");
+      if (meta) meta.textContent = bits.join(" · ");
+      if (link) { link.href = tr.url; link.hidden = !tr.url; link.textContent = "Open " + tr.carrier; }
       pop.hidden = false;
       pop.classList.add("on");
+      if (back) { back.hidden = false; back.classList.add("on"); }
     }
     function closeTrackPop() {
       var pop = document.getElementById("track-pop");
-      if (!pop) return;
-      pop.classList.remove("on");
-      pop.hidden = true;
+      var back = document.getElementById("track-back");
+      if (pop) { pop.classList.remove("on"); pop.hidden = true; }
+      if (back) { back.classList.remove("on"); back.hidden = true; }
     }
     document.addEventListener("click", function (e) {
-      var btn = e.target && e.target.closest && e.target.closest("[data-track]");
-      if (btn) {
-        e.preventDefault();
-        var raw = btn.getAttribute("data-track") || "";
-        try { openTrackPop(JSON.parse(decodeURIComponent(raw))); } catch (eJ) { openTrackPop({ detail: raw, title: "Package" }); }
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.id === "track-close" || t.id === "track-back") { closeTrackPop(); return; }
+      if (t.id === "track-copy") {
+        var n = (window.__trackLast && window.__trackLast.num) || "";
+        if (n && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(n);
+        return;
       }
-      if (e.target && e.target.id === "track-close") closeTrackPop();
+      if (t.closest("input, label.deliv-mark, a#track-link")) return;
+      var card = t.closest(".deliv-card[data-track], [data-track]");
+      if (!card) return;
+      e.preventDefault();
+      var raw = card.getAttribute("data-track") || "";
+      try { openTrackPop(JSON.parse(decodeURIComponent(raw))); } catch (eJ) { openTrackPop({ detail: raw, title: "Package" }); }
     }, true);
     function priceMarks(level) {
       if (level == null || level === "") return "";
@@ -10535,6 +10587,7 @@ function currentRotation() {
           open: boxes("open"),
           close: boxes("close"),
           deliveredMarks: window.__deliveredMarks || {},
+          undeliveredMarks: window.__undeliveredMarks || {},
           updated: new Date().toISOString()
         };
       }
@@ -10565,8 +10618,12 @@ function currentRotation() {
         if (h.deliveredMarks && typeof h.deliveredMarks === "object") {
           window.__deliveredMarks = h.deliveredMarks;
           try { localStorage.setItem("bw-deliv-marks", JSON.stringify(h.deliveredMarks)); } catch (e) {}
-          if (typeof window.__paintDeliveries === "function") window.__paintDeliveries();
         }
+        if (h.undeliveredMarks && typeof h.undeliveredMarks === "object") {
+          window.__undeliveredMarks = h.undeliveredMarks;
+          try { localStorage.setItem("bw-deliv-unmarks", JSON.stringify(h.undeliveredMarks)); } catch (eU) {}
+        }
+        if ((h.deliveredMarks || h.undeliveredMarks) && typeof window.__paintDeliveries === "function") window.__paintDeliveries();
         window.__houseUpdated = h.updated || "";
         var when = h.updated ? new Date(h.updated).toLocaleString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "";
         stamp("Shared house list" + (when ? " · " + when : "") + (src ? " · " + src : ""));
@@ -11887,6 +11944,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v868 — Tap a package card with a tracking number to open carrier, number, status, and the official tracker.",
+      "v867 — Uncheck Delivered to put a package back on the incoming list if it was marked by accident.",
       "v866 — On-toggle cost controls: daily cap in settings, Weather cached 30 min and counted against the cap, drive times every 30 min not 6.",
       "v865 — Maps toggle hides the API key. Off means every Google Weather/Places/Maps JS call sees an empty key.",
       "v864 — Maps toggle off now blocks Google Weather and Places New. Open-Meteo, NWS, and the last Places cache stay.",
@@ -14436,13 +14495,15 @@ function currentRotation() {
         return t0 || 0;
       }
       var cut5 = Date.now() - 5 * 24 * 60 * 60 * 1000;
-      var incomingAll = expandPkgRows((window.__delivData || {}).incoming || []).filter(function (x) { return !marks0[delivKey(x)]; });
+      var un0 = window.__undeliveredMarks || {};
+      var incomingAll = expandPkgRows((window.__delivData || {}).incoming || []).filter(function (x) { return !marks0[delivKey(x)] || un0[delivKey(x)]; });
       var deliveredRecent = expandPkgRows((window.__delivData || {}).delivered || []).filter(function (x) {
+        if (un0[delivKey(x)]) return false;
         var t0 = delivAgeMs(x);
         return t0 >= cut5;
       });
       ((window.__delivData || {}).incoming || []).forEach(function (x) {
-        if (marks0[delivKey(x)] && delivAgeMs(x) >= cut5) {
+        if (marks0[delivKey(x)] && !un0[delivKey(x)] && delivAgeMs(x) >= cut5) {
           deliveredRecent.push({ who: x.who, title: x.title, detail: (x.detail || "") + " · marked delivered", when: x.when, marked: marks0[delivKey(x)] });
         }
       });
@@ -14505,13 +14566,7 @@ function currentRotation() {
           delBox.innerHTML = inc.map(function (x) { return window.delivCardHtml(x, true); }).join("") + rec.map(function (x) { return window.delivCardHtml(x, false); }).join("");
           delBox.querySelectorAll("input[data-deliv]").forEach(function (cb) {
             cb.addEventListener("change", function () {
-              if (!cb.checked) return;
-              window.__deliveredMarks = window.__deliveredMarks || {};
-              window.__deliveredMarks[cb.getAttribute("data-deliv")] = { at: new Date().toISOString() };
-              try { localStorage.setItem("bw-deliv-marks", JSON.stringify(window.__deliveredMarks)); } catch (e2) {}
-              if (typeof window.__paintDeliveries === "function") window.__paintDeliveries();
-              else paintToday();
-              if (typeof saveHouse === "function") saveHouse();
+              if (typeof applyDelivMark === "function") applyDelivMark(cb.getAttribute("data-deliv"), !!cb.checked);
             });
           });
         }
@@ -15006,10 +15061,37 @@ function paint() {
     })();
 
     window.__deliveredMarks = window.__deliveredMarks || {};
+    window.__undeliveredMarks = window.__undeliveredMarks || {};
     try {
       var savedMarks = JSON.parse(localStorage.getItem("bw-deliv-marks") || "{}");
       if (savedMarks && typeof savedMarks === "object") window.__deliveredMarks = savedMarks;
     } catch (e) {}
+    try {
+      var savedUn = JSON.parse(localStorage.getItem("bw-deliv-unmarks") || "{}");
+      if (savedUn && typeof savedUn === "object") window.__undeliveredMarks = savedUn;
+    } catch (eU) {}
+    function persistDelivMarks() {
+      try { localStorage.setItem("bw-deliv-marks", JSON.stringify(window.__deliveredMarks || {})); } catch (e) {}
+      try { localStorage.setItem("bw-deliv-unmarks", JSON.stringify(window.__undeliveredMarks || {})); } catch (e2) {}
+    }
+    function applyDelivMark(key, on) {
+      key = String(key || "");
+      if (!key) return;
+      window.__deliveredMarks = window.__deliveredMarks || {};
+      window.__undeliveredMarks = window.__undeliveredMarks || {};
+      if (on) {
+        window.__deliveredMarks[key] = { at: new Date().toISOString() };
+        delete window.__undeliveredMarks[key];
+      } else {
+        delete window.__deliveredMarks[key];
+        window.__undeliveredMarks[key] = { at: new Date().toISOString() };
+      }
+      persistDelivMarks();
+      if (typeof window.__paintDeliveries === "function") window.__paintDeliveries();
+      else if (typeof paintToday === "function") paintToday();
+      if (typeof saveHouse === "function") saveHouse();
+    }
+    window.applyDelivMark = applyDelivMark;
     function parseDelivWhen(raw) {
       var s = String(raw || "").trim();
       if (!s) return 0;
@@ -15111,35 +15193,46 @@ function paint() {
         var title = esc(item.title || "");
         var detail = esc(item.detail || "");
         var key = esc(pkgKey(item));
+        var trackAttr = (typeof trackPayload === "function" && trackPayload(item)) || "";
+        var hasTr = !!trackAttr;
+        var trackBtn = hasTr ? '<button type="button" class="deliv-track">Tracking</button>' : "";
         if (incoming) {
           var boxIco = (window.EV_ART && EV_ART.box) || "";
-          return '<div class="card ev-card eat-card deliv-card">' +
+          return '<div class="card ev-card eat-card deliv-card' + (hasTr ? " has-track" : "") + '"' + (hasTr ? ' data-track="' + trackAttr + '"' : "") + ">" +
             '<div class="ev-rail rail-solo"><span class="ev-ico" aria-hidden="true">' + boxIco + "</span></div>" +
             '<div class="ev-body">' +
               '<span class="place-tag place-out">On the way</span>' +
               (who ? '<span class="kind-tag">' + who + "</span>" : "") +
               "<b>" + title + "</b>" +
               (detail ? '<span class="ev-when">' + detail + "</span>" : "") +
-              (typeof pkgTrack === "function" && pkgTrack(item) ? '<button type="button" class="deliv-track" data-track="' + encodeURIComponent(JSON.stringify({ who:item.who||"", title:item.title||"", detail:item.detail||"", tracking:item.tracking||item.track||"", trackUrl:item.trackUrl||"", carrier:item.carrier||"" })) + '">Tracking</button>' : "") +
+              trackBtn +
               '<label class="deliv-mark"><input type="checkbox" data-deliv="' + key + '"> Delivered</label>' +
             "</div></div>";
         }
         var how = item.marked ? "Marked here" : "Delivered";
-        return '<div class="card ev-card eat-card deliv-card">' +
+        return '<div class="card ev-card eat-card deliv-card' + (hasTr ? " has-track" : "") + '"' + (hasTr ? ' data-track="' + trackAttr + '"' : "") + ">" +
           '<div class="ev-rail rail-solo"><span class="ev-ico" aria-hidden="true">' + ((window.EV_ART && EV_ART.box) || "") + "</span></div>" +
           '<div class="ev-body">' +
             '<span class="place-tag place-bw">' + how + "</span>" +
             "<b>" + (who ? who + " · " : "") + title + "</b>" +
             (detail ? '<span class="ev-when">' + detail + "</span>" : "") +
+            trackBtn +
+            '<label class="deliv-mark"><input type="checkbox" data-deliv="' + key + '" checked> Delivered</label>' +
           "</div></div>";
       }
       window.delivCardHtml = card;
       function split(data) {
         var marks = window.__deliveredMarks || {};
-        var inc = [], del = (data.delivered || []).slice();
+        var un = window.__undeliveredMarks || {};
+        var inc = [], del = [];
+        (data.delivered || []).forEach(function (x) {
+          var k = pkgKey(x);
+          if (un[k] && !marks[k]) inc.push(x);
+          else del.push(x);
+        });
         (data.incoming || []).forEach(function (x) {
           var k = pkgKey(x);
-          if (marks[k]) {
+          if (marks[k] && !un[k]) {
             del.unshift({ who: x.who, title: x.title, detail: (x.detail || "") + " · marked delivered", when: x.when, marked: true });
           } else inc.push(x);
         });
@@ -15164,12 +15257,8 @@ function paint() {
         }
         box.querySelectorAll("input[data-deliv]").forEach(function (cb) {
           cb.addEventListener("change", function () {
-            if (!cb.checked) return;
-            window.__deliveredMarks = window.__deliveredMarks || {};
-            window.__deliveredMarks[cb.getAttribute("data-deliv")] = { at: new Date().toISOString() };
-            try { localStorage.setItem("bw-deliv-marks", JSON.stringify(window.__deliveredMarks)); } catch (e) {}
-            paint();
-            if (typeof saveHouse === "function") saveHouse();
+            if (typeof applyDelivMark === "function") applyDelivMark(cb.getAttribute("data-deliv"), !!cb.checked);
+            else paint();
           });
         });
         }
@@ -15178,7 +15267,7 @@ function paint() {
           var when = src.updated ? new Date(src.updated) : null;
           var whenTxt = when && !isNaN(when) ? when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : (src.updated || "unknown");
           var srcTxt = src.source ? " from Gmail scan" : "";
-          note.textContent = "Last email scan " + whenTxt + srcTxt + ". Incoming " + nIn + ", delivered " + nDel + ". Check the box if a package arrived with no email.";
+          note.textContent = "Last email scan " + whenTxt + srcTxt + ". Incoming " + nIn + ", delivered " + nDel + ". Check Delivered when it arrives. Uncheck if you marked one by accident.";
         }
         if (typeof noteFeed === "function") {
           var live = !!(src.updated && src.updated !== "");
