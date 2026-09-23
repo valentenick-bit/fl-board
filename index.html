@@ -4669,7 +4669,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 873;
+    window.BOARD_VER = 874;
 
     
     function communityShort() {
@@ -6642,37 +6642,32 @@ Cart shop:</textarea>
     function loadStormPublicAdvisories(s, done) {
       var base = stormArchiveBase(s);
       if (!base) { if (done) done([]); return; }
-      if (window.__advFile === base && window.__advAt && Date.now() - window.__advAt < 15 * 60 * 1000 && window.__advPts) {
+      if (window.__advBusy) { if (done) done(window.__advPts || []); return; }
+      if (window.__advFile === base && window.__advAt && Date.now() - window.__advAt < 30 * 60 * 1000 && Array.isArray(window.__advPts)) {
         mergeStormHistPoints(s, window.__advPts);
         if (done) done(window.__advPts);
         return;
       }
+      window.__advBusy = true;
+      var cap = 16;
+      var liveN = parseInt((s.publicAdvisory && s.publicAdvisory.advNum) || (s.forecastAdvisory && s.forecastAdvisory.advNum) || "0", 10);
+      if (isFinite(liveN) && liveN > 0) cap = Math.min(16, liveN);
       var pts = [];
-      var misses = 0;
-      function pull(n) {
-        if (n > 24 || misses >= 3) {
-          window.__advFile = base;
-          window.__advAt = Date.now();
-          window.__advPts = pts.slice();
-          mergeStormHistPoints(s, pts);
-          if (typeof noteFeed === "function") noteFeed("storm-adv", !!pts.length, (s.name || "storm") + " · " + pts.length + " advisories");
-          if (done) done(pts);
-          return;
-        }
-        var url = base + ".public." + ("00" + n).slice(-3) + ".shtml";
-        var urls = [url, "https://corsproxy.io/?" + encodeURIComponent(url)];
-        function tryU(i) {
-          if (i >= urls.length) { misses += 1; pull(n + 1); return; }
-          fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
-            var row = parseNhcPublicAdv(txt);
-            if (row) { pts.push(row); misses = 0; }
-            else misses += 1;
-            pull(n + 1);
-          }).catch(function () { tryU(i + 1); });
-        }
-        tryU(0);
+      var n = cap;
+      var url = base + ".public." + ("00" + n).slice(-3) + ".shtml";
+      function finish(list) {
+        window.__advBusy = false;
+        window.__advFile = base;
+        window.__advAt = Date.now();
+        window.__advPts = list || [];
+        mergeStormHistPoints(s, window.__advPts);
+        if (typeof noteFeed === "function") noteFeed("storm-adv", true, (s.name || "storm") + " · " + window.__advPts.length + " advisories + track");
+        if (done) done(window.__advPts);
       }
-      pull(1);
+      fetch(url, { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+        var row = parseNhcPublicAdv(txt);
+        finish(row ? [row] : []);
+      }).catch(function () { finish([]); });
     }
         function loadStormBtk(s, done) {
       var file = stormAtcfFile(s);
@@ -8890,8 +8885,16 @@ function currentRotation() {
         } else if (moon && !moonWin) {
           moon.style.opacity = "0";
         }
-        requestAnimationFrame(tick);
+        if (document.hidden) {
+          window.__skyTickOn = false;
+          return;
+        }
+        window.__skyTickOn = true;
+        setTimeout(function () { requestAnimationFrame(tick); }, 125);
       }
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden && !window.__skyTickOn) requestAnimationFrame(tick);
+      });
       requestAnimationFrame(tick);
     })();
     function layoutPalms() {
@@ -12229,6 +12232,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v874 — Cut laptop load: stop the 24-advisory crawl, pause header motion when the tab is hidden, run the sky loop at 8 fps instead of 60.",
       "v873 — Storm charts plot every numbered NHC public advisory (Fay 1–15), not only 6-hour best-track fixes.",
       "v872 — Package popup shows carrier, number, and email status for that parcel and opens the official tracker. Carriers block in-page embeds.",
       "v871 — Storm page graphs NHC advisory history: wind, pressure, and distance from each official 6-hour fix as new advisories post.",
