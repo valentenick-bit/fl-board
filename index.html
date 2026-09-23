@@ -4684,7 +4684,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 880;
+    window.BOARD_VER = 881;
 
     
     function communityShort() {
@@ -4814,15 +4814,19 @@ Cart shop:</textarea>
         var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 400) {
-            window.__fetchFail = (window.__fetchFail || 0) + 1;
-            window.__fetchLast = r.status + " " + u.slice(0, 80);
+            if (!optional) {
+              window.__fetchFail = (window.__fetchFail || 0) + 1;
+              window.__fetchLast = r.status + " " + u.slice(0, 80);
+            }
             if (r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
           }
           return r;
         }, function (err) {
           var msg = String(err && err.message || err || "");
-          window.__fetchFail = (window.__fetchFail || 0) + 1;
-          window.__fetchLast = "net " + u.slice(0, 70);
+          if (!optional) {
+            window.__fetchFail = (window.__fetchFail || 0) + 1;
+            window.__fetchLast = "net " + u.slice(0, 70);
+          }
           if (!optional && !/abort/i.test(msg) && err && err.name !== "AbortError") logCrash("net", u.slice(0, 70) + " " + msg);
           throw err;
         });
@@ -4869,7 +4873,7 @@ Cart shop:</textarea>
         if (mem && mem.usedJSHeapSize) bits.push(Math.round(mem.usedJSHeapSize / 1048576) + " MB heap");
       } catch (eM) {}
       var on = document.querySelector(".page.on");
-      bits.push("page " + (on ? on.id : "?"));
+      bits.push("page " + (on ? (typeof pageLabel === "function" ? pageLabel(on.id) : on.id) : "?"));
       return bits.join(" · ");
     }
     function buildBoardReport() {
@@ -4921,9 +4925,9 @@ Cart shop:</textarea>
         "runtime: " + runtime,
         "now: " + now,
         "zip/place: " + (typeof homePlace === "function" ? homePlace() : "") + " " + (set.zip || ""),
-        "page: " + (on ? on.id : "?"),
+        "page: " + (on ? ((typeof pageLabel === "function" ? pageLabel(on.id) : on.id) + " (" + on.id + ")") : "?"),
         "dark: " + (set.dark || "auto") + " · quiet: " + (set.quiet || ""),
-        "rotation: " + (rot.join(" > ") || "none"),
+        "rotation: " + (rot.map(function (id) { return typeof pageLabel === "function" ? pageLabel(id) : id; }).join(" > ") || "none"),
         "temp: " + ((document.getElementById("live-temp") || {}).textContent || ""),
         "named: " + ((window.__namedStorms || []).length ? (window.__namedStorms || []).map(function (s) { return s.name || s; }).join(", ") : "none"),
         "summary: " + ((document.getElementById("health-sum") || {}).textContent || ""),
@@ -6743,7 +6747,7 @@ Cart shop:</textarea>
         return;
       }
       var raw = "https://ftp.nhc.noaa.gov/atcf/btk/" + file;
-      var urls = [raw, "https://corsproxy.io/?" + encodeURIComponent(raw)];
+      var urls = [raw, "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw)];
       function next(i) {
         if (i >= urls.length) { if (done) done([]); return; }
         fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
@@ -11374,7 +11378,7 @@ function currentRotation() {
     }
     function fetchNhcText(url, done) {
       if (!url) return done("");
-      var tries = [url, "https://corsproxy.io/?" + encodeURIComponent(url), "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)];
+      var tries = [url, "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)];
       var i = 0;
       function next() {
         if (i >= tries.length) return done("");
@@ -12346,6 +12350,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v881 — Status uses Today/Weather/Sea/Events names. corsproxy 403s no longer count as failures. Predicted tide is OK.",
       "v880 — Status: stall clock, hold/pause/pop flags, fetch failures, and heap on the report so a freeze leaves a fingerprint.",
       "v879 — Stop parsing the national storm-report file every minute (that freeze). Lightning stays on the live socket. Charts skip when the tab is hidden.",
       "v878 — Don’t drop the rotation timer when a page is held; cap NHC fetches at 6s so a dead proxy can’t freeze the wall.",
@@ -18142,8 +18147,8 @@ function mustEatsFL() {
         if (/NHC list is quiet|no named|outlook maps below still update/i.test(s)) return "ok";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
         if (/\bG0\b|space weather|flare [A-Z]\d/i.test(s)) return "ok";
-        if (/Quiet · Kp|Unlikely · Kp|^Quiet\b|^Unlikely\b/i.test(s) && /Kp/i.test(s)) return "ok";
-        if (s.length < 90 && /quiet|not in yet|see marine|see gulf sst|see gulf|see tide|see coastal|checking range|updating|gaps filled|catching up|pick signs/i.test(s) && !/NHC list is quiet|\bG0\b|flare |Quiet · Kp|Unlikely · Kp/i.test(s)) return "failed";
+        if (/Quiet · Kp|Unlikely · Kp|^Quiet\b|^Unlikely\b|Predicted tide only|water level quiet/i.test(s)) return "ok";
+        if (s.length < 90 && /quiet|not in yet|see marine|see gulf sst|see gulf|see tide|see coastal|checking range|updating|gaps filled|catching up|pick signs/i.test(s) && !/NHC list is quiet|\bG0\b|flare |Quiet · Kp|Unlikely · Kp|Predicted tide|water level quiet/i.test(s)) return "failed";
         if (/^(loading|checking|updating|waiting|pulling|looking up)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc|waiting on the home|checking gulf|checking noaa|checking air|pulling the nws|looking up the next|· updating/i.test(s))
           return grace ? "placeholder" : "failed";
         if (!s || /^(—|–|…|\.{1,3}|n\/a|See |None)$/i.test(s)) return "ok";
@@ -18417,7 +18422,11 @@ function mustEatsFL() {
       if (urlV) hints.push("You can drop ?v= from the address bar. Bookmark https://commons.valente-nick.workers.dev/");
       if (!navigator.onLine) hints.push("Device is offline. Live feeds will stay down.");
       if (window.__stallN) hints.push("Main thread stalled " + window.__stallN + " time" + (window.__stallN === 1 ? "" : "s") + (window.__lastStall ? (" · last " + window.__lastStall) : "") + ".");
-      if (window.__holdPage) hints.push("Rotation is on hold" + (window.__popOpen ? " because a popup is open" : window.__paused ? " because the wall is paused" : "") + ".");
+      if (window.__holdPage) {
+        var onH = document.querySelector(".page.on");
+        var why = window.__popOpen ? " because a popup is open" : window.__paused ? " because the wall is paused" : (onH && window.STICKY_PAGES && window.STICKY_PAGES[onH.id] ? (" while " + (typeof pageLabel === "function" ? pageLabel(onH.id) : onH.id) + " is open") : "");
+        hints.push("Rotation is on hold" + why + ".");
+      }
       if (window.__fetchFail && window.__fetchFail > 8) hints.push("Many fetches failed (" + window.__fetchFail + "). Last: " + (window.__fetchLast || "unknown") + ".");
       if (!document.querySelector(".page.on")) hints.push("No page is marked on. The wall will look empty.");
       var rot = [];
@@ -18492,7 +18501,7 @@ function mustEatsFL() {
         if (nowEl) {
           var onPg = document.querySelector(".page.on");
           var set = typeof getSet === "function" ? getSet() : {};
-          nowEl.textContent = (typeof homePlace === "function" ? homePlace() : "") + " · " + (set.zip || "") + " · page " + (onPg ? onPg.id : "?") + " · dark " + (set.dark || "auto") + " · " + ((document.getElementById("live-temp") || {}).textContent || "");
+          nowEl.textContent = (typeof homePlace === "function" ? homePlace() : "") + " · " + (set.zip || "") + " · page " + (onPg ? (typeof pageLabel === "function" ? pageLabel(onPg.id) : onPg.id) : "?") + " · dark " + (set.dark || "auto") + " · " + ((document.getElementById("live-temp") || {}).textContent || "");
         }
       var fail = document.getElementById("health-fail");
       var stale = document.getElementById("health-stale");
