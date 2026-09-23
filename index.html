@@ -4484,7 +4484,15 @@ Cart shop:</textarea>
             <button type="button" data-v="0">Off</button>
           </div>
         </div>
-        <p class="set-help">The Maps key lives in Drive <code>maps.json</code> only — never GitHub, never key.json, and not on this page. Off stops billed Places lookups, the live traffic layer, and drive times. Map pins stay on Google. Restaurant and golf lists keep the last Google cache from this device (ratings, names, pins) until you turn Maps back on. Cap is 50 paid calls per device per day.</p>
+        <p class="set-help">The Maps key lives in Drive <code>maps.json</code> only — never GitHub, never key.json, and not on this page. Off hides the key. On still bills only through <code>gmapsKey()</code>, and only until today’s cap. Weather is cached 30 minutes and counts as 1–3 calls. Places and drive times use the same cap. Open-Meteo and NWS always run.</p>
+        <div class="set-line"><label>Daily Google cap</label>
+          <div class="set-row" id="set-gmapscap">
+            <button type="button" data-v="20">20</button>
+            <button type="button" data-v="50">50</button>
+            <button type="button" data-v="100">100</button>
+          </div>
+        </div>
+        <p class="hint" id="gmaps-budget-note">Paid calls today: —</p>
         <div class="set-line"><label>Google cache</label>
           <button type="button" id="set-gcache" class="ghost">Clear lookups</button>
         </div>
@@ -4628,7 +4636,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 863;
+    window.BOARD_VER = 866;
 
     
     function communityShort() {
@@ -4867,7 +4875,7 @@ Cart shop:</textarea>
     var SET_DEFAULTS = {
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
       station: "", vol: "whisper", noaa: "1", radioauto: "1", civicChime: "1", breakChime: "0", scanCivic: "0",
-      zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1",
+      zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1", gmapsCap: "50",
       community: "",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
       brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
@@ -5710,6 +5718,19 @@ Cart shop:</textarea>
       var n = Number((typeof getSet === "function" && getSet().gmapsCap) || 50);
       return isFinite(n) && n > 0 ? Math.min(200, n) : 50;
     }
+    function paintGmapsBudgetNote() {
+      var el = document.getElementById("gmaps-budget-note");
+      if (!el) return;
+      var on = typeof mapsPaidOn === "function" ? mapsPaidOn() : false;
+      var o = typeof gmapsBudgetRead === "function" ? gmapsBudgetRead() : { n: 0 };
+      var cap = gmapsBudgetCap();
+      var by = o.by || {};
+      var bits = Object.keys(by).map(function (k) { return k + " " + by[k]; });
+      el.textContent = on
+        ? ("Paid calls today: " + (o.n || 0) + " / " + cap + (bits.length ? " · " + bits.join(", ") : "") + ". After the cap, Open-Meteo / cache only.")
+        : ("Maps toggle off. Key hidden. " + (o.n || 0) + " paid calls logged earlier today.");
+    }
+    window.paintGmapsBudgetNote = paintGmapsBudgetNote;
     function gmapsBudgetRead() {
       try {
         var o = JSON.parse(localStorage.getItem("commons-gmaps-budget") || "null") || {};
@@ -5735,6 +5756,7 @@ Cart shop:</textarea>
       o.by[kind] = (o.by[kind] || 0) + cost;
       try { localStorage.setItem("commons-gmaps-budget", JSON.stringify(o)); } catch (e) {}
       if (typeof noteFeed === "function") noteFeed("gmaps-budget", true, o.n + "/" + gmapsBudgetCap() + " · " + (kind || "call"));
+      if (typeof paintGmapsBudgetNote === "function") paintGmapsBudgetNote();
       return true;
     }
     function eatsNearCacheKey() {
@@ -6136,9 +6158,9 @@ Cart shop:</textarea>
         return;
       }
       if (gmapsReady()) { if (done) done(true); return; }
-      var key = String((typeof getSet === "function" && getSet().gmapsKey) || "").trim();
+      var key = typeof gmapsKey === "function" ? gmapsKey() : "";
       if (!key) {
-        if (typeof noteFeed === "function") noteFeed("gmaps", false, "no key");
+        if (typeof noteFeed === "function") noteFeed("gmaps", false, mapsToggleOn() ? "no key" : "Maps toggle off");
         if (done) done(false);
         return;
       }
@@ -11865,6 +11887,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v866 — On-toggle cost controls: daily cap in settings, Weather cached 30 min and counted against the cap, drive times every 30 min not 6.",
+      "v865 — Maps toggle hides the API key. Off means every Google Weather/Places/Maps JS call sees an empty key.",
+      "v864 — Maps toggle off now blocks Google Weather and Places New. Open-Meteo, NWS, and the last Places cache stay.",
       "v863 — Land page gets a go-outside report, NWS ground alerts, and map rotation: traffic, satellite, air, rain.",
       "v862 — Astronomer report names meteor showers, binocular comets, and nearby sky events with when and where to look.",
       "v861 — Sky observing card is a full astronomer report: call, NWS sky alerts, best window, targets, ISS.",
@@ -16368,7 +16393,7 @@ function mustEatsFL() {
         var had = "";
         try { had = String((getSet() || {}).gmapsKey || "").trim(); } catch (eK) {}
         if (typeof putSet === "function") putSet({ gmapsKey: gk });
-        if (had !== gk) {
+        if (had !== gk && typeof mapsToggleOn === "function" && mapsToggleOn()) {
           if (typeof loadGmaps === "function") loadGmaps(function () {
             if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
             if (typeof window.reloadEats === "function") window.reloadEats();
@@ -16830,6 +16855,8 @@ function mustEatsFL() {
         mark("set-greettone", s.greetTone || "full");
         mark("set-tickspeed", s.tickSpeed || "normal");
         mark("set-gmapson", s.gmapsOn !== "0" ? "1" : "0");
+        mark("set-gmapscap", String(s.gmapsCap || "50"));
+        if (typeof paintGmapsBudgetNote === "function") paintGmapsBudgetNote();
         (function fillLang() {
           var sel = document.getElementById("set-lang");
           if (!sel) return;
@@ -17037,12 +17064,18 @@ function mustEatsFL() {
           if (el && typeof spinEl === "function") spinEl(el, tickSpeedPx(), true);
         });
       });
+      tap("set-gmapscap", "gmapsCap", function () {
+        if (typeof paintGmapsBudgetNote === "function") paintGmapsBudgetNote();
+      });
       tap("set-gmapson", "gmapsOn", function () {
         if (typeof syncMapsToggleStatus === "function") syncMapsToggleStatus();
         if (typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
         if (typeof window.reloadEats === "function") window.reloadEats();
         if (typeof window.reloadGolf === "function") window.reloadGolf();
         if (typeof mapsPaidOn === "function" && mapsPaidOn() && typeof loadGmaps === "function") loadGmaps(function () {});
+        window.__gwxOn = typeof mapsPaidOn === "function" && mapsPaidOn();
+        if (typeof refreshWeather === "function") refreshWeather();
+        else if (typeof window.loadWx === "function") window.loadWx();
       });
       tap("set-vol", "vol", function () {
         var audio = document.getElementById("radioPlayer");
@@ -20286,12 +20319,26 @@ function drawSurgeChart(points) {
       return hours.length > 0;
     }
 
-    function gwxKey() {
+    function mapsToggleOn() {
+      var s = typeof getSet === "function" ? getSet() : {};
+      var flag = s && s.gmapsOn;
+      if (flag === "0" || flag === 0 || flag === false || flag === "off" || flag === "no" || flag === "false") return false;
+      return true;
+    }
+    function mapsKeyStored() {
       return String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
+    }
+    function gmapsKey() {
+      if (typeof mapsToggleOn === "function" && !mapsToggleOn()) return "";
+      return mapsKeyStored();
+    }
+    function gwxKey() {
+      return typeof gmapsKey === "function" ? gmapsKey() : "";
     }
     function gwxUrl(path, extra) {
       var key = gwxKey();
       if (!key || !isFinite(homeLat()) || !isFinite(homeLon())) return "";
+      if (typeof mapsPaidOn === "function" && !mapsPaidOn()) return "";
       return "https://weather.googleapis.com/v1/" + path +
         "?key=" + encodeURIComponent(key) +
         "&location.latitude=" + homeLat() +
@@ -20410,18 +20457,37 @@ function drawSurgeChart(points) {
       return true;
     }
     function pullGoogleWx() {
+      if (typeof mapsPaidOn === "function" && !mapsPaidOn()) {
+        window.__gwxOn = false;
+        if (typeof noteFeed === "function") noteFeed("gwx", true, "off · toggle · NWS/OM");
+        return Promise.resolve(null);
+      }
+      var age = Date.now() - (window.__gwxAt || 0);
+      if (window.__gwxPack && age < 30 * 60 * 1000) {
+        window.__gwxOn = true;
+        if (typeof noteFeed === "function") noteFeed("gwx", true, "google cache " + Math.round(age / 60000) + "m");
+        return Promise.resolve(window.__gwxPack);
+      }
+      var full = !window.__gwxPack || age > 3 * 3600 * 1000;
+      var cost = full ? 3 : 1;
+      if (typeof gmapsCanSpend === "function" && !gmapsCanSpend("weather", cost)) {
+        window.__gwxOn = !!window.__gwxPack;
+        if (typeof noteFeed === "function") noteFeed("gwx", true, "cap · " + (window.__gwxPack ? "last pack" : "NWS/OM"));
+        return Promise.resolve(window.__gwxPack || null);
+      }
+      if (typeof gmapsSpend === "function") gmapsSpend("weather", cost);
       var nowU = gwxUrl("currentConditions:lookup");
       if (!nowU) {
         window.__gwxOn = false;
         if (typeof noteFeed === "function") noteFeed("gwx", true, "off · no key · NWS/OM");
         return Promise.resolve(null);
       }
-      var hrU = gwxUrl("forecast/hours:lookup", "&hours=48");
-      var dyU = gwxUrl("forecast/days:lookup", "&days=10");
+      var hrU = full ? gwxUrl("forecast/hours:lookup", "&hours=48") : "";
+      var dyU = full ? gwxUrl("forecast/days:lookup", "&days=10") : "";
       return Promise.all([
         fetch(nowU).then(function (r) { return r.json(); }).catch(function () { return null; }),
-        fetch(hrU).then(function (r) { return r.json(); }).catch(function () { return null; }),
-        fetch(dyU).then(function (r) { return r.json(); }).catch(function () { return null; })
+        hrU ? fetch(hrU).then(function (r) { return r.json(); }).catch(function () { return null; }) : Promise.resolve(window.__gwxPack && window.__gwxPack.hours),
+        dyU ? fetch(dyU).then(function (r) { return r.json(); }).catch(function () { return null; }) : Promise.resolve(window.__gwxPack && window.__gwxPack.days)
       ]).then(function (bits) {
         var now = bits[0], hours = bits[1], days = bits[2];
         function dead(j) {
@@ -20437,8 +20503,10 @@ function drawSurgeChart(points) {
           return null;
         }
         window.__gwxOn = true;
-        if (typeof noteFeed === "function") noteFeed("gwx", true, "google pin");
-        return { now: now, hours: hours, days: days };
+        window.__gwxAt = Date.now();
+        window.__gwxPack = { now: now, hours: hours, days: days };
+        if (typeof noteFeed === "function") noteFeed("gwx", true, full ? "google pin · full" : "google pin · now");
+        return window.__gwxPack;
       }).catch(function () {
         window.__gwxOn = false;
         if (typeof noteFeed === "function") noteFeed("gwx", true, "off · fetch · NWS/OM");
@@ -21479,8 +21547,11 @@ function drawSurgeChart(points) {
     window.locPillHtml = locPillHtml;
     window.stampLocPills = stampLocPills;
     setTimeout(function () { try { stampLocPills(document); } catch (eL) {} }, 2500);
-    setInterval(function () { try { stampLocPills(document); } catch (eL2) {} }, 6 * 60 * 1000);
-    function gmapsKey() { return String((typeof getSet === "function" && getSet().gmapsKey) || "").trim(); }
+    setInterval(function () { try { stampLocPills(document); } catch (eL2) {} }, 30 * 60 * 1000);
+    function gmapsKey() {
+      if (typeof mapsToggleOn === "function" && !mapsToggleOn()) return "";
+      return typeof mapsKeyStored === "function" ? mapsKeyStored() : String((typeof getSet === "function" && getSet().gmapsKey) || "").trim();
+    }
     
     window.gm_authFailure = function () {
       window.__gmapsAuthFail = true;
@@ -21553,13 +21624,12 @@ function drawSurgeChart(points) {
       return "";
     }
     function mapsPaidOn() {
-      var s = typeof getSet === "function" ? getSet() : {};
-      return !!(String(s.gmapsKey || "").trim() && s.gmapsOn !== "0");
+      return !!(typeof gmapsKey === "function" ? gmapsKey() : "");
     }
     function syncMapsToggleStatus() {
       if (typeof noteFeed !== "function") return;
       var on = mapsPaidOn();
-      var hasKey = !!(typeof getSet === "function" && String((getSet().gmapsKey || "")).trim());
+      var hasKey = !!(typeof mapsKeyStored === "function" ? mapsKeyStored() : (typeof getSet === "function" && String((getSet().gmapsKey || "")).trim()));
       if (!hasKey) {
         noteFeed("gmaps", false, "no Maps key");
         noteFeed("places", false, "no Maps key");
@@ -21573,6 +21643,7 @@ function drawSurgeChart(points) {
         noteFeed("eat-drive", true, "Maps toggle off");
         noteFeed("event-drive", true, "Maps toggle off");
         noteFeed("traffic", true, "embed only · toggle off");
+        noteFeed("gwx", true, "off · toggle · NWS/OM");
         return;
       }
       noteFeed("gmaps", true, "Maps toggle on");
