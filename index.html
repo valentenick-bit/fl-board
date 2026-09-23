@@ -4669,7 +4669,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 872;
+    window.BOARD_VER = 873;
 
     
     function communityShort() {
@@ -6602,7 +6602,79 @@ Cart shop:</textarea>
       map[key] = rows.slice(-120);
       saveStormHist(map);
     }
-    function loadStormBtk(s, done) {
+    function stormArchiveBase(s) {
+      var id = String((s && (s.id || s.stormId || "")) || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!/^[a-z]{2}\d{6}$/.test(id)) return "";
+      return "https://www.nhc.noaa.gov/archive/" + id.slice(4) + "/" + id.slice(0, 4) + "/" + id;
+    }
+    function parseNhcPublicAdv(txt) {
+      txt = String(txt || "").replace(/<[^>]+>/g, " ");
+      var numM = txt.match(/Advisory Number\s+(\d+[A-Za-z]?)/i);
+      if (!numM) return null;
+      var windM = txt.match(/MAXIMUM SUSTAINED WINDS\.{2,}(\d+)\s*MPH/i);
+      var presM = txt.match(/MINIMUM CENTRAL PRESSURE\.{2,}(\d+)\s*MB/i);
+      var locM = txt.match(/LOCATION\.{2,}(\d+(?:\.\d+)?)\s*([NS])\s+(\d+(?:\.\d+)?)\s*([EW])/i);
+      var utcM = txt.match(/SUMMARY OF[^\n]{0,80}?(\d{3,4})\s*UTC/i);
+      var dateM = txt.match(/GMT\s+[A-Za-z]{3}\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})/i);
+      var t = Date.now();
+      if (dateM && utcM) {
+        var hhmm = ("0000" + utcM[1]).slice(-4);
+        var iso = dateM[3] + "-" + ({Jan:"01",Feb:"02",Mar:"03",Apr:"04",May:"05",Jun:"06",Jul:"07",Aug:"08",Sep:"09",Oct:"10",Nov:"11",Dec:"12"}[dateM[1]] || "01") + "-" + ("0" + dateM[2]).slice(-2) + "T" + hhmm.slice(0,2) + ":" + hhmm.slice(2) + ":00Z";
+        var ms = Date.parse(iso);
+        if (isFinite(ms)) t = ms;
+      }
+      var lat = NaN, lon = NaN;
+      if (locM) {
+        lat = parseFloat(locM[1]); if (/S/i.test(locM[2])) lat = -lat;
+        lon = parseFloat(locM[3]); if (/W/i.test(locM[4])) lon = -lon;
+      }
+      var mph = windM ? Number(windM[1]) : null;
+      return {
+        t: t,
+        adv: String(numM[1]).replace(/^0+/, ""),
+        wind: mph,
+        pres: presM ? Number(presM[1]) : null,
+        lat: lat,
+        lon: lon,
+        src: "advisory"
+      };
+    }
+    function loadStormPublicAdvisories(s, done) {
+      var base = stormArchiveBase(s);
+      if (!base) { if (done) done([]); return; }
+      if (window.__advFile === base && window.__advAt && Date.now() - window.__advAt < 15 * 60 * 1000 && window.__advPts) {
+        mergeStormHistPoints(s, window.__advPts);
+        if (done) done(window.__advPts);
+        return;
+      }
+      var pts = [];
+      var misses = 0;
+      function pull(n) {
+        if (n > 24 || misses >= 3) {
+          window.__advFile = base;
+          window.__advAt = Date.now();
+          window.__advPts = pts.slice();
+          mergeStormHistPoints(s, pts);
+          if (typeof noteFeed === "function") noteFeed("storm-adv", !!pts.length, (s.name || "storm") + " · " + pts.length + " advisories");
+          if (done) done(pts);
+          return;
+        }
+        var url = base + ".public." + ("00" + n).slice(-3) + ".shtml";
+        var urls = [url, "https://corsproxy.io/?" + encodeURIComponent(url)];
+        function tryU(i) {
+          if (i >= urls.length) { misses += 1; pull(n + 1); return; }
+          fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+            var row = parseNhcPublicAdv(txt);
+            if (row) { pts.push(row); misses = 0; }
+            else misses += 1;
+            pull(n + 1);
+          }).catch(function () { tryU(i + 1); });
+        }
+        tryU(0);
+      }
+      pull(1);
+    }
+        function loadStormBtk(s, done) {
       var file = stormAtcfFile(s);
       if (!file) { if (done) done([]); return; }
       if (window.__btkAt && window.__btkFile === file && Date.now() - window.__btkAt < 20 * 60 * 1000 && window.__btkPts) {
@@ -6657,10 +6729,16 @@ Cart shop:</textarea>
     }
     function paintStormCharts(s) {
       if (!s || typeof drawHistChart !== "function") return;
-      var rows = (loadStormHist()[stormHistKey(s)] || []).slice();
+      var all = (loadStormHist()[stormHistKey(s)] || []).slice();
+      var advs = all.filter(function (p) { return p.src === "advisory" || p.adv; }).sort(function (a, b) {
+        var na = parseInt(a.adv, 10), nb = parseInt(b.adv, 10);
+        if (isFinite(na) && isFinite(nb) && na !== nb) return na - nb;
+        return (a.t || 0) - (b.t || 0);
+      });
+      var rows = advs.length >= 2 ? advs : all;
       function series(field) {
         return rows.filter(function (p) { return p[field] != null && isFinite(p[field]); })
-          .map(function (p) { return { t: p.t, v: p[field] }; });
+          .map(function (p) { return { t: p.t, v: p[field], adv: p.adv }; });
       }
       function pad(pts) {
         if (pts.length === 1) pts.unshift({ t: pts[0].t - 3 * 3600000, v: pts[0].v });
@@ -6726,14 +6804,20 @@ Cart shop:</textarea>
         var last = (window.__nhcAllStorms || []).filter(function (x) {
           return typeof stormInHomeBasin === "function" ? stormInHomeBasin(x) : true;
         })[0];
-        if (last && typeof loadStormBtk === "function") {
-          loadStormBtk(last, function () {
+        if (last) {
+          var leftL = 2;
+          function doneL() {
+            leftL -= 1;
+            if (leftL > 0) return;
             if (typeof paintStormCharts === "function") paintStormCharts(last);
             var note = document.getElementById("storm-hist-note");
             var ttl = document.getElementById("storm-hist-title");
+            var rows = (typeof loadStormHist === "function") ? ((loadStormHist()[stormHistKey(last)] || []).filter(function (p) { return p.src === "advisory" || p.adv; })) : [];
             if (ttl) ttl.textContent = "Last system · " + (last.name || "Atlantic");
-            if (note) note.textContent = (last.name || "Last storm") + " is no longer an active tropical cyclone. Graph is the official NHC fix history.";
-          });
+            if (note) note.textContent = (last.name || "Last storm") + " · " + (rows.length || "NHC") + " public advisories plotted.";
+          }
+          if (typeof loadStormPublicAdvisories === "function") loadStormPublicAdvisories(last, doneL); else doneL();
+          if (typeof loadStormBtk === "function") loadStormBtk(last, doneL); else doneL();
         }
         return;
       }
@@ -6771,15 +6855,18 @@ Cart shop:</textarea>
         setTxt("live-storm-move", moveTxt);
         setTxt("live-storm-adv", (advN ? ("#" + String(advN).replace(/^0+/, "")) : "—") + (issuedTxt ? (" · " + issuedTxt) : ""));
         if (typeof recordStormSample === "function") recordStormSample(s, mph, mi);
-        if (typeof loadStormBtk === "function") {
-          loadStormBtk(s, function () {
-            if (typeof paintStormCharts === "function") paintStormCharts(s);
-            var note = document.getElementById("storm-hist-note");
-            var rows = (typeof loadStormHist === "function" && typeof stormHistKey === "function") ? (loadStormHist()[stormHistKey(s)] || []) : [];
-            var advN = (s.publicAdvisory && s.publicAdvisory.advNum) || "";
-            if (note) note.textContent = (s.name || "Storm") + (advN ? (" · public advisory #" + String(advN).replace(/^0+/, "")) : "") + " · " + rows.length + " NHC fixes. Wind, pressure, and distance update when the next advisory posts.";
-          });
-        } else if (typeof paintStormCharts === "function") paintStormCharts(s);
+        function afterHist() {
+          if (typeof paintStormCharts === "function") paintStormCharts(s);
+          var note = document.getElementById("storm-hist-note");
+          var rows = (typeof loadStormHist === "function" && typeof stormHistKey === "function") ? (loadStormHist()[stormHistKey(s)] || []) : [];
+          var advs = rows.filter(function (p) { return p.src === "advisory" || p.adv; });
+          var advN = (s.publicAdvisory && s.publicAdvisory.advNum) || "";
+          if (note) note.textContent = (s.name || "Storm") + (advN ? (" · public advisory #" + String(advN).replace(/^0+/, "")) : "") + " · " + (advs.length || rows.length) + " numbered advisories plotted. The lines grow when NHC issues the next one.";
+        }
+        var left = 2;
+        function one() { left -= 1; if (left <= 0) afterHist(); }
+        if (typeof loadStormPublicAdvisories === "function") loadStormPublicAdvisories(s, one); else one();
+        if (typeof loadStormBtk === "function") loadStormBtk(s, one); else one();
       }
       var nwsHits = (window.__nwsAlerts || []).filter(function (f) {
         var p = (f && f.properties) || {};
@@ -12142,6 +12229,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v873 — Storm charts plot every numbered NHC public advisory (Fay 1–15), not only 6-hour best-track fixes.",
       "v872 — Package popup shows carrier, number, and email status for that parcel and opens the official tracker. Carriers block in-page embeds.",
       "v871 — Storm page graphs NHC advisory history: wind, pressure, and distance from each official 6-hour fix as new advisories post.",
       "v870 — Package popup loads live scan events in-board via 17TRACK, plus the email status line. Official carrier link stays as backup.",
