@@ -2981,7 +2981,7 @@
     <div class="ptr" id="ptr">Pull to refresh</div>
     <main>
       <section id="now" class="page on">
-        <h2 data-k="On the Key">Today</h2>
+        <h2 data-k="At this pin">Today</h2>
         <p class="today-stamp" id="today-stamp" hidden></p>
         <div class="today-shell" id="today-shell">
         <div class="today-main">
@@ -3002,7 +3002,7 @@
           <span id="live-sky">Checking the day…</span>
           <span id="greet-next"></span>
           <span class="greet-more" id="greet-more"></span>
-          <small class="greet-hint" id="greet-hint">Tap for more</small>
+          <small class="greet-hint" id="greet-hint">The day in one line. Tap if you want the rest.</small>
         </div>
         <div class="daily-bits" id="today-bits">
           <div class="card joke-card" id="today-joke" hidden>
@@ -3148,7 +3148,7 @@
       </section>
       
       <section id="tenday" class="page sheet">
-        <h2 data-k="On the Key">Weather</h2>
+        <h2 data-k="Ten days">Weather</h2>
         <div class="wx-top">
                 <div class="wx-map-frame" id="wx-map-frame">
           <div class="radar-crop radar-stage" id="wx-radar-stage">
@@ -3239,7 +3239,7 @@
         <p class="pill-key">Fire weather follows NWS Red Flag. Quakes only show here when USGS has something nearby.</p>
       </section>
       <section id="marine" class="page sheet">
-        <h2 data-k="Gulf and inlet">Sea</h2>
+        <h2 data-k="On the water">Sea</h2>
         <div class="sea-top">
         <div class="sea-map-frame sheet-map" id="sea-map-frame">
           <div class="radar-crop radar-stage" id="sea-map-stage">
@@ -3370,7 +3370,7 @@
         <p class="pill-key" id="sky-refs">Sky times follow the home address.</p>
       </section>
       <section id="ent" class="page">
-        <h2 data-k="On and off the Key">Events</h2>
+        <h2 data-k="Near this pin">Events</h2>
         <p id="ent-count" class="pill-key">Loading calendars…</p>
         <div id="ent-list"></div>
         <p class="pill-key" id="ent-refs">
@@ -3380,12 +3380,12 @@
         </p>
       </section>
       <section id="eats" class="page">
-        <h2 data-k="Near the pin">Restaurants</h2>
+        <h2 data-k="Near this pin">Restaurants</h2>
         <p class="pill-key" id="eat-count">Restaurants near home…</p>
         <div class="split-list" id="eat-list"></div>
       </section>
       <section id="golf" class="page">
-        <h2 data-k="Near the pin">Golf</h2>
+        <h2 data-k="Near this pin">Golf</h2>
         <p class="pill-key" id="golf-count">Courses near home…</p>
         <div class="split-list" id="golf-list"></div>
       </section>
@@ -3419,7 +3419,7 @@ Cart shop:</textarea>
         </div>
       </section>
       <section id="wink" class="page">
-        <h2 data-k="Near home">News</h2>
+        <h2 data-k="Near this pin">News</h2>
         <div id="wink-list">
           <div class="card"><b>Local headlines</b><span>Pulling local headlines</span></div>
         </div>
@@ -4074,7 +4074,7 @@ Cart shop:</textarea>
 
 <section id="menu" class="page">
         <h2 data-k="All pages">Menu</h2>
-        <p class="pill-key">Pick a page. The main row stays Today, weather, and the house.</p>
+        <p class="pill-key">Daily pages plus house and storms. Developer pages live on Status.</p>
         <div class="menu-block">
           <h3>Daily</h3>
           <div class="menu-grid">
@@ -4136,6 +4136,20 @@ Cart shop:</textarea>
         <div class="card"><b>House and other</b><span id="health-extra">Checking…</span></div>
         <div class="card"><b>Refresh</b><span id="health-refresh">Checking the More dock button…</span></div>
         <div class="card"><b>Last updates</b><span id="health-all"></span></div>
+        <div class="card" id="health-dev">
+          <b>Developer pages</b>
+          <span>Not on the wall. Open only from here.</span>
+          <div class="menu-grid">
+            <button type="button" data-p="guide">How it works</button>
+            <button type="button" data-p="ideas">Ideas</button>
+            <button type="button" data-p="sources">Sources</button>
+            <button type="button" data-p="business">Business</button>
+            <button type="button" data-p="c2brief">Commons 2</button>
+            <button type="button" data-p="c2weather">2 · Weather</button>
+            <button type="button" data-p="c2club">2 · Clubhouse</button>
+            <button type="button" data-p="kioskpage">Kiosk</button>
+          </div>
+        </div>
       </section>
     <section class="page settings" id="settings">
       <h2 data-k="Board">Settings</h2>
@@ -4669,7 +4683,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 876;
+    window.BOARD_VER = 877;
 
     
     function communityShort() {
@@ -7809,12 +7823,28 @@ function gatorRange() {
       box.innerHTML = html;
       if (typeof noteFeed === "function") noteFeed("hdr-trees", true, kind + " · " + n + " edge");
     }
+    function setPageK(id, k) {
+      var page = document.getElementById(id);
+      var h = page && page.querySelector("h2");
+      if (h && k) h.setAttribute("data-k", k);
+    }
     function paintHomeChrome() {
       if (typeof paintHeaderTrees === "function") paintHeaderTrees();
       if (typeof paintSeaChrome === "function") paintSeaChrome();
       if (typeof paintSkyCall === "function") paintSkyCall();
       if (typeof paintLandReport === "function") paintLandReport();
       var place = homePlace();
+      var comm = (typeof commName === "function" ? commName() : "") || "Community";
+      setPageK("now", place || "At this pin");
+      setPageK("tenday", place || "Ten days");
+      setPageK("land", "On the ground");
+      setPageK("marine", "On the water");
+      setPageK("sky", "After dark");
+      setPageK("ent", "Near " + (place || "this pin"));
+      setPageK("eats", "Near " + (place || "this pin"));
+      setPageK("golf", "Near " + (place || "this pin"));
+      setPageK("wink", "Near " + (place || "this pin"));
+      setPageK("comm", comm);
       var zip = getSet().zip || "";
       if (typeof paintCommunity === "function") paintCommunity();
         if (typeof paintBeachWalkPrep === "function") paintBeachWalkPrep();
@@ -12256,6 +12286,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v877 — Design pass: pin titles, Today leads like Land, same list cards, slim ticker, developer pages live on Status.",
       "v876 — Audit pass: pin-only events, no Englewood fallback, radio stays off unless kiosk, rotation pauses in background, storm copy matches distance, C2/dev pages out of the loop.",
       "v875 — Health: Quiet aurora is OK. NHC discussion/advisory parse the product text even when the page wrapper says nhcWeb.",
       "v874 — Cut laptop load: stop the 24-advisory crawl, pause header motion when the tab is hidden, run the sky loop at 8 fps instead of 60.",
@@ -19240,7 +19271,7 @@ function drawSurgeChart(points) {
       }
       var h2 = document.querySelector("#marine h2");
       if (h2) {
-        var label = { gulf: "Gulf and inlet", sound: "Sound and river", atlantic: "Coast", pacific: "Pacific", inland: "Lakes and rivers", coast: "Coast" }[kind] || "Sea";
+        var label = { gulf: "On the water", sound: "Sound and river", atlantic: "On the water", pacific: "On the water", inland: "Lakes and rivers", coast: "On the water" }[kind] || "On the water";
         h2.setAttribute("data-k", label);
       }
       var pres = document.getElementById("live-sea-pres");
@@ -22556,6 +22587,8 @@ function drawSurgeChart(points) {
         var tick = document.getElementById("ticktext");
         if (!tick) return;
         var s = getSet();
+        var warn = !!(window.__wxRisk && (window.__wxRisk.warn || window.__wxRisk.alert || window.__wxRisk.cane));
+        document.documentElement.classList.toggle("tick-slim", !warn && (s.brief === "0" || s.quiet === "1"));
         if (s.brief === "0") {
           if (typeof spinEl === "function") spinEl(tick, tickSpeedPx(), true);
           return;
