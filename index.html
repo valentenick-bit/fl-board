@@ -3376,7 +3376,7 @@
         <p class="pill-key" id="ent-refs">
           <a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">BeachWalk calendar</a>
           ·
-          <span>Town list = BeachWalk calendar + events.json on GitHub + ticketed shows near the pin.</span>
+          <span>Community calendar only if Account community is BeachWalk. Town and ticketed shows follow the home pin.</span>
         </p>
       </section>
       <section id="eats" class="page">
@@ -3427,7 +3427,7 @@ Cart shop:</textarea>
       </section>
             <section id="storms" class="page sheet">
         <h2 data-k="Named storms">Storms</h2>
-        <p class="pill-key" id="storm-lead">This page only joins when a named storm can reach the home pin.</p>
+        <p class="pill-key" id="storm-lead">Named storms in this basin show here. The page only joins the rotation when one can reach the home pin.</p>
         <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
         <div class="card" id="hurr-stats"><b>No named storm on this pin</b><span>Quiet until NHC lists a storm that can affect the address on Account.</span></div>
         <div class="metric-table storm-metrics" id="storm-grid" hidden>
@@ -4669,7 +4669,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 875;
+    window.BOARD_VER = 876;
 
     
     function communityShort() {
@@ -4907,7 +4907,7 @@ Cart shop:</textarea>
     window.__wxRisk = window.__wxRisk || { alert: false, cane: false, bolt: false, hurr: false };
     var SET_DEFAULTS = {
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 15,
-      station: "", vol: "whisper", noaa: "1", radioauto: "1", civicChime: "1", breakChime: "0", scanCivic: "0",
+      station: "", vol: "whisper", noaa: "1", radioauto: "0", civicChime: "1", breakChime: "0", scanCivic: "0",
       zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1", gmapsCap: "50",
       community: "",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
@@ -6785,7 +6785,10 @@ Cart shop:</textarea>
         };
       }
       var s = selectedStorm();
-      if (typeof noteFeed === "function") noteFeed("storms", true, s ? ((s.name || "storm") + " · " + Math.round(stormMiles(s)) + " mi") : "none on pin");
+      if (typeof noteFeed === "function") {
+        if (s) noteFeed("storms", true, (s.name || "storm") + " · " + Math.round(stormMiles(s)) + " mi");
+        else noteFeed("storms", true, typeof farStormLine === "function" ? farStormLine() : "none on pin");
+      }
       if (!s) {
         if (stats) stats.innerHTML = "<b>No threat to the house</b><span>" + (typeof farStormLine === "function" ? farStormLine() : "Quiet until NHC lists a storm that can affect the Account address.") + "</span>";
         if (grid) grid.hidden = true;
@@ -8461,7 +8464,7 @@ function currentRotation() {
       else if (saved) btn = document.querySelector('.rowbtns button[data-stream="' + saved + '"]');
       if (!btn) btn = document.querySelector('#radio-stations button[data-stream]:not([data-stream=""])');
       if (!btn) return;
-      if (getSet().radioauto === "0") return;
+      if (getSet().kiosk !== "1") return;
       function start() {
         if (window.__nwrAlert) {
           playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
@@ -11010,7 +11013,7 @@ function currentRotation() {
       try { localStorage.setItem("bw-rots", JSON.stringify(r)); } catch (e) {}
     }
     function rotVisible(id) {
-      if (id === "welcome" || id === "markets" || id === "business" || id === "ideas" || id === "sources" || id === "guide" || id === "health" || id === "settings" || id === "account" || id === "kioskpage" || id === "triggers" || id === "sports" || id === "radio") return false;
+      if (id === "welcome" || id === "markets" || id === "business" || id === "ideas" || id === "sources" || id === "guide" || id === "health" || id === "settings" || id === "account" || id === "kioskpage" || id === "triggers" || id === "sports" || id === "radio" || id === "wink" || id === "c2brief" || id === "c2weather" || id === "c2club") return false;
       if (!id || !document.getElementById(id)) return false;
       if (id === "cam" && typeof camOffHours === "function" && camOffHours()) return false;
       var ev = (window.__wxRisk && window.__wxRisk.warnTypes) || "";
@@ -11109,6 +11112,7 @@ function currentRotation() {
       clearTimeout(rot);
       if (typeof rebuildDock === "function") rebuildDock();
       function step() {
+        if (document.hidden) { rot = setTimeout(step, 15000); return; }
         if (window.__paused || window.__holdPage) return;
         if (typeof syncStormDock === "function") syncStormDock();
         if (typeof rebuildDock === "function") rebuildDock();
@@ -12252,6 +12256,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v876 — Audit pass: pin-only events, no Englewood fallback, radio stays off unless kiosk, rotation pauses in background, storm copy matches distance, C2/dev pages out of the loop.",
       "v875 — Health: Quiet aurora is OK. NHC discussion/advisory parse the product text even when the page wrapper says nhcWeb.",
       "v874 — Cut laptop load: stop the 24-advisory crawl, pause header motion when the tab is hidden, run the sky loop at 8 fps instead of 60.",
       "v873 — Storm charts plot every numbered NHC public advisory (Fay 1–15), not only 6-hour best-track fixes.",
@@ -15180,12 +15185,20 @@ function paint() {
         bag.eng = dedupeEnt(bag.eng);
         bag.local = dedupeEnt(bag.local || []);
         var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 25);
-        var all = foldEnt(bag.bw.concat(bag.local || [], bag.eng, bag.comedy || [])).filter(function (e) {
+        var bwOn = typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity();
+        var pinSWFL = typeof homeNearKey === "function" && homeNearKey();
+        var pile = [].concat(
+          bwOn ? (bag.bw || []) : [],
+          bag.local || [],
+          pinSWFL ? (bag.eng || []) : [],
+          bag.comedy || []
+        );
+        var all = foldEnt(pile).filter(function (e) {
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now();
         }).sort(function (a, b) { return a.when - b.when; });
         all.forEach(function (e) { e.live = isLiveMusic(e.sum, e.loc, e.desc); });
-        var upcoming = foldEnt(bag.bw.concat(bag.local || [], bag.eng, bag.comedy || [])).filter(function (e) {
+        var upcoming = foldEnt(pile).filter(function (e) {
           if (!e || !e.when) return false;
           var end = e.end ? new Date(e.end) : new Date(e.when.getTime() + 2 * 3600 * 1000);
           return end.getTime() >= Date.now() - 30 * 60 * 1000;
@@ -15193,7 +15206,6 @@ function paint() {
         var merged = upcoming.filter(function (e) {
           return typeof eventInRange !== "function" || eventInRange(e);
         });
-        if (!merged.length && upcoming.length) merged = upcoming;
         merged.sort(function (a, b) {
           var la = typeof eventLeaveMs === "function" ? eventLeaveMs(a) : (a.when && a.when.getTime && a.when.getTime());
           var lb = typeof eventLeaveMs === "function" ? eventLeaveMs(b) : (b.when && b.when.getTime && b.when.getTime());
@@ -15214,8 +15226,10 @@ function paint() {
         }
         render("ent-list", merged.slice(0, 48));
         var note = document.getElementById("ent-count");
-        if (note) note.textContent = merged.length + " upcoming";
-        if (typeof noteFeed === "function") noteFeed("events", true, merged.length + " upcoming");
+        var nBw = merged.filter(function (e) { return typeof isBeachWalkEvent === "function" && isBeachWalkEvent(e); }).length;
+        var nTick = merged.filter(function (e) { return /ticket|ticketmaster|axs|live nation/i.test(String(e.src || "") + " " + String(e.sum || "")); }).length;
+        if (note) note.textContent = merged.length + " near this pin" + (nBw ? (" · " + nBw + " in community") : "") + (nTick ? (" · " + nTick + " ticketed") : "");
+        if (typeof noteFeed === "function") noteFeed("events", true, merged.length + " near pin");
         var mc = merged.filter(function (e) { return /mccurdy/i.test(String(e.sum || "") + " " + String(e.loc || "")); }).length;
         if (typeof noteFeed === "function") noteFeed("comedy", true, mc ? (mc + " on calendar") : "none tonight");
         try {
