@@ -4669,7 +4669,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 874;
+    window.BOARD_VER = 875;
 
     
     function communityShort() {
@@ -6951,11 +6951,18 @@ Cart shop:</textarea>
             if (typeof noteFeed === "function") noteFeed("hurr-adv", false, "no advisory");
             return;
           }
-          return fetchNhcText(url, function (htmlTxt) {
+          var bin = String((s.binNumber || "AT1")).replace(/\D/g, "") || "1";
+          var extra = "https://www.nhc.noaa.gov/text/MIATCPAT" + bin + ".shtml";
+          return fetchNhcText(url || extra, function (htmlTxt) {
             if (!looksOfficialNhc(htmlTxt)) {
-              el.hidden = true;
-              if (typeof noteFeed === "function") noteFeed("hurr-adv", false, "html not advisory");
-              return;
+              return fetchNhcText(extra, function (txt2) {
+                if (!looksOfficialNhc(txt2)) {
+                  el.hidden = true;
+                  if (typeof noteFeed === "function") noteFeed("hurr-adv", false, "html not advisory");
+                  return;
+                }
+                showAdv(txt2);
+              });
             }
             showAdv(htmlTxt);
           });
@@ -11261,16 +11268,22 @@ function currentRotation() {
     setTimeout(function () { try { fetchHurrDisc(window.__namedStorms && window.__namedStorms[0] || null); } catch (e) {} }, 2500);
     function nhcExtractText(raw) {
       raw = String(raw || "");
+      raw = raw.replace(/<!--[\s\S]*?-->/g, " ");
       var pre = raw.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
       var tx = pre ? pre[1] : raw;
+      tx = tx.replace(/<script[\s\S]*?<\/script>/gi, " ");
+      tx = tx.replace(/<style[\s\S]*?<\/style>/gi, " ");
       tx = tx.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
       tx = tx.replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/\n[ \t]+/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+      var cut = tx.search(/Advisory Number|Discussion Number|NATIONAL HURRICANE CENTER|SUMMARY OF|FORECAST POSITIONS/i);
+      if (cut > 40) tx = tx.slice(cut);
       return tx;
     }
     function looksOfficialNhc(tx) {
       if (!tx || tx.length < 80) return false;
-      if (/DOCTYPE html|skip to content|nhcWeb|function\s*\(|window\.|corsproxy/i.test(tx)) return false;
-      return /National Hurricane Center|DISCUSSION NUMBER|SUMMARY OF|TROPICAL (DEPRESSION|STORM|CYCLONE|HURRICANE)|FORECAST POSITIONS|WTNT|MIATCD|MIATCP/i.test(tx);
+      if (/Advisory Number|Discussion Number|SUMMARY OF|FORECAST POSITIONS|WTNT\d|MIATCD|MIATCP/i.test(tx)) return true;
+      if (/DOCTYPE html|skip to content|function\s*\(|window\.|corsproxy/i.test(tx) && !/National Hurricane Center/i.test(tx)) return false;
+      return /National Hurricane Center|TROPICAL (DEPRESSION|STORM|CYCLONE|HURRICANE)/i.test(tx);
     }
     function fetchNhcText(url, done) {
       if (!url) return done("");
@@ -11379,10 +11392,10 @@ function currentRotation() {
       next();
     }
     function nhcWmo(s, kind) {
-      var id = String((s && (s.id || s.binNumber)) || "").toUpperCase();
-      var n = parseInt(id.replace(/^[A-Z]+/, "").slice(0, 2), 10);
-      if (!n) n = parseInt(String((s && s.binNumber) || "").replace(/\D/g, ""), 10) || 1;
-      if (n > 9) n = n % 10 || 1;
+      var bin = String((s && s.binNumber) || "").toUpperCase();
+      var n = parseInt(bin.replace(/\D/g, ""), 10);
+      if (!n || n > 5) n = 1;
+      var id = String((s && (s.id || "")) || "").toUpperCase();
       if (/^EP/.test(id)) return (kind === "TCD" ? "WTPZ4" : "WTPZ3") + n;
       if (/^CP/.test(id)) return (kind === "TCD" ? "WTPA4" : "WTPA3") + n;
       return (kind === "TCD" ? "WTNT4" : "WTNT3") + n;
@@ -11459,10 +11472,17 @@ function currentRotation() {
               if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "no discussion");
               return;
             }
-            return fetchNhcText(stormUrl, function (htmlTxt) {
+            var bin = String((s.binNumber || "AT1")).replace(/\D/g, "") || "1";
+            var extraD = "https://www.nhc.noaa.gov/text/MIATCDAT" + bin + ".shtml";
+            return fetchNhcText(stormUrl || extraD, function (htmlTxt) {
               if (!looksOfficialNhc(htmlTxt)) {
-                if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "html not discussion");
-                return;
+                return fetchNhcText(extraD, function (txt2) {
+                  if (!looksOfficialNhc(txt2)) {
+                    if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "html not discussion");
+                    return;
+                  }
+                  paintDisc(txt2, s);
+                });
               }
               paintDisc(htmlTxt, s);
             });
@@ -12232,6 +12252,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v875 — Health: Quiet aurora is OK. NHC discussion/advisory parse the product text even when the page wrapper says nhcWeb.",
       "v874 — Cut laptop load: stop the 24-advisory crawl, pause header motion when the tab is hidden, run the sky loop at 8 fps instead of 60.",
       "v873 — Storm charts plot every numbered NHC public advisory (Fay 1–15), not only 6-hour best-track fixes.",
       "v872 — Package popup shows carrier, number, and email status for that parcel and opens the official tracker. Carriers block in-page embeds.",
@@ -18013,7 +18034,8 @@ function mustEatsFL() {
         if (/NHC list is quiet|no named|outlook maps below still update/i.test(s)) return "ok";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
         if (/\bG0\b|space weather|flare [A-Z]\d/i.test(s)) return "ok";
-        if (s.length < 90 && /quiet|not in yet|see marine|see gulf sst|see gulf|see tide|see coastal|checking range|updating|gaps filled|catching up|pick signs/i.test(s) && !/NHC list is quiet|\bG0\b|flare /i.test(s)) return "failed";
+        if (/Quiet · Kp|Unlikely · Kp|^Quiet\b|^Unlikely\b/i.test(s) && /Kp/i.test(s)) return "ok";
+        if (s.length < 90 && /quiet|not in yet|see marine|see gulf sst|see gulf|see tide|see coastal|checking range|updating|gaps filled|catching up|pick signs/i.test(s) && !/NHC list is quiet|\bG0\b|flare |Quiet · Kp|Unlikely · Kp/i.test(s)) return "failed";
         if (/^(loading|checking|updating|waiting|pulling|looking up)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc|waiting on the home|checking gulf|checking noaa|checking air|pulling the nws|looking up the next|· updating/i.test(s))
           return grace ? "placeholder" : "failed";
         if (!s || /^(—|–|…|\.{1,3}|n\/a|See |None)$/i.test(s)) return "ok";
