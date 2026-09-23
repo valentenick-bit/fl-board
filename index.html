@@ -2861,7 +2861,7 @@
     .wear-card .wear-row { display:flex; gap:12px; align-items:flex-start; }
     .wear-stamp { display:block; margin-top:6px; font-size:12px; opacity:.7; }
     .track-pop {
-      position:fixed; inset:auto 12px 96px 12px; z-index:82; display:none;
+      position:fixed; inset:auto 12px 88px 12px; z-index:200; display:none;
       background:var(--paper,#f7f1e4); color:var(--navy,#1b2a4a);
       border-radius:16px; box-shadow:0 12px 40px rgba(20,30,40,.28);
       padding:14px; max-width:520px; margin:0 auto;
@@ -2884,7 +2884,7 @@
     .track-pop .track-meta { opacity:.8; font-size:13px; margin:0 0 10px; }
     .track-frame { width:100%; height:min(52vh, 420px); border:0; border-radius:12px; background:#fff; margin:8px 0 10px; }
     .track-back {
-      display:none; position:fixed; inset:0; z-index:81; background:rgba(12,18,28,.45);
+      display:none; position:fixed; inset:0; z-index:199; background:rgba(12,18,28,.45);
     }
     .track-back.on { display:block; }
     .price-tag { display:inline-block; margin-left:4px; letter-spacing:.04em; font-weight:700; color:var(--teal,#1b6b62); }
@@ -4669,7 +4669,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 871;
+    window.BOARD_VER = 872;
 
     
     function communityShort() {
@@ -10001,7 +10001,9 @@ function currentRotation() {
     function trackPayload(item) {
       var tr = pkgTrack(item);
       if (!tr) return "";
-      var pack = {
+      window.__trackPacks = window.__trackPacks || {};
+      var key = [item.who || "", item.title || "", item.when || "", tr.num || ""].join("|").toLowerCase();
+      window.__trackPacks[key] = {
         who: item.who || "",
         title: item.title || "",
         detail: item.detail || "",
@@ -10010,64 +10012,75 @@ function currentRotation() {
         trackUrl: item.trackUrl || tr.url || "",
         carrier: item.carrier || tr.carrier || ""
       };
-      try { return encodeURIComponent(JSON.stringify(pack)); } catch (e) { return ""; }
+      return key.replace(/"/g, "");
     }
     window.pkgTrack = pkgTrack;
     window.trackPayload = trackPayload;
-    function openTrackPop(item) {
-      var tr = pkgTrack(item);
-      if (!tr) return;
-      var pop = document.getElementById("track-pop");
-      var back = document.getElementById("track-back");
+    function fillTrackPop(item, tr) {
       var ttl = document.getElementById("track-title");
       var num = document.getElementById("track-num");
       var body = document.getElementById("track-body");
       var meta = document.getElementById("track-meta");
       var link = document.getElementById("track-link");
-      if (!pop) return;
-      window.__trackLast = tr;
-      if (ttl) ttl.textContent = (item.who ? item.who + " · " : "") + tr.carrier;
+      if (ttl) ttl.textContent = (item.who ? item.who + " · " : "") + (tr.carrier || "Tracking");
       if (num) num.textContent = tr.num || "No number on file";
       if (body) body.textContent = [item.title, item.detail].filter(Boolean).join(" — ") || "Tracking on file.";
       var bits = [];
       if (item.when) bits.push(item.when);
       if (/shipped/i.test(item.detail || "")) bits.push("in transit");
       if (/left at|delivered|front door|porch/i.test(item.detail || "")) bits.push("delivered");
+      if (tr.carrier) bits.push(tr.carrier);
       if (meta) meta.textContent = bits.join(" · ");
-      if (link) { link.href = tr.url; link.hidden = !tr.url; link.textContent = "Open " + tr.carrier; }
-      var frame = document.getElementById("track-frame");
-      var live = "";
-      if (tr.num && !/^amazon$/i.test(tr.carrier)) {
-        live = "https://t.17track.net/en#nums=" + encodeURIComponent(tr.num);
-      } else if (/amazon/i.test(tr.carrier) && tr.url) {
-        live = tr.url;
+      if (link) {
+        link.href = tr.url || "#";
+        link.hidden = !tr.url;
+        link.textContent = "Open live " + (tr.carrier || "tracker");
       }
+    }
+    function openTrackPop(item) {
+      var tr = pkgTrack(item);
+      if (!tr) return false;
+      var pop = document.getElementById("track-pop");
+      var back = document.getElementById("track-back");
+      var frame = document.getElementById("track-frame");
+      if (!pop) return false;
+      window.__trackLast = tr;
+      window.__trackItem = item;
+      fillTrackPop(item, tr);
       if (frame) {
-        if (live) {
-          frame.hidden = false;
-          if (frame.getAttribute("data-src") !== live) {
-            frame.src = live;
-            frame.setAttribute("data-src", live);
-          }
-        } else {
-          frame.hidden = true;
-          frame.removeAttribute("src");
-          frame.removeAttribute("data-src");
-        }
+        frame.hidden = true;
+        frame.removeAttribute("src");
       }
       pop.hidden = false;
       pop.classList.add("on");
-      if (back) { back.hidden = false; back.classList.add("on"); }
+      if (back) {
+        window.setTimeout(function () {
+          back.hidden = false;
+          back.classList.add("on");
+        }, 50);
+      }
+      return true;
     }
     function closeTrackPop() {
       var pop = document.getElementById("track-pop");
       var back = document.getElementById("track-back");
+      var frame = document.getElementById("track-frame");
       if (pop) { pop.classList.remove("on"); pop.hidden = true; }
       if (back) { back.classList.remove("on"); back.hidden = true; }
+      if (frame) { frame.removeAttribute("src"); frame.hidden = true; }
+    }
+    function itemFromTrackAttr(raw) {
+      raw = String(raw || "");
+      if (!raw) return null;
+      if (window.__trackPacks && window.__trackPacks[raw]) return window.__trackPacks[raw];
+      try { return JSON.parse(decodeURIComponent(raw)); } catch (e1) {}
+      try { return JSON.parse(raw); } catch (e2) {}
+      return { detail: raw, title: "Package", tracking: raw };
     }
     document.addEventListener("click", function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
+      if (t.closest("#track-pop") && t.id !== "track-close" && t.id !== "track-copy") return;
       if (t.id === "track-close" || t.id === "track-back") { closeTrackPop(); return; }
       if (t.id === "track-copy") {
         var n = (window.__trackLast && window.__trackLast.num) || "";
@@ -10075,11 +10088,12 @@ function currentRotation() {
         return;
       }
       if (t.closest("input, label.deliv-mark, a#track-link")) return;
-      var card = t.closest(".deliv-card[data-track], [data-track]");
+      var card = t.closest(".deliv-card[data-track], button[data-track], [data-track]");
       if (!card) return;
       e.preventDefault();
-      var raw = card.getAttribute("data-track") || "";
-      try { openTrackPop(JSON.parse(decodeURIComponent(raw))); } catch (eJ) { openTrackPop({ detail: raw, title: "Package" }); }
+      e.stopPropagation();
+      var item = itemFromTrackAttr(card.getAttribute("data-track") || "");
+      if (item) openTrackPop(item);
     }, true);
     function priceMarks(level) {
       if (level == null || level === "") return "";
@@ -12128,6 +12142,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v872 — Package popup shows carrier, number, and email status for that parcel and opens the official tracker. Carriers block in-page embeds.",
       "v871 — Storm page graphs NHC advisory history: wind, pressure, and distance from each official 6-hour fix as new advisories post.",
       "v870 — Package popup loads live scan events in-board via 17TRACK, plus the email status line. Official carrier link stays as backup.",
       "v869 — Header trees stay on the left/right edges so the title stays clear. Maples get a canopy, not palm fronds. Layout is seeded by pin, not reshuffled every refresh.",
