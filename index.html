@@ -4683,7 +4683,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 877;
+    window.BOARD_VER = 878;
 
     
     function communityShort() {
@@ -8184,6 +8184,7 @@ function currentRotation() {
         jump = id === "sports" ? "set-sports" : "set-radio";
         id = "settings";
       }
+      if (cur && cur.id === id) return;
       document.querySelectorAll(".page").forEach(function (p) {
         p.classList.toggle("on", p.id === id);
         p.style.display = "";
@@ -11119,7 +11120,7 @@ function currentRotation() {
         if (window.__paused) return;
         window.__holdPage = false;
         startRotate(true);
-      }, ms || 90000);
+      }, ms || 20000);
     }
     window.holdThenRotate = holdThenRotate;
     function pinOrHold(id) {
@@ -11129,12 +11130,13 @@ function currentRotation() {
         return;
       }
       window.__holdPage = false;
-      holdThenRotate(90000);
+      holdThenRotate(20000);
     }
     window.pinOrHold = pinOrHold;
     function startRotate(immediate) {
       if (typeof popIsOpen === "function" ? popIsOpen() : window.__popOpen) {
         window.__holdPage = true;
+        rot = setTimeout(function () { if (typeof startRotate === "function") startRotate(); }, 2000);
         return;
       }
       window.__rotStarted = true;
@@ -11143,7 +11145,7 @@ function currentRotation() {
       if (typeof rebuildDock === "function") rebuildDock();
       function step() {
         if (document.hidden) { rot = setTimeout(step, 15000); return; }
-        if (window.__paused || window.__holdPage) return;
+        if (window.__paused || window.__holdPage) { rot = setTimeout(step, 2000); return; }
         if (typeof syncStormDock === "function") syncStormDock();
         if (typeof rebuildDock === "function") rebuildDock();
         pages = window.__storm ? warnList() : rotateList();
@@ -11325,11 +11327,14 @@ function currentRotation() {
       var i = 0;
       function next() {
         if (i >= tries.length) return done("");
-        fetch(tries[i++], { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (raw) {
+        var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+        var to = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} }, 6000);
+        fetch(tries[i++], { cache: "no-store", signal: ctrl && ctrl.signal }).then(function (r) { return r.text(); }).then(function (raw) {
+          clearTimeout(to);
           var tx = nhcExtractText(raw);
           if (looksOfficialNhc(tx)) return done(tx);
           next();
-        }).catch(next);
+        }).catch(function () { clearTimeout(to); next(); });
       }
       next();
     }
@@ -12286,6 +12291,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v878 — Don’t drop the rotation timer when a page is held; cap NHC fetches at 6s so a dead proxy can’t freeze the wall.",
       "v877 — Design pass: pin titles, Today leads like Land, same list cards, slim ticker, developer pages live on Status.",
       "v876 — Audit pass: pin-only events, no Englewood fallback, radio stays off unless kiosk, rotation pauses in background, storm copy matches distance, C2/dev pages out of the loop.",
       "v875 — Health: Quiet aurora is OK. NHC discussion/advisory parse the product text even when the page wrapper says nhcWeb.",
