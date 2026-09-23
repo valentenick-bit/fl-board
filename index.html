@@ -2890,6 +2890,21 @@
     .price-tag { display:inline-block; margin-left:4px; letter-spacing:.04em; font-weight:700; color:var(--teal,#1b6b62); }
     html.dark .price-tag { color:#7fd1c4; }
 
+html.dark .boat-go { color:#f4efe4; }
+html.dark .boat-card, html.dark #sky-call-card, html.dark #land-call-card, html.dark #boat-call-card { color:#eadfca; }
+html.dark .boat-card > b, html.dark #sky-call-title { color:#e8d7a0; }
+html.dark .boat-card > span, html.dark #live-sky-watch, html.dark #land-nowline, html.dark #boat-nowline { color:#eadfca; }
+html.dark .boat-facts { color:#d9cfb6; }
+html.dark .boat-facts b { color:#f7f1e6; }
+html.dark .boat-alerts .boat-alert { color:#eadfca; }
+html.dark .boat-alerts .boat-alert em { color:#e08a7a; }
+html.dark .metric-row { background:rgba(42,52,48,.92); border-color:#6d7c74; }
+html.dark .metric-row label { color:#d5ddd6; }
+html.dark .metric-row strong { color:#f7f1e6; }
+html.dark .metric-row small, html.dark .metric-row em { color:#d2c7ab; }
+html.dark .metric-spark svg line { stroke:#8a9aaa; }
+html.dark .metric-spark svg path { stroke:#e0c27a; }
+
 </style>
 </head>
 <body>
@@ -4684,7 +4699,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 881;
+    window.BOARD_VER = 883;
 
     
     function communityShort() {
@@ -5474,13 +5489,35 @@ Cart shop:</textarea>
         "&z=12&hl=en&layer=t&t=m&output=embed";
     }
     function homeWavesEmbed() { return homeWindyEmbed("waves"); }
+    function pinBBox(lat, lon, span) {
+      span = span || 0.16;
+      return (lon - span) + "," + (lat - span) + "," + (lon + span) + "," + (lat + span);
+    }
+    function osmPinEmbed(lat, lon, span) {
+      lat = Number(lat); lon = Number(lon);
+      return "https://www.openstreetmap.org/export/embed.html?bbox=" + encodeURIComponent(pinBBox(lat, lon, span || 0.16)) +
+        "&layer=mapnik&marker=" + lat.toFixed(5) + "%2C" + lon.toFixed(5);
+    }
+    function rainviewerPin(lat, lon, zoom) {
+      return "https://www.rainviewer.com/map.html?loc=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + "," + (zoom || 8);
+    }
+    function zoomEarthPin(lat, lon, z) {
+      return "https://zoom.earth/maps/satellite/#view=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + "," + (z || 10) + "z";
+    }
+    function nullschoolPin(lat, lon, path) {
+      return "https://earth.nullschool.net/#" + path + "/orthographic=" + Number(lon).toFixed(3) + "," + Number(lat).toFixed(3) + ",2600";
+    }
     function homeWindyEmbed(overlay) {
       var lat = homeLat(), lon = homeLon();
       overlay = overlay || "waves";
-      var product = overlay === "currents" ? "currents" : (overlay === "satellite" ? "satellite" : (overlay === "airquality" ? "ecmwf" : "ecmwf"));
-      return "https://embed.windy.com/embed2.html?lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) +
-        "&detailLat=" + lat.toFixed(4) + "&detailLon=" + lon.toFixed(4) +
-        "&zoom=12&overlay=" + overlay + "&product=" + product + "&level=surface&marker=true&message=false&calendar=now&pressure=false&type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph";
+      if (overlay === "satellite") return zoomEarthPin(lat, lon, 10);
+      if (overlay === "airquality") return nullschoolPin(lat, lon, "current/chem/surface/level/overlay=cosc");
+      if (overlay === "rain" || overlay === "radar") return rainviewerPin(lat, lon, 8);
+      if (overlay === "currents") return nullschoolPin(lat, lon, "current/ocean/surface/currents");
+      if (overlay === "swell") return nullschoolPin(lat, lon, "current/ocean/surface/swell");
+      if (overlay === "waves") return nullschoolPin(lat, lon, "current/ocean/surface/primary_waves");
+      if (overlay === "wind") return nullschoolPin(lat, lon, "current/wind/surface/level");
+      return osmPinEmbed(lat, lon, 0.16);
     }
     function homeAisEmbed() {
       var lat = homeLat(), lon = homeLon();
@@ -7512,12 +7549,7 @@ function gatorRange() {
         lon = (typeof homeLon === "function" && homeLon()) || -82.3680;
       }
       zoom = zoom || 9;
-      return "https://embed.windy.com/embed2.html?lat=" + lat.toFixed(4) +
-        "&lon=" + lon.toFixed(4) +
-        "&detailLat=" + lat.toFixed(4) +
-        "&detailLon=" + lon.toFixed(4) +
-        "&zoom=" + zoom +
-        "&level=surface&overlay=radar&product=radar&menu=&message=true&marker=true&calendar=now&pressure=false&type=map&location=coordinates&detail=false&metricWind=mph&metricTemp=default&radarRange=-1";
+      return typeof rainviewerPin === "function" ? rainviewerPin(lat, lon, zoom) : ("https://www.rainviewer.com/map.html?loc=" + lat.toFixed(4) + "," + lon.toFixed(4) + "," + zoom);
     }
     function stopRainviewerLoop() {
       if (window.__rvTimer) { clearInterval(window.__rvTimer); window.__rvTimer = 0; }
@@ -7538,9 +7570,7 @@ function gatorRange() {
         live.setAttribute("allowfullscreen", "true");
         stage.insertBefore(live, stage.firstChild);
       }
-      var rv = "https://embed.windy.com/embed2.html?lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) +
-        "&detailLat=" + lat.toFixed(4) + "&detailLon=" + lon.toFixed(4) +
-        "&zoom=12&overlay=radar&product=radar&level=surface&marker=true&message=false&calendar=now&pressure=false&type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph";
+      var rv = typeof rainviewerPin === "function" ? rainviewerPin(lat, lon, 8) : ("https://www.rainviewer.com/map.html?loc=" + lat.toFixed(4) + "," + lon.toFixed(4) + ",8");
       live.style.display = "block";
       live.style.position = "absolute";
       live.style.inset = "0";
@@ -8128,7 +8158,7 @@ function gatorRange() {
       var lon = typeof homeLon === "function" ? homeLon() : 0;
       var place = (typeof homePlace === "function" && homePlace()) || "Home";
       return {
-        src: "https://embed.windy.com/embed.html?type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph&zoom=10&overlay=satellite&product=satellite&level=surface&lat=" + lat + "&lon=" + lon + "&detailLat=" + lat + "&detailLon=" + lon + "&detail=true",
+        src: typeof zoomEarthPin === "function" ? zoomEarthPin(lat, lon, 10) : ("https://zoom.earth/maps/satellite/#view=" + lat + "," + lon + ",10z"),
         label: place + " satellite"
       };
     }
@@ -12350,6 +12380,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v883 — Drop Windy embeds. Maps pin to Account lat/lon via OSM, RainViewer, Zoom Earth, and earth.nullschool.",
+      "v882 — Dark mode: boating and astronomer report type and chart strokes use ink/gold so they don’t vanish on the card.",
       "v881 — Status uses Today/Weather/Sea/Events names. corsproxy 403s no longer count as failures. Predicted tide is OK.",
       "v880 — Status: stall clock, hold/pause/pop flags, fetch failures, and heap on the report so a freeze leaves a fingerprint.",
       "v879 — Stop parsing the national storm-report file every minute (that freeze). Lightning stays on the live socket. Charts skip when the tab is hidden.",
@@ -19017,7 +19049,14 @@ function drawSurgeChart(points) {
         drawHistChart("surge-chart", clean, "#e07a5f", -vmax, vmax, " ft");
       }
     }
+    function chartInk(color) {
+      if (!document.documentElement.classList.contains("dark")) return color || "#c4a35a";
+      var c = String(color || "").toLowerCase();
+      if (!c || c === "#1b2a4a" || c === "#0b1020" || c === "#5c6b7a" || c === "#3d4a5c") return "#e0c27a";
+      return color;
+    }
     function drawSpark(id, points, color) {
+      color = typeof chartInk === "function" ? chartInk(color) : color;
       var box = document.getElementById(id);
       if (!box || !points || points.length < 2) return false;
       var pts = points.filter(function (p) { return p && isFinite(p.t) && isFinite(p.v); }).sort(function (a, b) { return a.t - b.t; });
@@ -19039,6 +19078,7 @@ function drawSurgeChart(points) {
     }
 
     function drawHistChart(id, points, color, ymin, ymax, unit) {
+      color = typeof chartInk === "function" ? chartInk(color) : color;
       var box = document.getElementById(id);
       if (!box || !points || points.length < 2) return;
       var pts = points.filter(function (p) { return p && !isNaN(p.t) && !isNaN(p.v); }).sort(function (a, b) { return a.t - b.t; });
@@ -19294,7 +19334,7 @@ function drawSurgeChart(points) {
       }
       var overlay = kind === "inland" ? "wind" : "waves";
       return {
-        src: "https://embed.windy.com/embed.html?type=map&location=coordinates&metricTemp=%C2%B0F&metricWind=mph&zoom=10&overlay=" + overlay + "&product=ecmwf&level=surface&lat=" + lat + "&lon=" + lon + "&detailLat=" + lat + "&detailLon=" + lon + "&detail=true",
+        src: typeof homeWindyEmbed === "function" ? homeWindyEmbed(overlay) : ("https://earth.nullschool.net/#current/wind/surface/level/orthographic=" + lon + "," + lat + ",2600"),
         label: overlay === "waves" ? ("Waves near " + place) : ("Wind over water near " + place),
         title: overlay === "waves" ? "Waves cam" : "Water wind"
       };
