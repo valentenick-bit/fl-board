@@ -4121,6 +4121,7 @@ Cart shop:</textarea>
         <p class="pill-key">If Copy does nothing on the phone, select the box below and paste it here.</p>
         <textarea id="health-paste" readonly rows="12" style="width:100%;min-height:180px;margin:0 0 12px;padding:10px;border-radius:12px;border:1px solid var(--hair,#c9c1b4);background:var(--card,#fff);color:inherit;font:12px/1.45 ui-monospace,monospace;"></textarea>
         <div class="card"><b>Summary</b><span id="health-sum">Checking…</span></div>
+        <div class="card"><b>Runtime</b><span id="health-runtime">Checking the thread…</span></div>
         <div class="card"><b>Look first</b><span id="health-hints">Checking…</span></div>
         <div class="card"><b>Failed</b><span id="health-fail">Checking feeds…</span></div>
         <div class="card"><b>Waiting</b><span id="health-wait">Checking…</span></div>
@@ -4683,7 +4684,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 879;
+    window.BOARD_VER = 880;
 
     
     function communityShort() {
@@ -4812,10 +4813,16 @@ Cart shop:</textarea>
         var u = String(url || "");
         var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
-          if (!r.ok && r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
+          if (!r.ok && r.status >= 400) {
+            window.__fetchFail = (window.__fetchFail || 0) + 1;
+            window.__fetchLast = r.status + " " + u.slice(0, 80);
+            if (r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
+          }
           return r;
         }, function (err) {
           var msg = String(err && err.message || err || "");
+          window.__fetchFail = (window.__fetchFail || 0) + 1;
+          window.__fetchLast = "net " + u.slice(0, 70);
           if (!optional && !/abort/i.test(msg) && err && err.name !== "AbortError") logCrash("net", u.slice(0, 70) + " " + msg);
           throw err;
         });
@@ -4823,6 +4830,48 @@ Cart shop:</textarea>
       wrapped.__bw = true;
       window.fetch = wrapped;
     })();
+    (function stallWatch() {
+      window.__stallN = window.__stallN || 0;
+      window.__stalls = window.__stalls || [];
+      var last = Date.now();
+      function beat() {
+        var now = Date.now();
+        var gap = now - last;
+        last = now;
+        window.__beatAt = now;
+        if (gap > 2500 && !document.hidden) {
+          window.__stallN += 1;
+          var line = Math.round(gap) + "ms";
+          window.__lastStall = line;
+          window.__stalls.unshift(line);
+          window.__stalls = window.__stalls.slice(0, 8);
+          if (typeof logCrash === "function") logCrash("stall", line + " main thread");
+        }
+        setTimeout(beat, 1000);
+      }
+      setTimeout(beat, 1000);
+    })();
+    function runtimeLine() {
+      var bits = [];
+      bits.push("v" + (window.BOARD_VER || "?"));
+      bits.push(document.hidden ? "tab hidden" : "tab visible");
+      bits.push(navigator.onLine ? "online" : "OFFLINE");
+      if (window.__paused) bits.push("paused");
+      if (window.__holdPage) bits.push("hold");
+      if (window.__popOpen) bits.push("pop open");
+      var radio = document.getElementById("radioPlayer");
+      if (radio && !radio.paused) bits.push("radio");
+      bits.push((window.__stallN || 0) + " stalls" + (window.__lastStall ? (" last " + window.__lastStall) : ""));
+      bits.push((window.__fetchFail || 0) + " bad fetches" + (window.__fetchLast ? (" · " + window.__fetchLast) : ""));
+      bits.push((window.__crashes || []).length + " crashes");
+      try {
+        var mem = performance && performance.memory;
+        if (mem && mem.usedJSHeapSize) bits.push(Math.round(mem.usedJSHeapSize / 1048576) + " MB heap");
+      } catch (eM) {}
+      var on = document.querySelector(".page.on");
+      bits.push("page " + (on ? on.id : "?"));
+      return bits.join(" · ");
+    }
     function buildBoardReport() {
       var fail = (document.getElementById("health-fail") || {}).textContent || "";
       var stale = (document.getElementById("health-stale") || {}).textContent || "";
@@ -4878,6 +4927,8 @@ Cart shop:</textarea>
         "temp: " + ((document.getElementById("live-temp") || {}).textContent || ""),
         "named: " + ((window.__namedStorms || []).length ? (window.__namedStorms || []).map(function (s) { return s.name || s; }).join(", ") : "none"),
         "summary: " + ((document.getElementById("health-sum") || {}).textContent || ""),
+        "runtime: " + ((document.getElementById("health-runtime") || {}).textContent || (typeof runtimeLine === "function" ? runtimeLine() : "")),
+        "stalls: " + ((window.__stalls || []).join(", ") || "none"),
         "new-tiles: " + ((document.getElementById("health-new") || {}).textContent || ""),
         "waiting: " + ((document.getElementById("health-wait") || {}).textContent || ""),
         "hints: " + ((typeof diagnoseBoard === "function" ? diagnoseBoard(window.__lastProbe) : []).join(" || ") || "none"),
@@ -12295,6 +12346,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v880 — Status: stall clock, hold/pause/pop flags, fetch failures, and heap on the report so a freeze leaves a fingerprint.",
       "v879 — Stop parsing the national storm-report file every minute (that freeze). Lightning stays on the live socket. Charts skip when the tab is hidden.",
       "v878 — Don’t drop the rotation timer when a page is held; cap NHC fetches at 6s so a dead proxy can’t freeze the wall.",
       "v877 — Design pass: pin titles, Today leads like Land, same list cards, slim ticker, developer pages live on Status.",
@@ -18364,6 +18416,9 @@ function mustEatsFL() {
       if (urlV && urlV !== ver && !/^\d{12,}$/.test(urlV)) hints.push("Copy on the wall is v" + ver + " but the URL is v=" + urlV + ". Re-upload GitHub index.html and open ?v=" + ver + ".");
       if (urlV) hints.push("You can drop ?v= from the address bar. Bookmark https://commons.valente-nick.workers.dev/");
       if (!navigator.onLine) hints.push("Device is offline. Live feeds will stay down.");
+      if (window.__stallN) hints.push("Main thread stalled " + window.__stallN + " time" + (window.__stallN === 1 ? "" : "s") + (window.__lastStall ? (" · last " + window.__lastStall) : "") + ".");
+      if (window.__holdPage) hints.push("Rotation is on hold" + (window.__popOpen ? " because a popup is open" : window.__paused ? " because the wall is paused" : "") + ".");
+      if (window.__fetchFail && window.__fetchFail > 8) hints.push("Many fetches failed (" + window.__fetchFail + "). Last: " + (window.__fetchLast || "unknown") + ".");
       if (!document.querySelector(".page.on")) hints.push("No page is marked on. The wall will look empty.");
       var rot = [];
       try { rot = typeof rotateList === "function" ? rotateList() : []; } catch (e) { rot = []; }
@@ -18429,6 +18484,8 @@ function mustEatsFL() {
             ? hints.map(function (s, i) { return '<span class="health-bad">' + (i + 1) + ". " + s + "</span>"; }).join("<br>")
             : '<span class="health-ok">No usual failure points right now. If something is still wrong, copy the report anyway.</span>';
         }
+        var runEl = document.getElementById("health-runtime");
+        if (runEl && typeof runtimeLine === "function") runEl.textContent = runtimeLine();
         var crashEl = document.getElementById("health-crash");
         if (crashEl) crashEl.textContent = (window.__crashes && window.__crashes.length) ? window.__crashes.join(" | ") : "None yet.";
         var nowEl = document.getElementById("health-now");
