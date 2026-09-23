@@ -280,6 +280,8 @@
     .sandshelf { position:absolute; left:0; right:0; bottom:0; height:10px; z-index:5; background:#d4c199; pointer-events:none; transition:background 45s linear; }
     header.sky-night .sandshelf { background:#3a3428; }
     .palms { position:absolute; left:20px; right:20px; top:0; bottom:8px; pointer-events:none; z-index:6; overflow:visible; }
+    .hdr-tree { position:absolute; bottom:0; line-height:0; pointer-events:none; }
+    .hdr-tree .palm { position:relative; left:auto; bottom:auto; width:100%; height:100%; display:block; }
     .palm { position:absolute; bottom:0; width:46px; height:72px; transform:none; opacity:1; overflow:visible; filter:drop-shadow(0 1px 1px rgba(12,28,46,.4)); }
     .palm .bend { transform-origin:24px 72px; animation:trunk-bend var(--sway-dur, 3.6s) ease-in-out infinite; }
     .palm .crown { transform-origin:24px 24px; transform-box:view-box; animation:crown-sway var(--sway-dur, 3.6s) ease-in-out infinite; }
@@ -301,7 +303,10 @@
     .palm.p6 { width:40px; height:62px; }
     .palm.p6 .trunk { stroke-width:3.8; }
     .palm .crown, .palm .crown path, .palm .frond path { fill:#1a5a2e; stroke:#102e18; stroke-width:.8; }
-    .palm.tree-maple .trunk, .palm.tree-oak .trunk { stroke-width:4.1; stroke:#3d2a14; }
+    .palm.tree-maple .trunk, .palm.tree-oak .trunk { stroke-width:4.6; stroke:#3d2a14; }
+    .palm.tree-maple .frond path, .palm.tree-maple .crown path { fill:#1e4d22; stroke:#0d2a12; stroke-width:.6; }
+    .palm.tree-oak .frond path, .palm.tree-oak .crown path { fill:#2a5a28; stroke:#123018; stroke-width:.6; }
+    .palm.tree-maple .frond, .palm.tree-oak .frond { animation-duration: calc(var(--sway-dur, 3.6s) * 1.4); }
     .palm.tree-pine .trunk { stroke-width:2.3; stroke:#3a2a16; }
     .palm.tree-pine .frond path { fill:#163f24; }
     .palm.tree-desert .trunk { stroke-width:2.2; stroke:#6a5430; }
@@ -2870,8 +2875,10 @@
     .deliv-card.has-track { cursor:pointer; }
     .deliv-card.has-track:hover { box-shadow:0 8px 24px rgba(20,30,40,.16); }
     .deliv-track { margin-top:8px; border:0; border-radius:999px; padding:6px 10px; background:#1b6b62; color:#f7f1e4; font-weight:700; }
+    .track-pop { max-height:86vh; overflow:auto; inset:auto 12px 72px 12px; }
     .track-pop .track-num { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:16px; letter-spacing:.04em; margin:0 0 8px; }
     .track-pop .track-meta { opacity:.8; font-size:13px; margin:0 0 10px; }
+    .track-frame { width:100%; height:min(52vh, 420px); border:0; border-radius:12px; background:#fff; margin:8px 0 10px; }
     .track-back {
       display:none; position:fixed; inset:0; z-index:81; background:rgba(12,18,28,.45);
     }
@@ -4567,6 +4574,7 @@ Cart shop:</textarea>
       <p class="track-num" id="track-num"></p>
       <p id="track-body"></p>
       <p class="track-meta" id="track-meta"></p>
+      <iframe class="track-frame" id="track-frame" title="Live tracking" hidden></iframe>
       <div class="ask-row">
         <button type="button" class="ghost" id="track-close">Close</button>
         <button type="button" class="ghost" id="track-copy">Copy number</button>
@@ -4648,7 +4656,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 868;
+    window.BOARD_VER = 870;
 
     
     function communityShort() {
@@ -7490,11 +7498,19 @@ function gatorRange() {
       if (/VA|NC|SC|GA|TN|KY|AL|MS|AR|MO|OK|WV|LA/.test(st)) return "oak";
       return "maple";
     }
-    function headerTreeSvg(kind) {
+    function headerTreeSeed() {
+      var s = String((typeof homePlace === "function" && homePlace()) || "") + "|" +
+        String((typeof homeLat === "function" && homeLat()) || "") + "|" +
+        (typeof headerTreeKind === "function" ? headerTreeKind() : "maple");
+      var h = 2166136261;
+      for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+      return h >>> 0;
+    }
+    function headerOneTree(kind, i) {
       var trunks = {
         palm: ["M23 72 C20 58 18 44 22 24","M24 72 C28 56 31 40 27 21","M25 72 C17 55 21 38 24 25","M22 72 C26 60 19 42 26 22","M24 72 C21 52 29 38 21 28"],
-        maple: ["M24 72 C23 52 23 36 24 26","M24 72 C26 54 25 38 25 25","M24 72 C22 50 24 36 23 26","M24 72 C25 56 23 40 24 24","M24 72 C23 48 25 34 24 28"],
-        oak: ["M24 72 C23 54 24 38 24 28","M24 72 C26 52 25 36 25 27","M24 72 C22 50 23 36 24 28","M24 72 C25 55 24 40 24 26","M24 72 C23 49 25 35 24 29"],
+        maple: ["M24 72 C23.5 56 23.2 44 24 36","M24 72 C24.8 58 25 46 24.4 36","M24 72 C23 54 23.6 42 23.8 35","M24 72 C25 57 24.2 45 24 36","M24 72 C23.4 55 24.6 43 24 37"],
+        oak: ["M24 72 C23.4 56 24 44 24 38","M24 72 C25 55 24.6 43 24.4 37","M24 72 C23 54 23.5 42 24 38","M24 72 C24.6 57 24 45 24 37","M24 72 C23.5 53 24.4 42 24 39"],
         pine: ["M24 72 L24 40","M24 72 L25 38","M24 72 L23 42","M24 72 L24 36","M24 72 L25 44"],
         desert: ["M24 72 C24 52 24 40 24 30","M24 72 C25 54 25 40 25 28","M24 72 C23 50 23 38 24 30","M24 72 C24 56 25 42 24 28","M24 72 C24 48 24 36 24 32"]
       };
@@ -7507,51 +7523,55 @@ function gatorRange() {
           "M24 24 C40 28 48 40 46 52 C36 38 30 30 24 24Z"
         ],
         maple: [
-          "M24 24 C10 14 2 16 4 28 C12 22 18 24 24 24Z",
-          "M24 24 C14 6 18 -2 24 4 C30 -2 34 6 24 24Z",
-          "M24 24 C38 14 46 16 44 28 C36 22 30 24 24 24Z",
-          "M24 24 C10 32 6 44 14 50 C18 38 20 30 24 24Z",
-          "M24 24 C38 32 42 44 34 50 C30 38 28 30 24 24Z"
+          "M24 38 C10 38 6 24 14 16 C12 8 20 4 24 12 C28 4 36 8 34 16 C42 24 38 38 24 38Z",
+          "M24 22 L27 16 L34 15 L30 21 L36 27 L28 26 L24 34 L20 26 L12 27 L18 21 L14 15 L21 16 Z",
+          "M18 20 L20 16 L25 16 L22 20 L26 24 L21 23 L18 28 L16 23 L11 24 L15 20 L13 16 L17 16 Z",
+          "M30 21 L32 17 L37 17 L34 21 L38 25 L33 24 L30 29 L28 24 L23 25 L27 21 L25 17 L29 17 Z"
         ],
         oak: [
-          "M24 28 C8 18 2 10 12 6 C16 16 20 22 24 28Z",
-          "M24 28 C16 8 20 0 24 6 C28 0 32 8 24 28Z",
-          "M24 28 C40 18 46 10 36 6 C32 16 28 22 24 28Z",
-          "M24 28 C8 34 4 46 14 52 C18 40 20 32 24 28Z",
-          "M24 28 C40 34 44 46 34 52 C30 40 28 32 24 28Z"
+          "M24 40 C8 38 4 24 12 16 C10 8 20 6 24 14 C28 6 38 8 36 16 C44 24 40 38 24 40Z",
+          "M16 22 C12 18 14 12 18 14 C16 10 22 10 22 16 C26 12 28 18 24 20 C28 24 20 26 16 22Z",
+          "M32 22 C36 18 34 12 30 14 C32 10 26 10 26 16 C22 12 20 18 24 20 C20 24 28 26 32 22Z"
         ],
         pine: [
           "M24 10 L16 24 L32 24 Z",
           "M24 16 L12 32 L36 32 Z",
-          "M24 22 L8 42 L40 42 Z",
-          "M24 14 L18 28 L30 28 Z",
-          "M24 20 L14 36 L34 36 Z"
+          "M24 22 L8 42 L40 42 Z"
         ],
         desert: [
           "M24 22 C16 16 12 18 14 26 C18 22 22 22 24 22Z",
           "M24 18 C20 8 22 4 24 8 C26 4 28 8 24 18Z",
           "M24 22 C32 16 36 18 34 26 C30 22 26 22 24 22Z",
-          "M24 26 C16 30 14 38 20 42 C22 34 22 28 24 26Z",
-          "M24 26 C32 30 34 38 28 42 C26 34 26 28 24 26Z"
+          "M24 30 C18 28 16 22 20 20 C22 24 24 26 24 30Z",
+          "M24 30 C30 28 32 22 28 20 C26 24 24 26 24 30Z"
         ]
       };
       var pack = leaves[kind] || leaves.maple;
       var tpack = trunks[kind] || trunks.maple;
-      var shifts = ["translate(-2,0)","translate(3,-3)","","translate(2,-2)","translate(-3,4)"];
-      var cls = ["p2","p3","p4","p5","p6"];
-      return cls.map(function (c, i) {
-        var fr = pack.map(function (d) { return '<g class="frond"><path d="' + d + '"/></g>'; }).join("");
-        return '<svg class="palm ' + c + ' tree-' + kind + '" viewBox="0 0 48 72" aria-hidden="true"><g class="bend"><path class="trunk" d="' + tpack[i] + '"/><g class="crown" transform="' + shifts[i] + '">' + fr + "</g></g></svg>";
-      }).join("");
+      var fr = pack.map(function (d) { return '<g class="frond"><path d="' + d + '"/></g>'; }).join("");
+      return '<svg class="palm tree-' + kind + '" viewBox="0 0 48 72" aria-hidden="true"><g class="bend"><path class="trunk" d="' + tpack[i % tpack.length] + '"/><g class="crown">' + fr + "</g></g></svg>";
     }
     function paintHeaderTrees() {
       var box = document.querySelector("header .palms");
       if (!box) return;
       var kind = typeof headerTreeKind === "function" ? headerTreeKind() : "palm";
-      if (box.getAttribute("data-trees") === kind && box.querySelector(".palm")) return;
-      box.setAttribute("data-trees", kind);
-      box.innerHTML = headerTreeSvg(kind);
-      if (typeof noteFeed === "function") noteFeed("hdr-trees", true, kind);
+      var seed = typeof headerTreeSeed === "function" ? headerTreeSeed() : 1;
+      var key = kind + ":" + seed;
+      if (box.getAttribute("data-trees") === key && box.querySelector(".palm")) return;
+      var rng = seed || 1;
+      function rand() { rng = (rng * 1664525 + 1013904223) >>> 0; return rng / 4294967296; }
+      var n = 3 + Math.floor(rand() * 3);
+      var html = "";
+      for (var i = 0; i < n; i++) {
+        var leftSide = i < Math.ceil(n / 2);
+        var x = leftSide ? (1 + rand() * 18) : (81 + rand() * 17);
+        var h = 54 + Math.round(rand() * 30);
+        var w = Math.round(h * (kind === "palm" ? 0.62 : 0.72));
+        html += '<span class="hdr-tree" style="left:' + x.toFixed(1) + "%;width:" + w + "px;height:" + h + 'px">' + headerOneTree(kind, i) + "</span>";
+      }
+      box.setAttribute("data-trees", key);
+      box.innerHTML = html;
+      if (typeof noteFeed === "function") noteFeed("hdr-trees", true, kind + " · " + n + " edge");
     }
     function paintHomeChrome() {
       if (typeof paintHeaderTrees === "function") paintHeaderTrees();
@@ -9871,6 +9891,26 @@ function currentRotation() {
       if (/left at|delivered|front door|porch/i.test(item.detail || "")) bits.push("delivered");
       if (meta) meta.textContent = bits.join(" · ");
       if (link) { link.href = tr.url; link.hidden = !tr.url; link.textContent = "Open " + tr.carrier; }
+      var frame = document.getElementById("track-frame");
+      var live = "";
+      if (tr.num && !/^amazon$/i.test(tr.carrier)) {
+        live = "https://t.17track.net/en#nums=" + encodeURIComponent(tr.num);
+      } else if (/amazon/i.test(tr.carrier) && tr.url) {
+        live = tr.url;
+      }
+      if (frame) {
+        if (live) {
+          frame.hidden = false;
+          if (frame.getAttribute("data-src") !== live) {
+            frame.src = live;
+            frame.setAttribute("data-src", live);
+          }
+        } else {
+          frame.hidden = true;
+          frame.removeAttribute("src");
+          frame.removeAttribute("data-src");
+        }
+      }
       pop.hidden = false;
       pop.classList.add("on");
       if (back) { back.hidden = false; back.classList.add("on"); }
@@ -11944,6 +11984,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v870 — Package popup loads live scan events in-board via 17TRACK, plus the email status line. Official carrier link stays as backup.",
+      "v869 — Header trees stay on the left/right edges so the title stays clear. Maples get a canopy, not palm fronds. Layout is seeded by pin, not reshuffled every refresh.",
       "v868 — Tap a package card with a tracking number to open carrier, number, status, and the official tracker.",
       "v867 — Uncheck Delivered to put a package back on the incoming list if it was marked by accident.",
       "v866 — On-toggle cost controls: daily cap in settings, Weather cached 30 min and counted against the cap, drive times every 30 min not 6.",
