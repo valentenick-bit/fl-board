@@ -3508,6 +3508,10 @@ Cart shop:</textarea>
             <section id="storms" class="page sheet">
         <h2 data-k="Named storms">Storms</h2>
         <p class="pill-key" id="storm-lead">Named storms in this basin show here. The page only joins the rotation when one can reach the home pin.</p>
+        <div class="card" id="noreast-card" hidden>
+          <b id="noreast-title">Nor'easter</b>
+          <span id="noreast-body">Checking coastal winter alerts for this pin…</span>
+        </div>
         <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
         <div class="card" id="hurr-stats"><b>No named storm on this pin</b><span>Quiet until NHC lists a storm that can affect the address on Account.</span></div>
         <div class="metric-table storm-metrics" id="storm-grid" hidden>
@@ -4770,7 +4774,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 896;
+    window.BOARD_VER = 898;
 
     
     function communityShort() {
@@ -6956,11 +6960,15 @@ Cart shop:</textarea>
       if (lead) {
         var b0 = typeof homeStormBasin === "function" ? homeStormBasin() : { label: "this basin" };
         var threats = list.filter(function (x) { return typeof stormThreatensHome === "function" && stormThreatensHome(x); });
+        var ne0 = typeof paintNorEaster === "function" ? paintNorEaster() : (window.__norEaster || {});
         lead.textContent = list.length
           ? (list.length + " system" + (list.length > 1 ? "s" : "") + " NHC is tracking in the " + b0.label +
-             (threats.length ? (". " + threats.length + " could reach " + place + ".") : (". None are a threat to " + place + " yet — this page stays out of rotation.")) +
+             (threats.length ? (". " + threats.length + " could reach " + place + ".") : (". None are a tropical threat to " + place + " yet.")) +
+             (ne0.on ? " A winter storm is also on this pin." : "") +
              " Graphics refresh with each advisory.")
-          : ("NHC is not tracking a " + b0.label + " system that affects " + place + ". Outlook maps below still update.");
+          : (ne0.on
+            ? ("No named tropical system in the " + b0.label + ", but " + (ne0.title || "a winter storm") + " is affecting " + place + ".")
+            : ("NHC is not tracking a " + b0.label + " system that affects " + place + ". Outlook maps below still update."));
       }
       if (picks) {
         picks.hidden = list.length < 2;
@@ -7213,6 +7221,69 @@ Cart shop:</textarea>
     function relevantStorms(list) {
       return (list || []).filter(stormThreatensHome);
     }
+    function norEasterBelt() {
+      var st = String((typeof homeState === "function" && homeState()) || "").toUpperCase();
+      return /^(ME|NH|VT|MA|RI|CT|NY|NJ|PA|DE|MD|DC|VA|NC|WV)$/.test(st);
+    }
+    function scanNorEaster() {
+      var feats = [].concat(window.__nwsHigh || [], window.__nwsLow || [], window.__nwsAlerts || []);
+      var seen = {};
+      var hits = [];
+      var flags = { ne: false, blizzard: false, winter: false, ice: false, squall: false };
+      feats.forEach(function (f) {
+        var p = (f && f.properties) || f || {};
+        var ev = String(p.event || "").replace(/\s+/g, " ").trim();
+        var blob = (ev + " " + (p.headline || "") + " " + (p.description || "")).toLowerCase();
+        if (!ev && !blob) return;
+        if (/tropical storm|hurricane watch|hurricane warning|tropical depression|storm surge warning/.test(blob) && !/nor['’]?easter|noreaster|blizzard|winter storm/.test(blob)) return;
+        var sure = /nor['’]?easter|noreaster|bomb cyclone/.test(blob);
+        var blizzard = /blizzard/.test(ev + " " + blob);
+        var ice = /ice storm/.test(ev + " " + blob);
+        var squall = /snow squall/.test(ev + " " + blob);
+        var winterWarn = /winter storm warning|winter storm watch/.test(blob) || /^winter storm/i.test(ev);
+        var winterAdv = /winter weather/.test(ev + " " + blob);
+        var coastal = /coastal flood|high surf|coastal hazard/.test(ev + " " + blob);
+        var windy = /high wind|gale warning|storm warning|hurricane force wind/.test(ev + " " + blob);
+        var keep = sure || blizzard || ice || squall || winterWarn || (winterAdv && (norEasterBelt() || coastal || windy));
+        if (!keep) return;
+        var key = ev || blob.slice(0, 40);
+        if (seen[key]) return;
+        seen[key] = 1;
+        if (sure) flags.ne = true;
+        if (blizzard) flags.blizzard = true;
+        if (ice) flags.ice = true;
+        if (squall) flags.squall = true;
+        if (winterWarn || winterAdv) flags.winter = true;
+        hits.push({ event: ev || "Winter storm", headline: String(p.headline || "").replace(/\s+/g, " ").trim() });
+      });
+      var on = hits.length > 0;
+      var title = flags.ne ? "Nor'easter" : flags.blizzard ? "Blizzard" : flags.ice ? "Ice storm" : flags.squall ? "Snow squall" : flags.winter ? "Winter storm" : (hits[0] && hits[0].event) || "Winter storm";
+      var why = hits.slice(0, 3).map(function (h) {
+        var line = h.event;
+        if (h.headline && h.headline.toLowerCase().indexOf(h.event.toLowerCase()) < 0) line += " — " + h.headline.slice(0, 120);
+        return line;
+      }).join(" ");
+      window.__norEaster = { on: on, explicit: flags.ne, blizzard: flags.blizzard, winter: flags.winter, ice: flags.ice, title: title, why: why, hits: hits, kind: title };
+      if (typeof noteFeed === "function") noteFeed("noreaster", true, on ? (title + " · " + hits.length + " alerts at pin") : "none at pin");
+      return window.__norEaster;
+    }
+    function paintNorEaster() {
+      var ne = typeof scanNorEaster === "function" ? scanNorEaster() : (window.__norEaster || { on: false });
+      var card = document.getElementById("noreast-card");
+      var title = document.getElementById("noreast-title");
+      var body = document.getElementById("noreast-body");
+      var place = typeof homePlace === "function" ? homePlace() : "home";
+      if (!card) return ne;
+      card.hidden = !ne.on;
+      if (title) title.textContent = ne.on ? (ne.title + " · " + place) : "Winter storm";
+      if (body) {
+        body.textContent = ne.on
+          ? ("This pin is inside the " + String(ne.title || "winter storm").toLowerCase() + ". " + (ne.why || "NWS winter or coastal alerts are up for the home address."))
+          : ("No blizzard, winter storm, or Nor'easter on the home address.");
+      }
+      return ne;
+    }
+
     function farStormLine() {
       var b = typeof homeStormBasin === "function" ? homeStormBasin() : { label: "this basin" };
       var all = typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || []) : (window.__nhcAllStorms || []);
@@ -9645,13 +9716,20 @@ function currentRotation() {
           if ((s.classification || "") === "DB") return false;
           return true;
         });
-        var caneOn = getSet().chipCane !== "0" && gulfAtl.length > 0;
+        var ne = typeof scanNorEaster === "function" ? scanNorEaster() : (window.__norEaster || {});
+        var caneOn = getSet().chipCane !== "0" && (gulfAtl.length > 0 || !!(ne && ne.on));
         cane.classList.toggle("on", caneOn);
         var caneBox = document.getElementById("today-cane");
         var caneBody = document.getElementById("today-cane-body");
         if (caneBox) caneBox.hidden = !caneOn;
         if (caneOn && caneBody && typeof stampTodayArt === "function") {
-          caneBody.innerHTML = gulfAtl.map(function (s) {
+          var neHtml = (ne && ne.on)
+            ? stampTodayArt(
+                '<div class="card"><span class="place-tag">Home pin</span><span class="kind-tag">' + String(ne.title || "Winter storm").replace(/</g, "") + "</span><b>" + String(ne.title || "Winter storm").replace(/</g, "") + "</b><span>" + String(ne.why || "Winter storm alerts are up for this address.").replace(/</g, "") + "</span></div>",
+                "cane"
+              )
+            : "";
+          caneBody.innerHTML = neHtml + gulfAtl.map(function (s) {
             var cls = s.classification || "";
             var word = cls === "HU" ? "Hurricane" : cls === "TS" ? "Tropical Storm" : cls === "TD" ? "Tropical Depression" : cls === "PTC" ? "Potential tropical cyclone" : "Storm";
             var where = [s.latitude || "", s.longitude || ""].join(" ").trim();
@@ -11261,7 +11339,7 @@ function currentRotation() {
       var basins = window.__satBasins || {};
       if (id === "bolt") return !!(typeof boltWanted === "function" && boltWanted());
       if (id === "storms" || id === "cane" || id === "hurr" || id === "gulfsat" || id === "tropics")
-        return !!(window.__namedStorms && window.__namedStorms.length);
+        return !!(window.__namedStorms && window.__namedStorms.length) || !!(window.__norEaster && window.__norEaster.on);
       return true;
     }
     function warnList() {
@@ -12505,6 +12583,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v898 — Blizzard, winter storm, and ice storm at the home pin join Storms and Today, not only Nor'easters.",
+      "v897 — Storms page and Today chip pick up a Nor'easter when NWS says the home pin is in it.",
       "v896 — Header leaves stay on the trunk. Each tree still uses its own leaf set and sway.",
       "v895 — Header trees sway independently from live wind, with mixed sizes and different leaf packs per tree.",
       "v894 — Status cleanup: friendly rotation names, skip fake USCG headlines, keep Fay off the word Center, NHC text scrape looser.",
@@ -20272,6 +20352,9 @@ function drawSurgeChart(points) {
         .then(function (d) {
           var feats = (d && d.features) || [];
           window.__nwsAlerts = feats;
+          if (typeof scanNorEaster === "function") scanNorEaster();
+          if (typeof paintNorEaster === "function") paintNorEaster();
+          if (typeof writeTodayChips === "function") writeTodayChips();
           if (typeof collectPublicSafetyFromNws === "function") collectPublicSafetyFromNws();
           if (typeof paintWxExtras === "function") paintWxExtras();
           var rip = "Low";
