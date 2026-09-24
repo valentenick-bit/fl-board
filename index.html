@@ -4793,7 +4793,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 903;
+    window.BOARD_VER = 904;
 
     
     function communityShort() {
@@ -6535,6 +6535,10 @@ Cart shop:</textarea>
         if (isNaN(lat)) lat = nhcCoord(s.center.latitude || s.center.lat, false);
         if (isNaN(lon)) lon = nhcCoord(s.center.longitude || s.center.lon, true);
       }
+      if ((isNaN(lat) || isNaN(lon)) && window.__btkPts && window.__btkPts.length) {
+        var last = window.__btkPts[window.__btkPts.length - 1];
+        if (last && isFinite(last.lat) && isFinite(last.lon)) { lat = last.lat; lon = last.lon; }
+      }
       return { lat: parseFloat(lat), lon: parseFloat(lon) };
     }
     function homeStormBasin() {
@@ -7007,7 +7011,10 @@ Cart shop:</textarea>
       }
       var s = selectedStorm();
       if (typeof noteFeed === "function") {
-        if (s) noteFeed("storms", true, (s.name || "storm") + " · " + Math.round(stormMiles(s)) + " mi");
+        if (s) {
+          var smi = stormMiles(s);
+          noteFeed("storms", true, (s.name || "storm") + (isFinite(smi) ? (" · " + Math.round(smi) + " mi") : " · position pending"));
+        }
         else noteFeed("storms", true, typeof farStormLine === "function" ? farStormLine() : "none on pin");
       }
       if (!s) {
@@ -7573,7 +7580,7 @@ function gatorRange() {
           window.__heatRiskNws = isFinite(best) ? best : null;
           if (typeof paintWxExtras === "function") paintWxExtras();
           if (typeof paintRegionChips === "function") paintRegionChips();
-          if (typeof noteFeed === "function") noteFeed("heatrisk", window.__heatRiskNws != null, heatRiskLabel(window.__heatRiskNws) || "none");
+          if (typeof noteFeed === "function") noteFeed("heatrisk", true, heatRiskLabel(window.__heatRiskNws) || "none");
         })
         .catch(function () {
           var t0 = Number((window.__nowWx && (window.__nowWx.temp || window.__nowWx.temperature)) || 0);
@@ -12664,6 +12671,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v904 — Fay distance uses last ATCF fix when NHC omits lat/lon. School and TFR cards ignore lifted/statewide noise.",
       "v903 — Golf page falls back to cached / OSM courses when OpenGolf returns 429. Empty list is none, not down.",
       "v902 — Golf 429 is a quota miss, not a board crash. Live worker reads index from GitHub — Drive-only uploads never reached the wall.",
       "v901 — Long-open lag: pause lightning socket and header motion when the tab is hidden; cap strike parsing so a wall left up for hours stays usable.",
@@ -24242,7 +24250,12 @@ function homeCountyGuess() {
           items = (items || []).filter(function (x) {
             var t = String(x.title || "") + " " + String(x.desc || "");
             if (!/school|district|students/i.test(t)) return false;
+            if (/lifted|cleared|all clear|ended|called off|no longer|lockdowns lifted/i.test(t)) return false;
             if (/shelter open|warming center|storm shelter|pets|donation/i.test(t) && !/lockdown|lockout|schools closed|dismissed/i.test(t)) return false;
+            var here = String(place || "") + " " + String((getSet() && getSet().place) || "");
+            var local = /englewood|venice|north port|sarasota|charlotte|port charlotte|south windsor|hartford|manchester|wethersfield/i.test(t) || (place && new RegExp(String(place).split(/[\s,]/)[0], "i").test(t));
+            if (!local && st && st.length === 2 && new RegExp("\\b" + st + "\\b", "i").test(t) && !new RegExp(place, "i").test(t)) return false;
+            if (!local && !new RegExp(String(place || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(t)) return false;
             return /lockdown|lockout|shelter in place|schools closed|school closed|early dismissal|students evacuated/i.test(t);
           });
           window.__schoolAlerts = items.map(function (x) { return { kind: "school", title: "School emergency", body: x.title }; });
@@ -24252,8 +24265,13 @@ function homeCountyGuess() {
           window.__nixleCivic = items.map(function (x) { return { kind: "nixle", title: "Local notice", body: x.title }; });
           newsToCard("nixle-card", "live-nixle", "nixle", items, true);
         });
-        fetchNewsQuery("TFR OR \"temporary flight restriction\" (" + place + " OR " + st + " OR Tampa OR Sarasota) when:2d", function (items) {
-          setDeskBreak("TFR", (items || []).slice(0, 1).map(function (x) {
+        fetchNewsQuery("\"temporary flight restriction\" OR TFR NOTAM FAA (" + place + " OR " + st + ") when:2d", function (items) {
+          items = (items || []).filter(function (x) {
+            var t = String(x.title || "") + " " + String(x.desc || "");
+            if (/groundbreaking|breaks ground|fire station|ribbon|opens|festival/i.test(t)) return false;
+            return /temporary flight restriction|\bTFR\b|NOTAM|FAA/i.test(t);
+          });
+          setDeskBreak("TFR", items.slice(0, 1).map(function (x) {
             return { src: "TFR", title: speakAlert({ kind: "tfr", title: "Flight restriction", body: x.title }) };
           }));
           newsToCard("tfr-card", "live-tfr", "tfr", items, true);
