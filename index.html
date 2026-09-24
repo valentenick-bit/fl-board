@@ -280,11 +280,11 @@
     .sandshelf { position:absolute; left:0; right:0; bottom:0; height:10px; z-index:5; background:#d4c199; pointer-events:none; transition:background 45s linear; }
     header.sky-night .sandshelf { background:#3a3428; }
     .palms { position:absolute; left:20px; right:20px; top:0; bottom:8px; pointer-events:none; z-index:6; overflow:visible; }
-    .hdr-tree { position:absolute; bottom:0; line-height:0; pointer-events:none; }
+    .hdr-tree { position:absolute; bottom:0; line-height:0; pointer-events:none; --sway-dur:3.8s; --sway-delay:0s; --lean:0deg; --wag:2deg; --leaf-wag:3deg; --crown-lag:.18s; }
     .hdr-tree .palm { position:relative; left:auto; bottom:auto; width:100%; height:100%; display:block; }
     .palm { position:absolute; bottom:0; width:46px; height:72px; transform:none; opacity:1; overflow:visible; filter:drop-shadow(0 1px 1px rgba(12,28,46,.4)); }
-    .palm .bend { transform-origin:24px 72px; animation:trunk-bend var(--sway-dur, 3.6s) ease-in-out infinite; }
-    .palm .crown { transform-origin:24px 24px; transform-box:view-box; animation:crown-sway var(--sway-dur, 3.6s) ease-in-out infinite; }
+    .palm .bend { transform-origin:24px 72px; animation:trunk-bend var(--sway-dur, 3.6s) ease-in-out infinite; animation-delay:var(--sway-delay, 0s); }
+    .palm .crown { transform-origin:24px 24px; transform-box:view-box; animation:crown-sway var(--sway-dur, 3.6s) ease-in-out infinite; animation-delay:calc(var(--sway-delay, 0s) + var(--crown-lag, .2s)); }
     .palm .frond { transform-origin:24px 24px; transform-box:view-box; animation:frond-wag var(--sway-dur, 3.6s) ease-in-out infinite; }
     .palm .frond:nth-child(1) { animation-duration:calc(var(--sway-dur, 3.6s) * .9); animation-delay:-.2s; }
     .palm .frond:nth-child(2) { animation-duration:calc(var(--sway-dur, 3.6s) * 1.05); animation-delay:-.8s; }
@@ -4770,7 +4770,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 893;
+    window.BOARD_VER = 895;
 
     
     function communityShort() {
@@ -6637,6 +6637,17 @@ Cart shop:</textarea>
       if (!isFinite(deg)) return "";
       return pts[Math.round(deg / 22.5) % 16];
     }
+    function stormDisplayName(s) {
+      if (!s) return "";
+      var n = String(s.name || s.stormName || "").trim();
+      if (n && !/^(center|centre|n\/?a|unknown|null|invest|one|two|three)$/i.test(n) && !/^al\d/i.test(n)) return n;
+      var head = String((s.publicAdvisory && (s.publicAdvisory.headline || s.publicAdvisory.advNum)) || s.headline || s.lastUpdate || "").replace(/\s+/g, " ");
+      var m = head.match(/\b(?:Hurricane|Tropical Storm|Tropical Depression|Post-Tropical)\s+([A-Za-z]+)\b/i);
+      if (m && m[1] && !/^(center|the)$/i.test(m[1])) return m[1];
+      var id = String(s.id || s.binNumber || "").toUpperCase();
+      if (/AL06/.test(id)) return "Fay";
+      return n && !/^center$/i.test(n) ? n : "";
+    }
     function stormCategory(s) {
       var kt = Number((s && s.intensity) || 0);
       var cls = String((s && s.classification) || "").toUpperCase();
@@ -6838,7 +6849,12 @@ Cart shop:</textarea>
         window.__advAt = Date.now();
         window.__advPts = list || [];
         mergeStormHistPoints(s, window.__advPts);
-        if (typeof noteFeed === "function") noteFeed("storm-adv", true, (s.name || "storm") + " · " + window.__advPts.length + " advisories + track");
+        if (typeof noteFeed === "function") {
+          var nAdv = (window.__advPts || []).length;
+          var named = (typeof stormDisplayName === "function" ? stormDisplayName(s) : s.name) || "storm";
+          var fallback = (s.publicAdvisory && s.publicAdvisory.advNum) ? ("#" + String(s.publicAdvisory.advNum).replace(/^0+/, "")) : "";
+          noteFeed("storm-adv", true, named + " · " + (nAdv ? nAdv + " advisories" : (fallback ? fallback + " from TCP" : "track only")));
+        }
         if (done) done(window.__advPts);
       }
       fetch(url, { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
@@ -7013,14 +7029,15 @@ Cart shop:</textarea>
       var issuedTxt = "";
       try { if (issued) issuedTxt = new Date(issued).toLocaleString(); } catch (eI) { issuedTxt = String(issued); }
       var advN = (s.publicAdvisory && s.publicAdvisory.advNum) || (s.forecastDiscussion && s.forecastDiscussion.advNum) || "";
-      var summary = cat + " " + (s.name || "") + " is " + fromHome +
+      var who = stormDisplayName(s) || s.name || "the storm";
+      var summary = cat + " " + who + " is " + fromHome +
         (mph != null ? (", with maximum sustained winds of " + mph + " mph") : "") +
         (s.pressure ? (" and a central pressure of " + s.pressure + " mb") : "") +
         ". It is moving " + moveTxt + "." +
         (stormHeadingTowardHome(s) ? " The current heading is toward this coast." : " The current heading is not directly toward the house.") +
         (issuedTxt ? " Last NHC package " + issuedTxt + "." : "");
       window.__hurrTick = summary;
-      if (stats) stats.innerHTML = "<b>" + cat + " " + (s.name || "") + "</b><span>" + summary + "</span>";
+      if (stats) stats.innerHTML = "<b>" + cat + " " + who + "</b><span>" + summary + "</span>";
       if (grid) {
         grid.hidden = false;
         function setTxt(id, v) { var el = document.getElementById(id); if (el) el.textContent = v || "—"; }
@@ -7952,32 +7969,79 @@ function gatorRange() {
           "M24 30 C30 28 32 22 28 20 C26 24 24 26 24 30Z"
         ]
       };
-      var pack = leaves[kind] || leaves.maple;
+      var pack = (leaves[kind] || leaves.maple).slice();
       var tpack = trunks[kind] || trunks.maple;
-      var fr = pack.map(function (d) { return '<g class="frond"><path d="' + d + '"/></g>'; }).join("");
-      return '<svg class="palm tree-' + kind + '" viewBox="0 0 48 72" aria-hidden="true"><g class="bend"><path class="trunk" d="' + tpack[i % tpack.length] + '"/><g class="crown">' + fr + "</g></g></svg>";
+      var shift = (i * 2 + kind.length) % pack.length;
+      pack = pack.slice(shift).concat(pack.slice(0, shift));
+      var count = kind === "palm" ? pack.length : Math.max(2, Math.min(pack.length, 2 + (i % pack.length)));
+      var fr = "";
+      for (var k = 0; k < count; k++) {
+        var sc = (kind === "palm" ? 0.86 : 0.72) + ((i + k) % 5) * 0.07;
+        var dx = ((k % 3) - 1) * (3 + (i % 3));
+        var dy = (k % 2) * -2 - (i % 2);
+        var rot = ((i * 13 + k * 21) % 17) - 8;
+        fr += '<g class="frond" style="animation-duration:calc(var(--sway-dur, 3.6s) * ' + (0.82 + ((i + k) % 6) * 0.07).toFixed(2) + ');animation-delay:calc(var(--sway-delay, 0s) - ' + ((i * 0.37 + k * 0.53) % 2.8).toFixed(2) + 's)"><g transform="translate(' + dx + ' ' + dy + ') rotate(' + rot + ' 24 24) scale(' + sc.toFixed(2) + ')"><path d="' + pack[k % pack.length] + '"/></g></g>';
+      }
+      return '<svg class="palm tree-' + kind + ' t' + (i % 5) + '" viewBox="0 0 48 72" aria-hidden="true"><g class="bend"><path class="trunk" d="' + tpack[i % tpack.length] + '"/><g class="crown">' + fr + "</g></g></svg>";
+    }
+    function applyHeaderTreeWind() {
+      var box = document.querySelector("header .palms");
+      if (!box) return;
+      var wx = window.__nowWx || {};
+      var mph = Number(wx.wind);
+      if (!isFinite(mph)) {
+        var t = ((document.getElementById("live-wind") || {}).textContent || "") + " " + ((document.getElementById("header-wind") || {}).textContent || "");
+        var m = t.match(/(\d+(?:\.\d+)?)/);
+        mph = m ? Number(m[1]) : 6;
+      }
+      var gust = Number(wx.gust);
+      if (!isFinite(gust)) gust = mph;
+      var blob = String(wx.wind || "") + " " + ((document.getElementById("live-wind") || {}).textContent || "");
+      var dir = (blob.match(/\b(N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)\b/i) || [])[1] || "";
+      var lean = 0;
+      if (/E$|ENE|ESE/i.test(dir) && !/^NE$|^SE$/i.test(dir)) lean = -1;
+      else if (/W$|WNW|WSW/i.test(dir) && !/^NW$|^SW$/i.test(dir)) lean = 1;
+      else if (/^NE$|^SE$/i.test(dir)) lean = -0.55;
+      else if (/^NW$|^SW$/i.test(dir)) lean = 0.55;
+      var force = Math.max(0.6, Math.min(11, mph * 0.38 + Math.max(0, gust - mph) * 0.18));
+      var baseDur = Math.max(1.5, Math.min(5.4, 5.1 - force * 0.28));
+      var trees = box.querySelectorAll(".hdr-tree");
+      trees.forEach(function (el, i) {
+        var wob = 0.72 + ((i * 17) % 9) * 0.05;
+        var dur = (baseDur * wob).toFixed(2) + "s";
+        var delay = (-((i * 0.73 + force * 0.11) % (baseDur + 1.4))).toFixed(2) + "s";
+        el.style.setProperty("--sway-dur", dur);
+        el.style.setProperty("--sway-delay", delay);
+        el.style.setProperty("--lean", (lean * force * (0.7 + (i % 4) * 0.12)).toFixed(2) + "deg");
+        el.style.setProperty("--wag", (force * (0.55 + (i % 5) * 0.12)).toFixed(2) + "deg");
+        el.style.setProperty("--leaf-wag", (force * (0.9 + (i % 3) * 0.2)).toFixed(2) + "deg");
+        el.style.setProperty("--crown-lag", (0.08 + (i % 5) * 0.07) + "s");
+      });
     }
     function paintHeaderTrees() {
       var box = document.querySelector("header .palms");
       if (!box) return;
       var kind = typeof headerTreeKind === "function" ? headerTreeKind() : "palm";
       var seed = typeof headerTreeSeed === "function" ? headerTreeSeed() : 1;
-      var key = kind + ":" + seed;
-      if (box.getAttribute("data-trees") === key && box.querySelector(".palm")) return;
+      var key = kind + ":" + seed + ":v895";
       var rng = seed || 1;
       function rand() { rng = (rng * 1664525 + 1013904223) >>> 0; return rng / 4294967296; }
-      var n = 3 + Math.floor(rand() * 3);
-      var html = "";
-      for (var i = 0; i < n; i++) {
-        var leftSide = i < Math.ceil(n / 2);
-        var x = leftSide ? (1 + rand() * 18) : (81 + rand() * 17);
-        var h = 54 + Math.round(rand() * 30);
-        var w = Math.round(h * (kind === "palm" ? 0.62 : 0.72));
-        html += '<span class="hdr-tree" style="left:' + x.toFixed(1) + "%;width:" + w + "px;height:" + h + 'px">' + headerOneTree(kind, i) + "</span>";
+      if (!(box.getAttribute("data-trees") === key && box.querySelector(".palm"))) {
+        var n = 3 + Math.floor(rand() * 3);
+        var html = "";
+        for (var i = 0; i < n; i++) {
+          var leftSide = i < Math.ceil(n / 2);
+          var x = leftSide ? (0.6 + rand() * 19) : (80 + rand() * 18);
+          var h = 42 + Math.round(rand() * 48);
+          var fat = kind === "palm" ? 0.55 + rand() * 0.2 : 0.62 + rand() * 0.22;
+          var w = Math.round(h * fat);
+          html += '<span class="hdr-tree" style="left:' + x.toFixed(1) + "%;width:" + w + "px;height:" + h + 'px">' + headerOneTree(kind, i) + "</span>";
+        }
+        box.setAttribute("data-trees", key);
+        box.innerHTML = html;
+        if (typeof noteFeed === "function") noteFeed("hdr-trees", true, kind + " · " + n + " edge");
       }
-      box.setAttribute("data-trees", key);
-      box.innerHTML = html;
-      if (typeof noteFeed === "function") noteFeed("hdr-trees", true, kind + " · " + n + " edge");
+      if (typeof applyHeaderTreeWind === "function") applyHeaderTreeWind();
     }
     function setPageK(id, k) {
       var page = document.getElementById(id);
@@ -11464,10 +11528,10 @@ function currentRotation() {
       return tx;
     }
     function looksOfficialNhc(tx) {
-      if (!tx || tx.length < 80) return false;
-      if (/Advisory Number|Discussion Number|SUMMARY OF|FORECAST POSITIONS|WTNT\d|MIATCD|MIATCP/i.test(tx)) return true;
-      if (/DOCTYPE html|skip to content|function\s*\(|window\.|corsproxy/i.test(tx) && !/National Hurricane Center/i.test(tx)) return false;
-      return /National Hurricane Center|TROPICAL (DEPRESSION|STORM|CYCLONE|HURRICANE)/i.test(tx);
+      if (!tx || tx.length < 60) return false;
+      if (/Advisory Number|Discussion Number|SUMMARY OF|FORECAST POSITIONS|WTNT\d|MIATCD|MIATCP|TROPICAL (DEPRESSION|STORM|CYCLONE)|HURRICANE [A-Z]/i.test(tx)) return true;
+      if (/DOCTYPE html|skip to content|function\s*\(|window\.|corsproxy|cf-error|just a moment/i.test(tx) && !/National Hurricane Center|TROPICAL /i.test(tx)) return false;
+      return /National Hurricane Center|National Weather Service/i.test(tx) && tx.length > 200;
     }
     function fetchNhcText(url, done) {
       if (!url) return done("");
@@ -12443,6 +12507,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v895 — Header trees sway independently from live wind, with mixed sizes and different leaf packs per tree.",
+      "v894 — Status cleanup: friendly rotation names, skip fake USCG headlines, keep Fay off the word Center, NHC text scrape looser.",
       "v893 — Briefing ticker rewrites when Today, BeachWalk, weather, or deals change — not a frozen script.",
       "v892 — BeachWalk ticker talks like a neighbor who just read TownSq, not a bulletin list.",
       "v891 — Today briefing is one spoken story: house chores, then recommendations with a why.",
@@ -18472,7 +18538,7 @@ function mustEatsFL() {
           ["moon-face", document.querySelector("#sky-moon-face svg") ? "drawn" : ""],
           ["tick-warn", (document.getElementById("alerttext") && (document.getElementById("alerttext").textContent || "").trim()) ? "on" : "off"],
           ["tick-break", (document.getElementById("breaktext") && (document.getElementById("breaktext").textContent || "").trim()) ? "on" : "off"],
-          ["rotation-on", (typeof rotateList === "function" ? rotateList() : []).join(">") || ""],
+          ["rotation-on", (typeof rotateList === "function" ? rotateList().map(function (id) { return typeof pageLabel === "function" ? pageLabel(id) : id; }).join(" > ") : "") || ""],
           ["rot-comm", (function () {
             var list = typeof rotateList === "function" ? rotateList() : [];
             var on = list.indexOf("comm") >= 0;
@@ -20898,6 +20964,7 @@ function drawSurgeChart(points) {
       var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
       var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
       window.__nowWx = { temp: tempF, feel: feelF, wind: wind, gust: gust, word: word, greet: greet };
+      if (typeof applyHeaderTreeWind === "function") applyHeaderTreeWind();
       var tempEl = document.getElementById("live-temp");
       var feelEl = document.getElementById("live-feels");
       var windEl = document.getElementById("live-wind");
@@ -21382,6 +21449,7 @@ function drawSurgeChart(points) {
               word: String(short).replace(/\.$/, "").toLowerCase(),
               greet: greet
             };
+            if (typeof applyHeaderTreeWind === "function") applyHeaderTreeWind();
             if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras();
             else skyEl.textContent = greet;
@@ -23953,7 +24021,12 @@ function homeCountyGuess() {
           }));
           newsToCard("tfr-card", "live-tfr", "tfr", items, true);
         });
-        fetchNewsQuery("\"local notice to mariners\" OR \"urgent marine\" (\"District 7\" OR Gulf OR " + place + ") when:3d", function (items) {
+        fetchNewsQuery("\"local notice to mariners\" OR LNM OR \"coast guard district 7\" (" + place + " OR Florida) when:7d", function (items) {
+          items = (items || []).filter(function (x) {
+            var blob = String((x.title || "") + " " + (x.desc || "")).toLowerCase();
+            if (/dugong|manatee death|whale watch|dolphin|wildlife rescue/i.test(blob)) return false;
+            return /notice to mariners|\blnm\b|coast guard|uscg|district 7/.test(blob);
+          });
           setDeskBreak("USCG", (items || []).slice(0, 1).map(function (x) {
             return { src: "USCG", title: speakAlert({ kind: "uscg", title: "Marine notice", body: x.title }) };
           }));
