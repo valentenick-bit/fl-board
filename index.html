@@ -1017,6 +1017,8 @@
     #today-wear .ev-card,
     #today-shop .ev-card,
     #today-shop .eat-card,
+    #today-coupons .ev-card,
+    #today-coupons .eat-card,
     #today-deliv .ev-card,
     #today-deliv .card,
     #deliv-list .ev-card,
@@ -1032,13 +1034,15 @@
       border:1px solid var(--hair);
       border-radius:16px;
     }
-    #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card { cursor:pointer; }
+    #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-coupons .card { cursor:pointer; }
     #today-hot .ev-body,
     #today-deal .ev-body,
     #today-eat-pick .ev-body,
+    #today-coupons .ev-body,
     #today-hot .eat-why,
     #today-deal .eat-why,
-    #today-eat-pick .eat-why {
+    #today-eat-pick .eat-why,
+    #today-coupons .eat-why {
       overflow-wrap:anywhere;
       word-break:break-word;
       min-width:0;
@@ -4766,7 +4770,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 889;
+    window.BOARD_VER = 893;
 
     
     function communityShort() {
@@ -12439,6 +12443,10 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v893 — Briefing ticker rewrites when Today, BeachWalk, weather, or deals change — not a frozen script.",
+      "v892 — BeachWalk ticker talks like a neighbor who just read TownSq, not a bulletin list.",
+      "v891 — Today briefing is one spoken story: house chores, then recommendations with a why.",
+      "v890 — Takeout deal cards match the other buzz cards: rail picture, pills, venue, and the actual offer.",
       "v889 — Briefing ticker reads as spoken sentences. Sports stays short stats.",
       "v888 — Briefing ticker can roll BeachWalk official-board notices. On by default. Toggle is under Tickers in Settings.",
       "v887 — BeachWalk page is the HOA communications board: action items, official notices, then on-site week.",
@@ -14407,13 +14415,19 @@ function currentRotation() {
             ico: "★"
           },
           hh: { dow: "", num: "", ico: (window.EV_ART && EV_ART.martini) || "" },
-          shop: { dow: "Sale", num: "%", ico: (window.EV_ART && EV_ART.tag) || "" }
+          shop: { dow: "Sale", num: "%", ico: (window.EV_ART && EV_ART.tag) || "" },
+          coupon: {
+            dow: "Takeout",
+            num: row.value ? ("$" + Math.round(Number(row.value))) : "%",
+            ico: (window.EV_ART && (EV_ART.tag || EV_ART.martini)) || ""
+          }
         }[kind] || { dow: "Near", num: "•", ico: "" };
         var meta = {
           hot: { pill: "Ticket", cls: "music" },
           table: { pill: "Restaurant", cls: "eat-sea" },
           hh: { pill: "Happy hour", cls: "eat-bar" },
-          shop: { pill: "Shopping", cls: "eat-cafe" }
+          shop: { pill: "Shopping", cls: "eat-cafe" },
+          coupon: { pill: "Takeout deal", cls: "eat-bar" }
         }[kind] || { pill: "Near home", cls: "music" };
         if (kind === "hot" && typeof eventKind === "function") {
           var ek = eventKind(row.name, row.where, row.why || row.whenTxt || "");
@@ -14426,11 +14440,19 @@ function currentRotation() {
                 var pills = '<div class="ev-pills"><span class="kind-tag ' + meta.cls + '">' + meta.pill + "</span>";
         pills += (typeof locPillHtml === "function" ? locPillHtml(row) : "");
         if (row.rating != null && kind === "table") pills += '<span class="eat-rate-pill">' + Number(row.reviews || 0).toLocaleString() + " reviews</span>";
+        if (kind === "coupon") {
+          if (row.kind) pills += '<span class="kind-tag eat-rest">' + escBuzz(row.kind) + "</span>";
+          if (row.expires) pills += '<span class="kind-tag">thru ' + escBuzz(row.expires) + "</span>";
+          if (row.phone) pills += '<a class="kind-tag" href="tel:' + escBuzz(row.phone) + '" onclick="event.stopPropagation()">' + escBuzz(row.phone) + "</a>";
+        }
         pills += "</div>";
         var mapQ = (typeof venueQuery === "function")
           ? venueQuery(row.name, row.addr || row.where)
           : [row.name, row.addr || row.where, (typeof homePlace === "function" && homePlace()) || "Florida"].filter(Boolean).join(", ");
         var why = String(row.why || "").replace(/\s*This card refreshes[\s\S]*$/i, "").replace(/\s*Used as today[\s\S]*$/i, "").replace(/\s*Used while sale[\s\S]*$/i, "").replace(/\s*Picked for the posted[\s\S]*$/i, "").replace(/\s*Picked for tickets[\s\S]*$/i, "").replace(/\s*Chosen for buzz[\s\S]*$/i, "").trim();
+        if (kind === "coupon") {
+          why = String(row.offer || row.why || "Ask the kitchen which plates pack for takeout.").replace(/\s+/g, " ").trim();
+        }
         if (kind === "hot" || kind === "table") {
           var fact = funFactFor(row, kind);
           why = fact ? ("Fun fact: " + fact) : "";
@@ -14440,7 +14462,7 @@ function currentRotation() {
           '<div class="ev-rail' + ((rail.dow || rail.num) ? "" : " rail-solo") + '"><span class="ev-dow">' + (rail.dow || "") + '</span><span class="ev-num">' + (rail.num || "") + '</span><span class="ev-ico" aria-hidden="true">' + rail.ico + '</span></div>' +
           '<div class="ev-body"><div class="ev-pills">' + pills + '</div>' +
           "<b>" + escBuzz(row.name) + "</b>" +
-          ((kind === "hot" ? (row.inside ? row.where : (row.where || row.addr)) : row.where) ? '<span class="ev-when">' + escBuzz(kind === "hot" ? (row.inside ? row.where : (row.where || row.addr)) : row.where) + "</span>" : "") +
+          ((kind === "hot" ? (row.inside ? row.where : (row.where || row.addr)) : (row.where || row.addr)) ? '<span class="ev-when">' + escBuzz(kind === "hot" ? (row.inside ? row.where : (row.where || row.addr)) : (row.where || row.addr)) + "</span>" : "") +
           (why ? '<span class="eat-why">' + escBuzz(why) + "</span>" : "") +
           "</div></div>";
       }
@@ -14734,6 +14756,7 @@ function currentRotation() {
         if (typeof noteFeed === "function") noteFeed(feedId, true, row.name);
         if (kind === "hot") fillHotStreetAddr(row, box);
         if (typeof stampLocPills === "function") stampLocPills(box);
+        if (typeof writeBriefingSoon === "function") writeBriefingSoon();
       }
       function paintHotTicket() {
         loadBuzzPack(function () {
@@ -14779,27 +14802,26 @@ function currentRotation() {
         if (row.phone) s += 3;
         return s;
       }
-      function couponCardHtml(row) {
-        if (!row) return "";
-        var miles = couponMiles(row);
-        row.miles = miles;
-        var attrs = typeof venueDataAttrs === "function" ? venueDataAttrs(row, "eat", { eat: row.name, drive: row.drive || "" }) : "";
-        function esc(s) {
-          return String(s || "").replace(/[&<>"]/g, function (c) { return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" })[c]; });
-        }
-        var phone = String(row.phone || "").replace(/[^\d+]/g, "");
-        var tel = phone ? ("<a class=\"kind-tag\" href=\"tel:" + esc(row.phone) + "\" onclick=\"event.stopPropagation()\">" + esc(row.phone) + "</a>") : "";
-        var kind = row.kind ? ("<span class=\"kind-tag\">" + esc(row.kind) + "</span>") : "";
-        var dist = isFinite(miles) && miles < 90 ? ("<span class=\"loc-pill\" data-lat=\"" + esc(row.lat) + "\" data-lon=\"" + esc(row.lon) + "\" data-loc=\"" + esc(row.addr) + "\">" + miles.toFixed(1) + " mi</span>") : "";
-        var drive = row.drive ? ("<span class=\"kind-tag\">" + esc(row.drive) + "</span>") : "";
-        return '<div class="card ev-card coupon-card" ' + attrs + ">" +
-          '<div class="ev-body">' +
-          kind + dist + drive + tel +
-          "<div class=\"ev-title\">" + esc(row.name) + "</div>" +
-          "<div class=\"ev-time\">" + esc(row.offer || "Takeout deal") + "</div>" +
-          "</div></div>";
+            function couponCardHtml(row) {
+        if (!row || !row.name) return "";
+        if (row.miles == null) row.miles = typeof couponMiles === "function" ? couponMiles(row) : row.miles;
+        return buzzCardHtml({
+          name: row.name,
+          where: row.addr || row.where || "",
+          addr: row.addr || row.where || "",
+          lat: row.lat,
+          lon: row.lon,
+          phone: row.phone,
+          kind: row.kind,
+          offer: row.offer || row.why || "",
+          why: row.offer || row.why || "",
+          expires: row.expires,
+          value: row.value,
+          miles: row.miles,
+          takeout: true
+        }, "coupon");
       }
-      function paintTakeoutDeals() {
+function paintTakeoutDeals() {
         function finish(list) {
           list = (list || []).filter(couponStillOn).sort(function (a, b) { return couponScore(b) - couponScore(a); });
           var day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
@@ -14821,6 +14843,7 @@ function currentRotation() {
           if (todayBox) todayBox.innerHTML = html;
           if (todayBox && typeof stampLocPills === "function") stampLocPills(todayBox);
           if (typeof noteFeed === "function") noteFeed("coupons", true, top.length ? (top.length + " deals") : "none inside 5 mi");
+          if (typeof writeBriefingSoon === "function") writeBriefingSoon();
         }
         var urls = typeof gitFileUrls === "function" ? gitFileUrls("coupons.json") : ["./coupons.json"];
         function next(i) {
@@ -21599,10 +21622,26 @@ function drawSurgeChart(points) {
       html = String(html || "").trim();
       if (!html) return;
       var same = el.getAttribute("data-html") === html;
+      if (same) return;
       el.setAttribute("data-html", html);
       el.innerHTML = "<span class='tseg'>" + html + "</span>";
       el.style.display = "inline-flex";
       requestAnimationFrame(function () { spinEl(el, speed || tickSpeedPx(), true); });
+    }
+    function writeBriefingSoon() {
+      try { clearTimeout(window.__briefSoon); } catch (e) {}
+      window.__briefSoon = setTimeout(function () {
+        if (typeof writeBriefing === "function") writeBriefing();
+      }, 450);
+    }
+    function startBriefWatch() {
+      if (window.__briefWatch) return;
+      window.__briefWatch = setInterval(function () {
+        if (document.hidden) return;
+        var s = typeof getSet === "function" ? getSet() : {};
+        if (s.brief === "0") return;
+        if (typeof writeBriefing === "function") writeBriefing();
+      }, 90000);
     }
     function pollBreaking() {
       var bar = document.getElementById("breakbar");
@@ -22821,6 +22860,7 @@ function drawSurgeChart(points) {
     }
     function writeBriefing() {
       try {
+        if (typeof startBriefWatch === "function") startBriefWatch();
         var tick = document.getElementById("ticktext");
         if (!tick) return;
         var s = getSet();
@@ -22905,81 +22945,175 @@ function drawSurgeChart(points) {
           if (parts.length < 2) return "";
           return "<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(parts.join(" "));
         }
+        function cardBits(id) {
+          var box = document.getElementById(id);
+          if (!box || box.hidden) return null;
+          var title = ((box.querySelector("b") || {}).textContent || "").replace(/\s+/g, " ").trim();
+          var where = ((box.querySelector(".ev-when") || {}).textContent || "").replace(/\s+/g, " ").trim();
+          var why = ((box.querySelector(".eat-why") || {}).textContent || "").replace(/\s+/g, " ").trim();
+          if (!title) title = (box.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+          if (!title || /loading|checking|watching local|no /i.test(title)) return null;
+          why = why.replace(/^Fun fact:\s*/i, "").replace(/\s+/g, " ").trim();
+          if (why.length > 160) why = why.slice(0, 157).replace(/\s+\S*$/, "") + "…";
+          return { title: title, where: where, why: why };
+        }
         function todayBit() {
           if (s.briefToday === "0") return "";
-          var parts = [];
-          parts.push("Here's what the day looks like.");
+          var story = [];
           var stay = document.getElementById("go-night");
-          if (stay && !stay.hidden) {
-            var stayT = (stay.textContent || "").replace(/\s+/g, " ").trim();
-            if (stayT) parts.push(sayDot(stayT));
-          } else {
-            var best = document.getElementById("best-window");
-            var bestT = best && !best.hidden ? (best.textContent || "").replace(/\s+/g, " ").trim() : "";
-            if (bestT) parts.push(sayDot(bestT));
-          }
+          var stayT = stay && !stay.hidden ? (stay.textContent || "").replace(/\s+/g, " ").trim() : "";
+          var best = document.getElementById("best-window");
+          var bestT = best && !best.hidden ? (best.textContent || "").replace(/\s+/g, " ").trim() : "";
           var trash = document.getElementById("today-trash");
-          if (trash && !trash.hidden) {
-            var tr = ((document.getElementById("today-trash-body") || trash).textContent || "").replace(/\s+/g, " ").trim();
-            if (tr) parts.push("It's a trash morning. " + sayDot(tr));
+          var tr = "";
+          if (trash && !trash.hidden) tr = ((document.getElementById("today-trash-body") || trash).textContent || "").replace(/\s+/g, " ").trim();
+          var flyBox = document.getElementById("today-fly");
+          var fl = "";
+          if (flyBox && !flyBox.hidden) {
+            fl = ((document.getElementById("today-fly-body") || flyBox).textContent || "").replace(/\s+/g, " ").trim();
+            if (/none upcoming|no flight/i.test(fl)) fl = "";
           }
-          var fly = document.getElementById("today-fly");
-          if (fly && !fly.hidden) {
-            var fl = ((document.getElementById("today-fly-body") || fly).textContent || "").replace(/\s+/g, " ").trim();
-            if (fl && !/none upcoming|no flight/i.test(fl)) parts.push("There's a flight on the book: " + sayDot(fl));
-          }
-          var hot = cardLine("today-hot");
-          if (hot) parts.push("The ticket worth noticing is " + sayDot(hot));
-          var table = cardLine("today-eat-pick");
-          if (table) parts.push("If you're going out tonight, the table pick is " + sayDot(table));
-          var deal = cardLine("today-deal");
-          if (deal) parts.push("There's a happy hour mention: " + sayDot(deal));
+          var pkg = document.getElementById("today-deliv");
+          var pkgOn = !!(pkg && /on the way/i.test(pkg.textContent || ""));
+          var hot = cardBits("today-hot");
+          var table = cardBits("today-eat-pick");
+          var deal = cardBits("today-deal");
+          var shop = cardBits("today-shop");
+          var coupon = cardBits("today-coupons");
+          var evT = "";
           var doBox = document.getElementById("today-do");
           if (doBox) {
-            var firstEv = doBox.querySelector("b, .ev-title");
-            var evT = firstEv ? firstEv.textContent.replace(/\s+/g, " ").trim() : "";
-            if (evT && (!hot || hot.toLowerCase().indexOf(evT.toLowerCase()) < 0)) parts.push("On the calendar, look at " + sayDot(evT));
+            var firstEv = doBox.querySelector("b");
+            evT = firstEv ? firstEv.textContent.replace(/\s+/g, " ").trim() : "";
+            if (hot && evT && hot.title.toLowerCase().indexOf(evT.toLowerCase()) >= 0) evT = "";
           }
-          var shop = cardLine("today-shop");
-          if (shop) parts.push("If you're running errands, " + sayDot(shop));
-          var pkg = document.getElementById("today-deliv");
-          if (pkg) {
-            var incoming = (pkg.textContent || "").replace(/\s+/g, " ").trim();
-            if (incoming && /on the way/i.test(incoming)) parts.push("A package is still on the way.");
+
+          var house = [];
+          if (tr) house.push("trash is on the list" + (/recycle/i.test(tr) ? " and recycling rides with it" : ""));
+          if (pkgOn) house.push("a package is still on the way to the door");
+          if (fl) house.push("there is a flight on the book — " + fl.replace(/[.]+$/, ""));
+          if (house.length) story.push("Start with the house: " + house.join(", and ") + ".");
+          else story.push("Nothing urgent at the house, so the day is yours.");
+
+          if (stayT && /stay in|lightning|warning|too rough/i.test(stayT)) {
+            var st = stayT.replace(/[.]+$/, "");
+            story.push("The go bars are telling you to keep it indoor or close to home — " + st.charAt(0).toLowerCase() + st.slice(1) + " — so treat tonight as a short radius.");
+          } else if (bestT) {
+            story.push("If you want the easy win outdoors, the board likes this window: " + bestT.replace(/[.]+$/, "") + ".");
           }
-          if (parts.length < 2) return "";
-          return "<b>Today.</b>" + "\u00a0".repeat(24) + spaceSentences(parts.join(" "));
+
+          if (table) {
+            var sell = "For dinner, I would take " + table.title;
+            if (table.where) sell += " — it is " + table.where;
+            sell += ".";
+            if (table.why) sell += " The reason it won the card is simple: " + table.why.replace(/[.]+$/, "") + ".";
+            else sell += " It is the local pick that keeps showing up with the ratings and the chatter to back it.";
+            story.push(sell);
+          }
+          if (deal && (!table || deal.title.toLowerCase() !== table.title.toLowerCase())) {
+            var d = "If you want a cheaper first stop, " + deal.title + " has a happy hour worth using";
+            if (deal.why) d += " — " + deal.why.replace(/[.]+$/, "");
+            d += ".";
+            story.push(d);
+          }
+          if (coupon && (!deal || coupon.title.toLowerCase() !== deal.title.toLowerCase()) && (!table || coupon.title.toLowerCase() !== table.title.toLowerCase())) {
+            story.push("And if you would rather pack dinner in, " + coupon.title + " is the takeout deal on the board" + (coupon.why ? ": " + coupon.why.replace(/[.]+$/, "") : "") + ".");
+          }
+          if (hot) {
+            var h = "The ticket I would actually bother with is " + hot.title;
+            if (hot.where) h += " at " + hot.where;
+            h += ".";
+            if (hot.why) h += " " + hot.why.replace(/[.]+$/, "") + " — that is the kind of night that beats another evening on the couch.";
+            else h += " It is the one with real local heat right now, not just a name on a calendar.";
+            story.push(h);
+          } else if (evT) {
+            story.push("If you stay closer to home, " + evT + " is the dated thing on the calendar that fits tonight.");
+          }
+          if (shop) {
+            story.push("Errands can wait, but if you are already out, " + shop.title + " is the shop card" + (shop.why ? " because " + shop.why.replace(/[.]+$/, "") : "") + ".");
+          }
+          if (story.length < 2) return "";
+          return "<b>Today.</b>" + "\u00a0".repeat(24) + spaceSentences(story.join(" "));
         }
         function boardBit() {
           if (s.briefBoard === "0") return "";
           if (typeof isBeachWalkCommunity === "function" && !isBeachWalkCommunity()) return "";
           var j = window.__community || {};
-          var need = (j.need || []).slice();
-          var rest = [].concat(j.notices || j.notifications || [], j.announce || [], j.surveys || []);
-          rest = rest.filter(function (r) { return r && (r.title || r.body); }).sort(function (a, b) {
-            return String(b.posted || b.when || "").localeCompare(String(a.posted || a.when || ""));
-          });
-          var seen = {};
-          var parts = [];
-          parts.push("From the BeachWalk association.");
-          function speakRow(r, lead) {
-            var t = String(r.title || "").replace(/\s+/g, " ").trim();
-            if (!t || seen[t.toLowerCase()]) return;
-            seen[t.toLowerCase()] = 1;
-            var body = String(r.body || "").replace(/\s+/g, " ").trim();
-            if (body && body.length > 140) body = body.slice(0, 137).replace(/\s+\S*$/, "") + "…";
-            var sent = lead + t;
-            if (body && body.toLowerCase().indexOf(t.toLowerCase()) < 0) sent += " — " + body.charAt(0).toLowerCase() + body.slice(1);
-            parts.push(sayDot(sent));
+          function clean(t) { return String(t || "").replace(/\s+/g, " ").trim(); }
+          function clip(t, n) {
+            t = clean(t);
+            if (t.length > n) t = t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…";
+            return t;
           }
-          need.forEach(function (r) { speakRow(r, "You should know: "); });
-          rest.slice(0, 4).forEach(function (r) {
-            var kind = String(r.kind || "");
-            var lead = /survey/i.test(kind + " " + (r.title || "")) ? "There's a survey out called " : "They posted ";
-            speakRow(r, lead);
+          function whenOf(r) {
+            var raw = r && (r.when || r.posted) || "";
+            if (!raw) return "";
+            var dt = new Date(String(raw).length <= 10 ? raw + "T12:00:00" : raw);
+            if (isNaN(dt.getTime())) return "";
+            return dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          }
+          var need = (j.need || []).filter(function (r) { return r && (r.title || r.body); });
+          var rest = [].concat(j.notices || j.notifications || [], j.announce || []).filter(function (r) { return r && (r.title || r.body); });
+          rest.sort(function (a, b) { return String(b.posted || b.when || "").localeCompare(String(a.posted || a.when || "")); });
+          var surveys = (j.surveys || []).filter(function (r) { return r && (r.title || r.body); });
+          var seen = {};
+          function take(list, n) {
+            var out = [];
+            list.forEach(function (r) {
+              if (out.length >= n) return;
+              var t = clean(r.title);
+              if (!t || seen[t.toLowerCase()]) return;
+              seen[t.toLowerCase()] = 1;
+              out.push(r);
+            });
+            return out;
+          }
+          need = take(need, 2);
+          rest = take(rest, 4);
+          surveys = take(surveys, 1);
+          if (!need.length && !rest.length && !surveys.length) return "";
+
+          var story = [];
+          story.push("Quick pass through what BeachWalk sent the residents.");
+          need.forEach(function (r) {
+            var t = clean(r.title);
+            var body = clip(r.body, 140);
+            var line = "Don't skip this one: " + t;
+            if (body && body.toLowerCase().indexOf(t.toLowerCase()) < 0) line += " — " + body.charAt(0).toLowerCase() + body.slice(1);
+            story.push(sayDot(line));
           });
-          if (parts.length < 2) return "";
-          return "<b>BeachWalk.</b>" + "\u00a0".repeat(24) + spaceSentences(parts.join(" "));
+          rest.forEach(function (r, i) {
+            var t = clean(r.title);
+            var body = clip(r.body, 120);
+            var kind = clean(r.kind).toLowerCase();
+            var when = whenOf(r);
+            var line;
+            if (/survey/.test(kind + " " + t)) {
+              line = "They're also asking residents to weigh in on " + t;
+            } else if (/rsvp|register|sign up/.test(kind + " " + t + " " + body)) {
+              line = "If you want in, " + t + (when ? " on " + when : "") + " still needs an RSVP";
+            } else if (/save-the-date|sold-out/.test(kind)) {
+              line = (/sold/.test(kind) ? "Too late on this one: " : "Pencil this in: ") + t + (when ? " (" + when + ")" : "");
+            } else if (/amenity|special|menu|high tide|drink|food/.test(kind + " " + t + " " + body)) {
+              line = (i === 0 && !need.length ? "The club side of the board is " : "Over at the amenities, ") + t;
+            } else if (/digest|weekly|update|talk/.test(kind + " " + t)) {
+              line = "The weekly wrap is up, titled " + t;
+            } else {
+              line = (i === 0 ? "They also put up " : "And they posted ") + t;
+              if (when && r.when) line += " for " + when;
+            }
+            if (body && body.toLowerCase().indexOf(t.toLowerCase()) < 0) line += " — " + body.charAt(0).toLowerCase() + body.slice(1);
+            story.push(sayDot(line));
+          });
+          surveys.forEach(function (r) {
+            var t = clean(r.title);
+            var body = clip(r.body, 110);
+            var line = "One more thing they want a pulse on: " + t;
+            if (body) line += " — " + body.charAt(0).toLowerCase() + body.slice(1);
+            story.push(sayDot(line));
+          });
+          story.push("That's the official board. Town nights stay on Events.");
+          return "<b>BeachWalk.</b>" + "\u00a0".repeat(24) + spaceSentences(story.join(" "));
         }
         function sportsBit() {
           if (s.briefSports === "0") return "";
