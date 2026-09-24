@@ -4766,7 +4766,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 888;
+    window.BOARD_VER = 889;
 
     
     function communityShort() {
@@ -12439,6 +12439,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v889 — Briefing ticker reads as spoken sentences. Sports stays short stats.",
       "v888 — Briefing ticker can roll BeachWalk official-board notices. On by default. Toggle is under Tickers in Settings.",
       "v887 — BeachWalk page is the HOA communications board: action items, official notices, then on-site week.",
       "v886 — BeachWalk page reads TownSq notices/alerts. Dated TownSq events join Events only when Account community is BeachWalk.",
@@ -22831,9 +22832,6 @@ function drawSurgeChart(points) {
         }
         var GAP = "\u00a0".repeat(160);
         var bits = [];
-        if (window.__commonsBrief && window.__commonsBrief.ticker) {
-          bits.push(window.__commonsBrief.ticker);
-        }
         var hr = (typeof recNowET === "function" ? recNowET() : new Date()).getHours();
         var night = hr >= 20 || hr < 6;
         function highHas(re) {
@@ -22864,100 +22862,124 @@ function drawSurgeChart(points) {
           if (!raw || /off|none|hidden/i.test(raw) && raw.length < 12) return "";
           return raw;
         }
+        function sayDot(t) {
+          t = String(t || "").replace(/\s+/g, " ").trim();
+          if (!t) return "";
+          t = t.replace(/\s+\./g, ".");
+          if (!/[.!?]$/.test(t)) t += ".";
+          return t;
+        }
         function weatherBit() {
           if (s.briefWx === "0") return "";
           var greet = ((document.getElementById("live-sky") || {}).textContent || "").replace(/\s+/g, " ").trim();
-          var wx = [];
-          if (greet && !/^checking|^updating/i.test(greet)) wx.push(greet);
+          var parts = [];
+          parts.push("Here's the weather.");
+          if (greet && !/^checking|^updating/i.test(greet)) parts.push(sayDot(greet));
           (window.__nwsLow || []).forEach(function (f) {
-            var ev = String(((f && f.properties) || {}).event || "");
+            var ev = String(((f && f.properties) || {}).event || "").replace(/\s+/g, " ").trim();
             if (!ev) return;
             if (highHas(new RegExp(ev.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"))) return;
-            var line = nwsAdvisoryLine(f);
-            var blob = wx.join(" ").toLowerCase();
-            if (line && blob.indexOf(ev.toLowerCase()) < 0) wx.push(line);
+            var until = "";
+            try {
+              var exp = ((f.properties) || {}).expires;
+              if (exp) until = new Date(exp).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+            } catch (eU) {}
+            var line = "The weather service has a " + ev.toLowerCase() + " in effect" + (until ? " until " + until : "");
+            var blob = parts.join(" ").toLowerCase();
+            if (blob.indexOf(ev.toLowerCase()) < 0) parts.push(sayDot(line));
           });
           if (!highHas(/thunder|lightning|severe/i)) {
             var bolt = chipText("chip-bolt") || chipText("today-bolt");
-            if (bolt && !/no lightning|none/i.test(bolt)) wx.push(bolt);
+            if (bolt && !/no lightning|none/i.test(bolt)) parts.push("Lightning is in play nearby, so treat the next stretch as indoor time.");
           }
           if (!highHas(/hurricane|tropical|storm surge/i)) {
             var cane = chipText("chip-cane") || chipText("today-cane");
-            if (cane && !/no named|none/i.test(cane)) wx.push(cane);
+            if (cane && !/no named|none on pin|none/i.test(cane)) parts.push(sayDot("On the tropics side, " + cane.replace(/^tropical\.?\s*/i, "")));
           }
           var rip = document.getElementById("rip-banner");
           if (rip && rip.offsetParent !== null && !highHas(/rip/i)) {
             var ripT = (rip.textContent || "").replace(/\s+/g, " ").trim();
-            if (ripT && /moderate|high|danger/i.test(ripT)) wx.push(ripT);
+            if (/high|danger/i.test(ripT)) parts.push("Rip current is high, so stay out of the water.");
+            else if (/moderate/i.test(ripT)) parts.push("Rip current is moderate, so stay near a guarded stretch if you get in.");
           }
-          if (!wx.length) return "";
-          return "<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(wx.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" "));
+          if (parts.length < 2) return "";
+          return "<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(parts.join(" "));
         }
         function todayBit() {
           if (s.briefToday === "0") return "";
-          var today = [];
+          var parts = [];
+          parts.push("Here's what the day looks like.");
           var stay = document.getElementById("go-night");
           if (stay && !stay.hidden) {
             var stayT = (stay.textContent || "").replace(/\s+/g, " ").trim();
-            if (stayT) today.push(stayT);
+            if (stayT) parts.push(sayDot(stayT));
           } else {
             var best = document.getElementById("best-window");
             var bestT = best && !best.hidden ? (best.textContent || "").replace(/\s+/g, " ").trim() : "";
-            if (bestT) today.push(bestT);
+            if (bestT) parts.push(sayDot(bestT));
           }
           var trash = document.getElementById("today-trash");
           if (trash && !trash.hidden) {
             var tr = ((document.getElementById("today-trash-body") || trash).textContent || "").replace(/\s+/g, " ").trim();
-            if (tr) today.push(tr);
+            if (tr) parts.push("It's a trash morning. " + sayDot(tr));
           }
           var fly = document.getElementById("today-fly");
           if (fly && !fly.hidden) {
             var fl = ((document.getElementById("today-fly-body") || fly).textContent || "").replace(/\s+/g, " ").trim();
-            if (fl && !/none upcoming|no flight/i.test(fl)) today.push(fl);
+            if (fl && !/none upcoming|no flight/i.test(fl)) parts.push("There's a flight on the book: " + sayDot(fl));
           }
           var hot = cardLine("today-hot");
-          if (hot) today.push("Hottest ticket. " + hot);
+          if (hot) parts.push("The ticket worth noticing is " + sayDot(hot));
           var table = cardLine("today-eat-pick");
-          if (table) today.push("Tonight's table. " + table);
+          if (table) parts.push("If you're going out tonight, the table pick is " + sayDot(table));
           var deal = cardLine("today-deal");
-          if (deal) today.push("Happy hour. " + deal);
+          if (deal) parts.push("There's a happy hour mention: " + sayDot(deal));
           var doBox = document.getElementById("today-do");
           if (doBox) {
             var firstEv = doBox.querySelector("b, .ev-title");
             var evT = firstEv ? firstEv.textContent.replace(/\s+/g, " ").trim() : "";
-            if (evT && (!hot || hot.toLowerCase().indexOf(evT.toLowerCase()) < 0)) today.push("On the calendar. " + evT);
+            if (evT && (!hot || hot.toLowerCase().indexOf(evT.toLowerCase()) < 0)) parts.push("On the calendar, look at " + sayDot(evT));
           }
           var shop = cardLine("today-shop");
-          if (shop) today.push("Shopping. " + shop);
+          if (shop) parts.push("If you're running errands, " + sayDot(shop));
           var pkg = document.getElementById("today-deliv");
           if (pkg) {
             var incoming = (pkg.textContent || "").replace(/\s+/g, " ").trim();
-            if (incoming && /on the way/i.test(incoming)) today.push("Packages on the way.");
+            if (incoming && /on the way/i.test(incoming)) parts.push("A package is still on the way.");
           }
-          if (!today.length) return "";
-          return "<b>Today.</b>" + "\u00a0".repeat(24) + spaceSentences(today.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" "));
+          if (parts.length < 2) return "";
+          return "<b>Today.</b>" + "\u00a0".repeat(24) + spaceSentences(parts.join(" "));
         }
         function boardBit() {
           if (s.briefBoard === "0") return "";
           if (typeof isBeachWalkCommunity === "function" && !isBeachWalkCommunity()) return "";
           var j = window.__community || {};
-          var rows = [].concat(j.need || [], j.notices || j.notifications || [], j.announce || [], j.surveys || []);
-          rows = rows.filter(function (r) { return r && (r.title || r.body); }).sort(function (a, b) {
+          var need = (j.need || []).slice();
+          var rest = [].concat(j.notices || j.notifications || [], j.announce || [], j.surveys || []);
+          rest = rest.filter(function (r) { return r && (r.title || r.body); }).sort(function (a, b) {
             return String(b.posted || b.when || "").localeCompare(String(a.posted || a.when || ""));
           });
           var seen = {};
-          var lines = [];
-          rows.forEach(function (r) {
+          var parts = [];
+          parts.push("From the BeachWalk association.");
+          function speakRow(r, lead) {
             var t = String(r.title || "").replace(/\s+/g, " ").trim();
             if (!t || seen[t.toLowerCase()]) return;
             seen[t.toLowerCase()] = 1;
             var body = String(r.body || "").replace(/\s+/g, " ").trim();
-            if (body && body.length > 90) body = body.slice(0, 87).replace(/\s+\S*$/, "") + "…";
-            lines.push(t + (body && body.toLowerCase().indexOf(t.toLowerCase()) < 0 ? ". " + body : ""));
+            if (body && body.length > 140) body = body.slice(0, 137).replace(/\s+\S*$/, "") + "…";
+            var sent = lead + t;
+            if (body && body.toLowerCase().indexOf(t.toLowerCase()) < 0) sent += " — " + body.charAt(0).toLowerCase() + body.slice(1);
+            parts.push(sayDot(sent));
+          }
+          need.forEach(function (r) { speakRow(r, "You should know: "); });
+          rest.slice(0, 4).forEach(function (r) {
+            var kind = String(r.kind || "");
+            var lead = /survey/i.test(kind + " " + (r.title || "")) ? "There's a survey out called " : "They posted ";
+            speakRow(r, lead);
           });
-          lines = lines.slice(0, 5);
-          if (!lines.length) return "";
-          return "<b>BeachWalk.</b>" + "\u00a0".repeat(24) + spaceSentences(lines.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" "));
+          if (parts.length < 2) return "";
+          return "<b>BeachWalk.</b>" + "\u00a0".repeat(24) + spaceSentences(parts.join(" "));
         }
         function sportsBit() {
           if (s.briefSports === "0") return "";
