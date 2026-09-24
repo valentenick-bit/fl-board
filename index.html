@@ -4793,7 +4793,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 902;
+    window.BOARD_VER = 903;
 
     
     function communityShort() {
@@ -12664,6 +12664,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v903 — Golf page falls back to cached / OSM courses when OpenGolf returns 429. Empty list is none, not down.",
       "v902 — Golf 429 is a quota miss, not a board crash. Live worker reads index from GitHub — Drive-only uploads never reached the wall.",
       "v901 — Long-open lag: pause lightning socket and header motion when the tab is hidden; cap strike parsing so a wall left up for hours stays usable.",
       "v900 — School chip needs a real school emergency. Empty happy-hour/shop cards are none, not down.",
@@ -17150,15 +17151,48 @@ function mustEatsFL() {
           });
         });
       }
+      function fromOsmGolf(cb) {
+        var lat = homeLat(), lon = homeLon(), miles = golfMiles();
+        var gkey = "golf-osm:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : lat);
+        if (typeof gCacheGet === "function") {
+          var hit = gCacheGet("golf-osm", gkey, 14 * 86400000);
+          if (hit && hit.length) return cb(hit);
+        }
+        var q = "[out:json][timeout:20];nwr[\"leisure\"=\"golf_course\"](around:" + Math.round(miles * 1609) + "," + lat + "," + lon + ");out center tags;";
+        fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: "data=" + encodeURIComponent(q) }).then(function (r) { return r.json(); }).then(function (d) {
+          var seen = {}, out = [];
+          ((d && d.elements) || []).forEach(function (el) {
+            var t = el.tags || {};
+            var name = t.name || t["name:en"] || "";
+            var k = golfKey(name);
+            if (!k || seen[k]) return;
+            seen[k] = 1;
+            var elat = el.lat || (el.center && el.center.lat);
+            var elon = el.lon || (el.center && el.center.lon);
+            out.push({ name: name, kind: "Course", lat: elat, lon: elon, miles: milesOf(elat, elon), addr: [t["addr:city"], t["addr:state"]].filter(Boolean).join(", "), src: "osm" });
+          });
+          out.sort(function (a, b) { return (a.miles || 99) - (b.miles || 99); });
+          if (out.length && typeof gCacheSet === "function") gCacheSet("golf-osm", gkey, out);
+          cb(out);
+        }).catch(function () { cb([]); });
+      }
       function fromOpenGolf(cb) {
         var miles = golfMiles();
+        var gkey = "golf-og:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : homeLat());
         var url = "https://api.opengolfapi.org/api/v1/courses/search?lat=" + homeLat() + "&lng=" + homeLon() + "&radius_mi=" + miles + "&limit=100";
+        function useCache() {
+          if (typeof gCacheGet === "function") {
+            var hit = gCacheGet("golf-og", gkey, 14 * 86400000);
+            if (hit && hit.length) { cb(hit); return true; }
+          }
+          return false;
+        }
         fetch(url).then(function (r) {
           if (r.status === 429) {
-            if (typeof noteFeed === "function") noteFeed("golf", true, "quota · using cache");
-            return { courses: [] };
+            if (typeof noteFeed === "function") noteFeed("golf", true, "quota · cache or OSM");
+            return { _miss: true, courses: [] };
           }
-          if (!r.ok) return { courses: [] };
+          if (!r.ok) return { _miss: true, courses: [] };
           return r.json();
         }).then(function (d) {
           var seen = {}, out = [];
@@ -17170,8 +17204,14 @@ function mustEatsFL() {
             seen[k] = true;
             out.push({ name: name, ogId: c.id, kind: c.type || "Course", lat: c.lat, lon: c.lng, miles: c.distance_mi != null ? Number(c.distance_mi) : milesOf(c.lat, c.lng), addr: [c.city, c.state].filter(Boolean).join(", "), par: c.par, holes: c.holes });
           });
-          cb(out);
-        }).catch(function () { cb([]); });
+          if (out.length && typeof gCacheSet === "function") gCacheSet("golf-og", gkey, out);
+          if (out.length) return cb(out);
+          if (d && d._miss && useCache()) return;
+          fromOsmGolf(cb);
+        }).catch(function () {
+          if (useCache()) return;
+          fromOsmGolf(cb);
+        });
       }
       function attachSlope(list, done) {
         var i = 0;
