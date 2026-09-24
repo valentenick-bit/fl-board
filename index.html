@@ -51,7 +51,17 @@
       } catch (e) {}
     }
     document.addEventListener("visibilitychange", function () {
-      if (!document.hidden) setTimeout(wakeBoard, 50);
+      if (document.hidden) {
+        document.documentElement.classList.add("dim-motion");
+        window.__bzOff = true;
+        try { if (window.__bzWs) window.__bzWs.close(); } catch (e0) {}
+        window.__bzWs = null;
+      } else {
+        document.documentElement.classList.remove("dim-motion");
+        window.__bzOff = false;
+        setTimeout(wakeBoard, 50);
+        if (typeof connectBlitzWs === "function") setTimeout(connectBlitzWs, 400);
+      }
     });
     window.addEventListener("pageshow", function () { setTimeout(wakeBoard, 50); });
     window.addEventListener("focus", function () { setTimeout(wakeBoard, 50); });
@@ -344,6 +354,14 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .palm .bend, .palm .crown, .palm .frond { animation: none !important; }
+    }
+    html.dim-motion .palm .bend,
+    html.dim-motion .palm .crown,
+    html.dim-motion .palm .frond,
+    html.dim-motion header .cloud,
+    html.dim-motion header .hdr-tree,
+    html.dim-motion .ticker .tseg {
+      animation-play-state: paused !important;
     }
 
     header.sky-sun { background:linear-gradient(180deg,#8fd0f8 0%,#5eb4ea 48%,#2f8fd4 100%) !important; border-bottom-color:#4aa6e0; }
@@ -4448,7 +4466,8 @@ Cart shop:</textarea>
             <button type="button" data-v="next">Next week</button>
           </div>
         </div>
-        <p class="hint" id="recycle-hint">Garbage uses the day above. Recycle uses that same day, weekly or every other week.</p>
+        <p class="hint" id="recycle-hint">Garbage uses the day above for this home pin. Recycle uses that same day, weekly or every other week. South Windsor and Englewood keep their own days.</p>
+        <p class="hint" id="trash-pin-hint"></p>
       </div>
       <div class="set-card">
         <h3>What shows</h3>
@@ -4774,7 +4793,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 898;
+    window.BOARD_VER = 902;
 
     
     function communityShort() {
@@ -5326,6 +5345,7 @@ Cart shop:</textarea>
     function applyHomeFeeds() {
       if (typeof publishHomePin === "function") publishHomePin();
       if (typeof window.reloadTown === "function") window.reloadTown();
+      if (typeof nextTrash === "function") nextTrash();
       paintHomeChrome();
       var st = document.getElementById("addr-pin-status");
       var s = getSet();
@@ -9057,7 +9077,7 @@ function currentRotation() {
         else moon.classList.add("up");
       }
     }
-    setInterval(function () { if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 15000);
+    setInterval(function () { if (document.hidden) return; if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 30000);
 
     function skyWeatherNow() {
       var hours = window.__hours || [];
@@ -9547,18 +9567,64 @@ function currentRotation() {
       });
     });
     paintWho();
-    function trashDay() {
-      try { return parseInt(localStorage.getItem("bw-trash-day"), 10); } catch (e) { return 4; }
+    function pinTrashKey() {
+      var s = {};
+      try { s = typeof getSet === "function" ? getSet() : JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e) { s = {}; }
+      var zip = String(s.zip || "").replace(/\D/g, "").slice(0, 5);
+      if (zip.length === 5) return zip;
+      var lat = Number(s.lat), lon = Number(s.lon);
+      if (isFinite(lat) && isFinite(lon) && lat && lon) return lat.toFixed(3) + "," + lon.toFixed(3);
+      var place = String(s.place || s.address || "default").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      return place.slice(0, 40) || "default";
     }
-    if (isNaN(trashDay())) try { localStorage.setItem("bw-trash-day", "4"); } catch (e) {}
+    function trashByPin() {
+      try { return JSON.parse(localStorage.getItem("bw-trash-by-pin") || "{}") || {}; } catch (e) { return {}; }
+    }
+    function saveTrashByPin(all) {
+      try { localStorage.setItem("bw-trash-by-pin", JSON.stringify(all || {})); } catch (e) {}
+    }
+    function trashRowFor(key) {
+      var all = trashByPin();
+      var k = key || pinTrashKey();
+      if (all[k]) return all[k];
+      if (!Object.keys(all).length) {
+        var day = 4, every = "week", anchor = 0;
+        try { var d = parseInt(localStorage.getItem("bw-trash-day"), 10); if (!isNaN(d)) day = d; } catch (e0) {}
+        try { if (localStorage.getItem("bw-recycle-every") === "bi") every = "bi"; } catch (e1) {}
+        try { var a = parseInt(localStorage.getItem("bw-recycle-anchor"), 10); if (!isNaN(a)) anchor = a; } catch (e2) {}
+        all[k] = { day: day, every: every, anchor: anchor };
+        saveTrashByPin(all);
+        return all[k];
+      }
+      all[k] = { day: 4, every: "week", anchor: 0 };
+      saveTrashByPin(all);
+      return all[k];
+    }
+    function putTrashRow(part, key) {
+      var k = key || pinTrashKey();
+      var all = trashByPin();
+      var row = all[k] || { day: 4, every: "week", anchor: 0 };
+      if (part.day != null && !isNaN(Number(part.day))) row.day = Number(part.day);
+      if (part.every) row.every = part.every === "bi" ? "bi" : "week";
+      if (part.anchor != null) row.anchor = Number(part.anchor) || 0;
+      all[k] = row;
+      saveTrashByPin(all);
+      if (k === pinTrashKey()) {
+        try { localStorage.setItem("bw-trash-day", String(row.day)); } catch (e3) {}
+        try { localStorage.setItem("bw-recycle-every", row.every); } catch (e4) {}
+        try { localStorage.setItem("bw-recycle-anchor", String(row.anchor || 0)); } catch (e5) {}
+      }
+      return row;
+    }
+    function trashDay() {
+      var n = Number((trashRowFor() || {}).day);
+      return isNaN(n) ? 4 : n;
+    }
     function recycleEvery() {
-      try { return localStorage.getItem("bw-recycle-every") === "bi" ? "bi" : "week"; } catch (e) { return "week"; }
+      return (trashRowFor() || {}).every === "bi" ? "bi" : "week";
     }
     function recycleAnchorMs() {
-      try {
-        var n = parseInt(localStorage.getItem("bw-recycle-anchor"), 10);
-        return isNaN(n) ? 0 : n;
-      } catch (e) { return 0; }
+      return Number((trashRowFor() || {}).anchor) || 0;
     }
     function weekStartMs(d) {
       var x = new Date(d);
@@ -9579,7 +9645,7 @@ function currentRotation() {
       var now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
       var start = weekStartMs(now);
       if (which === "next") start += 7 * 86400000;
-      try { localStorage.setItem("bw-recycle-anchor", String(start)); } catch (e) {}
+      putTrashRow({ anchor: start });
     }
     function nextTrash() {
       var want = trashDay();
@@ -9609,7 +9675,8 @@ function currentRotation() {
         var day = b.getAttribute("data-day");
         var now = new Date().toISOString();
         try {
-          localStorage.setItem("bw-trash-day", day);
+          if (typeof putTrashRow === "function") putTrashRow({ day: day });
+          else localStorage.setItem("bw-trash-day", day);
           var h = JSON.parse(localStorage.getItem("bw-house") || "{}") || {};
           h.trashDay = parseInt(day, 10);
           h.updated = now;
@@ -11212,9 +11279,10 @@ function currentRotation() {
         if (!h || typeof h !== "object") return;
         if (h.nick) try { localStorage.setItem("bw-who-nick", h.nick); } catch (e) {}
         if (h.dayna) try { localStorage.setItem("bw-who-dayna", h.dayna); } catch (e) {}
-        if (h.trashDay != null) try { localStorage.setItem("bw-trash-day", String(h.trashDay)); } catch (e) {}
-        if (h.recycleEvery) try { localStorage.setItem("bw-recycle-every", h.recycleEvery); } catch (e) {}
-        if (h.recycleAnchor) try { localStorage.setItem("bw-recycle-anchor", String(h.recycleAnchor)); } catch (e) {}
+        if (h.trashDay != null || h.recycleEvery || h.recycleAnchor) {
+          var houseKey = String(h.zip || h.postal || "34223").replace(/\D/g, "").slice(0, 5) || "34223";
+          if (typeof putTrashRow === "function") putTrashRow({ day: h.trashDay, every: h.recycleEvery, anchor: h.recycleAnchor }, houseKey);
+        }
         if (typeof h.vendors === "string") {
           var v = document.getElementById("vendors");
           if (v) v.value = h.vendors;
@@ -12461,8 +12529,13 @@ function currentRotation() {
       var mi = milesBetween(homeLat(), homeLon(), lat, lon);
       if (!(mi <= 40)) return;
       window.__bzHits.push({ lat: lat, lon: lon, t: when, mi: mi });
-      if (window.__bzHits.length > 400) window.__bzHits = window.__bzHits.slice(-300);
-      publishStrikes();
+      if (window.__bzHits.length > 200) window.__bzHits = window.__bzHits.slice(-120);
+      if (!window.__bzPubSoon) {
+        window.__bzPubSoon = setTimeout(function () {
+          window.__bzPubSoon = 0;
+          if (typeof publishStrikes === "function") publishStrikes();
+        }, 900);
+      }
     }
     function bzInflate(raw) {
       if (raw == null) return "";
@@ -12504,6 +12577,7 @@ function currentRotation() {
       return { lat: lat, lon: lon, time: when };
     }
     function connectBlitzWs() {
+      if (document.hidden || window.__bzOff) return;
       if (window.__bzWs && (window.__bzWs.readyState === 0 || window.__bzWs.readyState === 1)) return;
       var n = ((window.__bzWsN || 0) % 8) + 1;
       window.__bzWsN = n;
@@ -12518,21 +12592,28 @@ function currentRotation() {
           if (typeof noteFeed === "function") noteFeed("strikes", true, "blitzortung socket up");
         };
         ws.onmessage = function (ev) {
+          if (document.hidden || window.__bzOff) return;
+          var now = Date.now();
+          if (now - (window.__bzParseAt || 0) < 80) return;
+          window.__bzParseAt = now;
           var hit = parseBzStrike(ev.data);
           if (hit) {
-            window.__bzLastHit = Date.now();
+            window.__bzLastHit = now;
             addBzHit(hit.lat, hit.lon, hit.time);
           }
         };
-        ws.onclose = function () { setTimeout(connectBlitzWs, 4000); };
+        ws.onclose = function () {
+          if (document.hidden || window.__bzOff) return;
+          setTimeout(connectBlitzWs, 8000);
+        };
         ws.onerror = function () { try { ws.close(); } catch (e) {} };
       } catch (e) {
         setTimeout(connectBlitzWs, 8000);
       }
     }
     function pollNearbyStrikes() {
+      if (document.hidden || window.__bzOff) return;
       connectBlitzWs();
-      if (document.hidden) return;
       if (window.__bzWs && window.__bzWs.readyState === 1 && window.__lsrAt && Date.now() - window.__lsrAt < 10 * 60 * 1000) return;
       var lat = typeof homeLat === "function" ? homeLat() : 26.97;
       var lon = typeof homeLon === "function" ? homeLon() : -82.36;
@@ -12583,6 +12664,10 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v902 — Golf 429 is a quota miss, not a board crash. Live worker reads index from GitHub — Drive-only uploads never reached the wall.",
+      "v901 — Long-open lag: pause lightning socket and header motion when the tab is hidden; cap strike parsing so a wall left up for hours stays usable.",
+      "v900 — School chip needs a real school emergency. Empty happy-hour/shop cards are none, not down.",
+      "v899 — Trash and recycle days stick to the home pin ZIP, so CT and FL keep separate pickup days.",
       "v898 — Blizzard, winter storm, and ice storm at the home pin join Storms and Today, not only Nor'easters.",
       "v897 — Storms page and Today chip pick up a Nor'easter when NWS says the home pin is in it.",
       "v896 — Header leaves stay on the trunk. Each tree still uses its own leaf set and sway.",
@@ -14893,7 +14978,7 @@ function currentRotation() {
         if (!row) {
           if (col) col.hidden = false;
           box.innerHTML = '<div class="card ev-card"><div class="ev-body"><b>Watching local chatter</b><span class="eat-why">' + escBuzz(emptyTxt) + "</span></div></div>";
-          if (typeof noteFeed === "function") noteFeed(feedId, false, "no headline");
+          if (typeof noteFeed === "function") noteFeed(feedId, true, "none near pin");
           return;
         }
         if (col) col.hidden = false;
@@ -17068,7 +17153,14 @@ function mustEatsFL() {
       function fromOpenGolf(cb) {
         var miles = golfMiles();
         var url = "https://api.opengolfapi.org/api/v1/courses/search?lat=" + homeLat() + "&lng=" + homeLon() + "&radius_mi=" + miles + "&limit=100";
-        fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+        fetch(url).then(function (r) {
+          if (r.status === 429) {
+            if (typeof noteFeed === "function") noteFeed("golf", true, "quota · using cache");
+            return { courses: [] };
+          }
+          if (!r.ok) return { courses: [] };
+          return r.json();
+        }).then(function (d) {
           var seen = {}, out = [];
           ((d && d.courses) || []).forEach(function (c) {
             var name = c.club_name && c.club_name.length > 3 ? c.club_name : (c.course_name || c.club_name || "");
@@ -17730,6 +17822,11 @@ function mustEatsFL() {
         mark("set-breaknat", s.breakNat);
         mark("set-breakloc", s.breakLoc);
         mark("set-trash", String(typeof trashDay === "function" ? trashDay() : 4));
+        var pinHint = document.getElementById("trash-pin-hint");
+        if (pinHint) {
+          var pinS = typeof getSet === "function" ? getSet() : {};
+          pinHint.textContent = "Pickup calendar for " + ([pinS.place || pinS.address, pinS.zip].filter(Boolean).join(" · ") || "this pin") + ".";
+        }
         mark("set-recycle", typeof recycleEvery === "function" ? recycleEvery() : "week");
         mark("set-recycle-when", (typeof recycleThisWeek === "function" && recycleThisWeek(new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" })))) ? "this" : "next");
         (function markHoro() {
@@ -17962,7 +18059,8 @@ function mustEatsFL() {
         var b = e.target.closest("button[data-v]");
         if (!b) return;
         var day = b.getAttribute("data-v");
-        try { localStorage.setItem("bw-trash-day", day); } catch (e2) {}
+        if (typeof putTrashRow === "function") putTrashRow({ day: day });
+        else try { localStorage.setItem("bw-trash-day", day); } catch (e2) {}
         if (typeof saveHouse === "function") saveHouse();
         if (typeof nextTrash === "function") nextTrash();
         paint();
@@ -17971,7 +18069,8 @@ function mustEatsFL() {
       if (recRow) recRow.addEventListener("click", function (e) {
         var b = e.target.closest("button[data-v]");
         if (!b) return;
-        try { localStorage.setItem("bw-recycle-every", b.getAttribute("data-v")); } catch (e2) {}
+        if (typeof putTrashRow === "function") putTrashRow({ every: b.getAttribute("data-v") });
+        else try { localStorage.setItem("bw-recycle-every", b.getAttribute("data-v")); } catch (e2) {}
         if (typeof nextTrash === "function") nextTrash();
         paint();
       });
@@ -19005,15 +19104,25 @@ function mustEatsFL() {
     })();
     if (typeof pollNearbyStrikes === "function") { pollNearbyStrikes(); setInterval(pollNearbyStrikes, 10 * 60 * 1000);
     setInterval(function () {
-      var quiet = Date.now() - (window.__bzLastHit || 0) > 90 * 1000;
+      if (document.hidden || window.__bzOff) {
+        try { if (window.__bzWs) window.__bzWs.close(); } catch (eQ) {}
+        window.__bzWs = null;
+        return;
+      }
+      var quiet = Date.now() - (window.__bzLastHit || 0) > 3 * 60 * 1000;
       var hours = window.__hours || [];
       var want = typeof hourMentionsThunder === "function" && hourMentionsThunder(hours[0] || {});
-      if (!quiet) return;
-      try { if (window.__bzWs) window.__bzWs.close(); } catch (e) {}
-      window.__bzWs = null;
-      if (typeof connectBlitzWs === "function") connectBlitzWs();
-      if (want && typeof noteFeed === "function") noteFeed("strikes", true, "blitzortung socket recycled");
-    }, 45 * 1000); setInterval(function(){ if (typeof publishStrikes === "function") publishStrikes(); }, 30 * 1000); }
+      var open = window.__bzWs && window.__bzWs.readyState === 1;
+      if (open && !quiet) return;
+      if (quiet && !want && open) {
+        try { window.__bzWs.close(); } catch (eC) {}
+        window.__bzWs = null;
+        return;
+      }
+      if (!open && (want || !quiet)) {
+        if (typeof connectBlitzWs === "function") connectBlitzWs();
+      }
+    }, 60 * 1000); setInterval(function(){ if (typeof publishStrikes === "function") publishStrikes(); }, 30 * 1000); }
     if (typeof loadHistWx === "function") { loadHistWx(); setInterval(loadHistWx, 30 * 60 * 1000); }
     if (typeof paintGuide === "function") paintGuide();
     if (typeof paintSources === "function") paintSources();
@@ -23311,8 +23420,9 @@ function drawSurgeChart(points) {
       el.offsetHeight;
       el.style.animation = "tick " + dur + "s linear infinite";
       if ((first.getBoundingClientRect().width || 0) < 8) {
-        setTimeout(function () { spinEl(el, speed, true); }, 400);
-      }
+        el.__spinTry = (el.__spinTry || 0) + 1;
+        if (el.__spinTry < 3) setTimeout(function () { spinEl(el, speed, true); }, 600);
+      } else el.__spinTry = 0;
     }
     function nwsRank(ev) {
       ev = String(ev || "").toLowerCase();
@@ -24088,8 +24198,13 @@ function homeCountyGuess() {
           }));
           newsToCard("han-card", "live-han", "han", tick, true);
         });
-        fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\") school (" + place + " OR " + st + ") when:2d", function (items) {
-          items = (items || []).filter(function (x) { return /lockdown|lockout|shelter in place|school/i.test(x.title || ""); });
+        fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\" OR \"schools closed\" OR \"school closed\") (school OR district) (" + place + " OR " + st + ") when:2d", function (items) {
+          items = (items || []).filter(function (x) {
+            var t = String(x.title || "") + " " + String(x.desc || "");
+            if (!/school|district|students/i.test(t)) return false;
+            if (/shelter open|warming center|storm shelter|pets|donation/i.test(t) && !/lockdown|lockout|schools closed|dismissed/i.test(t)) return false;
+            return /lockdown|lockout|shelter in place|schools closed|school closed|early dismissal|students evacuated/i.test(t);
+          });
           window.__schoolAlerts = items.map(function (x) { return { kind: "school", title: "School emergency", body: x.title }; });
           newsToCard("school-card", "live-school", "school", items, true);
         });
