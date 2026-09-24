@@ -2890,6 +2890,33 @@
     .price-tag { display:inline-block; margin-left:4px; letter-spacing:.04em; font-weight:700; color:var(--teal,#1b6b62); }
     html.dark .price-tag { color:#7fd1c4; }
 
+html.dark .boat-go {
+  display:inline-block;
+  padding:6px 12px 7px;
+  margin:4px 0 8px;
+  border-radius:10px;
+  line-height:1.2;
+  color:#f4efe4;
+  background:rgba(255,255,255,.08);
+}
+html.dark .boat-go.go {
+  color:#ecfff2 !important;
+  background:#1f6b3d !important;
+}
+html.dark .boat-go.win {
+  color:#fff8e4 !important;
+  background:#8a5a10 !important;
+}
+html.dark .boat-go.no {
+  color:#fff4ef !important;
+  background:#b3261e !important;
+}
+html.dark .boat-alerts .boat-alert em {
+  color:#ffb4a8;
+}
+
+
+
 html.dark .boat-go { color:#f4efe4; }
 html.dark .boat-card, html.dark #sky-call-card, html.dark #land-call-card, html.dark #boat-call-card { color:#eadfca; }
 html.dark .boat-card > b, html.dark #sky-call-title { color:#e8d7a0; }
@@ -3017,7 +3044,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <span id="live-sky">Checking the day…</span>
           <span id="greet-next"></span>
           <span class="greet-more" id="greet-more"></span>
-          <small class="greet-hint" id="greet-hint">The day in one line. Tap if you want the rest.</small>
+          <small class="greet-hint" id="greet-hint">Tap for today&rsquo;s details</small>
         </div>
         <div class="daily-bits" id="today-bits">
           <div class="card joke-card" id="today-joke" hidden>
@@ -3273,7 +3300,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="sea-top-left">
         <p class="sheet-kicker">Boating</p>
         <div class="card boat-card" id="boat-card">
-          <b id="coast-title">Boating</b>
+          <b id="coast-title">Boating report</b>
           <strong id="boat-go" class="boat-go">Checking the water…</strong>
           <span id="live-coastal">Wind, seas, tide, and NWS marine alerts for the home pin.</span>
           <div id="boat-alerts" class="boat-alerts"></div>
@@ -4699,7 +4726,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 883;
+    window.BOARD_VER = 885;
 
     
     function communityShort() {
@@ -10108,16 +10135,7 @@ function currentRotation() {
       pack = pack || window.__commonsBrief || commonsLocalBrief();
       window.__commonsBrief = pack;
       if (!pack || !pack.brief) return pack;
-      var el = document.getElementById("live-sky") || document.getElementById("greet-hi");
-      var more = document.getElementById("greet-more");
-      if (more) {
-        more.innerHTML = "";
-        more.textContent = pack.brief;
-      } else if (el) {
-        el.textContent = pack.brief;
-      }
-      window.__greetFull = pack.brief;
-      window.__bestWindow = pack.brief;
+      window.__tickerBrief = pack.ticker || pack.brief;
       if (typeof noteFeed === "function") noteFeed("ai-brief", true, pack.source || "local");
       return pack;
     }
@@ -10455,30 +10473,32 @@ function currentRotation() {
         return n ? String(n.textContent || "").replace(/\s+/g, " ").trim() : "";
       }
       var bits = [];
-      var now = "";
+      var cond = word.replace(/\.$/, "");
+      cond = cond.charAt(0).toUpperCase() + cond.slice(1);
+      var now = cond || "Fair skies";
       if (wx.temp != null) {
-        now = "It's " + fmtTemp(wx.temp);
-        if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) now += " that feels like " + fmtTemp(wx.feel);
-        if (window.__yestTempF != null && isFinite(window.__yestTempF)) {
-          var dlt = Math.round(Number(wx.temp) - Number(window.__yestTempF));
-          if (Math.abs(dlt) >= 2) {
-            now += dlt > 0
-              ? ", " + dlt + "° warmer than yesterday at this hour"
-              : ", " + Math.abs(dlt) + "° cooler than yesterday at this hour";
-          }
-        }
-        now += " under " + word;
-      } else now = "It's " + word + " out";
+        now += ". " + fmtTemp(wx.temp);
+        if (wx.feel != null && Math.abs(wx.feel - wx.temp) >= 3) now += ", feels like " + fmtTemp(wx.feel);
+      }
+      now += ".";
+      bits.push(now);
       var windTxt = feedTxt("live-wind");
       var gustTxt = feedTxt("live-gusts");
       var windMph = parseInt(windTxt.replace(/[^\d]/g, ""), 10);
       var gustMph = parseInt(gustTxt.replace(/[^\d]/g, ""), 10);
       if (windTxt && windTxt !== "—" && windMph) {
-        now += ", wind " + windTxt.replace(/\s+/g, " ");
-        if (gustMph && gustMph >= windMph + 7) now += ", gusts " + gustTxt;
+        var windBit = "Wind " + windTxt.replace(/\s+/g, " ");
+        if (gustMph && gustMph >= windMph + 7) windBit += ", gusts " + gustTxt;
+        bits.push(windBit.replace(/\.$/, "") + ".");
       }
-      now += ".";
-      bits.push(now);
+      if (window.__yestTempF != null && isFinite(window.__yestTempF) && wx.temp != null) {
+        var dlt = Math.round(Number(wx.temp) - Number(window.__yestTempF));
+        if (Math.abs(dlt) >= 2) {
+          bits.push(dlt > 0
+            ? dlt + "° warmer than yesterday at this hour."
+            : Math.abs(dlt) + "° cooler than yesterday at this hour.");
+        }
+      }
 
       var todayP = window.__nwsToday || {};
       var days = window.__nwsDays || [];
@@ -10717,7 +10737,6 @@ function currentRotation() {
           : "";
       }
       bindGreetToggle();
-      if (typeof refreshCommonsBrief === "function") setTimeout(refreshCommonsBrief, 400);
     }
     function boldGreeting(s) {
       var html = String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -12380,6 +12399,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v885 — Dark mode verdict bars (go / caution / no) use a solid chip so red is readable on the card.",
+      "v884 — Boating report title. Greeting short line is condition + temp; tap-for-more adds timing and plans, not the same sentence again.",
       "v883 — Drop Windy embeds. Maps pin to Account lat/lon via OSM, RainViewer, Zoom Earth, and earth.nullschool.",
       "v882 — Dark mode: boating and astronomer report type and chart strokes use ink/gold so they don’t vanish on the card.",
       "v881 — Status uses Today/Weather/Sea/Events names. corsproxy 403s no longer count as failures. Predicted tide is OK.",
@@ -19424,7 +19445,7 @@ function drawSurgeChart(points) {
       var nwrM = document.getElementById("live-nwr-marine");
       var place = typeof homePlace === "function" ? homePlace() : "home";
       var gulf = typeof homeIsSWFL === "function" && homeIsSWFL();
-      if (title) title.textContent = "Boating";
+      if (title) title.textContent = "Boating report";
       function numOf(id) {
         var t = ((document.getElementById(id) || {}).textContent || "");
         var m = t.match(/(\d+(?:\.\d+)?)/);
