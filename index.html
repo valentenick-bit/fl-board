@@ -2701,11 +2701,20 @@
       .comm-grid { grid-template-columns:1fr; }
     }
 
-    .comm-row { display:flex; flex-direction:column; gap:2px; padding:8px 0; border-bottom:1px solid var(--hair); }
+
+    .comm-off { margin:0 0 12px; padding:10px 12px; border-radius:10px; background:rgba(196,163,90,.18); color:var(--navy); }
+    .comm-row { display:flex; flex-direction:column; gap:3px; padding:10px 0; border-bottom:1px solid var(--hair); }
     .comm-row:last-child { border-bottom:0; }
-    .comm-row b { color:var(--navy); font-size:15px; }
-    .comm-row span { color:var(--muted); font-size:13px; line-height:1.4; }
-    .comm-row em { font-style:normal; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--teal); font-weight:800; }
+    .comm-row .comm-kicker { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .comm-row .kind-chip { display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; padding:2px 7px; border-radius:999px; background:rgba(27,107,98,.12); color:var(--teal); }
+    .comm-row .kind-chip.alert { background:#b3261e; color:#fff4ef; }
+    .comm-row .kind-chip.rsvp, .comm-row .kind-chip.survey { background:#8a5a10; color:#fff8e4; }
+    .comm-row b { color:var(--navy); font-size:16px; line-height:1.25; }
+    .comm-row span { color:var(--ink); font-size:14px; line-height:1.45; }
+    .comm-row em { font-style:normal; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+    html.dark .comm-off { background:rgba(196,163,90,.16); color:#eadfca; }
+    html.dark .comm-row span { color:#eadfca; }
+
 
     html.dark .dist-tag, html.dark .loc-pill { background:#3a3428; color:#efe4c8; }
 
@@ -3433,19 +3442,44 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </section>
       <section id="comm" class="page">
         <h2 id="comm-title">Community</h2>
-        <p class="pill-key" id="comm-note">HOA notes and this week on site. Shows, music, and town dates stay on Events.</p>
-        <div class="comm-grid">
-          <div class="comm-main">
-            <div class="card comm-urgent" id="comm-need-card" hidden><b>Need to know</b><div id="comm-need"></div></div>
-            <div class="card"><b>This week on site</b><div id="comm-week">Loading…</div></div>
-            <div class="card" id="comm-announce-card"><b>Announcements</b><div id="comm-announce">Loading…</div></div>
+        <p class="pill-key" id="comm-note">Official notices from the association to residents.</p>
+        <p class="comm-off" id="comm-off" hidden>Set Account community to BeachWalk by Manasota Key to see HOA mail from TownSq.</p>
+        <div class="comm-board" id="comm-board">
+          <div class="card comm-urgent" id="comm-need-card" hidden>
+            <b>Action from the association</b>
+            <div id="comm-need"></div>
           </div>
-          <div class="comm-side">
-            <div class="card" id="comm-news-card"><b>Beach Talk</b><div id="comm-news"></div></div>
-            <div class="card" id="comm-survey-card"><b>Surveys</b><div id="comm-survey"></div></div>
+          <div class="comm-grid">
+            <div class="comm-main">
+              <div class="card" id="comm-feed-card">
+                <b>Official board</b>
+                <div id="comm-feed">Loading TownSq…</div>
+              </div>
+              <div class="card" id="comm-announce-card" hidden>
+                <b>Announcements</b>
+                <div id="comm-announce"></div>
+              </div>
+            </div>
+            <div class="comm-side">
+              <div class="card" id="comm-survey-card" hidden>
+                <b>Needs a reply</b>
+                <div id="comm-survey"></div>
+              </div>
+              <div class="card" id="comm-news-card">
+                <b>Newsletters</b>
+                <div id="comm-news"></div>
+              </div>
+              <div class="card">
+                <b>This week on site</b>
+                <div id="comm-week">Loading…</div>
+              </div>
+            </div>
+          </div>
+          <div class="card" id="comm-archive-card" hidden>
+            <b>Earlier notices</b>
+            <div id="comm-archive"></div>
           </div>
         </div>
-        <div class="card" id="comm-archive-card"><b>Earlier notes</b><div id="comm-archive"></div></div>
       </section>
       <section id="house" class="page">
         <h2 data-k="This house">House</h2>
@@ -4500,7 +4534,13 @@ Cart shop:</textarea>
               <button type="button" data-v="1">On</button>
             </div>
           </div>
-          <p class="hint">Weather is the greeting, NWS advisories (not watches or warnings), and lightning or rip only when the orange bar is off. Today is go / ticket / table / packages / trash / flights. Sports is the teams below. Empty topics are skipped.</p>
+          <div class="set-line"><label>BeachWalk board</label>
+            <div class="set-row" id="set-briefboard">
+              <button type="button" data-v="0">Off</button>
+              <button type="button" data-v="1">On</button>
+            </div>
+          </div>
+          <p class="hint">Weather is the greeting and NWS advisories. Today is go / ticket / packages / flights. Sports is your teams. BeachWalk board is official HOA notices from TownSq. Empty topics are skipped.</p>
         </div>
         <div class="set-line"><label>Breaking news ticker</label>
           <div class="set-row" id="set-break">
@@ -4726,7 +4766,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 885;
+    window.BOARD_VER = 888;
 
     
     function communityShort() {
@@ -5022,7 +5062,7 @@ Cart shop:</textarea>
       zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1", gmapsCap: "50",
       community: "",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
-      brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
+      brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefBoard: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", briefPrevBoard: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
       horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device",
@@ -5036,7 +5076,7 @@ Cart shop:</textarea>
       if (s.dateFmt !== "us" && s.dateFmt !== "num-us" && s.dateFmt !== "intl") s.dateFmt = "us";
       s.eventMiles = "25";
       s.sportMiles = "150";
-      ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","briefToday","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
+      ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","briefToday","briefBoard","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
         if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
         else if (v === false || v === 0 || v === "off" || v === "false") s[k] = "0";
@@ -12399,6 +12439,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v888 — Briefing ticker can roll BeachWalk official-board notices. On by default. Toggle is under Tickers in Settings.",
+      "v887 — BeachWalk page is the HOA communications board: action items, official notices, then on-site week.",
+      "v886 — BeachWalk page reads TownSq notices/alerts. Dated TownSq events join Events only when Account community is BeachWalk.",
       "v885 — Dark mode verdict bars (go / caution / no) use a solid chip so red is readable on the card.",
       "v884 — Boating report title. Greeting short line is condition + temp; tap-for-more adds timing and plans, not the same sentence again.",
       "v883 — Drop Windy embeds. Maps pin to Account lat/lon via OSM, RainViewer, Zoom Earth, and earth.nullschool.",
@@ -15508,11 +15551,14 @@ function paint() {
               var when = new Date(e.when);
               var end = e.end ? new Date(e.end) : new Date(when.getTime() + 3 * 3600 * 1000);
               var blob = String(e.sum || e.title || "") + " " + String(e.loc || "") + " " + String(e.src || "");
-              var inside = (e.src === "newsletter") || /beach\s*walk|capri club|high tide tiki|card room/i.test(blob);
+              var inside = (e.src === "newsletter" || e.src === "townsq") || /beach\s*walk|capri club|high tide tiki|card room/i.test(blob);
               return { sum: e.sum || e.title || "", loc: e.loc || e.location || "", desc: e.desc || e.detail || "", when: when, end: end, allDay: !!e.allDay, inside: inside, src: e.src || "local" };
             }).filter(function (e) { return e.sum && e.when && !isNaN(e.when.getTime()) && e.end.getTime() >= Date.now() - 30 * 60 * 1000; });
             if (parsed.length) {
-              bag.local = parsed;
+              var onSite = parsed.filter(function (e) { return e.inside; });
+              var offSite = parsed.filter(function (e) { return !e.inside; });
+              bag.bw = (bag.bw || []).concat(onSite);
+              bag.local = offSite.length ? offSite : (bag.local || []);
               if (typeof noteFeed === "function") noteFeed("local-events", true, parsed.length + " researched · " + ((d && d.updated) || ""));
               try { paint(); } catch (eP) {}
               if (done) done();
@@ -15603,9 +15649,24 @@ function paint() {
       rows = rows || [];
       if (!rows.length) { box.innerHTML = empty || ""; return; }
       box.innerHTML = rows.map(function (r) {
-        var when = r.when || r.posted || "";
-        return "<div class=\"comm-row\"><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(r.body || "").replace(/</g,"") + "</span>" +
-          (when ? "<em>" + String(when) + "</em>" : "") + "</div>";
+        var kind = String(r.kind || "").toLowerCase();
+        if (!kind) {
+          if (/alert|election|clos|deadline|arc|safety/i.test((r.title || "") + " " + (r.body || ""))) kind = "alert";
+          else if (/rsvp|register|sign up|sold out/i.test((r.title || "") + " " + (r.body || ""))) kind = "rsvp";
+          else if (/survey|interest/i.test((r.title || "") + " " + (r.body || ""))) kind = "survey";
+          else if (/weekly|digest|update/i.test(r.title || "")) kind = "digest";
+          else if (/special|menu|high tide/i.test((r.title || "") + " " + (r.body || ""))) kind = "amenity";
+          else kind = "notice";
+        }
+        var label = kind === "event-note" ? "event" : kind === "save-the-date" ? "save the date" : kind === "sold-out" ? "sold out" : kind;
+        var when = r.posted || r.when || "";
+        var whenTxt = "";
+        if (when) {
+          var dt = new Date(String(when).length <= 10 ? when + "T12:00:00" : when);
+          whenTxt = isNaN(dt.getTime()) ? String(when) : dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        }
+        return "<div class=\"comm-row\"><div class=\"comm-kicker\"><span class=\"kind-chip " + kind + "\">" + label + "</span>" +
+          (whenTxt ? "<em>" + whenTxt + "</em>" : "") + "</div><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(r.body || "").replace(/</g,"") + "</span></div>";
       }).join("");
     }
     function paintCommWeek() {
@@ -15633,17 +15694,47 @@ function paint() {
       var urls = gitFileUrls("community.json");
       function apply(j) {
         window.__community = j || {};
-        if (note) note.textContent = (j.source ? j.source + " · " : "") + (j.updated ? ("updated " + j.updated) : "TownSq harvest");
+        var on = typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity();
+        var board = document.getElementById("comm-board");
+        var off = document.getElementById("comm-off");
+        if (board) board.hidden = !on;
+        if (off) off.hidden = on;
+        if (title) title.textContent = on ? (j.community || commName()) : commName();
+        if (note) {
+          note.textContent = on
+            ? ("From the association · " + (j.source ? "TownSq" : "HOA") + (j.updated ? " · " + String(j.updated).replace("T", " ").slice(0, 16) : ""))
+            : "Official notices from the association to residents.";
+        }
+        if (!on) return;
         var need = j.need || [];
+        var surveys = j.surveys || [];
         var needCard = document.getElementById("comm-need-card");
         if (needCard) needCard.hidden = !need.length;
         paintCommList("comm-need", need, "");
-        paintCommList("comm-announce", j.announce || [], "No open announcements.");
+        var feed = [].concat(j.notices || j.notifications || [], j.announce || []).sort(function (a, b) {
+          return String(b.posted || b.when || "").localeCompare(String(a.posted || a.when || ""));
+        });
+        paintCommList("comm-feed", feed, "No official notices on file.");
+        paintCommList("comm-announce", [], "");
+        var annCard = document.getElementById("comm-announce-card");
+        if (annCard) annCard.hidden = true;
         paintCommList("comm-news", j.newsletters || [], "No newsletter on file.");
-        paintCommList("comm-survey", j.surveys || [], "No open surveys.");
-        paintCommList("comm-archive", j.archive || [], "Archive empty.");
+        paintCommList("comm-survey", surveys, "");
+        var surveyCard = document.getElementById("comm-survey-card");
+        if (surveyCard) surveyCard.hidden = !surveys.length;
+        paintCommList("comm-archive", j.archive || [], "");
+        var archCard = document.getElementById("comm-archive-card");
+        if (archCard) archCard.hidden = !((j.archive || []).length);
         paintCommWeek();
-        if (typeof noteFeed === "function") noteFeed("community", true, (j.announce || []).length + " notes · " + (j.surveys || []).length + " surveys");
+        if (typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity() && Array.isArray(j.events) && j.events.length && window.__entBag) {
+          var extra = j.events.map(function (e) {
+            var when = new Date(e.when);
+            return { sum: e.sum || e.title || "", loc: e.loc || "BeachWalk", desc: e.desc || e.body || "", when: when, end: e.end ? new Date(e.end) : new Date(when.getTime() + 2 * 3600 * 1000), allDay: !!e.allDay, inside: true, src: "townsq" };
+          }).filter(function (e) { return e.sum && !isNaN(e.when.getTime()); });
+          window.__entBag.bw = (window.__entBag.bw || []).concat(extra);
+        }
+        if (typeof noteFeed === "function") noteFeed("community", true, (j.announce || []).length + " notes · " + (j.notices || []).length + " notices · " + (j.surveys || []).length + " surveys");
+        if (typeof writeBriefing === "function") writeBriefing();
       }
       function next(i) {
         if (i >= urls.length) {
@@ -17465,6 +17556,7 @@ function mustEatsFL() {
         mark("set-briefwx", s.briefWx);
         mark("set-briefsports", s.briefSports);
         mark("set-brieftoday", s.briefToday);
+        mark("set-briefboard", s.briefBoard);
         mark("set-break", s.breakOn);
         mark("set-breaknat", s.breakNat);
         mark("set-breakloc", s.breakLoc);
@@ -17665,8 +17757,13 @@ function mustEatsFL() {
       tap("set-jokeday", "jokeDay", function () { if (typeof paintDailyBits === "function") paintDailyBits(); });
       tap("set-brief", "brief", function (v) {
         var s = getSet();
-        if (v === "0") putSet({ briefPrevWx: s.briefWx, briefPrevSports: s.briefSports, briefPrevToday: s.briefToday, briefWx: "0", briefSports: "0", briefToday: "0" });
-        else putSet({ briefWx: s.briefPrevWx || "1", briefSports: s.briefPrevSports || "1", briefToday: s.briefPrevToday || "1" });
+        if (v === "0") putSet({ briefPrevWx: s.briefWx, briefPrevSports: s.briefSports, briefPrevToday: s.briefToday, briefPrevBoard: s.briefBoard, briefWx: "0", briefSports: "0", briefToday: "0", briefBoard: "0" });
+        else putSet({ briefWx: s.briefPrevWx || "1", briefSports: s.briefPrevSports || "1", briefToday: s.briefPrevToday || "1", briefBoard: s.briefPrevBoard || "1" });
+        paint();
+        if (typeof writeBriefing === "function") writeBriefing();
+      });
+      tap("set-briefboard", "briefBoard", function (v) {
+        if (v === "1") putSet({ brief: "1" });
         paint();
         if (typeof writeBriefing === "function") writeBriefing();
       });
@@ -22840,6 +22937,28 @@ function drawSurgeChart(points) {
           if (!today.length) return "";
           return "<b>Today.</b>" + "\u00a0".repeat(24) + spaceSentences(today.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" "));
         }
+        function boardBit() {
+          if (s.briefBoard === "0") return "";
+          if (typeof isBeachWalkCommunity === "function" && !isBeachWalkCommunity()) return "";
+          var j = window.__community || {};
+          var rows = [].concat(j.need || [], j.notices || j.notifications || [], j.announce || [], j.surveys || []);
+          rows = rows.filter(function (r) { return r && (r.title || r.body); }).sort(function (a, b) {
+            return String(b.posted || b.when || "").localeCompare(String(a.posted || a.when || ""));
+          });
+          var seen = {};
+          var lines = [];
+          rows.forEach(function (r) {
+            var t = String(r.title || "").replace(/\s+/g, " ").trim();
+            if (!t || seen[t.toLowerCase()]) return;
+            seen[t.toLowerCase()] = 1;
+            var body = String(r.body || "").replace(/\s+/g, " ").trim();
+            if (body && body.length > 90) body = body.slice(0, 87).replace(/\s+\S*$/, "") + "…";
+            lines.push(t + (body && body.toLowerCase().indexOf(t.toLowerCase()) < 0 ? ". " + body : ""));
+          });
+          lines = lines.slice(0, 5);
+          if (!lines.length) return "";
+          return "<b>BeachWalk.</b>" + "\u00a0".repeat(24) + spaceSentences(lines.map(function (x) { return /[.!?]$/.test(x) ? x : x + "."; }).join(" "));
+        }
         function sportsBit() {
           if (s.briefSports === "0") return "";
           var blocks = window.__sportsBlocks || [];
@@ -22850,6 +22969,7 @@ function drawSurgeChart(points) {
         }
         var wxB = weatherBit();
         var tdB = todayBit();
+        var bdB = boardBit();
         var spB = sportsBit();
         if (night) {
           if (tdB) bits.push(tdB);
@@ -22858,8 +22978,9 @@ function drawSurgeChart(points) {
           if (wxB) bits.push(wxB);
           if (tdB) bits.push(tdB);
         }
+        if (bdB) bits.push(bdB);
         if (spB) bits.push(spB);
-        if (!bits.length) bits.push(spaceSentences("Briefing is on. Pick Weather, Today, or Sports in Settings."));
+        if (!bits.length) bits.push(spaceSentences("Briefing is on. Pick Weather, Today, BeachWalk board, or Sports in Settings."));
         if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), tickSpeedPx());
       } catch (e) {}
     }
