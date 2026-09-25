@@ -4813,7 +4813,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 927;
+    window.BOARD_VER = 928;
 
     
     function communityShort() {
@@ -7036,10 +7036,25 @@ Cart shop:</textarea>
       saveStormHist(map);
     }
     function paintStormCharts(s) {
+      var hist = document.getElementById("storm-hist-card");
+      var ttl = document.getElementById("storm-hist-title");
+      var note = document.getElementById("storm-hist-note");
+      if (window.__stormFocus === "ne") {
+        if (hist) hist.hidden = true;
+        if (typeof clearStormCharts === "function") clearStormCharts();
+        if (ttl) ttl.textContent = "Advisory history";
+        return;
+      }
       if (typeof clearStormCharts === "function") clearStormCharts();
-      if (!s || window.__stormFocus === "ne" || typeof drawHistChart !== "function") return;
-      s = typeof stormForTrack === "function" ? stormForTrack(s) : s;
-      var want = stormAtcfFile(s);
+      if (!s || typeof drawHistChart !== "function") return;
+      var want = typeof stormAtcfFile === "function" ? stormAtcfFile(s) : "";
+      if (!want) {
+        if (hist) hist.hidden = false;
+        if (ttl) ttl.textContent = "Advisory history · " + (s.name || "storm");
+        if (note) note.textContent = (s.name || "This system") + " does not have an NHC best-track file yet, so there is nothing to plot.";
+        if (typeof noteFeed === "function") noteFeed("storm-hist", false, (s.name || "storm") + " · no ATCF file");
+        return;
+      }
       if (window.__btkFile && window.__btkFile !== want) {
         window.__btkPts = [];
         window.__btkFile = "";
@@ -7049,9 +7064,19 @@ Cart shop:</textarea>
       rows.forEach(function (p) {
         if (p.mi == null && isFinite(p.lat) && isFinite(p.lon) && typeof milesLatLon === "function") p.mi = milesLatLon(p.lat, p.lon);
       });
-      if (rows.length < 2 && typeof loadStormBtk === "function" && window.__chartBtkFor !== want) {
-        window.__chartBtkFor = want || "none";
-        loadStormBtk(s, function () { window.__chartBtkFor = ""; paintStormCharts(s); });
+      window.__chartBtkTried = window.__chartBtkTried || {};
+      if (rows.length < 2 && typeof loadStormBtk === "function" && !window.__chartBtkTried[want]) {
+        window.__chartBtkTried[want] = 1;
+        if (note) note.textContent = "Loading official NHC fixes for " + (s.name || "this storm") + "…";
+        loadStormBtk(s, function () { paintStormCharts(s); });
+        return;
+      }
+      if (hist) hist.hidden = false;
+      if (ttl) ttl.textContent = "Advisory history · " + (s.name || "storm");
+      if (note) {
+        note.textContent = rows.length
+          ? ((s.name || "Storm") + " · " + rows.length + " official NHC fixes. Wind, pressure, and distance from the home pin.")
+          : ("No official fixes downloaded for " + (s.name || "this storm") + ". The chart stays blank rather than reuse another storm.");
       }
       if (typeof noteFeed === "function") noteFeed("storm-hist", rows.length > 0, (s.name || "storm") + " · " + rows.length + " official fixes");
       function series(field) {
@@ -7136,11 +7161,9 @@ Cart shop:</textarea>
         setTxt("live-storm-move", "Local NWS product");
         setTxt("live-storm-adv", hit ? (hit.event + (until ? " · " + until : "")) : ((ne && ne.title) || "Advisory"));
       }
-      if (hist) {
-        hist.hidden = false;
-        if (title) title.textContent = ((ne && ne.title) || "Nor'easter") + " · this pin";
-        if (note) note.textContent = "NWS winter and wind products do not publish a numbered best-track like NHC. These charts stay empty on purpose so Fay's history does not linger.";
-      }
+      if (hist) hist.hidden = true;
+      if (title) title.textContent = "Advisory history";
+      if (note) note.textContent = "Each point is an NHC fix / public advisory. The lines grow as new advisories post.";
       if (typeof clearStormCharts === "function") clearStormCharts();
       if (homeC) homeC.hidden = false;
       if (homeT) homeT.textContent = "Local product for " + place + ". Pick a named storm pill to see NHC winds, pressure, and advisory charts.";
@@ -12993,6 +13016,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v928 — Advisory history card stays named Advisory history, hides on Nor'easter, and does not refetch an empty ATCF file in a loop.",
       "v927 — Storm pills sit first. Nor'easter card and metrics only when that pill is on. Charts clear and follow the selected storm's ATCF track.",
       "v926 — Prep sits after Emergency in weather rotation. Kit copy is pin-neutral; links follow the home address.",
       "v925 — Emergency page follows the home pin: state from ZIP, local numbers, evac links, power utility. Florida-only FPL/Key copy stays on 34223.",
