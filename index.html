@@ -4811,7 +4811,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 923;
+    window.BOARD_VER = 924;
 
     
     function communityShort() {
@@ -12867,6 +12867,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v924 — Weather briefing speaks the local wind advisory and, only if it matters, a far-away named storm. No chip-label soup.",
       "v923 — Weather rotation rebuilds the dock to only Weather / Storms / Sea / Contacts. Briefing wind uses the first mph reading and talks in full sentences.",
       "v922 — Dock rebuild no longer crashes when weather rotation is on (undefined list.length).",
       "v921 — Active weather ticker parks sports/today/board briefing. Weather briefing stays; settings restore when the alert bar drops.",
@@ -23599,9 +23600,29 @@ function drawSurgeChart(points) {
             if (bolt && !/no lightning|none/i.test(bolt)) story.push("Lightning is close enough that the next hour is indoor time if you can help it.");
           }
           if (!highHas(/hurricane|tropical|storm surge/i)) {
-            var cane = chipText("chip-cane") || chipText("today-cane");
-            if (cane && !/no named|none on pin|none/i.test(cane)) {
-              story.push("On the tropics side, " + cane.replace(/^tropical\.?\s*/i, "").replace(/\.$/, "") + " — still far from the porch, but it is the named system to keep an eye on.");
+            var neTalk = typeof scanNorEaster === "function" ? scanNorEaster() : (window.__norEaster || {});
+            if (neTalk && neTalk.on) {
+              var neName = String(neTalk.title || "coastal wind event").replace(/</g, "");
+              story.push("What matters on this pin is the " + neName.toLowerCase() + ". That is a local NWS product, not the Atlantic tropics.");
+            }
+            var named = (window.__namedStorms || []).filter(function (st) {
+              if (!st) return false;
+              if (typeof stormIsInvest === "function" && stormIsInvest(st)) return false;
+              var nm = String(st.name || st.Name || "");
+              if (!nm || /invest|^one$|^two$/i.test(nm)) return false;
+              var mi = typeof stormMiles === "function" ? stormMiles(st) : NaN;
+              var threat = typeof stormThreatensHome === "function" && stormThreatensHome(st);
+              return threat || (isFinite(mi) && mi < 800);
+            });
+            if (named.length) {
+              var st0 = named[0];
+              var mi0 = typeof stormMiles === "function" ? stormMiles(st0) : NaN;
+              var word0 = (st0.classification === "HU" ? "Hurricane " : st0.classification === "TS" ? "Tropical Storm " : "") + (st0.name || "the named storm");
+              if (typeof stormThreatensHome === "function" && stormThreatensHome(st0)) {
+                story.push(word0 + " is close enough that watches for this address could change. Check the Storms page before you lock in outdoor plans.");
+              } else if (isFinite(mi0)) {
+                story.push(word0 + " is still about " + Math.round(mi0) + " miles away, with no watch on this house. It does not change the forecast here tonight.");
+              }
             }
           }
           var rip = document.getElementById("rip-banner");
