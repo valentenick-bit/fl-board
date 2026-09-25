@@ -4801,7 +4801,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 910;
+    window.BOARD_VER = 913;
 
     
     function communityShort() {
@@ -7456,14 +7456,19 @@ Cart shop:</textarea>
     }
     function homeNearKey() {
       var s = typeof getSet === "function" ? getSet() : {};
-      var zip = String(s.zip || "").slice(0, 5);
+      var zip = String(s.zip || "").replace(/\D/g, "").slice(0, 5);
+      if (/^06/.test(zip)) return false;
       if (/^3422[0-9]$/.test(zip) || zip === "33981" || zip === "33950") return true;
-      var a = homeBlob();
-      if (/south windsor|06074|connecticut|\bct\b/.test(a) && !/34223|englewood,?\s*fl|manasota|beachwalk/.test(a)) return false;
-      if (/englewood|manasota|beachwalk|coral harbour|34223/.test(a)) return true;
       var lat = typeof homeLat === "function" ? homeLat() : 0;
       var lon = typeof homeLon === "function" ? homeLon() : 0;
-      return lat > 26.72 && lat < 27.22 && lon < -82.12 && lon > -82.55;
+      if (isFinite(lat) && isFinite(lon) && lat && lon) {
+        if (lat > 40 && lat < 43.2 && lon > -74 && lon < -71.5) return false;
+        if (lat > 26.72 && lat < 27.22 && lon < -82.12 && lon > -82.55) return true;
+      }
+      var a = homeBlob();
+      if (/south windsor|06074|hartford|manchester,?\s*ct|connecticut/.test(a)) return false;
+      if (/englewood|34223|manasota key|coral harbour/.test(a) && !/south windsor|06074/.test(a)) return true;
+      return false;
     }
     function homePlace() {
       var s = getSet();
@@ -7478,7 +7483,29 @@ Cart shop:</textarea>
     function homeTide() {
       var id = String((getSet() || {}).tide || "").trim();
       if (id) return id;
-      return "8725809";
+      var st = String((typeof homeState === "function" && homeState()) || "").toUpperCase();
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      if (st === "HI" || (lat > 18 && lat < 23 && lon < -154)) return "1612340";
+      if (st === "WA" || (lat > 45.5 && lon < -122)) return "9447130";
+      if (st === "OR") return "9435380";
+      if (st === "CA" && lat >= 37) return "9414290";
+      if (st === "CA") return "9410660";
+      if (st === "ME") return "8418150";
+      if (st === "NH" || st === "MA") return "8443970";
+      if (st === "RI") return "8452660";
+      if (st === "CT" || st === "NY") return "8467150";
+      if (st === "NJ") return "8534720";
+      if (st === "FL" && lon <= -82) return "8725809";
+      if (st === "FL") return "8720218";
+      if (st === "TX") return "8771450";
+      if (st === "LA") return "8761724";
+      if (st === "SC" || st === "GA") return "8665530";
+      if (st === "NC") return "8658120";
+      if (st === "VA" || st === "MD") return "8638610";
+      if (!isFinite(lat) || !isFinite(lon)) return "";
+      if (lon > -85 && lon < -66.9 && lat > 24 && lat < 45.2) return "8467150";
+      return "";
     }
     function homeRadar() { return getSet().radar || ""; }
     window.watchSource = function (row) {
@@ -12799,6 +12826,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v913 — Events page lists community calendar plus pin-local events. BeachWalk rows no longer require a Florida pin.",
+      "v912 — Tide station follows the home pin. Inland pins no longer inherit Englewood Lemon Bay.",
+      "v911 — Events page follows the home pin only. BeachWalk listings stay on the community page unless the pin is in 34223.",
       "v910 — Storms pick is by storm id, resets when the home pin changes, and NHC text must name the selected storm.",
       "v909 — Switching Storms picks clears the other storm. Nor'easter view hides Fay maps and advisories.",
       "v908 — Storms page opens on the Nor'easter when that is what the Today chip showed. Fay stays a second pick.",
@@ -15701,6 +15731,8 @@ function paintTakeoutDeals() {
       var bag = { bw: [], eng: [], local: [], comedy: [] };
       try {
         var cached = JSON.parse(localStorage.getItem("bw-ent-cache") || "{}");
+        var pinNow = (typeof stormPinStamp === "function" ? stormPinStamp() : (typeof homeLat === "function" ? String(homeLat()) + "," + String(homeLon()) : ""));
+        if (cached.pin && pinNow && cached.pin !== pinNow) cached = {};
         if (cached.local) bag.local = cached.local.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+3*3600*1000); e.inside = false; e.src = e.src || "local"; return e; }).filter(function (e) { return e.end && e.end.getTime() >= Date.now(); });
         if (cached.bw) bag.bw = cached.bw.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = true; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
         if (cached.eng) bag.eng = cached.eng.map(function (e) { e.when = new Date(e.when); e.end = e.end ? new Date(e.end) : new Date(e.when.getTime()+2*3600*1000); e.inside = false; return e; }).filter(function (e) { return e.end.getTime() >= Date.now(); });
@@ -15826,6 +15858,7 @@ function paint() {
         if (typeof noteFeed === "function") noteFeed("comedy", true, mc ? (mc + " on calendar") : "none tonight");
         try {
           localStorage.setItem("bw-ent-cache", JSON.stringify({
+            pin: (typeof stormPinStamp === "function" ? stormPinStamp() : (typeof homeLat === "function" ? homeLat() + "," + homeLon() : "")),
             bw: bag.bw.slice(0, 40),
             local: (bag.local || []).slice(0, 80),
             eng: bag.eng.slice(0, 40)
@@ -22551,15 +22584,22 @@ function drawSurgeChart(points) {
     }
     function eventInRange(e) {
       var limit = Number((typeof getSet === "function" && getSet().eventMiles) || 25) || 15;
-      var bwComm = typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity();
-      if ((e && e.inside) || (typeof isBeachWalkEvent === "function" && isBeachWalkEvent(e))) return !!bwComm;
       var nearKey = typeof homeNearKey === "function" && homeNearKey();
-      var blob = String((e && (e.title || e.sum || e.name)) || "") + " " + String((e && (e.where || e.loc || e.addr || e.venue)) || "");
+      var blob = String((e && (e.title || e.sum || e.name || e.what)) || "") + " " + String((e && (e.where || e.loc || e.addr || e.venue || e.city)) || "");
       blob = blob.toLowerCase();
-      if (!nearKey && /englewood|manasota|beachwalk|venice fl|venice, fl|north port|port charlotte|boca grande|rotonda/.test(blob)) return false;
+      var isBw = (e && (e.inside || e.onSite)) || (typeof isBeachWalkEvent === "function" && isBeachWalkEvent(e));
+      var bwComm = typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity();
+      if (isBw) return !!bwComm;
+      if (!nearKey && /englewood|manasota|beachwalk|venice fl|venice, fl|north port|port charlotte|boca grande|rotonda|sarasota|siesta key/.test(blob)) return false;
+      if (nearKey && /south windsor|hartford|manchester,? ct|wethersfield|06074/.test(blob) && !/englewood|34223/.test(blob)) return false;
       var mi = eventMilesFromHome(e);
-      if (mi == null || !isFinite(mi)) return true;
-      return mi <= limit + 0.35;
+      if (mi != null && isFinite(mi)) return mi <= limit + 0.35;
+      var home = (typeof homePlace === "function" ? homePlace() : "") + " " + (typeof homeBlob === "function" ? homeBlob() : "");
+      home = home.toLowerCase();
+      var city = String((typeof getSet === "function" && (getSet().place || getSet().city)) || "").toLowerCase();
+      if (city && city.length > 3 && blob.indexOf(city) >= 0) return true;
+      if (/south windsor|06074/.test(home) && /south windsor|hartford|east windsor|manchester|wethersfield|windsor locks|bloomfield/.test(blob)) return true;
+      return false;
     }
     function eventPopScore(e) {
       var blob = String((e && (e.sum + " " + e.desc + " " + e.loc)) || "").toLowerCase();
