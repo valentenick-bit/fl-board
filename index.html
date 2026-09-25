@@ -4801,7 +4801,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 914;
+    window.BOARD_VER = 915;
 
     
     function communityShort() {
@@ -6994,13 +6994,13 @@ Cart shop:</textarea>
     }
     function paintStormCharts(s) {
       if (!s || typeof drawHistChart !== "function") return;
-      var all = (loadStormHist()[stormHistKey(s)] || []).slice();
-      var advs = all.filter(function (p) { return p.src === "advisory" || p.adv; }).sort(function (a, b) {
-        var na = parseInt(a.adv, 10), nb = parseInt(b.adv, 10);
-        if (isFinite(na) && isFinite(nb) && na !== nb) return na - nb;
-        return (a.t || 0) - (b.t || 0);
-      });
-      var rows = advs.length >= 2 ? advs : all;
+      var btk = (window.__btkPts && window.__btkFile && window.__btkPts.length) ? window.__btkPts.slice() : [];
+      var rows = btk.filter(function (p) { return p && isFinite(p.t); }).sort(function (a, b) { return a.t - b.t; });
+      if (rows.length < 2 && typeof loadStormBtk === "function" && window.__chartBtkFor !== stormPickId(s)) {
+        window.__chartBtkFor = stormPickId(s);
+        loadStormBtk(s, function () { paintStormCharts(s); });
+      }
+      if (typeof noteFeed === "function") noteFeed("storm-hist", rows.length > 0, (s.name || "storm") + " · " + rows.length + " official fixes");
       function series(field) {
         return rows.filter(function (p) { return p[field] != null && isFinite(p[field]); })
           .map(function (p) { return { t: p.t, v: p[field], adv: p.adv }; });
@@ -12828,6 +12828,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v915 — Storm charts plot NHC ATCF best-track fixes, not each device's localStorage tally.",
       "v914 — Pin save publishes ZIP/lat/lon. Events load events-{zip}.json first, then community rows.",
       "v913 — Events page lists community calendar plus pin-local events. BeachWalk rows no longer require a Florida pin.",
       "v912 — Tide station follows the home pin. Inland pins no longer inherit Englewood Lemon Bay.",
