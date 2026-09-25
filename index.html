@@ -4793,7 +4793,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 904;
+    window.BOARD_VER = 905;
 
     
     function communityShort() {
@@ -4925,7 +4925,7 @@ Cart shop:</textarea>
           if (!r.ok && r.status >= 400) {
             if (!optional) {
               window.__fetchFail = (window.__fetchFail || 0) + 1;
-              window.__fetchLast = r.status + " " + u.slice(0, 80);
+              window.__fetchLast = r.status + " " + String(u||"").replace(/key=[^&]+/ig,"key=REDACTED").slice(0, 80);
             }
             if (r.status >= 500 && !optional) logCrash("http", r.status + " " + u.slice(0, 90));
           }
@@ -4934,7 +4934,7 @@ Cart shop:</textarea>
           var msg = String(err && err.message || err || "");
           if (!optional) {
             window.__fetchFail = (window.__fetchFail || 0) + 1;
-            window.__fetchLast = "net " + u.slice(0, 70);
+            window.__fetchLast = "net " + String(u||"").replace(/key=[^&]+/ig,"key=REDACTED").slice(0, 70);
           }
           if (!optional && !/abort/i.test(msg) && err && err.name !== "AbortError") logCrash("net", u.slice(0, 70) + " " + msg);
           throw err;
@@ -12671,6 +12671,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v905 — Places stays off with the Maps toggle. Status redacts API keys. Nixle ignores election headlines.",
       "v904 — Fay distance uses last ATCF fix when NHC omits lat/lon. School and TFR cards ignore lifted/statewide noise.",
       "v903 — Golf page falls back to cached / OSM courses when OpenGolf returns 429. Empty list is none, not down.",
       "v902 — Golf 429 is a quota miss, not a board crash. Live worker reads index from GitHub — Drive-only uploads never reached the wall.",
@@ -14174,9 +14175,9 @@ function currentRotation() {
           return;
         }
       } catch (e0) {}
-      var key = String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
-      if (!key) { cb(row); return; }
-      fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + (row.lat || (typeof homeLat === "function" ? homeLat() : "")) + "&lon=" + (row.lon || (typeof homeLon === "function" ? homeLon() : "")), {
+      var key = typeof gmapsKey === "function" ? gmapsKey() : "";
+      if (!key || (typeof mapsPaidOn === "function" && !mapsPaidOn())) { cb(row); return; }
+      fetch(location.origin + "/places?mode=text" + "&lat=" + (row.lat || (typeof homeLat === "function" ? homeLat() : "")) + "&lon=" + (row.lon || (typeof homeLon === "function" ? homeLon() : "")), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ textQuery: q, pageSize: 1, radius: 20000 })
@@ -16465,9 +16466,9 @@ function paint() {
         });
       }
       function googlePlaceRateNew(r, cb) {
-        var key = String((getSet() || {}).gmapsKey || "").trim();
+        var key = typeof gmapsKey === "function" ? gmapsKey() : "";
         if (!key || (typeof mapsPaidOn === "function" && !mapsPaidOn())) { cb(null); return; }
-        fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + (r.lat || homeLat()) + "&lon=" + (r.lon || homeLon()), {
+        fetch(location.origin + "/places?mode=text" + "&lat=" + (r.lat || homeLat()) + "&lon=" + (r.lon || homeLon()), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -16759,7 +16760,7 @@ function mustEatsFL() {
             pageSize: 20,
             locationRestriction: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(32000, miles * 1609.34) } }
           };
-          fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, {
+          fetch(location.origin + "/places?mode=text&lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
@@ -16857,7 +16858,7 @@ function mustEatsFL() {
             return false;
           }).catch(function () { return false; });
         }
-        getHit("/places?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles + "&key=" + encodeURIComponent(key), "Places proxy")
+        getHit("/places?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, "Places proxy")
           .then(function (ok) {
             if (ok) return true;
             return hit("https://places.googleapis.com/v1/places:searchNearby", "Places New");
@@ -24262,6 +24263,11 @@ function homeCountyGuess() {
           newsToCard("school-card", "live-school", "school", items, true);
         });
         fetchNewsQuery("(nixle OR \"community alert\" OR \"emergency management\") (" + place + " OR Charlotte OR Sarasota) when:2d", function (items) {
+          items = (items || []).filter(function (x) {
+            var t = String(x.title || "") + " " + String(x.desc || "");
+            if (/amendment|ballot|election|vote yes|vote no|school board race|candidate/i.test(t)) return false;
+            return /nixle|community alert|emergency management|evacuation|boil water|shelter|curfew/i.test(t);
+          });
           window.__nixleCivic = items.map(function (x) { return { kind: "nixle", title: "Local notice", body: x.title }; });
           newsToCard("nixle-card", "live-nixle", "nixle", items, true);
         });
