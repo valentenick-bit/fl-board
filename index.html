@@ -1571,6 +1571,10 @@
     .radar-tools { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:8px; }
     .radar-legend { margin:0; font-size:13px; opacity:.8; }
     .radar-tools .cam-pills { position:static; }
+
+    .nhc-copy { white-space:normal; max-height:22em; overflow:auto; line-height:1.45; font-size:14px; padding-right:6px; }
+    .nhc-copy p { margin:0 0 .75em; }
+    .nhc-copy .nhc-h { margin:.9em 0 .35em; font-size:12px; letter-spacing:.04em; text-transform:uppercase; opacity:.8; font-weight:700; }
     .storm-charts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:8px; }
     .storm-chart-col label { display:block; font-size:12px; opacity:.7; margin-bottom:4px; }
     .storm-hist-card .metric-spark { min-height:88px; }
@@ -4813,7 +4817,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 928;
+    window.BOARD_VER = 930;
 
     
     function communityShort() {
@@ -6727,7 +6731,9 @@ Cart shop:</textarea>
     }
     function bustImg(url) {
       if (!url) return url;
-      return url + (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+      if (/[?&]t=/.test(url)) return url;
+      var t = Math.floor(Date.now() / 600000);
+      return url + (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + t;
     }
 
     function stormMiles(s) {
@@ -7221,9 +7227,13 @@ Cart shop:</textarea>
           var key = b.getAttribute("data-storm");
           if (key === "ne") {
             window.__stormFocus = "ne";
+            window.__stormMapKey = "";
+            window.__stormMapGen = (window.__stormMapGen || 0) + 1;
           } else {
             window.__stormFocus = "tropical";
             window.__stormPick = Number(key);
+            window.__stormMapKey = "";
+            window.__stormMapGen = (window.__stormMapGen || 0) + 1;
             var lst = window.__stormPageList || [];
             window.__stormPickId = stormPickId(lst[window.__stormPick]);
             window.__stormAdvGen = (window.__stormAdvGen || 0) + 1;
@@ -7238,6 +7248,7 @@ Cart shop:</textarea>
         window.__chartBtkFor = "";
         if (typeof showStormTropical === "function") showStormTropical(false);
         if (typeof fillNorEasterMetrics === "function") fillNorEasterMetrics(ne0);
+        if (typeof paintBasinOutlookFrames === "function") paintBasinOutlookFrames(null);
         if (typeof noteFeed === "function") noteFeed("storms", true, (ne0.title || "Nor'easter") + " · " + place);
         var cardNe = document.getElementById("noreast-card");
         if (cardNe) cardNe.hidden = false;
@@ -7353,11 +7364,17 @@ Cart shop:</textarea>
       fetchStormAdvisory(s);
     }
     function paintBasinOutlookFrames(s) {
+      if (window.__stormFocus === "ne") s = null;
       var b = homeStormBasin();
       var lab = document.getElementById("storm-basin-label");
-      if (lab) lab.textContent = b.label;
+      if (lab) lab.textContent = s ? ((s.name || "Storm") + " · " + b.label) : b.label;
       var frames = document.getElementById("storm-frames");
+      var mapKey = (s && typeof stormPickId === "function" ? stormPickId(s) : "basin") + ":" + (s && s.lastUpdate ? s.lastUpdate : "outlook");
+      if (window.__stormMapKey === mapKey && frames && frames.querySelector("img") && !frames.querySelector(".broken")) return;
+      window.__stormMapKey = mapKey;
+      var gen = window.__stormMapGen = (window.__stormMapGen || 0) + 1;
       window.stormImgFallback = function (img) {
+        if (!img) return;
         var list = String(img.getAttribute("data-srcs") || "").split("|").filter(Boolean);
         var cur = list.indexOf(img.getAttribute("src"));
         if (cur < 0) cur = 0;
@@ -7365,17 +7382,20 @@ Cart shop:</textarea>
           img.src = list[cur + 1];
           return;
         }
-        img.parentNode.classList.add("broken");
+        if (img.parentNode) img.parentNode.classList.add("broken");
         window.__stormMapFail = (window.__stormMapFail || 0) + 1;
       };
       function drawStormFrames(extra) {
-        if (!frames) return;
+        if (!frames || gen !== window.__stormMapGen) return;
+        extra = (extra || []).filter(function (sl) { return sl && (sl.src || (sl.srcs && sl.srcs[0])); }).slice(0, 6);
         frames.innerHTML = extra.map(function (sl, i) {
-          var srcs = (sl.srcs || [sl.src]).map(function (u) { return bustImg(u); });
+          var srcs = (sl.srcs || [sl.src]).filter(Boolean);
           return '<div class="storm-frame' + (i === 0 ? " storm-wide" : "") + '"><img alt="' + sl.cap + '" data-srcs="' + srcs.join("|").replace(/"/g, "") + '" src="' + srcs[0] + '" onerror="window.stormImgFallback(this)"/><b>' + sl.cap + "</b></div>";
         }).join("");
+        if (frames) frames.hidden = false;
         var total = extra.length;
         setTimeout(function () {
+          if (gen !== window.__stormMapGen) return;
           var broken = frames.querySelectorAll(".broken").length;
           var ok = total - broken;
           if (typeof noteFeed === "function") noteFeed("storm-maps", broken === 0, ok + "/" + total + " maps");
@@ -7395,6 +7415,7 @@ Cart shop:</textarea>
       window.__stormMapFail = 0;
       if (s && typeof loadStormGraphics === "function") {
         loadStormGraphics(s, function (pics) {
+          if (gen !== window.__stormMapGen) return;
           drawStormFrames((pics || []).concat(extra));
         });
       } else {
@@ -7445,11 +7466,12 @@ Cart shop:</textarea>
         var cut = txt;
         var sum = txt.search(/SUMMARY OF/i);
         if (sum >= 0) cut = txt.slice(sum);
-        if (cut.length > 1000) cut = cut.slice(0, 980).replace(/\s+\S*$/, "") + "…";
         el.hidden = false;
-        el.innerHTML = "<b>Public advisory</b><span style=\"white-space:pre-wrap\">" + cut.replace(/</g, "&lt;") + "</span>";
+        var advN = (s.publicAdvisory && s.publicAdvisory.advNum) || "";
+        el.innerHTML = typeof renderNhcCard === "function"
+          ? renderNhcCard("Public advisory" + (s.name ? " · " + s.name : "") + (advN ? " #" + String(advN).replace(/^0+/, "") : ""), cut)
+          : ("<b>Public advisory</b><span>" + String(cut || "").replace(/</g, "<") + "</span>");
         if (typeof noteFeed === "function") noteFeed("hurr-adv", true, (s.name || "storm") + " TCP");
-        if (typeof paintStormPage === "function") paintStormPage();
         if (typeof writeTodayChips === "function") writeTodayChips();
       }
     }
@@ -12184,6 +12206,46 @@ function currentRotation() {
       if (name || idU) return true;
       return text.length < 80;
     }
+
+    function formatNhcParagraphs(raw) {
+      var lines = String(raw || "").replace(/\r/g, "").split("\n");
+      var paras = [];
+      var buf = "";
+      function flush() {
+        var t = buf.replace(/\s+/g, " ").trim();
+        if (t) paras.push({ t: t, h: false });
+        buf = "";
+      }
+      lines.forEach(function (line) {
+        var L = String(line || "").replace(/\s+$/g, "");
+        if (/^(ZCZC|NNNN|\$\$)/.test(L)) return;
+        if (/^(WTNT|FXCA|MIATCD|MIATCP|MIATCM|000 |AWIPS|NWS NATIONAL|NATIONAL HURRICANE CENTER)/i.test(L) && L.length < 80) return;
+        if (!L.trim()) { flush(); return; }
+        var headed = /^(SUMMARY OF|WATCHES AND WARNINGS|DISCUSSION AND OUTLOOK|HAZARDS AFFECTING LAND|FORECAST POSITIONS|HEADLINE|CENTER LOCATION|PRESENT MOVEMENT|MAXIMUM SUSTAINED|MINIMUM CENTRAL|WATCHES\/WARNINGS|NEXT ADVISORY)/i.test(L.trim());
+        if (headed) {
+          flush();
+          paras.push({ t: L.replace(/\s+/g, " ").trim(), h: true });
+          return;
+        }
+        var piece = L.replace(/\s+/g, " ").trim();
+        if (!buf) buf = piece;
+        else if (/[.!?:]$/.test(buf)) { flush(); buf = piece; }
+        else buf += " " + piece;
+      });
+      flush();
+      return paras;
+    }
+    function renderNhcCard(title, raw) {
+      var parts = formatNhcParagraphs(raw);
+      if (!parts.length) {
+        return "<b>" + title + "</b><span>" + String(raw || "").replace(/</g, "<").replace(/\s+/g, " ").trim() + "</span>";
+      }
+      var html = parts.map(function (p) {
+        var t = String(p.t).replace(/</g, "<");
+        return p.h ? ('<div class="nhc-h">' + t + "</div>") : ("<p>" + t + "</p>");
+      }).join("");
+      return "<b>" + title + '</b><span class="nhc-copy">' + html + "</span>";
+    }
     function paintDisc(txt, s) {
       var el = document.getElementById("hurr-disc");
       if (!el) return;
@@ -12191,14 +12253,15 @@ function currentRotation() {
         if (typeof noteFeed === "function") noteFeed("nhc-disc", false, "empty");
         return;
       }
-      var body = txt.length > 1400 ? txt.slice(0, 1380).replace(/\s+\S*$/, "") + "…" : txt;
+      var body = txt;
       var parsed = typeof parseNhcHeadline === "function" ? parseNhcHeadline(txt) : null;
       if (parsed && s && typeof applyStormRename === "function" && applyStormRename(s, parsed)) {
         try { if (typeof saveNhcCache === "function") saveNhcCache(window.__nhcAllStorms || []); } catch (eC) {}
         if (typeof paintStormPage === "function") paintStormPage();
         if (typeof writeTodayChips === "function") writeTodayChips();
       }
-      el.innerHTML = "<b>NHC discussion</b><span style=\"white-space:pre-wrap\">" + body.replace(/</g, "&lt;") + "</span>";
+      el.hidden = false;
+      el.innerHTML = typeof renderNhcCard === "function" ? renderNhcCard("NHC discussion · " + ((s && s.name) || "storm"), txt) : ("<b>NHC discussion</b><span>" + String(txt || "").replace(/</g, "<") + "</span>");
       if (typeof noteFeed === "function") noteFeed("nhc-disc", true, (s && s.name ? s.name + " TCD" : "TCD"));
     }
     function fetchHurrDisc(s) {
@@ -13016,6 +13079,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v930 — NHC discussion and public advisory cards unwrap hard line breaks into paragraphs and show the full product in a scrollable card.",
+      "v929 — Storm maps redraw only when the selected pill changes. Late NHC image callbacks are ignored so the 2nd and 3rd storms do not flicker.",
       "v928 — Advisory history card stays named Advisory history, hides on Nor'easter, and does not refetch an empty ATCF file in a loop.",
       "v927 — Storm pills sit first. Nor'easter card and metrics only when that pill is on. Charts clear and follow the selected storm's ATCF track.",
       "v926 — Prep sits after Emergency in weather rotation. Kit copy is pin-neutral; links follow the home address.",
