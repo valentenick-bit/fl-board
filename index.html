@@ -1592,6 +1592,9 @@
     .storm-grid .card b { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; opacity:.7; }
     .storm-grid .card span { display:block; font-size:18px; font-weight:650; margin-top:2px; }
     html.phone .storm-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    html.phone #storms .card span, html.phone #hurr-adv span, html.phone #hurr-disc span { display:block; white-space:pre-wrap; max-height:none; overflow:visible; }
+    html.phone #noreast-card { display:block; }
+    html.phone #storms .storm-dim { display:none !important; }
     html.dark .storm-grid .card { background:rgba(8,16,28,.55); }
     @media (orientation:portrait) {
       .storm-frames { grid-template-columns:1fr 1fr; }
@@ -4798,7 +4801,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 908;
+    window.BOARD_VER = 909;
 
     
     function communityShort() {
@@ -6979,6 +6982,20 @@ Cart shop:</textarea>
       if (pres.length >= 2) drawHistChart("storm-pres-chart", pres, "#1b2a4a", null, null, " mb");
       if (dist.length >= 2) drawHistChart("storm-dist-chart", dist, "#2a9d8f", 0, null, " mi");
     }
+    function stormTropicalEls() {
+      return ["storm-grid","hurr-stats","hurr-home","hurr-adv","hurr-disc","storm-hist-card","storm-wind-chart","storm-pres-chart","storm-dist-chart","storm-frames","storm-hero","storm-frame-gulf","storm-frame-atl"].map(function (id) {
+        return document.getElementById(id);
+      }).filter(Boolean);
+    }
+    function showStormTropical(on) {
+      stormTropicalEls().forEach(function (el) {
+        if (el.id === "hurr-stats") return;
+        el.hidden = !on;
+        el.classList.toggle("storm-dim", !on);
+      });
+      var charts = document.querySelectorAll("#storms .hist-chart, #storms .storm-metrics");
+      for (var i = 0; i < charts.length; i++) charts[i].hidden = !on;
+    }
     function paintStormPage() {
       var list = typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || window.__namedStorms || []) : (window.__namedStorms || []);
       window.__stormPageList = list;
@@ -6993,14 +7010,14 @@ Cart shop:</textarea>
       var atlF = document.getElementById("storm-frame-atl");
       var frames = document.getElementById("storm-frames");
       var place = typeof homePlace === "function" ? homePlace() : "home";
+      var ne0 = typeof paintNorEaster === "function" ? paintNorEaster() : (window.__norEaster || { on: false });
+      if (ne0.on && window.__stormFocus !== "tropical") {
+        var tropHome = list.some(function (x) { return typeof stormThreatensHome === "function" && stormThreatensHome(x); });
+        if (!tropHome) window.__stormFocus = "ne";
+      }
       if (lead) {
         var b0 = typeof homeStormBasin === "function" ? homeStormBasin() : { label: "this basin" };
         var threats = list.filter(function (x) { return typeof stormThreatensHome === "function" && stormThreatensHome(x); });
-        var ne0 = typeof paintNorEaster === "function" ? paintNorEaster() : (window.__norEaster || {});
-        if (ne0.on && window.__stormFocus !== "tropical") {
-          var tropHome = list.some(function (x) { return typeof stormThreatensHome === "function" && stormThreatensHome(x); });
-          if (!tropHome) window.__stormFocus = "ne";
-        }
         lead.textContent = list.length
           ? (list.length + " system" + (list.length > 1 ? "s" : "") + " NHC is tracking in the " + b0.label +
              (threats.length ? (". " + threats.length + " could reach " + place + ".") : (". None are a tropical threat to " + place + " yet.")) +
@@ -7036,18 +7053,18 @@ Cart shop:</textarea>
       }
       var s = selectedStorm();
       if (window.__stormFocus === "ne" && ne0 && ne0.on) {
+        if (typeof showStormTropical === "function") showStormTropical(false);
         if (stats) {
           stats.hidden = false;
-          stats.innerHTML = "<b>" + (ne0.title || "Nor'easter") + " on " + place + "</b><span>" + (document.getElementById("noreast-body") && document.getElementById("noreast-body").textContent || ne0.why || "NWS alerts are up for this pin.") + " Tropical systems stay on the other pick.</span>";
+          stats.innerHTML = "<b>" + (ne0.title || "Nor'easter") + " on " + place + "</b><span>" + (document.getElementById("noreast-body") && document.getElementById("noreast-body").textContent || ne0.why || "NWS alerts are up for this pin.") + " Fay stays on the other pick.</span>";
         }
-        if (grid) grid.hidden = true;
-        if (homeC) homeC.hidden = false;
         if (homeT) homeT.textContent = (ne0.title || "Nor'easter") + " — " + place;
         if (typeof noteFeed === "function") noteFeed("storms", true, (ne0.title || "Nor'easter") + " · " + place);
         var card = document.getElementById("noreast-card");
-        if (card && card.scrollIntoView) try { card.scrollIntoView({ block: "nearest" }); } catch (e2) {}
+        if (card) { card.hidden = false; try { card.scrollIntoView({ block: "nearest" }); } catch (e2) {} }
         return;
       }
+      if (typeof showStormTropical === "function") showStormTropical(true);
       if (typeof noteFeed === "function") {
         if (s) {
           var smi = stormMiles(s);
@@ -12734,6 +12751,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v909 — Switching Storms picks clears the other storm. Nor'easter view hides Fay maps and advisories.",
       "v908 — Storms page opens on the Nor'easter when that is what the Today chip showed. Fay stays a second pick.",
       "v907 — Storm class follows current wind: Fay at 45 kt is a tropical storm, not Category 1.",
       "v906 — Storms page treats a Wind Advisory or coastal/gale product in the Northeast belt as the weekend Nor'easter, not only winter-storm headlines.",
