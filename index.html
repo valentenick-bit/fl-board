@@ -130,6 +130,11 @@
           return;
         }
         var id = t.getAttribute("data-p");
+        if (id === "storms") {
+          var fromCane = !!(t.closest && t.closest("#today-cane, #chip-cane, .today-chip.cane"));
+          var neOn = window.__norEaster && window.__norEaster.on;
+          window.__stormFocus = (fromCane && neOn) ? "ne" : (neOn && !(window.__namedStorms || []).length ? "ne" : "tropical");
+        }
         if (id && document.getElementById(id)) {
           if (typeof window.showPage === "function") window.showPage(id);
           else {
@@ -4793,7 +4798,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 906;
+    window.BOARD_VER = 908;
 
     
     function communityShort() {
@@ -6676,19 +6681,26 @@ Cart shop:</textarea>
       if (/AL06/.test(id)) return "Fay";
       return n && !/^center$/i.test(n) ? n : "";
     }
+    function stormKt(s) {
+      var kt = Number(s && (s.intensity != null ? s.intensity : s.intensityKt));
+      if (!isFinite(kt) || kt <= 0) kt = Number(s && s.windKt);
+      return isFinite(kt) && kt > 0 ? kt : 0;
+    }
     function stormCategory(s) {
-      var kt = Number((s && s.intensity) || 0);
+      var kt = stormKt(s);
       var cls = String((s && s.classification) || "").toUpperCase();
-      if (cls === "HU" || kt >= 64) {
+      if (kt >= 64) {
         if (kt >= 137) return "Category 5 hurricane";
         if (kt >= 113) return "Category 4 hurricane";
         if (kt >= 96) return "Category 3 hurricane";
         if (kt >= 83) return "Category 2 hurricane";
         return "Category 1 hurricane";
       }
-      if (cls === "TS" || kt >= 34) return "Tropical storm";
-      if (cls === "TD" || kt > 0) return "Tropical depression";
+      if (kt >= 34 || cls === "TS") return "Tropical storm";
+      if (kt > 0 || cls === "TD") return "Tropical depression";
+      if (cls === "HU" && kt && kt < 64) return kt >= 34 ? "Tropical storm" : "Tropical depression";
       if (cls === "PTC") return "Potential tropical cyclone";
+      if (cls === "HU") return "Hurricane";
       return stormWord(s);
     }
     function ktToMph(kt) {
@@ -6985,6 +6997,10 @@ Cart shop:</textarea>
         var b0 = typeof homeStormBasin === "function" ? homeStormBasin() : { label: "this basin" };
         var threats = list.filter(function (x) { return typeof stormThreatensHome === "function" && stormThreatensHome(x); });
         var ne0 = typeof paintNorEaster === "function" ? paintNorEaster() : (window.__norEaster || {});
+        if (ne0.on && window.__stormFocus !== "tropical") {
+          var tropHome = list.some(function (x) { return typeof stormThreatensHome === "function" && stormThreatensHome(x); });
+          if (!tropHome) window.__stormFocus = "ne";
+        }
         lead.textContent = list.length
           ? (list.length + " system" + (list.length > 1 ? "s" : "") + " NHC is tracking in the " + b0.label +
              (threats.length ? (". " + threats.length + " could reach " + place + ".") : (". None are a tropical threat to " + place + " yet.")) +
@@ -6995,9 +7011,12 @@ Cart shop:</textarea>
             : ("NHC is not tracking a " + b0.label + " system that affects " + place + ". Outlook maps below still update."));
       }
       if (picks) {
-        picks.hidden = list.length < 2;
-        picks.innerHTML = list.map(function (s, i) {
-          var on = i === window.__stormPick;
+        var nePick = !!(ne0 && ne0.on);
+        var focusNe = window.__stormFocus === "ne" && nePick;
+        picks.hidden = (list.length + (nePick ? 1 : 0)) < 2;
+        var neBtn = nePick ? ('<button type="button" class="' + (focusNe ? "on" : "") + '" data-storm="ne">' + (ne0.title || "Nor\'easter") + "</button>") : "";
+        picks.innerHTML = neBtn + list.map(function (s, i) {
+          var on = !focusNe && i === window.__stormPick;
           var nm = s.name || s.Name || "Storm";
           var cls = s.classification || "";
           return '<button type="button" data-storm="' + i + '" class="' + (on ? "on" : "") + '">' + nm + (cls ? " · " + cls : "") + "</button>";
@@ -7005,11 +7024,30 @@ Cart shop:</textarea>
         picks.onclick = function (e) {
           var b = e.target.closest("[data-storm]");
           if (!b) return;
-          window.__stormPick = Number(b.getAttribute("data-storm"));
+          var key = b.getAttribute("data-storm");
+          if (key === "ne") {
+            window.__stormFocus = "ne";
+          } else {
+            window.__stormFocus = "tropical";
+            window.__stormPick = Number(key);
+          }
           paintStormPage();
         };
       }
       var s = selectedStorm();
+      if (window.__stormFocus === "ne" && ne0 && ne0.on) {
+        if (stats) {
+          stats.hidden = false;
+          stats.innerHTML = "<b>" + (ne0.title || "Nor'easter") + " on " + place + "</b><span>" + (document.getElementById("noreast-body") && document.getElementById("noreast-body").textContent || ne0.why || "NWS alerts are up for this pin.") + " Tropical systems stay on the other pick.</span>";
+        }
+        if (grid) grid.hidden = true;
+        if (homeC) homeC.hidden = false;
+        if (homeT) homeT.textContent = (ne0.title || "Nor'easter") + " — " + place;
+        if (typeof noteFeed === "function") noteFeed("storms", true, (ne0.title || "Nor'easter") + " · " + place);
+        var card = document.getElementById("noreast-card");
+        if (card && card.scrollIntoView) try { card.scrollIntoView({ block: "nearest" }); } catch (e2) {}
+        return;
+      }
       if (typeof noteFeed === "function") {
         if (s) {
           var smi = stormMiles(s);
@@ -7281,7 +7319,14 @@ Cart shop:</textarea>
         if (ice) flags.ice = true;
         if (squall) flags.squall = true;
         if (winterWarn || winterAdv) flags.winter = true;
-        hits.push({ event: ev || "Winter storm", headline: String(p.headline || "").replace(/\s+/g, " ").trim() });
+        hits.push({
+          event: ev || "Winter storm",
+          headline: String(p.headline || "").replace(/\s+/g, " ").trim(),
+          onset: p.onset || p.effective || "",
+          ends: p.ends || p.expires || "",
+          office: (p.senderName || "").replace("NWS ", ""),
+          desc: String(p.description || "").replace(/\s+/g, " ").trim().slice(0, 280)
+        });
       });
       var on = hits.length > 0;
       var title = flags.ne ? "Nor'easter" : flags.blizzard ? "Blizzard" : flags.ice ? "Ice storm" : flags.squall ? "Snow squall" : flags.winter ? "Winter storm" : (norEasterBelt() && hits.length ? "Nor'easter" : (hits[0] && hits[0].event) || "Coastal storm");
@@ -7296,17 +7341,31 @@ Cart shop:</textarea>
     }
     function paintNorEaster() {
       var ne = typeof scanNorEaster === "function" ? scanNorEaster() : (window.__norEaster || { on: false });
+      window.__norEaster = ne;
       var card = document.getElementById("noreast-card");
       var title = document.getElementById("noreast-title");
       var body = document.getElementById("noreast-body");
       var place = typeof homePlace === "function" ? homePlace() : "home";
       if (!card) return ne;
       card.hidden = !ne.on;
+      card.classList.toggle("storm-focus", !!(ne.on && window.__stormFocus === "ne"));
       if (title) title.textContent = ne.on ? (ne.title + " · " + place) : "Winter storm";
       if (body) {
-        body.textContent = ne.on
-          ? ("This pin is inside the " + String(ne.title || "winter storm").toLowerCase() + ". " + (ne.why || "NWS winter or coastal alerts are up for the home address."))
-          : ("No blizzard, winter storm, or Nor'easter on the home address.");
+        if (!ne.on) {
+          body.textContent = "No blizzard, winter storm, or Nor'easter on the home address.";
+        } else {
+          var bits = ["NWS has " + place + " inside this " + String(ne.title || "coastal storm").toLowerCase() + "."];
+          (ne.hits || []).slice(0, 4).forEach(function (h) {
+            var when = "";
+            try {
+              if (h.onset) when += new Date(h.onset).toLocaleString("en-US", { weekday: "short", hour: "numeric", month: "short", day: "numeric" });
+              if (h.ends) when += (when ? " to " : "until ") + new Date(h.ends).toLocaleString("en-US", { weekday: "short", hour: "numeric" });
+            } catch (e1) {}
+            bits.push((h.event || "Alert") + (h.office ? " · " + h.office : "") + (when ? " · " + when : "") + (h.headline ? ". " + h.headline : ""));
+          });
+          if (ne.why && bits.indexOf(ne.why) < 0) bits.push(ne.why);
+          body.textContent = bits.join(" ");
+        }
       }
       return ne;
     }
@@ -11574,6 +11633,10 @@ function currentRotation() {
     window.__hurrI = 0;
     window.__hurrTick = "";
     function stormWord(s) {
+      var kt = typeof stormKt === "function" ? stormKt(s) : Number(s && s.intensity) || 0;
+      if (kt >= 64) return "Hurricane";
+      if (kt >= 34) return "Tropical Storm";
+      if (kt > 0) return "Tropical Depression";
       var cls = (s && s.classification) || "";
       return cls === "HU" ? "Hurricane" : cls === "TS" ? "Tropical Storm" : cls === "TD" ? "Tropical Depression" : cls === "PTC" ? "Potential tropical" : cls || "Storm";
     }
@@ -12671,6 +12734,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v908 — Storms page opens on the Nor'easter when that is what the Today chip showed. Fay stays a second pick.",
+      "v907 — Storm class follows current wind: Fay at 45 kt is a tropical storm, not Category 1.",
       "v906 — Storms page treats a Wind Advisory or coastal/gale product in the Northeast belt as the weekend Nor'easter, not only winter-storm headlines.",
       "v905 — Places stays off with the Maps toggle. Status redacts API keys. Nixle ignores election headlines.",
       "v904 — Fay distance uses last ATCF fix when NHC omits lat/lon. School and TFR cards ignore lifted/statewide noise.",
