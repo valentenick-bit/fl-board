@@ -4811,7 +4811,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 919;
+    window.BOARD_VER = 920;
 
     
     function communityShort() {
@@ -11694,7 +11694,7 @@ function currentRotation() {
         if (window.__paused || window.__holdPage) { rot = setTimeout(step, 2000); return; }
         if (typeof syncStormDock === "function") syncStormDock();
         if (typeof rebuildDock === "function") rebuildDock();
-        pages = window.__storm ? warnList() : rotateList();
+        pages = typeof rotationPages === "function" ? rotationPages() : (window.__storm ? warnList() : rotateList());
         if (!pages || !pages.length) return;
         i = (i + 1) % pages.length;
         showPage(pages[i]);
@@ -12867,6 +12867,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v920 — Page rotation follows the dock left to right, including when weather/storm rotation is on.",
       "v919 — Weather briefing is spoken as a conversation: now, feel, wind, alerts, then what comes next.",
       "v918 — Weather ticker lists every NWS product on the pin and changes color by advisory / watch / warning / emergency.",
       "v917 — Storms page shows one Nor'easter card. The old summary card no longer repeats it.",
@@ -13471,14 +13472,52 @@ function currentRotation() {
       var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", comm: comm, traffic:"Traffic", ent:"Events", eats:"Restaurants", golf:"Golf", deliver:"Delivery", wink:"News", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prep", power:"Power", cam:"Views", radio:"Radio", house:"House", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", sports:"Teams", settings:"Settings" };
       return names[id] || id;
     }
+    function dockIds() {
+      var dock = document.getElementById("dock");
+      if (!dock) return [];
+      return Array.prototype.map.call(dock.querySelectorAll("button[data-p]"), function (b) {
+        return b.getAttribute("data-p");
+      }).filter(function (id) {
+        return id && (typeof rotVisible !== "function" || rotVisible(id));
+      });
+    }
+    function rotationPages() {
+      var fromDock = typeof dockIds === "function" ? dockIds() : [];
+      if (fromDock.length) {
+        if (window.__storm && typeof rotVisible === "function" && rotVisible("storms") && fromDock.indexOf("storms") < 0) {
+          var at = fromDock.indexOf("tenday");
+          fromDock.splice(at >= 0 ? at + 1 : 1, 0, "storms");
+        }
+        return fromDock;
+      }
+      return window.__storm && typeof warnList === "function" ? warnList() : (typeof rotateList === "function" ? rotateList() : []);
+    }
     function rebuildDock() {
       var dock = document.getElementById("dock");
       if (!dock) return;
-      var list = window.__storm ? (typeof warnList === "function" ? warnList() : []) : (typeof rotateList === "function" ? rotateList() : []);
-      var html = list.filter(Boolean).map(function (id) {
-        return '<button type="button" data-p="' + id + '">' + pageLabel(id) + "</button>";
-      }).join("");
-      dock.innerHTML = html;
+      var have = Array.prototype.map.call(dock.querySelectorAll("button[data-p]"), function (b) { return b.getAttribute("data-p"); });
+      if (!have.length) {
+        var list = typeof rotateList === "function" ? rotateList() : ["now","tenday","land","marine","sky","comm","ent","eats","golf"];
+        dock.innerHTML = list.filter(Boolean).map(function (id) {
+          return '<button type="button" data-p="' + id + '">' + (typeof pageLabel === "function" ? pageLabel(id) : id) + "</button>";
+        }).join("");
+      }
+      if (window.__storm && typeof rotVisible === "function" && rotVisible("storms")) {
+        if (!dock.querySelector('button[data-p="storms"]')) {
+          var wx = dock.querySelector('button[data-p="tenday"]');
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.setAttribute("data-p", "storms");
+          btn.textContent = typeof pageLabel === "function" ? pageLabel("storms") : "Storms";
+          if (wx && wx.nextSibling) dock.insertBefore(btn, wx.nextSibling);
+          else if (wx) dock.appendChild(btn);
+          else dock.insertBefore(btn, dock.firstChild);
+        }
+      } else {
+        var extra = dock.querySelector('button[data-p="storms"]');
+        var saved = (typeof loadRots === "function" && loadRots().normal) || [];
+        if (extra && saved.indexOf("storms") < 0) extra.remove();
+      }
       if (typeof paintCommNav === "function") paintCommNav();
       var n = Math.max(list.length, 2);
       dock.style.gridTemplateColumns = "repeat(" + n + ",1fr)";
@@ -13510,7 +13549,7 @@ function currentRotation() {
       return list;
     }
     function pagesFromDock() {
-      pages = rotateList();
+      pages = typeof rotationPages === "function" ? rotationPages() : rotateList();
       var on = document.querySelector(".page.on");
       var cur = on ? on.id : "now";
       if (cur === "cam" && pages.indexOf("cam") < 0) {
@@ -17847,9 +17886,10 @@ function mustEatsFL() {
     function startNamedRotation(kind) {
       window.__storm = kind === "storm";
       window.__holdPage = false;
-      pages = kind === "storm" ? warnList() : rotateList();
-      i = 0;
-      if (pages[0] && typeof showPage === "function") showPage(pages[0]);
+      if (typeof rebuildDock === "function") rebuildDock();
+      pages = typeof rotationPages === "function" ? rotationPages() : (kind === "storm" ? warnList() : rotateList());
+      i = Math.max(0, pages.indexOf((document.querySelector(".page.on") || {}).id));
+      if (i < 0) i = 0;
       if (typeof rebuildDock === "function") rebuildDock();
       if (typeof startRotate === "function") startRotate();
     }
