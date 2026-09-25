@@ -4801,7 +4801,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 915;
+    window.BOARD_VER = 917;
 
     
     function communityShort() {
@@ -6785,9 +6785,34 @@ Cart shop:</textarea>
       try { localStorage.setItem("commons-storm-hist", JSON.stringify(map)); } catch (e) {}
     }
     function stormAtcfFile(s) {
-      var id = String((s && (s.id || s.stormId || "")) || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (/^[a-z]{2}\d{6}$/.test(id)) return "b" + id + ".dat";
+      if (!s) return "";
+      var id = String((s.id || s.stormId || s.StormId || "")).toLowerCase().replace(/[^a-z0-9]/g, "");
+      var m = id.match(/([a-z]{2})(\d{2})(\d{4})/);
+      if (m) return "b" + m[1] + m[2] + m[3] + ".dat";
+      var name = String(s.name || s.Name || "").toLowerCase().replace(/[^a-z]/g, "");
+      if (!name || name === "center" || name === "invest") return "";
+      var pool = [].concat(window.__nhcAllStorms || [], window.__namedStorms || [], window.__stormPageList || []);
+      for (var i = 0; i < pool.length; i++) {
+        var o = pool[i];
+        if (!o || o === s) continue;
+        var n2 = String((o.name || o.Name) || "").toLowerCase().replace(/[^a-z]/g, "");
+        if (n2 !== name) continue;
+        var id2 = String((o.id || o.stormId || "")).toLowerCase().replace(/[^a-z0-9]/g, "");
+        var m2 = id2.match(/([a-z]{2})(\d{2})(\d{4})/);
+        if (m2) return "b" + m2[1] + m2[2] + m2[3] + ".dat";
+      }
       return "";
+    }
+    function stormForTrack(s) {
+      if (s && stormAtcfFile(s)) return s;
+      var lists = [window.__stormPageList, window.__namedStorms, window.__nhcAllStorms];
+      for (var L = 0; L < lists.length; L++) {
+        var arr = lists[L] || [];
+        for (var i = 0; i < arr.length; i++) {
+          if (arr[i] && stormAtcfFile(arr[i]) && !(typeof stormIsInvest === "function" && stormIsInvest(arr[i]))) return arr[i];
+        }
+      }
+      return s;
     }
     function parseAtcfLatLon(tok, isLon) {
       var t = String(tok || "").trim().toUpperCase();
@@ -6948,7 +6973,12 @@ Cart shop:</textarea>
         return;
       }
       var raw = "https://ftp.nhc.noaa.gov/atcf/btk/" + file;
-      var urls = [raw, "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw)];
+      var urls = [
+        raw,
+        "https://corsproxy.io/?" + encodeURIComponent(raw),
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw),
+        "https://r.jina.ai/http://ftp.nhc.noaa.gov/atcf/btk/" + file
+      ];
       function next(i) {
         if (i >= urls.length) { if (done) done([]); return; }
         fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
@@ -6994,11 +7024,13 @@ Cart shop:</textarea>
     }
     function paintStormCharts(s) {
       if (!s || typeof drawHistChart !== "function") return;
-      var btk = (window.__btkPts && window.__btkFile && window.__btkPts.length) ? window.__btkPts.slice() : [];
+      s = typeof stormForTrack === "function" ? stormForTrack(s) : s;
+      var want = stormAtcfFile(s);
+      var btk = (window.__btkPts && window.__btkFile === want && window.__btkPts.length) ? window.__btkPts.slice() : [];
       var rows = btk.filter(function (p) { return p && isFinite(p.t); }).sort(function (a, b) { return a.t - b.t; });
-      if (rows.length < 2 && typeof loadStormBtk === "function" && window.__chartBtkFor !== stormPickId(s)) {
-        window.__chartBtkFor = stormPickId(s);
-        loadStormBtk(s, function () { paintStormCharts(s); });
+      if (rows.length < 2 && typeof loadStormBtk === "function" && window.__chartBtkFor !== want) {
+        window.__chartBtkFor = want || "none";
+        loadStormBtk(s, function () { window.__chartBtkFor = ""; paintStormCharts(s); });
       }
       if (typeof noteFeed === "function") noteFeed("storm-hist", rows.length > 0, (s.name || "storm") + " · " + rows.length + " official fixes");
       function series(field) {
@@ -7092,10 +7124,7 @@ Cart shop:</textarea>
       var s = selectedStorm();
       if (window.__stormFocus === "ne" && ne0 && ne0.on) {
         if (typeof showStormTropical === "function") showStormTropical(false);
-        if (stats) {
-          stats.hidden = false;
-          stats.innerHTML = "<b>" + (ne0.title || "Nor'easter") + " on " + place + "</b><span>" + (document.getElementById("noreast-body") && document.getElementById("noreast-body").textContent || ne0.why || "NWS alerts are up for this pin.") + " Fay stays on the other pick.</span>";
-        }
+        if (stats) stats.hidden = true;
         if (homeT) homeT.textContent = (ne0.title || "Nor'easter") + " — " + place;
         if (typeof noteFeed === "function") noteFeed("storms", true, (ne0.title || "Nor'easter") + " · " + place);
         var card = document.getElementById("noreast-card");
@@ -12828,6 +12857,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v917 — Storms page shows one Nor'easter card. The old summary card no longer repeats it.",
+      "v916 — Advisory charts always use the named storm's NHC best-track file (Fay = bal062026.dat).",
       "v915 — Storm charts plot NHC ATCF best-track fixes, not each device's localStorage tally.",
       "v914 — Pin save publishes ZIP/lat/lon. Events load events-{zip}.json first, then community rows.",
       "v913 — Events page lists community calendar plus pin-local events. BeachWalk rows no longer require a Florida pin.",
