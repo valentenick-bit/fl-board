@@ -4793,7 +4793,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 905;
+    window.BOARD_VER = 906;
 
     
     function communityShort() {
@@ -7269,9 +7269,9 @@ Cart shop:</textarea>
         var squall = /snow squall/.test(ev + " " + blob);
         var winterWarn = /winter storm warning|winter storm watch/.test(blob) || /^winter storm/i.test(ev);
         var winterAdv = /winter weather/.test(ev + " " + blob);
-        var coastal = /coastal flood|high surf|coastal hazard/.test(ev + " " + blob);
-        var windy = /high wind|gale warning|storm warning|hurricane force wind/.test(ev + " " + blob);
-        var keep = sure || blizzard || ice || squall || winterWarn || (winterAdv && (norEasterBelt() || coastal || windy));
+        var coastal = /coastal flood|high surf|coastal hazard|rip current/.test(ev + " " + blob);
+        var windy = /high wind|gale warning|storm warning|hurricane force wind|wind advisory|wind warning/.test(ev + " " + blob);
+        var keep = sure || blizzard || ice || squall || winterWarn || (winterAdv && (norEasterBelt() || coastal || windy)) || ((windy || coastal) && norEasterBelt());
         if (!keep) return;
         var key = ev || blob.slice(0, 40);
         if (seen[key]) return;
@@ -7284,7 +7284,7 @@ Cart shop:</textarea>
         hits.push({ event: ev || "Winter storm", headline: String(p.headline || "").replace(/\s+/g, " ").trim() });
       });
       var on = hits.length > 0;
-      var title = flags.ne ? "Nor'easter" : flags.blizzard ? "Blizzard" : flags.ice ? "Ice storm" : flags.squall ? "Snow squall" : flags.winter ? "Winter storm" : (hits[0] && hits[0].event) || "Winter storm";
+      var title = flags.ne ? "Nor'easter" : flags.blizzard ? "Blizzard" : flags.ice ? "Ice storm" : flags.squall ? "Snow squall" : flags.winter ? "Winter storm" : (norEasterBelt() && hits.length ? "Nor'easter" : (hits[0] && hits[0].event) || "Coastal storm");
       var why = hits.slice(0, 3).map(function (h) {
         var line = h.event;
         if (h.headline && h.headline.toLowerCase().indexOf(h.event.toLowerCase()) < 0) line += " — " + h.headline.slice(0, 120);
@@ -12671,6 +12671,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v906 — Storms page treats a Wind Advisory or coastal/gale product in the Northeast belt as the weekend Nor'easter, not only winter-storm headlines.",
       "v905 — Places stays off with the Maps toggle. Status redacts API keys. Nixle ignores election headlines.",
       "v904 — Fay distance uses last ATCF fix when NHC omits lat/lon. School and TFR cards ignore lifted/statewide noise.",
       "v903 — Golf page falls back to cached / OSM courses when OpenGolf returns 429. Empty list is none, not down.",
