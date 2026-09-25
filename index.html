@@ -4801,7 +4801,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 909;
+    window.BOARD_VER = 910;
 
     
     function communityShort() {
@@ -6723,22 +6723,54 @@ Cart shop:</textarea>
       var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(c.lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
       return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
     }
+    function stormPickId(s) {
+      return String((s && (s.id || s.binNumber || s.name || s.Name)) || "").toUpperCase();
+    }
+    function stormPinStamp() {
+      var z = "", lat = "", lon = "";
+      try {
+        var set = typeof getSet === "function" ? getSet() : {};
+        z = String(set.zip || "").replace(/\D/g, "").slice(0, 5);
+        lat = (typeof homeLat === "function" ? homeLat() : set.lat);
+        lon = (typeof homeLon === "function" ? homeLon() : set.lon);
+      } catch (e0) {}
+      return z + ":" + Number(lat).toFixed(2) + ":" + Number(lon).toFixed(2);
+    }
+    function syncStormPin() {
+      var stamp = stormPinStamp();
+      if (window.__stormPinStamp && window.__stormPinStamp !== stamp) {
+        window.__stormPick = null;
+        window.__stormPickId = "";
+        window.__stormFocus = null;
+        window.__stormAdvGen = (window.__stormAdvGen || 0) + 1;
+      }
+      window.__stormPinStamp = stamp;
+    }
     function pickClosestStorm() {
       var list = window.__stormPageList || (typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || window.__namedStorms || []) : (window.__namedStorms || []));
       var best = 0, bestM = 1e9;
       list.forEach(function (s, i) {
         var m = stormMiles(s);
+        if (!isFinite(m)) m = 1e8;
         if (m < bestM) { bestM = m; best = i; }
       });
       window.__stormPick = best;
+      window.__stormPickId = stormPickId(list[best]);
       return list[best] || null;
     }
     function selectedStorm() {
       var list = window.__stormPageList || (typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || window.__namedStorms || []) : (window.__namedStorms || []));
       if (!list.length) return null;
-      var i = window.__stormPick;
-      if (i == null || i < 0 || i >= list.length) return pickClosestStorm();
-      return list[i];
+      var id = window.__stormPickId;
+      if (id) {
+        for (var i = 0; i < list.length; i++) {
+          if (stormPickId(list[i]) === id) { window.__stormPick = i; return list[i]; }
+        }
+      }
+      var i2 = window.__stormPick;
+      if (i2 == null || i2 < 0 || i2 >= list.length) return pickClosestStorm();
+      window.__stormPickId = stormPickId(list[i2]);
+      return list[i2];
     }
     function stormHistKey(s) {
       return String((s && (s.id || s.binNumber || s.name)) || "storm").toLowerCase();
@@ -6997,6 +7029,7 @@ Cart shop:</textarea>
       for (var i = 0; i < charts.length; i++) charts[i].hidden = !on;
     }
     function paintStormPage() {
+      if (typeof syncStormPin === "function") syncStormPin();
       var list = typeof homeBasinStorms === "function" ? homeBasinStorms(window.__nhcAllStorms || window.__namedStorms || []) : (window.__namedStorms || []);
       window.__stormPageList = list;
       if (window.__stormPick == null || window.__stormPick >= list.length) pickClosestStorm();
@@ -7035,8 +7068,8 @@ Cart shop:</textarea>
         picks.innerHTML = neBtn + list.map(function (s, i) {
           var on = !focusNe && i === window.__stormPick;
           var nm = s.name || s.Name || "Storm";
-          var cls = s.classification || "";
-          return '<button type="button" data-storm="' + i + '" class="' + (on ? "on" : "") + '">' + nm + (cls ? " · " + cls : "") + "</button>";
+          var word = typeof stormWord === "function" ? stormWord(s) : (s.classification || "");
+          return '<button type="button" data-storm="' + i + '" class="' + (on ? "on" : "") + '">' + nm + (word ? " · " + word : "") + "</button>";
         }).join("");
         picks.onclick = function (e) {
           var b = e.target.closest("[data-storm]");
@@ -7047,6 +7080,9 @@ Cart shop:</textarea>
           } else {
             window.__stormFocus = "tropical";
             window.__stormPick = Number(key);
+            var lst = window.__stormPageList || [];
+            window.__stormPickId = stormPickId(lst[window.__stormPick]);
+            window.__stormAdvGen = (window.__stormAdvGen || 0) + 1;
           }
           paintStormPage();
         };
@@ -7230,7 +7266,10 @@ Cart shop:</textarea>
       var el = document.getElementById("hurr-adv");
       if (!el) return;
       if (!s) { el.hidden = true; return; }
+      var gen = window.__stormAdvGen = (window.__stormAdvGen || 0);
+      var want = stormPickId(s);
       fetchNwsNhc("TCP", s, function (txt) {
+        if (gen !== window.__stormAdvGen || stormPickId(selectedStorm()) !== want) return;
         if (!txt || (!looksOfficialNhc(txt) && txt.length < 80)) {
           var url = s.publicAdvisory && s.publicAdvisory.url;
           if (!url) {
@@ -11902,7 +11941,13 @@ function currentRotation() {
               if (/KNHC/i.test(it.issuingOffice || "") && it.wmoCollectiveId && it.wmoCollectiveId.indexOf(wmo.slice(0, 5)) === 0) pick = it;
             });
           }
-          pick = pick || items[0];
+          if (!pick) {
+            items.forEach(function (it) {
+              if (pick) return;
+              var blob = String((it.productName || "") + " " + (it.issuanceTime || "")).toUpperCase();
+              if (name && blob.indexOf(String(name).toUpperCase()) >= 0 && /KNHC/i.test(it.issuingOffice || "")) pick = it;
+            });
+          }
           if (!pick || !pick["@id"]) throw new Error("no product");
           return fetch(pick["@id"], { headers: hdr, cache: "no-store" }).then(function (r) { return r.json(); });
         })
@@ -11919,6 +11964,7 @@ function currentRotation() {
       var name = String((s && s.name) || "");
       if (idU && text.toUpperCase().indexOf(idU) >= 0) return false;
       if (name && new RegExp("\\b" + name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&") + "\\b", "i").test(text)) return false;
+      if (name || idU) return true;
       return text.length < 80;
     }
     function paintDisc(txt, s) {
@@ -11984,7 +12030,9 @@ function currentRotation() {
             if (pick) return;
             if (it.wmoCollectiveId === "ABNT20" || /KNHC/i.test(it.issuingOffice || "")) pick = it;
           });
-          pick = pick || items[0];
+          if (!pick) { items.forEach(function (it) { if (pick) return; var blob = String((it.productName||"")+" "+(it.wmoCollectiveId||"")).toUpperCase(); if (name && blob.indexOf(String(name).toUpperCase())>=0) pick = it; }); }
+          if (!pick) throw new Error("no product");
+          //
           if (!pick || !pick["@id"]) throw new Error("no TWO");
           return fetch(pick["@id"], { headers: hdr }).then(function (r) { return r.json(); });
         })
@@ -12751,6 +12799,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v910 — Storms pick is by storm id, resets when the home pin changes, and NHC text must name the selected storm.",
       "v909 — Switching Storms picks clears the other storm. Nor'easter view hides Fay maps and advisories.",
       "v908 — Storms page opens on the Nor'easter when that is what the Today chip showed. Fay stays a second pick.",
       "v907 — Storm class follows current wind: Fay at 45 kt is a tropical storm, not Category 1.",
