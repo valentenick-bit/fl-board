@@ -4811,7 +4811,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 922;
+    window.BOARD_VER = 923;
 
     
     function communityShort() {
@@ -12867,6 +12867,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v923 — Weather rotation rebuilds the dock to only Weather / Storms / Sea / Contacts. Briefing wind uses the first mph reading and talks in full sentences.",
       "v922 — Dock rebuild no longer crashes when weather rotation is on (undefined list.length).",
       "v921 — Active weather ticker parks sports/today/board briefing. Weather briefing stays; settings restore when the alert bar drops.",
       "v920 — Page rotation follows the dock left to right, including when weather/storm rotation is on.",
@@ -13484,44 +13485,22 @@ function currentRotation() {
       });
     }
     function rotationPages() {
-      var fromDock = typeof dockIds === "function" ? dockIds() : [];
-      if (fromDock.length) {
-        if (window.__storm && typeof rotVisible === "function" && rotVisible("storms") && fromDock.indexOf("storms") < 0) {
-          var at = fromDock.indexOf("tenday");
-          fromDock.splice(at >= 0 ? at + 1 : 1, 0, "storms");
-        }
-        return fromDock;
-      }
-      return window.__storm && typeof warnList === "function" ? warnList() : (typeof rotateList === "function" ? rotateList() : []);
+      if (window.__storm && typeof warnList === "function") return warnList();
+      if (typeof rotateList === "function") return rotateList();
+      return typeof dockIds === "function" ? dockIds() : [];
     }
     function rebuildDock() {
       var dock = document.getElementById("dock");
       if (!dock) return;
-      var have = Array.prototype.map.call(dock.querySelectorAll("button[data-p]"), function (b) { return b.getAttribute("data-p"); });
-      if (!have.length) {
-        var list = typeof rotateList === "function" ? rotateList() : ["now","tenday","land","marine","sky","comm","ent","eats","golf"];
-        dock.innerHTML = list.filter(Boolean).map(function (id) {
-          return '<button type="button" data-p="' + id + '">' + (typeof pageLabel === "function" ? pageLabel(id) : id) + "</button>";
-        }).join("");
-      }
-      if (window.__storm && typeof rotVisible === "function" && rotVisible("storms")) {
-        if (!dock.querySelector('button[data-p="storms"]')) {
-          var wx = dock.querySelector('button[data-p="tenday"]');
-          var btn = document.createElement("button");
-          btn.type = "button";
-          btn.setAttribute("data-p", "storms");
-          btn.textContent = typeof pageLabel === "function" ? pageLabel("storms") : "Storms";
-          if (wx && wx.nextSibling) dock.insertBefore(btn, wx.nextSibling);
-          else if (wx) dock.appendChild(btn);
-          else dock.insertBefore(btn, dock.firstChild);
-        }
-      } else {
-        var extra = dock.querySelector('button[data-p="storms"]');
-        var saved = (typeof loadRots === "function" && loadRots().normal) || [];
-        if (extra && saved.indexOf("storms") < 0) extra.remove();
-      }
+      var list = window.__storm
+        ? (typeof warnList === "function" ? warnList() : ["tenday","storms","marine","contacts"])
+        : (typeof rotateList === "function" ? rotateList() : ["now","tenday","land","marine","sky","comm","ent","eats","golf"]);
+      if (!list || !list.length) list = ["now","tenday"];
+      dock.innerHTML = list.filter(Boolean).map(function (id) {
+        return '<button type="button" data-p="' + id + '">' + (typeof pageLabel === "function" ? pageLabel(id) : id) + "</button>";
+      }).join("");
       if (typeof paintCommNav === "function") paintCommNav();
-      var n = Math.max(dock.querySelectorAll("button[data-p]").length, 2);
+      var n = Math.max(list.length, 2);
       dock.style.gridTemplateColumns = "repeat(" + n + ",1fr)";
       if (typeof showPage === "function") {
         var on = document.querySelector(".page.on");
@@ -17890,9 +17869,11 @@ function mustEatsFL() {
       window.__holdPage = false;
       if (typeof rebuildDock === "function") rebuildDock();
       pages = typeof rotationPages === "function" ? rotationPages() : (kind === "storm" ? warnList() : rotateList());
+      if (kind === "storm" && pages[0] && typeof showPage === "function") {
+        if (pages.indexOf((document.querySelector(".page.on") || {}).id) < 0) showPage(pages[0]);
+      }
       i = Math.max(0, pages.indexOf((document.querySelector(".page.on") || {}).id));
       if (i < 0) i = 0;
-      if (typeof rebuildDock === "function") rebuildDock();
       if (typeof startRotate === "function") startRotate();
     }
     (function bindMenu() {
@@ -23536,8 +23517,16 @@ function drawSurgeChart(points) {
           var sky = live("live-sky") || live("now-line");
           var temp = live("live-temp") || live("header-temp");
           var feel = live("live-feels") || live("live-feels-row");
-          var wind = live("wind") || live("live-sea-wind");
-          var gust = live("gusts") || live("live-wind-peak");
+          var wind = live("wind") || live("header-wind") || live("live-wind-peak");
+          var gust = live("gusts");
+          function firstMph(txt) {
+            var m = String(txt || "").match(/(\d{1,3})\s*(mph|kt|knots)?/i);
+            if (!m) return NaN;
+            var n = Number(m[1]);
+            if (/kt|knot/i.test(m[2] || "")) n = Math.round(n * 1.15078);
+            if (n > 80 && !(window.__wxRisk && (window.__wxRisk.hurr || window.__wxRisk.cane))) return NaN;
+            return n;
+          }
           var rh = live("humidity") || live("live-rh");
           var dew = live("dew");
           var hourly = live("hourly");
@@ -23559,8 +23548,9 @@ function drawSurgeChart(points) {
           if (isFinite(tNum) && isFinite(fNum) && Math.abs(fNum - tNum) >= 3 && sky && sky.indexOf("feels") < 0) {
             story.push("That extra warmth is the humidity talking, so plan for " + fNum + " when you step outside.");
           }
-          var windN = parseInt(String(wind).replace(/[^\d]/g, ""), 10);
-          var gustN = parseInt(String(gust).replace(/[^\d]/g, ""), 10);
+          var windN = firstMph(wind);
+          var gustN = firstMph(gust);
+          if (!isFinite(gustN) || gustN <= windN) gustN = firstMph(live("live-wind-peak"));
           if (isFinite(windN) && windN >= 15) {
             var wline = "The wind is doing real work at about " + windN + " miles an hour";
             if (isFinite(gustN) && gustN > windN + 4) wline += ", with gusts up near " + gustN;
@@ -23940,7 +23930,7 @@ function cardBits(id) {
       if (title) parts.push(title);
       if (body && (!title || body.toLowerCase() !== title.toLowerCase())) parts.push(body);
       if (act && parts.join(" ").toLowerCase().indexOf(act.slice(0, 20).toLowerCase()) < 0) parts.push(act);
-      var out = parts.join(" ").replace(/\s+/g, " ").trim();
+      var out = parts.join(" ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([.!?])([A-Za-z])/g, "$1 $2").replace(/\s+/g, " ").trim();
       return typeof spaceSentences === "function" ? spaceSentences(out) : out;
       } catch (eA) {
         return String((opts && (opts.title || opts.body)) || "Alert.");
@@ -24499,6 +24489,7 @@ function homeCountyGuess() {
           window.__storm = false;
           startRotate();
         }
+        if (typeof rebuildDock === "function") rebuildDock();
         pagesFromDock();
         var deskWarn = (typeof deskWarnLines === "function") ? deskWarnLines() : [];
         if (!keep.length && !deskWarn.length) {
