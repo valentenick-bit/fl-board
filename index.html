@@ -3544,11 +3544,11 @@ Cart shop:</textarea>
             <section id="storms" class="page sheet">
         <h2 data-k="Named storms">Storms</h2>
         <p class="pill-key" id="storm-lead">Named storms in this basin show here. The page only joins the rotation when one can reach the home pin.</p>
+        <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
         <div class="card" id="noreast-card" hidden>
           <b id="noreast-title">Nor'easter</b>
           <span id="noreast-body">Checking coastal winter alerts for this pin…</span>
         </div>
-        <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
         <div class="card" id="hurr-stats"><b>No named storm on this pin</b><span>Quiet until NHC lists a storm that can affect the address on Account.</span></div>
         <div class="metric-table storm-metrics" id="storm-grid" hidden>
           <div class="metric-row"><label>Winds</label><strong id="live-storm-wind">—</strong><div></div></div>
@@ -4813,7 +4813,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 926;
+    window.BOARD_VER = 927;
 
     
     function communityShort() {
@@ -7036,11 +7036,19 @@ Cart shop:</textarea>
       saveStormHist(map);
     }
     function paintStormCharts(s) {
-      if (!s || typeof drawHistChart !== "function") return;
+      if (typeof clearStormCharts === "function") clearStormCharts();
+      if (!s || window.__stormFocus === "ne" || typeof drawHistChart !== "function") return;
       s = typeof stormForTrack === "function" ? stormForTrack(s) : s;
       var want = stormAtcfFile(s);
+      if (window.__btkFile && window.__btkFile !== want) {
+        window.__btkPts = [];
+        window.__btkFile = "";
+      }
       var btk = (window.__btkPts && window.__btkFile === want && window.__btkPts.length) ? window.__btkPts.slice() : [];
       var rows = btk.filter(function (p) { return p && isFinite(p.t); }).sort(function (a, b) { return a.t - b.t; });
+      rows.forEach(function (p) {
+        if (p.mi == null && isFinite(p.lat) && isFinite(p.lon) && typeof milesLatLon === "function") p.mi = milesLatLon(p.lat, p.lon);
+      });
       if (rows.length < 2 && typeof loadStormBtk === "function" && window.__chartBtkFor !== want) {
         window.__chartBtkFor = want || "none";
         loadStormBtk(s, function () { window.__chartBtkFor = ""; paintStormCharts(s); });
@@ -7074,6 +7082,72 @@ Cart shop:</textarea>
       });
       var charts = document.querySelectorAll("#storms .hist-chart, #storms .storm-metrics");
       for (var i = 0; i < charts.length; i++) charts[i].hidden = !on;
+    }
+
+    function clearStormCharts() {
+      ["storm-wind-chart", "storm-pres-chart", "storm-dist-chart"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = "";
+      });
+    }
+    function milesLatLon(lat, lon) {
+      if (!isFinite(lat) || !isFinite(lon) || typeof homeLat !== "function") return NaN;
+      var R = 3958.8, toR = Math.PI / 180;
+      var dLat = (lat - homeLat()) * toR, dLon = (lon - homeLon()) * toR;
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(homeLat() * toR) * Math.cos(lat * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+    }
+    function fillNorEasterMetrics(ne) {
+      var place = typeof homePlace === "function" ? homePlace() : "home";
+      var stats = document.getElementById("hurr-stats");
+      var grid = document.getElementById("storm-grid");
+      var hist = document.getElementById("storm-hist-card");
+      var note = document.getElementById("storm-hist-note");
+      var title = document.getElementById("storm-hist-title");
+      var homeC = document.getElementById("hurr-home");
+      var homeT = document.getElementById("live-storm-home");
+      function live(id) {
+        var el = document.getElementById(id);
+        return el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : "";
+      }
+      function firstNum(txt) {
+        var m = String(txt || "").match(/(\d{1,3})/);
+        return m ? m[1] : "";
+      }
+      var hit = (ne && ne.hits && ne.hits[0]) || null;
+      var wind = firstNum(live("wind") || live("header-wind") || live("live-wind-peak"));
+      var pres = live("live-pres") || live("pressure") || "—";
+      var until = "";
+      if (hit && hit.ends) {
+        try { until = new Date(hit.ends).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }); } catch (eU) {}
+      }
+      if (stats) {
+        stats.hidden = false;
+        stats.innerHTML = "<b>" + ((ne && ne.title) || "Nor'easter") + " on " + place + "</b><span>" +
+          String((ne && (ne.why || (hit && hit.event))) || "NWS has a coastal or winter product on this pin.") +
+          (until ? " In effect through " + until + "." : "") + " This is not a tropical cyclone, so there is no NHC wind or cone package.</span>";
+      }
+      if (grid) {
+        grid.hidden = false;
+        function setTxt(id, v) { var el = document.getElementById(id); if (el) el.textContent = v || "—"; }
+        setTxt("live-storm-wind", wind ? (wind + " mph at the pin") : "—");
+        setTxt("live-storm-pres", pres);
+        setTxt("live-storm-mi", "On this pin");
+        setTxt("live-storm-move", "Local NWS product");
+        setTxt("live-storm-adv", hit ? (hit.event + (until ? " · " + until : "")) : ((ne && ne.title) || "Advisory"));
+      }
+      if (hist) {
+        hist.hidden = false;
+        if (title) title.textContent = ((ne && ne.title) || "Nor'easter") + " · this pin";
+        if (note) note.textContent = "NWS winter and wind products do not publish a numbered best-track like NHC. These charts stay empty on purpose so Fay's history does not linger.";
+      }
+      if (typeof clearStormCharts === "function") clearStormCharts();
+      if (homeC) homeC.hidden = false;
+      if (homeT) homeT.textContent = "Local product for " + place + ". Pick a named storm pill to see NHC winds, pressure, and advisory charts.";
+      ["hurr-adv","hurr-disc"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.hidden = true;
+      });
     }
     function paintStormPage() {
       if (typeof syncStormPin === "function") syncStormPin();
@@ -7110,7 +7184,7 @@ Cart shop:</textarea>
       if (picks) {
         var nePick = !!(ne0 && ne0.on);
         var focusNe = window.__stormFocus === "ne" && nePick;
-        picks.hidden = (list.length + (nePick ? 1 : 0)) < 2;
+        picks.hidden = (list.length + (nePick ? 1 : 0)) < 1;
         var neBtn = nePick ? ('<button type="button" class="' + (focusNe ? "on" : "") + '" data-storm="ne">' + (ne0.title || "Nor\'easter") + "</button>") : "";
         picks.innerHTML = neBtn + list.map(function (s, i) {
           var on = !focusNe && i === window.__stormPick;
@@ -7136,14 +7210,18 @@ Cart shop:</textarea>
       }
       var s = selectedStorm();
       if (window.__stormFocus === "ne" && ne0 && ne0.on) {
+        window.__btkFile = "";
+        window.__btkPts = [];
+        window.__chartBtkFor = "";
         if (typeof showStormTropical === "function") showStormTropical(false);
-        if (stats) stats.hidden = true;
-        if (homeT) homeT.textContent = (ne0.title || "Nor'easter") + " — " + place;
+        if (typeof fillNorEasterMetrics === "function") fillNorEasterMetrics(ne0);
         if (typeof noteFeed === "function") noteFeed("storms", true, (ne0.title || "Nor'easter") + " · " + place);
-        var card = document.getElementById("noreast-card");
-        if (card) { card.hidden = false; try { card.scrollIntoView({ block: "nearest" }); } catch (e2) {} }
+        var cardNe = document.getElementById("noreast-card");
+        if (cardNe) cardNe.hidden = false;
         return;
       }
+      var cardOff = document.getElementById("noreast-card");
+      if (cardOff) cardOff.hidden = true;
       if (typeof showStormTropical === "function") showStormTropical(true);
       if (typeof noteFeed === "function") {
         if (s) {
@@ -7447,7 +7525,7 @@ Cart shop:</textarea>
       var body = document.getElementById("noreast-body");
       var place = typeof homePlace === "function" ? homePlace() : "home";
       if (!card) return ne;
-      card.hidden = !ne.on;
+      card.hidden = !(ne.on && window.__stormFocus === "ne");
       card.classList.toggle("storm-focus", !!(ne.on && window.__stormFocus === "ne"));
       if (title) title.textContent = ne.on ? (ne.title + " · " + place) : "Winter storm";
       if (body) {
@@ -12915,6 +12993,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v927 — Storm pills sit first. Nor'easter card and metrics only when that pill is on. Charts clear and follow the selected storm's ATCF track.",
       "v926 — Prep sits after Emergency in weather rotation. Kit copy is pin-neutral; links follow the home address.",
       "v925 — Emergency page follows the home pin: state from ZIP, local numbers, evac links, power utility. Florida-only FPL/Key copy stays on 34223.",
       "v924 — Weather briefing speaks the local wind advisory and, only if it matters, a far-away named storm. No chip-label soup.",
