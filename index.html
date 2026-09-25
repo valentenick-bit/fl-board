@@ -1285,6 +1285,17 @@
     .check-list li { margin:4px 0; color:var(--muted); font-size:13px; }
     #ac-filter-date { margin-top:8px; padding:6px 8px; border-radius:8px; border:1px solid var(--hair); background:#fff; }
     html.dark #ac-filter-date { background:#1b1830; color:#efe4c8; }
+    .maint-row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px 12px; margin-top:10px; padding-top:8px; border-top:1px solid var(--hair); }
+    #house-maint .maint-row:first-child, #prep-gear .maint-row:first-child { border-top:0; padding-top:0; }
+    .maint-row .maint-meta { flex:1 1 220px; min-width:0; }
+    .maint-row .maint-meta b { font-size:15px; margin:0 0 2px; font-family:Manrope,system-ui,sans-serif; }
+    .maint-row .maint-note { display:block; font-size:13px; line-height:1.35; }
+    .maint-row input[type=date] { margin:0; padding:6px 8px; border-radius:8px; border:1px solid var(--hair); background:#fff; font:inherit; }
+    html.dark .maint-row input[type=date] { background:#1b1830; color:#efe4c8; }
+    .maint-row.due .maint-note { color:#9b1c1c; font-weight:600; }
+    html.dark .maint-row.due .maint-note { color:#ffb4a8; }
+    .maint-row.soon .maint-note { color:#8a5a12; }
+    html.dark .maint-row.soon .maint-note { color:#f0c674; }
     .card { background:var(--card); border:1px solid var(--hair); border-radius:16px; padding:12px; margin-bottom:8px; }
     .card b { display:block; font-family:"Fraunces",Georgia,serif; font-size:18px; font-weight:600; margin:0 0 4px; letter-spacing:0; text-transform:none; color:var(--navy); }
     .card span { color:var(--muted); font-size:15px; line-height:1.45; }
@@ -3528,7 +3539,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="house" class="page">
         <h2 data-k="This house">House</h2>
         <div class="card"><b>Flights</b><div id="live-flights">Loading the flight scan…</div></div>
-        <div class="card"><b>AC filter</b><span id="ac-filter-note">Set the date you last changed it. Reminder is 90 days.</span><input type="date" id="ac-filter-date" /></div>
+        <div class="card" id="house-maint-card">
+          <b>Maintenance</b>
+          <span id="house-maint-lead">Due dates follow this home pin. Set the last-done date on each job.</span>
+          <div id="house-maint"></div>
+        </div>
         <div class="card"><b>Do</b><span id="cal-do">Add items on the Do calendar. Public ICS not wired yet.</span></div>
         <div class="card"><b>Vendors</b>
           <span>Castle after-hours 800-337-5850. Shared with every board when house.json is on GitHub.</span>
@@ -3692,6 +3707,21 @@ Cart shop:</textarea>
         </div>
         <div class="card"><b id="prep-title">Seven-day house kit</b><span id="prep-kind">Year-round kit. The list below also shifts if a warning is up.</span>
           <ul class="check-list" id="prep-list"></ul>
+        </div>
+        <div class="card" id="prep-gear-card">
+          <b>Gear with dates</b>
+          <span id="prep-gear-lead">Extinguisher, first aid, and batteries stay with this pin. Check the gauge and the printed date.</span>
+          <div id="prep-gear"></div>
+        </div>
+        <div class="card" id="prep-stock-card">
+          <b>Also stock</b>
+          <span id="prep-stock-lead">The seven-day kit plus the things people forget until the shelves are empty.</span>
+          <ul class="check-list" id="prep-stock-list"></ul>
+        </div>
+        <div class="card" id="prep-clothes-card">
+          <b>Clothes in the kit</b>
+          <span id="prep-clothes-lead">Packed for this pin and this season — not a catalog from another climate.</span>
+          <ul class="check-list" id="prep-clothes-list"></ul>
         </div>
         <div class="card">
           <b>Shelter-in-place list</b>
@@ -4817,7 +4847,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 930;
+    window.BOARD_VER = 933;
 
     
     function communityShort() {
@@ -4900,7 +4930,7 @@ Cart shop:</textarea>
     })();
     window.ROT_DEFAULTS = {
       normal: ["now","tenday","land","marine","sky","comm","ent","eats","golf"],
-      storm: ["tenday","storms","marine","contacts","prep"]
+      storm: ["tenday","storms","marine","contacts","prep","house"]
     };
     var ROT_DEFAULTS = window.ROT_DEFAULTS;
     var pages = ROT_DEFAULTS.normal.slice();
@@ -5370,6 +5400,9 @@ Cart shop:</textarea>
       if (typeof publishHomePin === "function") publishHomePin();
       if (typeof window.reloadTown === "function") window.reloadTown();
       if (typeof nextTrash === "function") nextTrash();
+      if (typeof paintHouseMaint === "function") paintHouseMaint();
+      if (typeof paintPrepGear === "function") paintPrepGear();
+      if (typeof paintPrepStock === "function") paintPrepStock();
       paintHomeChrome();
       var st = document.getElementById("addr-pin-status");
       var s = getSet();
@@ -7846,6 +7879,42 @@ Cart shop:</textarea>
       var fromZip = stateFromZip(s.zip);
       if (fromZip) return fromZip;
       return "";
+    }
+    function homeClimate() {
+      var s = typeof getSet === "function" ? getSet() : {};
+      var st = String(typeof homeState === "function" ? homeState() : "").toUpperCase();
+      var lat = Number(s.lat), lon = Number(s.lon);
+      if (!isFinite(lat)) lat = 39;
+      if (!isFinite(lon)) lon = -98;
+      var south = /^(FL|GA|AL|MS|LA|TX|SC|NC|AR|OK|TN|AZ|NM|NV|CA|HI)$/.test(st) || lat < 36;
+      var gulf = /^(FL|AL|MS|LA|TX)$/.test(st);
+      var atlCoast = /^(FL|GA|SC|NC|VA|MD|DE|NJ|NY|CT|RI|MA|NH|ME|DC)$/.test(st);
+      var winter = lat >= 32 || /^(AK|ME|NH|VT|MA|RI|CT|NY|NJ|PA|OH|MI|WI|MN|ND|SD|MT|WY|ID|CO|UT|NE|IA|IL|IN|MO|WV|MD|DE)$/.test(st);
+      var deepWinter = lat >= 40 || /^(AK|ME|NH|VT|MN|ND|WI|MT)$/.test(st);
+      var freeze = winter;
+      var hurricane = gulf || atlCoast || st === "HI";
+      var tornado = /^(TX|OK|KS|NE|SD|ND|MN|IA|MO|AR|LA|MS|AL|TN|KY|IL|IN|OH|WI|GA|FL|SC|NC)$/.test(st);
+      var quake = /^(CA|OR|WA|AK|NV|HI|UT|ID|MT|MO|SC)$/.test(st);
+      var wildfire = /^(CA|OR|WA|ID|MT|WY|CO|UT|NV|AZ|NM|TX|OK)$/.test(st);
+      var desert = /^(AZ|NM|NV|UT)$/.test(st) || (st === "CA" && lat < 36 && lon > -122);
+      var monsoon = /^(AZ|NM)$/.test(st);
+      var tsunami = /^(HI|AK|CA|OR|WA)$/.test(st);
+      var termite = south || /^(CA|TX|NC|SC|GA|AL|MS|LA|FL|AZ|TN|OK|AR)$/.test(st);
+      var sump = freeze && !/^(FL|HI|AZ)$/.test(st);
+      var humid = gulf || /^(FL|LA|MS|AL|GA|SC|NC|TX|HI)$/.test(st);
+      var mountain = /^(CO|WY|MT|ID|UT|NM|NV)$/.test(st) || lat > 40 && lon < -104;
+      var community = String(s.community || "").toLowerCase();
+      var golfCart = /b[ea]{1,3}ch\s*walk|manasota|golf/.test(community) || st === "FL";
+      var m = new Date().getMonth(); // 0-11 local
+      var season = (m === 11 || m <= 1) ? "winter" : (m <= 4) ? "spring" : (m <= 7) ? "summer" : "fall";
+      if (lat < 28 && (season === "winter")) season = "dry";
+      return {
+        st: st, lat: lat, lon: lon, south: south, gulf: gulf, atlCoast: atlCoast,
+        winter: winter, deepWinter: deepWinter, freeze: freeze, hurricane: hurricane,
+        tornado: tornado, quake: quake, wildfire: wildfire, desert: desert, monsoon: monsoon,
+        tsunami: tsunami, termite: termite, sump: sump, humid: humid, mountain: mountain,
+        golfCart: golfCart, season: season, month: m
+      };
     }
     function homeStateName() {
       var map = { AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming",DC:"District of Columbia" };
@@ -11633,6 +11702,8 @@ function currentRotation() {
           close: boxes("close"),
           deliveredMarks: window.__deliveredMarks || {},
           undeliveredMarks: window.__undeliveredMarks || {},
+          maint: (function () { try { return JSON.parse(localStorage.getItem("bw-maint") || "{}"); } catch (eM) { return {}; } })(),
+          prepGear: (function () { try { return JSON.parse(localStorage.getItem("bw-prep-gear") || "{}"); } catch (eG) { return {}; } })(),
           updated: new Date().toISOString()
         };
       }
@@ -11670,6 +11741,26 @@ function currentRotation() {
           try { localStorage.setItem("bw-deliv-unmarks", JSON.stringify(h.undeliveredMarks)); } catch (eU) {}
         }
         if ((h.deliveredMarks || h.undeliveredMarks) && typeof window.__paintDeliveries === "function") window.__paintDeliveries();
+        if (h.maint && typeof h.maint === "object") {
+          try {
+            var curM = JSON.parse(localStorage.getItem("bw-maint") || "{}") || {};
+            Object.keys(h.maint).forEach(function (k) {
+              curM[k] = Object.assign({}, curM[k] || {}, h.maint[k] || {});
+            });
+            localStorage.setItem("bw-maint", JSON.stringify(curM));
+          } catch (eM2) {}
+          if (typeof paintHouseMaint === "function") paintHouseMaint();
+        }
+        if (h.prepGear && typeof h.prepGear === "object") {
+          try {
+            var curG = JSON.parse(localStorage.getItem("bw-prep-gear") || "{}") || {};
+            Object.keys(h.prepGear).forEach(function (k) {
+              curG[k] = Object.assign({}, curG[k] || {}, h.prepGear[k] || {});
+            });
+            localStorage.setItem("bw-prep-gear", JSON.stringify(curG));
+          } catch (eG2) {}
+          if (typeof paintPrepGear === "function") paintPrepGear();
+        }
         window.__houseUpdated = h.updated || "";
         var when = h.updated ? new Date(h.updated).toLocaleString("en-US", { hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "";
         stamp("Shared house list" + (when ? " · " + when : "") + (src ? " · " + src : ""));
@@ -11714,13 +11805,13 @@ function currentRotation() {
     clock(); setInterval(clock, 15000);
     var ROT_DEFAULTS = window.ROT_DEFAULTS || {
       normal: ["now","tenday","land","marine","sky","comm","ent","eats","golf"],
-      storm: ["tenday","storms","marine","contacts","prep"]
+      storm: ["tenday","storms","marine","contacts","prep","house"]
     };
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
     function loadRots() {
       var dailyPool = window.ROT_DAILY_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
-      var stormPool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts","prep"];
+      var stormPool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts","prep","house"];
       var def = window.ROT_DEFAULTS || { normal: dailyPool.slice(0, 8), storm: stormPool.slice() };
       var alias = {
         power: "contacts", fpl: "contacts", leave: "contacts",
@@ -11772,7 +11863,7 @@ function currentRotation() {
       return true;
     }
     function warnList() {
-      var pool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts","prep"];
+      var pool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts","prep","house"];
       var seen = {};
       return loadRots().storm.filter(function (id) {
         if (!id || seen[id] || pool.indexOf(id) < 0 || !rotVisible(id)) return false;
@@ -13079,6 +13170,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v933 — Weather/storm rotation includes House after Prep by default.",
+      "v932 — Prep stock and clothing follow region and season. House maintenance adds climate jobs (sump, chimney, shutters, wildfire debris, washer hoses).",
+      "v931 — House maintenance cards per pin (filter, generator, water heater, leaks, pest). Prep page tracks extinguisher, first aid, batteries.",
       "v930 — NHC discussion and public advisory cards unwrap hard line breaks into paragraphs and show the full product in a scrollable card.",
       "v929 — Storm maps redraw only when the selected pill changes. Late NHC image callbacks are ignored so the 2nd and 3rd storms do not flicker.",
       "v928 — Advisory history card stays named Advisory history, hides on Nor'easter, and does not refetch an empty ATCF file in a loop.",
@@ -13712,7 +13806,7 @@ function currentRotation() {
       var dock = document.getElementById("dock");
       if (!dock) return;
       var list = window.__storm
-        ? (typeof warnList === "function" ? warnList() : ["tenday","storms","marine","contacts","prep"])
+        ? (typeof warnList === "function" ? warnList() : ["tenday","storms","marine","contacts","prep","house"])
         : (typeof rotateList === "function" ? rotateList() : ["now","tenday","land","marine","sky","comm","ent","eats","golf"]);
       if (!list || !list.length) list = ["now","tenday"];
       dock.innerHTML = list.filter(Boolean).map(function (id) {
@@ -18055,14 +18149,16 @@ function mustEatsFL() {
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
     var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
-    var ROT_STORM_POOL = ["tenday","storms","marine","contacts","prep"];
+    var ROT_STORM_POOL = ["tenday","storms","marine","contacts","prep","house"];
     var ROT_AUTO_NOTE = {
       tenday: "radar lives on this page; lightning swaps into that frame when it is close",
       land: "traffic map, quakes, AQI, heat, flood, fire weather",
       marine: "tides, surge, water, rip, red tide",
       bolt: "lightning now swaps into the Weather radar frame — no separate page",
       storms: "only when a named storm can affect the home address — one page for all of them",
-      cam: "drops out after dark unless Cam at night is on"
+      cam: "drops out after dark unless Cam at night is on",
+      prep: "kit, gear dates, clothes for this pin",
+      house: "maintenance due dates for this pin, after Prep"
     };
     function paintRotSet() {
       function rows(kind, pool, selected) {
@@ -18226,7 +18322,7 @@ function mustEatsFL() {
         } else {
           arr = arr.filter(function (x) { return x !== id; });
           if (kind === "normal" && arr.indexOf("now") < 0) arr.unshift("now");
-          if (!arr.length) arr = kind === "storm" ? (window.ROT_STORM_POOL || ["tenday","storms","marine","contacts","prep"]).slice() : ["now"];
+          if (!arr.length) arr = kind === "storm" ? (window.ROT_STORM_POOL || ["tenday","storms","marine","contacts","prep","house"]).slice() : ["now"];
         }
         r[kind] = arr;
         saveRots(r);
@@ -19067,13 +19163,14 @@ function mustEatsFL() {
         items = ["Inside until 30 minutes after last thunder", "Unplug chargers and tools left outside", "Skip open water and the pool"];
       } else {
         label = "Year-round kit";
-        items = ["7 days water: 1 gallon per person and per pet, per day", "Canned food + manual opener, paper plates", "Meds, first aid, copies of IDs and insurance in a dry bag", "Battery radio, flashlights, extra batteries, battery fans", "Cash, full tank, phone power bank", "Photos of the house. Know your county evac or shelter plan"];
+        items = ["7 days water: 1 gallon per person and per pet, per day", "Canned food + manual opener, paper plates", "Meds, first-aid kit, copies of IDs and insurance in a dry bag", "ABC fire extinguisher in the kitchen and garage", "Battery radio, flashlights, extra batteries, battery fans", "Cash, full tank, phone power bank", "Photos of the house. Know your county evac or shelter plan"];
       }
       if (kind) kind.textContent = ev
         ? ("Active: " + ev + ". This list is for that warning.")
         : "No warning. This is the year-round kit.";
       if (title) title.textContent = label;
       list.innerHTML = items.map(function (s) { return "<li>" + s + "</li>"; }).join("");
+      if (typeof paintPrepStock === "function") paintPrepStock();
       var pets, petLead;
       if (/hurricane|tropical|surge|evac/.test(ev)) {
         petLead = "If the county calls your zone, the pets go in the car. Do not leave them.";
@@ -19547,33 +19644,253 @@ function mustEatsFL() {
         try { if (typeof fillHealthPaste === "function") fillHealthPaste(); } catch (eF) {}
       }
     }
-    function wireAcFilter() {
-      var input = document.getElementById("ac-filter-date");
-      var note = document.getElementById("ac-filter-note");
-      if (!input) return;
-      var saved = "";
-      try { saved = getSet().acFilter || ""; } catch (e) {}
-      if (saved) input.value = saved;
-      function paint() {
-        var v = input.value;
-        if (!v) { if (note) note.textContent = "Set the date you last changed it. Reminder is 90 days."; return; }
-        var then = new Date(v + "T12:00:00");
-        var days = Math.round((Date.now() - then.getTime()) / 86400000);
-        var left = 90 - days;
-        if (note) {
-          note.textContent = days < 0
-            ? "That date is in the future."
-            : (left <= 0 ? ("Due now — last changed " + days + " days ago.") : ("Last changed " + days + " days ago. Next due in " + left + " days."));
-        }
+
+    function maintPinKey() {
+      return typeof pinTrashKey === "function" ? pinTrashKey() : "default";
+    }
+    function readPinMap(lsKey) {
+      try { return JSON.parse(localStorage.getItem(lsKey) || "{}") || {}; } catch (e) { return {}; }
+    }
+    function writePinMap(lsKey, all) {
+      try { localStorage.setItem(lsKey, JSON.stringify(all)); } catch (e) {}
+    }
+    function pinTaskDate(lsKey, id) {
+      var all = readPinMap(lsKey);
+      var row = all[maintPinKey()] || {};
+      return row[id] || "";
+    }
+    function setPinTaskDate(lsKey, id, val) {
+      var k = maintPinKey();
+      var all = readPinMap(lsKey);
+      if (!all[k]) all[k] = {};
+      if (val) all[k][id] = val;
+      else delete all[k][id];
+      writePinMap(lsKey, all);
+    }
+    function houseMaintTasks() {
+      var c = typeof homeClimate === "function" ? homeClimate() : { humid: false, freeze: false };
+      var tasks = [
+        { id: "hvac", label: "HVAC filter", days: c.humid ? 30 : (c.desert ? 60 : 90), hint: c.humid ? "AC runs most of the year here. Change about every 30 days." : (c.desert ? "Dust loads a filter fast. About 60 days." : "90 days, sooner if the filter looks gray.") },
+        { id: "hvac-pro", label: "HVAC service", days: 182, hint: "Cooling tune-up before summer. Heat tune-up before winter." },
+        { id: "gen-run", label: "Generator — monthly run", days: 30, hint: "Start it monthly so it is not a paperweight in an outage." },
+        { id: "gen-load", label: "Generator — load test / service", days: 182, hint: "Twice a year under load. Oil and filter on hours or annually." },
+        { id: "wh-drain", label: "Water heater drain", days: 365, hint: "Flush sediment yearly. Check the anode every few years." },
+        { id: "washer-hose", label: "Washer hoses", days: 900, hint: "Rubber hoses fail without warning. Look yearly; replace about every 5 years." },
+        { id: "leaks", label: "Leak walk", days: 30, hint: "Toilets, sliders, heater pan, ice maker, hose bibs, under sinks." },
+        { id: "shutoff", label: "Main water shutoff test", days: 365, hint: "Know which valve actually kills the house. Turn it and turn it back." },
+        { id: "smoke", label: "Smoke / CO test", days: 30, hint: "Press the test button. Replace the unit at 10 years." },
+        { id: "smoke-batt", label: "Smoke / CO batteries", days: 365, hint: "Yearly unless they are sealed 10-year units." },
+        { id: "dryer", label: "Dryer vent", days: 365, hint: "Lint in the run is a fire. Pull the machine and clear it." },
+        { id: "gutters", label: "Gutters", days: c.wildfire ? 90 : 182, hint: c.wildfire ? "Keep leaves and needles off the roof. Embers land in gutters first." : "Spring and fall, and after a named storm." },
+        { id: "fridge", label: "Fridge / ice-maker filter", days: 182, hint: "If the fridge has one." },
+        { id: "garage-batt", label: "Garage door battery / sensors", days: 365, hint: "Backup battery and the two eye sensors at the floor." }
+      ];
+      if (c.termite !== false) {
+        tasks.push(
+          { id: "pest", label: "Termite / pest stations", days: 30, hint: "Walk the bait stations. A vendor is usually quarterly in warm states." },
+          { id: "pest-pro", label: "Pest vendor visit", days: 90, hint: "Last contracted treatment." }
+        );
       }
-      paint();
-      input.addEventListener("change", function () {
-        var s = getSet();
-        s.acFilter = input.value;
-        try { localStorage.setItem("bw-set", JSON.stringify(s)); } catch (e) {}
-        paint();
+      if (c.sump) {
+        tasks.push({ id: "sump", label: "Sump pump test", days: 90, hint: "Pour a bucket in the pit before a storm or thaw." });
+      }
+      if (c.freeze) {
+        tasks.push(
+          { id: "winterize", label: "Hose bibs / irrigation winterize", days: 365, hint: "Once before the first hard freeze." },
+          { id: "pipes", label: "Pipe insulation / heat tape", days: 365, hint: "Attic, crawl, and the one pipe that froze last year." }
+        );
+      }
+      if (c.winter || c.deepWinter) {
+        tasks.push({ id: "chimney", label: "Chimney / fireplace", days: 365, hint: "Sweep before you burn. Check the cap and the damper." });
+      }
+      if (c.deepWinter) {
+        tasks.push({ id: "snowblower", label: "Snowblower / ice-melt stock", days: 365, hint: "Service before the first storm. Fresh fuel, fresh melt." });
+      }
+      if (c.humid || c.south) {
+        tasks.push({ id: "pool", label: "Pool / spa equipment", days: 90, hint: "Pump basket, salt cell or filter, cover. Not the daily chemistry." });
+      }
+      if (c.golfCart) {
+        tasks.push({ id: "cart", label: "Golf cart — water / tires / charge", days: 30, hint: "While you are in residence." });
+      }
+      if (c.humid || c.hurricane) {
+        tasks.push({ id: "screens", label: "Screens / sliders / seals", days: 180, hint: "After wind. Tears are how rain and pests get in." });
+      }
+      if (c.hurricane) {
+        tasks.push({ id: "shutters", label: "Shutters / plywood hardware", days: 180, hint: "Run the motors or check the lag bolts before hurricane season." });
+      }
+      if (c.wildfire) {
+        tasks.push({ id: "defensible", label: "Defensible space / roof debris", days: 90, hint: "Five feet of the house clear. Gutters and decks free of needles." });
+      }
+      if (c.quake) {
+        tasks.push({ id: "wh-strap", label: "Water heater strap / tall furniture", days: 365, hint: "Straps to studs. Look once a year. After a shake, look again." });
+      }
+      if (c.desert) {
+        tasks.push({ id: "evap", label: "Evaporative cooler / swamp pads", days: 90, hint: "Pads and the float before monsoon or dry heat." });
+      }
+      return tasks;
+    }
+    function prepGearTasks() {
+      return [
+        { id: "extinguisher", label: "Fire extinguisher", days: 365, hint: "Gauge in the green. Shake a dry-chem can. Replace or recharge if used or expired." },
+        { id: "firstaid", label: "First-aid kit", days: 180, hint: "Restock gauze, meds, and anything past the printed date." },
+        { id: "batteries", label: "Spare batteries", days: 180, hint: "AA / AAA / D plus the weather-radio size. Rotate the pack twice a year." },
+        { id: "wxradio", label: "Weather radio and lanterns", days: 180, hint: "Test the NOAA tone and the lanterns." },
+        { id: "water-date", label: "Stored water dated", days: 180, hint: "Replace bottled stores about twice a year." }
+      ];
+    }
+    function maintAgeLine(iso, every) {
+      if (!iso) return { cls: "", text: "Set the last-done date. Reminder is " + every + " days." };
+      var then = new Date(iso + "T12:00:00");
+      if (isNaN(then.getTime())) return { cls: "", text: "Set a real date." };
+      var days = Math.round((Date.now() - then.getTime()) / 86400000);
+      if (days < 0) return { cls: "", text: "That date is in the future." };
+      var left = every - days;
+      if (left <= 0) return { cls: "due", text: "Due now — last done " + days + " days ago." };
+      if (left <= 14) return { cls: "soon", text: "Last done " + days + " days ago. Due in " + left + " days." };
+      return { cls: "", text: "Last done " + days + " days ago. Next due in " + left + " days." };
+    }
+    function drawMaintRows(boxId, leadId, tasks, lsKey, emptyLead) {
+      var box = document.getElementById(boxId);
+      var lead = document.getElementById(leadId);
+      if (!box) return;
+      var pin = maintPinKey();
+      var due = 0, soon = 0;
+      box.innerHTML = tasks.map(function (t) {
+        var iso = pinTaskDate(lsKey, t.id);
+        var age = maintAgeLine(iso, t.days);
+        if (age.cls === "due") due++;
+        if (age.cls === "soon") soon++;
+        return '<div class="maint-row' + (age.cls ? " " + age.cls : "") + '" data-maint="' + t.id + '">' +
+          '<div class="maint-meta"><b>' + t.label + '</b><span class="maint-note">' + age.text + (t.hint ? " " + t.hint : "") + '</span></div>' +
+          '<input type="date" data-maint-id="' + t.id + '" data-maint-store="' + lsKey + '" value="' + (iso || "") + '" /></div>';
+      }).join("");
+      if (lead) {
+        var place = typeof homePlace === "function" ? homePlace() : "this pin";
+        lead.textContent = due
+          ? (due + " job" + (due === 1 ? "" : "s") + " due now at " + place + ".")
+          : (soon ? (soon + " coming due at " + place + ".") : (emptyLead + " " + place + "."));
+      }
+      box.querySelectorAll("input[type=date]").forEach(function (inp) {
+        inp.addEventListener("change", function () {
+          setPinTaskDate(inp.getAttribute("data-maint-store"), inp.getAttribute("data-maint-id"), inp.value);
+          if (lsKey === "bw-maint") paintHouseMaint();
+          else paintPrepGear();
+          if (typeof window.saveHouse === "function") {
+            clearTimeout(window.__maintSaveT);
+            window.__maintSaveT = setTimeout(function () { window.saveHouse(); }, 800);
+          }
+        });
       });
     }
+    function paintHouseMaint() {
+      var tasks = houseMaintTasks();
+      try {
+        var s = typeof getSet === "function" ? getSet() : {};
+        if (s.acFilter && !pinTaskDate("bw-maint", "hvac")) setPinTaskDate("bw-maint", "hvac", s.acFilter);
+      } catch (eMig) {}
+      drawMaintRows("house-maint", "house-maint-lead", tasks, "bw-maint", "Dates follow");
+    }
+    function paintPrepGear() {
+      drawMaintRows("prep-gear", "prep-gear-lead", prepGearTasks(), "bw-prep-gear", "Gear dates follow");
+    }
+    function paintPrepStock() {
+      var list = document.getElementById("prep-stock-list");
+      var lead = document.getElementById("prep-stock-lead");
+      var clothes = document.getElementById("prep-clothes-list");
+      var clothesLead = document.getElementById("prep-clothes-lead");
+      var c = typeof homeClimate === "function" ? homeClimate() : { season: "summer" };
+      var place = typeof homePlace === "function" ? homePlace() : "this pin";
+      var stock = [
+        "ABC extinguisher in the kitchen and one in the garage — check the gauge",
+        "First-aid kit plus a 7-day extra of daily meds and copies of prescriptions",
+        "Spare batteries for lights, radio, and detectors — dated and rotated",
+        "NOAA weather radio, two flashlights, one lantern, power banks",
+        "7 days of water and canned food, manual opener, paper plates",
+        "Cash in small bills, full tanks, paper maps, printed phone list",
+        "IDs, insurance, deed/lease copies in a dry bag",
+        "Wrench to shut off water or gas, work gloves, sturdy shoes",
+        "Plastic sheeting, duct tape, garbage bags, wet wipes, bleach",
+        "N95 or dust masks, whistle, multi-tool"
+      ];
+      if (c.hurricane) {
+        stock.push("Battery fans and extra ice space — heat is the quiet killer after the wind");
+        stock.push("Fuel for the generator before a named storm. Store it away from the house.");
+        stock.push("Dry bags for clothes, meds, and papers if you leave or take on water.");
+      }
+      if (c.freeze || c.winter) {
+        stock.push("Blankets, extra layers, and a way to stay warm if the furnace is out");
+        stock.push("Ice melt, shovel, and a path to the generator you can actually reach");
+        stock.push("CO detector if you run a generator or a stove for heat");
+      }
+      if (c.deepWinter) {
+        stock.push("Cat litter or sand for ice. A bag of extra fuel treated for cold.");
+      }
+      if (c.tornado) {
+        stock.push("Helmets and shoes in the interior room. Hard hats beat drywall.");
+      }
+      if (c.quake) {
+        stock.push("Shoes and a light next to the bed. Gas shutoff tool at the meter.");
+      }
+      if (c.wildfire) {
+        stock.push("N95s for everyone in the house. Go-bags by the door when smoke is in the county.");
+      }
+      if (c.desert || c.humid) {
+        stock.push("More water than the 7-day math if the power is out and it is hot.");
+      }
+      if (c.monsoon || c.flood || c.atlCoast) {
+        stock.push("Know the high-ground parking spot. Never drive standing water.");
+      }
+      if (c.tsunami) {
+        stock.push("Know the hill or inland route. Do not wait for a second wave.");
+      }
+      if (c.golfCart) {
+        stock.push("Mosquito spray and a spare cart charger if you stay through a close.");
+      }
+      if (list) list.innerHTML = stock.map(function (line) { return "<li>" + line + "</li>"; }).join("");
+      if (lead) lead.textContent = "Stock for " + place + ". Buy it on a quiet Saturday, not the day the warning drops.";
+
+      var wear = [
+        "Closed-toe shoes you can walk in — not flip-flops — plus two extra pairs of socks",
+        "A rain shell that actually blocks wind. One change of dry clothes in a bag"
+      ];
+      if (c.season === "winter" || c.season === "fall" && c.freeze) {
+        wear.push("Insulated coat, hat, gloves, and waterproof boots for everyone in the house");
+        wear.push("Base layers and wool socks. A blanket in each car.");
+      }
+      if (c.deepWinter && (c.season === "winter" || c.season === "fall")) {
+        wear.push("A backup layer that stays dry if you have to stand outside with the generator.");
+      }
+      if (c.season === "summer" || c.season === "spring" && (c.humid || c.desert || c.south)) {
+        wear.push("Light long sleeves and a brimmed hat. Sun and bugs beat skin.");
+        wear.push("A cooling towel or extra cotton shirts if the AC dies.");
+      }
+      if (c.desert) {
+        wear.push("Cover skin in the afternoon. Desert sun and monsoon rain both sneak up.");
+      }
+      if (c.hurricane && (c.month >= 5 && c.month <= 10)) {
+        wear.push("Hurricane season: a dry-bag of clothes for 3 days if you leave the house.");
+      }
+      if (c.wildfire) {
+        wear.push("Long sleeves and cotton or wool — not synthetics — if you have to walk through ash.");
+      }
+      if (c.quake) {
+        wear.push("Shoes under the bed. Broken glass is the first floor you step on.");
+      }
+      if (c.mountain) {
+        wear.push("Nights drop fast. A warm layer even in July.");
+      }
+      if (clothes) clothes.innerHTML = wear.map(function (line) { return "<li>" + line + "</li>"; }).join("");
+      if (clothesLead) {
+        clothesLead.textContent = "Clothes for " + place + " · " + (c.season || "this season") +
+          (c.st ? " · " + c.st : "") + ". Pack what this climate actually does.";
+      }
+    }
+    function wireAcFilter() {
+      paintHouseMaint();
+      paintPrepGear();
+      paintPrepStock();
+    }
+
     paintPrepList();
     paintLeaveAndClear();
     paintHealth();
