@@ -1608,8 +1608,32 @@
     .storm-grid .card span { display:block; font-size:18px; font-weight:650; margin-top:2px; }
     html.phone .storm-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     html.phone #storms .card span, html.phone #hurr-adv span, html.phone #hurr-disc span { display:block; white-space:pre-wrap; max-height:none; overflow:visible; }
-    html.phone #noreast-card { display:block; }
-    html.phone #storms .storm-dim { display:none !important; }
+    html.phone #noreast-card:not([hidden]) { display:block; }
+    html.phone #storms {
+      overflow-x:hidden;
+      max-width:100%;
+    }
+    html.phone #storms .storm-frames {
+      grid-template-columns:1fr;
+    }
+    html.phone #storms .storm-frame {
+      min-height:160px;
+      max-height:42vh;
+    }
+    html.phone #storms .storm-frame img {
+      max-height:42vh;
+      width:100%;
+      height:auto;
+    }
+    html.phone #storms .storm-charts { grid-template-columns:1fr; }
+    html.phone #storms .storm-picks button {
+      max-width:100%;
+    }
+    html.phone #hurr-adv span, html.phone #hurr-disc span {
+      max-height:40vh;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
     html.dark .storm-grid .card { background:rgba(8,16,28,.55); }
     @media (orientation:portrait) {
       .storm-frames { grid-template-columns:1fr 1fr; }
@@ -4847,7 +4871,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 933;
+    window.BOARD_VER = 936;
 
     
     function communityShort() {
@@ -4974,7 +4998,7 @@ Cart shop:</textarea>
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 400) {
             if (!optional) {
@@ -5452,9 +5476,13 @@ Cart shop:</textarea>
       window.__localEvents = [];
       if (typeof window.reloadLocalEvents === "function") window.reloadLocalEvents();
       if (typeof window.reloadTown === "function") window.reloadTown();
-      if (typeof loadGolf === "function") loadGolf();
+      if (typeof window.reloadGolf === "function") window.reloadGolf();
+      else if (typeof loadGolf === "function") loadGolf();
       if (typeof pollFpl === "function") pollFpl();
-      if (typeof fishReport === "function") fishReport();
+      if (typeof window.reloadFish === "function") window.reloadFish();
+      else if (typeof window.__reloadFish === "function") window.__reloadFish();
+      else if (typeof fishReport === "function") fishReport();
+      if (typeof window.reloadEats === "function") window.reloadEats();
       if (typeof gatorWatch === "function") gatorWatch();
       if (typeof paintCivic === "function") paintCivic();
       if (typeof refreshKeyCam === "function") refreshKeyCam(true);
@@ -7141,10 +7169,16 @@ Cart shop:</textarea>
     function showStormTropical(on) {
       stormTropicalEls().forEach(function (el) {
         if (el.id === "hurr-stats") return;
+        if (el.id === "storm-frames" || el.id === "storm-hero") {
+          el.hidden = false;
+          el.classList.remove("storm-dim");
+          return;
+        }
         el.hidden = !on;
         el.classList.toggle("storm-dim", !on);
+        if (on) el.classList.remove("storm-dim");
       });
-      var charts = document.querySelectorAll("#storms .hist-chart, #storms .storm-metrics");
+      var charts = document.querySelectorAll("#storms .hist-chart");
       for (var i = 0; i < charts.length; i++) charts[i].hidden = !on;
     }
 
@@ -7185,14 +7219,10 @@ Cart shop:</textarea>
       if (hit && hit.ends) {
         try { until = new Date(hit.ends).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }); } catch (eU) {}
       }
-      if (stats) {
-        stats.hidden = false;
-        stats.innerHTML = "<b>" + ((ne && ne.title) || "Nor'easter") + " on " + place + "</b><span>" +
-          String((ne && (ne.why || (hit && hit.event))) || "NWS has a coastal or winter product on this pin.") +
-          (until ? " In effect through " + until + "." : "") + " This is not a tropical cyclone, so there is no NHC wind or cone package.</span>";
-      }
+      if (stats) stats.hidden = true;
       if (grid) {
         grid.hidden = false;
+        grid.classList.remove("storm-dim");
         function setTxt(id, v) { var el = document.getElementById(id); if (el) el.textContent = v || "—"; }
         setTxt("live-storm-wind", wind ? (wind + " mph at the pin") : "—");
         setTxt("live-storm-pres", pres);
@@ -8088,9 +8118,9 @@ function gatorRange() {
     function scanPack() {
       var wfo = getSet().wfo || "";
       var st = homeState();
-      var zip = String(getSet().zip || "");
-      if (st === "CT") return SCAN_BY.BOX;
       if (typeof homeIsSWFL === "function" && homeIsSWFL()) return SCAN_BY.TBW;
+      if (st === "CT" || st === "RI" || st === "MA" || st === "NH" || st === "ME" || st === "VT") return SCAN_BY.BOX;
+      if (st === "NY" || st === "NJ") return SCAN_BY.OKX || SCAN_BY.BOX;
       if (wfo && SCAN_BY[wfo]) return SCAN_BY[wfo];
       return null;
     }
@@ -8733,10 +8763,12 @@ function gatorRange() {
       });
     }
     function resolveHomeGeo() {
+      window.__geoGen = (window.__geoGen || 0) + 1; var gen = window.__geoGen;
       paintHomeChrome();
       fetch("https://api.weather.gov/points/" + homePoint(), { headers: { "Accept": "application/geo+json", "User-Agent": "CommonsBoard" } })
         .then(function (r) { return r.json(); })
         .then(function (d) {
+          if (gen !== window.__geoGen) return;
           var p = d.properties || {};
           var st = p.radarStation || "";
           var office = String(p.forecastOffice || "");
@@ -8761,6 +8793,8 @@ function gatorRange() {
           applyRadar();
           applyLocalMaps();
           paintHomeChrome();
+          if (typeof fillZipRadio === "function") fillZipRadio();
+          if (typeof retuneRadioForPin === "function") retuneRadioForPin();
           if (countyUrl) {
             fetch(countyUrl, { headers: { "Accept": "application/geo+json", "User-Agent": "CommonsBoard" } })
               .then(function (r) { return r.json(); })
@@ -8986,10 +9020,28 @@ function currentRotation() {
         if (a) a.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg?t=" + Date.now();
       }
     }
+    function radioPinKey() {
+      return typeof pinTrashKey === "function" ? pinTrashKey() : "default";
+    }
+    function radioByPin() {
+      try { return JSON.parse(localStorage.getItem("bw-radio-pin") || "{}") || {}; } catch (e) { return {}; }
+    }
+    function saveRadioForPin(url) {
+      var all = radioByPin();
+      all[radioPinKey()] = url == null ? "" : String(url);
+      try { localStorage.setItem("bw-radio-pin", JSON.stringify(all)); } catch (e) {}
+    }
+    function savedRadioForPin() {
+      var all = radioByPin();
+      var k = radioPinKey();
+      if (Object.prototype.hasOwnProperty.call(all, k)) return all[k];
+      return savedRadio();
+    }
     function saveRadio(url) {
       var v = url == null ? "" : String(url);
       try { localStorage.setItem("bw-radio", v); } catch (e) {}
       putSet({ station: v });
+      saveRadioForPin(v);
     }
     function markRadioOn(url) {
       var cur = url == null ? (savedRadio() != null ? savedRadio() : "") : url;
@@ -9194,36 +9246,94 @@ function currentRotation() {
         if (has) sel.value = saved;
       }
     }
+    function radioMarketPreset() {
+      var wfo = String((typeof getSet === "function" && getSet().wfo) || "");
+      var st = typeof homeState === "function" ? homeState() : "";
+      if (typeof homeIsSWFL === "function" && homeIsSWFL()) return RADIO_PRESETS.TBW;
+      if (st === "CT") return RADIO_PRESETS.CT;
+      if (st === "RI" || st === "MA" || st === "NH" || st === "ME" || st === "VT" || wfo === "BOX") return RADIO_PRESETS.BOX;
+      if (st === "NY" || st === "NJ" || wfo === "OKX" || wfo === "ALY") return RADIO_PRESETS.OKX;
+      if (wfo === "TBW" && st === "FL") return RADIO_PRESETS.TBW;
+      return null;
+    }
+    function retuneRadioForPin() {
+      if (typeof paintScanners === "function") paintScanners();
+      var nwr = document.getElementById("nwr-btn");
+      if (nwr) {
+        nwr.setAttribute("data-stream", typeof noaaUrl === "function" ? noaaUrl() : "");
+        nwr.textContent = typeof noaaName === "function" ? noaaName() : "NOAA";
+      }
+      var want = (window.__radioWant && window.__radioWant.url) || "";
+      var pinSaved = typeof savedRadioForPin === "function" ? savedRadioForPin() : (typeof savedRadio === "function" ? savedRadio() : "");
+      var buttons = document.querySelectorAll("#radio-stations button[data-stream]");
+      function inList(url) {
+        if (!url) return true;
+        if (/weatherusa|\/NWR\/|KHB|WXJ|KWO|WXM|KXI/i.test(url)) return true;
+        return Array.prototype.some.call(buttons, function (b) { return b.getAttribute("data-stream") === url; });
+      }
+      if (window.__nwrAlert) {
+        if (typeof playStation === "function") playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
+        return;
+      }
+      if (/weatherusa|\/NWR\//i.test(want)) {
+        if (typeof playStation === "function") playStation(noaaUrl(), noaaName(), { keepSaved: true });
+        return;
+      }
+      if (pinSaved === "") {
+        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+        return;
+      }
+      if (pinSaved && inList(pinSaved)) {
+        var lab = "";
+        Array.prototype.forEach.call(buttons, function (b) {
+          if (b.getAttribute("data-stream") === pinSaved) lab = b.textContent || "";
+        });
+        if (/weatherusa|\/NWR\//i.test(pinSaved)) lab = noaaName();
+        if (typeof playStation === "function") playStation(pinSaved, lab || "station", { keepSaved: true });
+        return;
+      }
+      if (want && inList(want)) return;
+      if (String((typeof getSet === "function" && getSet().kiosk) || "") === "1") {
+        var first = document.querySelector('#radio-stations button[data-stream]:not([data-stream=""])');
+        if (first && typeof playStation === "function") playStation(first.getAttribute("data-stream"), first.textContent);
+        else if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+        return;
+      }
+      if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+    }
     function fillZipRadio() {
-      var wfo = getSet().wfo || "";
-      var st = homeState();
-      var zip = String(getSet().zip || "");
-      var preset = null;
-      if (typeof homeIsSWFL === "function" && homeIsSWFL()) preset = RADIO_PRESETS.TBW;
-      else if (st === "CT") preset = RADIO_PRESETS.CT;
-      else if (wfo === "BOX") preset = RADIO_PRESETS.BOX;
-      else if (wfo === "OKX" || wfo === "ALY") preset = RADIO_PRESETS.OKX;
+      window.__radioGen = (window.__radioGen || 0) + 1; var gen = window.__radioGen;
+      var preset = radioMarketPreset();
+      function applyList(list) {
+        if (gen !== window.__radioGen) return;
+        paintRadioButtons(list && list.length ? list : [["Mute", ""]]);
+        retuneRadioForPin();
+      }
       if (preset) {
-        paintRadioButtons(preset);
+        applyList(preset);
         return;
       }
       var url = "https://de1.api.radio-browser.info/json/stations/search?countrycode=US&geo_lat=" + homeLat() + "&geo_long=" + homeLon() + "&geo_distance=160000&hidebroken=true&order=clickcount&reverse=true&limit=40";
       fetch(url, { headers: { "User-Agent": "CommonsBoard/1.0" } }).then(function (r) { return r.json(); }).then(function (rows) {
+        if (gen !== window.__radioGen) return;
         var out = [], seen = {};
-        (rows || []).forEach(function (s) {
+        (rows || []).forEach(function (row) {
           if (out.length >= 4) return;
-          var stream = s.url_resolved || s.url || "";
-          var name = String(s.name || "").replace(/\s+/g, " ").trim();
+          var stream = row.url_resolved || row.url || "";
+          var name = String(row.name || "").replace(/\s+/g, " ").trim();
           if (!/^https:\/\//i.test(stream)) return;
-          if (!/mp3|aac/i.test(s.codec || "mp3")) return;
+          if (!/mp3|aac/i.test(row.codec || "mp3")) return;
           if (/zeno\.fm|radio\.garden|hip hop and rnb|dankfm|hodlharmony|musicradio\.ai/i.test(stream + name)) return;
           var key = name.toLowerCase().slice(0, 24);
           if (seen[key]) return;
           seen[key] = true;
           out.push([name.slice(0, 22), stream]);
         });
-        paintRadioButtons(out.length ? out : RADIO_PRESETS.TBW);
-      }).catch(function () { paintRadioButtons(RADIO_PRESETS.TBW); });
+        applyList(out);
+      }).catch(function () {
+        if (gen !== window.__radioGen) return;
+        applyList(RADIO_PRESETS.CT);
+      });
     }
     window.__fillZipRadio = fillZipRadio;
     fillZipRadio();
@@ -9367,8 +9477,8 @@ function currentRotation() {
       var moonOn = !!(moonEl && parseFloat(moonEl.style.opacity || "0") > 0.05);
       var head = document.querySelector("header");
       var cls = head ? ["sky-night","sky-dawn","sky-sun","sky-partly","sky-dusk","sky-cloud","sky-storm","sky-warn"].filter(function (k) { return head.classList.contains(k); }).join("+") || "none" : "none";
-      var heavyCover = !!(head && (head.classList.contains("sky-cover-heavy") || head.classList.contains("sky-storm") || head.classList.contains("sky-warn")));
-      var sunShould = !!(rise && set && now >= rise && now < set) && !heavyCover;
+      var nightSky = !!(head && (head.classList.contains("sky-night") || slot === "night"));
+      var sunShould = !!(rise && set && now >= rise && now < set) && !nightSky;
       var slotOk = (slot === "dawn" && /sky-dawn/.test(cls)) || (slot === "night" && /sky-night/.test(cls)) || (slot === "dusk" && /sky-dusk/.test(cls)) || (slot === "day" && /sky-sun|sky-partly|sky-cloud|sky-storm|sky-warn/.test(cls));
       var sunOk = sunOn === sunShould;
       var ok = !!(slotOk && sunOk && c.rise);
@@ -13170,6 +13280,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v936 — Storm page on a phone: one-column maps, no hidden metrics, Nor'easter no longer duplicates the stats card.",
+      "v935 — Radio and NOAA retune to the current home pin. In-flight geocode from the last pin cannot overwrite the new one.",
+      "v934 — Pin change reloads golf and fishing. Header health no longer flags the sun as down just because a wind warning is on.",
       "v933 — Weather/storm rotation includes House after Prep by default.",
       "v932 — Prep stock and clothing follow region and season. House maintenance adds climate jobs (sump, chimney, shutters, wildfire debris, washer hoses).",
       "v931 — House maintenance cards per pin (filter, generator, water heater, leaks, pest). Prep page tracks extinguisher, first aid, batteries.",
@@ -18952,6 +19065,7 @@ function mustEatsFL() {
         });
       }
       window.__reloadFish = load;
+      window.reloadFish = load;
       load();
       setInterval(load, 12 * 60 * 60 * 1000);
     })();
@@ -19356,7 +19470,7 @@ function mustEatsFL() {
           ["cam", document.getElementById("keycam-yt") ? (txt("keycam-cap") || "siesta") : txt("keycam-cap")],
           ["deliveries", (window.__feeds && window.__feeds.deliveries && window.__feeds.deliveries.detail) || txt("deliv-note") || ""],
           ["flights-page", (window.__flightData && Array.isArray(window.__flightData.flights) && !window.__flightData.flights.length) ? ("none upcoming · " + (window.__flightData.updated || "scan empty")) : txt("live-flights")],
-          ["house", txt("house-occ") + " " + txt("house-seen")],
+          ["house", (txt("house-maint-lead") || txt("house-sync") || "maintenance").replace(/\s+/g, " ").trim()],
           ["emergency", (document.querySelectorAll("#contacts a.dial").length || document.querySelectorAll("#contacts .card").length) ? "contacts" : ""],
           ["prep", document.querySelectorAll("#prep-list li, #pet-kit-list li").length ? (document.querySelectorAll("#prep-list li, #pet-kit-list li").length + " kit lines") : ""],
           ["hurr", txt("hurr-stats") || ((document.querySelector("#hurr-stats b") || {}).textContent || "")],
