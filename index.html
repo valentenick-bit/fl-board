@@ -4801,7 +4801,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 913;
+    window.BOARD_VER = 914;
 
     
     function communityShort() {
@@ -6106,6 +6106,7 @@ Cart shop:</textarea>
           var pin = readPin(tries[i].kind, d);
           if (isNaN(pin.lat) || isNaN(pin.lon)) return tryOne(i + 1);
           putSet({ address: addr, pinFor: addr, lat: pin.lat, lon: pin.lon, zip: String(pin.zip || parsed.zip || "").replace(/\D/g, "").slice(0, 5), place: String(pin.place || "").trim(), state: pin.state || parsed.state || "" });
+          if (typeof publishHomePin === "function") publishHomePin();
           finish(true, addr + " · " + pin.lat.toFixed(4) + ", " + pin.lon.toFixed(4));
           applyHomeFeeds();
         }).catch(function () { tryOne(i + 1); });
@@ -6149,6 +6150,7 @@ Cart shop:</textarea>
         }
         if (isNaN(lat) || isNaN(lon)) throw new Error("no pin");
         putSet({ address: addr, lat: lat, lon: lon, zip: String(zip || getSet().zip || "").replace(/\D/g, "").slice(0, 5), place: String(place || "").trim(), state: state || getSet().state || "" });
+        if (typeof publishHomePin === "function") publishHomePin();
         finish(true, addr + " · " + lat.toFixed(4) + ", " + lon.toFixed(4));
         if (typeof resolveHomeGeo === "function") resolveHomeGeo();
         if (typeof applyLocalMaps === "function") applyLocalMaps();
@@ -12826,6 +12828,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v914 — Pin save publishes ZIP/lat/lon. Events load events-{zip}.json first, then community rows.",
       "v913 — Events page lists community calendar plus pin-local events. BeachWalk rows no longer require a Florida pin.",
       "v912 — Tide station follows the home pin. Inland pins no longer inherit Englewood Lemon Bay.",
       "v911 — Events page follows the home pin only. BeachWalk listings stay on the community page unless the pin is in 34223.",
@@ -15961,14 +15964,20 @@ function paint() {
               bag.eng = parsed;
               if (typeof noteFeed === "function") noteFeed("town-events", true, parsed.length + " ticketed near " + (typeof homePlace === "function" ? homePlace() : "home"));
               try { paint(); } catch (eP) {}
-              if (done) done();
-            } else next(i + 1);
+            }
+            next(i + 1);
           }).catch(function () { next(i + 1); });
         }
         next(0);
       }
       function loadLocal(done) {
-        var urls = gitFileUrls("events.json");
+        var zipNow = String((typeof getSet === "function" && getSet().zip) || "").replace(/\D/g, "").slice(0, 5);
+        var names = [];
+        if (zipNow.length === 5) names.push("events-" + zipNow + ".json");
+        names.push("events.json");
+        var urls = [];
+        names.forEach(function (n) { urls = urls.concat(gitFileUrls(n)); });
+        var gotZip = false;
         function next(i) {
           if (i >= urls.length) {
             if (typeof noteFeed === "function") noteFeed("local-events", !!(bag.local && bag.local.length), (bag.local && bag.local.length ? bag.local.length + " researched" : "no events.json"));
@@ -15976,6 +15985,7 @@ function paint() {
             return;
           }
           fetch(urls[i]).then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (d) {
+            var fromZipFile = /events-\d{5}\.json/i.test(String(urls[i] || ""));
             var rows = (d && d.events) || [];
             var parsed = rows.map(function (e) {
               var when = new Date(e.when);
@@ -15987,9 +15997,14 @@ function paint() {
             if (parsed.length) {
               var onSite = parsed.filter(function (e) { return e.inside; });
               var offSite = parsed.filter(function (e) { return !e.inside; });
-              bag.bw = (bag.bw || []).concat(onSite);
-              bag.local = offSite.length ? offSite : (bag.local || []);
-              if (typeof noteFeed === "function") noteFeed("local-events", true, parsed.length + " researched · " + ((d && d.updated) || ""));
+              if (onSite.length) bag.bw = (bag.bw || []).concat(onSite);
+              if (fromZipFile && offSite.length) {
+                bag.local = offSite;
+                gotZip = true;
+              } else if (!gotZip && offSite.length) {
+                bag.local = (bag.local || []).concat(offSite);
+              }
+              if (typeof noteFeed === "function") noteFeed("local-events", true, (bag.local && bag.local.length || 0) + " researched · " + ((d && d.updated) || "") + (fromZipFile ? " · zip file" : ""));
               try { paint(); } catch (eP) {}
               if (done) done();
             } else next(i + 1);
