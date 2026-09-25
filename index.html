@@ -1661,6 +1661,14 @@
       .ticker, .break-ticker { height:38px; font-size:14px; line-height:22px; padding:8px 0; }
     }
     .ticker { background:var(--navy); color:#f7f1e6; }
+    .ticker.tick-advisory { background:#6b5a22; color:#fff6d8; }
+    .ticker.tick-watch { background:#8a6a28; color:#fff6e4; }
+    .ticker.tick-warning { background:#7a2418; color:#fff; }
+    .ticker.tick-emergency { background:#4a0c0c; color:#fff; }
+    html.dark .ticker.tick-advisory { background:#5a4a18; }
+    html.dark .ticker.tick-watch { background:#6e5420; }
+    html.dark .ticker.tick-warning { background:#5c1a12; }
+    html.dark .ticker.tick-emergency { background:#3a0808; }
     .alert-ticker {
       display:none; flex:0 0 auto; align-items:stretch;
       height:50px; box-sizing:border-box; font-weight:700;
@@ -1691,6 +1699,8 @@
       text-transform:uppercase; font-weight:800;
     }
     .alert-track { flex:1 1 auto; min-width:0; overflow:hidden; display:flex; align-items:center; }
+    .alert-ticker.advisory { background:#c9b36a; color:#1b2430; }
+    .alert-ticker.advisory .alert-lab { background:#8a7428; color:#fff8e6; }
     .alert-ticker.watch { background:#c4a35a; color:#1b2a4a; }
     .alert-ticker.watch .alert-lab { background:#8a6a28; color:#f7f1e6; }
     .alert-ticker.warning { background:#c45c4a; color:#fff; }
@@ -4801,7 +4811,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 917;
+    window.BOARD_VER = 919;
 
     
     function communityShort() {
@@ -12857,6 +12867,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v919 — Weather briefing is spoken as a conversation: now, feel, wind, alerts, then what comes next.",
+      "v918 — Weather ticker lists every NWS product on the pin and changes color by advisory / watch / warning / emergency.",
       "v917 — Storms page shows one Nor'easter card. The old summary card no longer repeats it.",
       "v916 — Advisory charts always use the named storm's NHC best-track file (Fay = bal062026.dat).",
       "v915 — Storm charts plot NHC ATCF best-track fixes, not each device's localStorage tally.",
@@ -23439,41 +23451,110 @@ function drawSurgeChart(points) {
         }
         function weatherBit() {
           if (s.briefWx === "0") return "";
-          var greet = ((document.getElementById("live-sky") || {}).textContent || "").replace(/\s+/g, " ").trim();
-          var parts = [];
-          parts.push("Here's the weather.");
-          if (greet && !/^checking|^updating/i.test(greet)) parts.push(sayDot(greet));
-          (window.__nwsLow || []).forEach(function (f) {
+          function live(id) {
+            var el = document.getElementById(id);
+            if (!el || el.hidden) return "";
+            return String(el.textContent || "").replace(/\s+/g, " ").trim();
+          }
+          var place = typeof homePlace === "function" ? homePlace() : "home";
+          var sky = live("live-sky") || live("now-line");
+          var temp = live("live-temp") || live("header-temp");
+          var feel = live("live-feels") || live("live-feels-row");
+          var wind = live("wind") || live("live-sea-wind");
+          var gust = live("gusts") || live("live-wind-peak");
+          var rh = live("humidity") || live("live-rh");
+          var dew = live("dew");
+          var hourly = live("hourly");
+          var ten = live("10-day");
+          var story = [];
+          var tNum = parseInt(temp, 10);
+          var fNum = parseInt(feel, 10);
+          var open = "Here's the weather at " + place + ".";
+          if (sky && !/^checking|^updating|^here's/i.test(sky)) {
+            var skyOne = sky.replace(/\s+/g, " ").replace(/\.$/, "");
+            open += " Right now it is " + skyOne.charAt(0).toLowerCase() + skyOne.slice(1);
+            if (!/[.!?]$/.test(open)) open += ".";
+          } else if (isFinite(tNum)) {
+            open += " It is " + tNum + " degrees";
+            if (isFinite(fNum) && Math.abs(fNum - tNum) >= 3) open += ", and it feels more like " + fNum;
+            open += ".";
+          }
+          story.push(open);
+          if (isFinite(tNum) && isFinite(fNum) && Math.abs(fNum - tNum) >= 3 && sky && sky.indexOf("feels") < 0) {
+            story.push("That extra warmth is the humidity talking, so plan for " + fNum + " when you step outside.");
+          }
+          var windN = parseInt(String(wind).replace(/[^\d]/g, ""), 10);
+          var gustN = parseInt(String(gust).replace(/[^\d]/g, ""), 10);
+          if (isFinite(windN) && windN >= 15) {
+            var wline = "The wind is doing real work at about " + windN + " miles an hour";
+            if (isFinite(gustN) && gustN > windN + 4) wline += ", with gusts up near " + gustN;
+            wline += ", so hats, umbrellas, and light chairs are going to fight you.";
+            story.push(wline);
+          } else if (isFinite(windN) && windN >= 8) {
+            story.push("There is a steady breeze around " + windN + " miles an hour" + (isFinite(gustN) && gustN > windN ? ", gusting toward " + gustN : "") + " — noticeable, not a reason to cancel the day.");
+          }
+          var rhN = parseInt(String(rh).replace(/[^\d]/g, ""), 10);
+          if (isFinite(rhN) && rhN >= 75 && isFinite(tNum) && tNum >= 70) {
+            story.push("Humidity is sitting near " + rhN + " percent, which is why it feels stickier than the number on the porch.");
+          }
+          var wxFeeds = [].concat(window.__nwsHigh || [], window.__nwsLow || []);
+          var seenWx = {};
+          var alertLines = [];
+          wxFeeds.forEach(function (f) {
             var ev = String(((f && f.properties) || {}).event || "").replace(/\s+/g, " ").trim();
-            if (!ev) return;
-            if (highHas(new RegExp(ev.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"))) return;
+            if (!ev || seenWx[ev.toLowerCase()]) return;
+            seenWx[ev.toLowerCase()] = 1;
             var until = "";
             try {
               var exp = ((f.properties) || {}).expires;
               if (exp) until = new Date(exp).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
             } catch (eU) {}
-            var line = "The weather service has a " + ev.toLowerCase() + " in effect" + (until ? " until " + until : "");
-            var blob = parts.join(" ").toLowerCase();
-            if (blob.indexOf(ev.toLowerCase()) < 0) parts.push(sayDot(line));
+            var rank = typeof nwsRank === "function" ? nwsRank(ev) : "advisory";
+            var evLow = ev.toLowerCase();
+            var line;
+            if (rank === "emergency" || rank === "warning") {
+              line = "This one matters: " + ev + " is in effect" + (until ? " through " + until : "") + ", so treat it as the reason to stay flexible and keep an ear on the radio.";
+            } else if (/wind advisory/.test(evLow)) {
+              line = "The weather service also has a wind advisory" + (until ? " through " + until : "") + ". Expect loose branches and a noisy porch; it is not a stay-inside order unless they upgrade it.";
+            } else if (/heat/.test(evLow)) {
+              line = "There is a heat product out" + (until ? " until " + until : "") + ". Midday is for AC and water, not errands that can wait.";
+            } else if (/frost|freeze|wind chill/.test(evLow)) {
+              line = ev + " is up" + (until ? " until " + until : "") + ". Cover the plants and give the pipes a thought before bed.";
+            } else if (/rip/.test(evLow)) {
+              line = "Rip current is flagged" + (until ? " until " + until : "") + ". If you get in, stay near a guard and swim parallel if a pull starts.";
+            } else {
+              line = "They also posted a " + evLow + (until ? " until " + until : "") + ". Worth knowing, not automatically a cancel.";
+            }
+            alertLines.push(line);
           });
+          if (alertLines.length) story.push(alertLines.join(" "));
           if (!highHas(/thunder|lightning|severe/i)) {
             var bolt = chipText("chip-bolt") || chipText("today-bolt");
-            if (bolt && !/no lightning|none/i.test(bolt)) parts.push("Lightning is in play nearby, so treat the next stretch as indoor time.");
+            if (bolt && !/no lightning|none/i.test(bolt)) story.push("Lightning is close enough that the next hour is indoor time if you can help it.");
           }
           if (!highHas(/hurricane|tropical|storm surge/i)) {
             var cane = chipText("chip-cane") || chipText("today-cane");
-            if (cane && !/no named|none on pin|none/i.test(cane)) parts.push(sayDot("On the tropics side, " + cane.replace(/^tropical\.?\s*/i, "")));
+            if (cane && !/no named|none on pin|none/i.test(cane)) {
+              story.push("On the tropics side, " + cane.replace(/^tropical\.?\s*/i, "").replace(/\.$/, "") + " — still far from the porch, but it is the named system to keep an eye on.");
+            }
           }
           var rip = document.getElementById("rip-banner");
           if (rip && rip.offsetParent !== null && !highHas(/rip/i)) {
             var ripT = (rip.textContent || "").replace(/\s+/g, " ").trim();
-            if (/high|danger/i.test(ripT)) parts.push("Rip current is high, so stay out of the water.");
-            else if (/moderate/i.test(ripT)) parts.push("Rip current is moderate, so stay near a guarded stretch if you get in.");
+            if (/high|danger/i.test(ripT)) story.push("Rip current is high on this coast, so skip the unguarded water.");
+            else if (/moderate/i.test(ripT)) story.push("Rip current is moderate. A guarded beach is the smarter swim.");
           }
-          if (parts.length < 2) return "";
-          return "<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(parts.join(" "));
+          if (hourly && !/^checking/i.test(hourly) && hourly.length < 80) {
+            story.push("The next few hours run " + hourly.replace(/\.$/, "") + ".");
+          }
+          if (ten && /\d/.test(ten) && ten.length < 90) {
+            story.push("Looking further out, the ten-day is " + ten.replace(/\.$/, "") + ".");
+          }
+          if (story.length < 2) return "";
+          return "<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(story.join(" "));
         }
-        function cardBits(id) {
+        
+function cardBits(id) {
           var box = document.getElementById(id);
           if (!box || box.hidden) return null;
           var title = ((box.querySelector("b") || {}).textContent || "").replace(/\s+/g, " ").trim();
@@ -23665,6 +23746,12 @@ function drawSurgeChart(points) {
         if (bdB) bits.push(bdB);
         if (spB) bits.push(spB);
         if (!bits.length) bits.push(spaceSentences("Briefing is on. Pick Weather, Today, BeachWalk board, or Sports in Settings."));
+        var wrap = tick.closest ? tick.closest(".ticker") : tick.parentElement;
+        if (wrap && wrap.classList && wrap.classList.contains("ticker")) {
+          wrap.classList.remove("tick-advisory", "tick-watch", "tick-warning", "tick-emergency");
+          var tone = window.__nwsRank || "";
+          if (tone === "emergency" || tone === "warning" || tone === "watch" || tone === "advisory") wrap.classList.add("tick-" + tone);
+        }
         if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), tickSpeedPx());
       } catch (e) {}
     }
@@ -24178,7 +24265,7 @@ function homeCountyGuess() {
           if (rank === "emergency" || rank === "warning" || rank === "watch") high.push(f);
           else if (rank === "advisory" || rank === "statement") low.push(f);
         });
-        var keep = high;
+        var keep = high.concat(low);
         window.__nwsLow = low;
         window.__nwsHigh = high;
         window.__nwsRank = high.some(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; })
@@ -24349,14 +24436,16 @@ function homeCountyGuess() {
         var isEmerg = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; }) ||
           (window.__publicSafety || []).some(function (x) { return /evac|911|dam|hazmat|shelter|civil/.test(x.kind || ""); });
         var isWarn = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "warning"; }) || !!deskWarn.length;
+        var isWatch = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "watch"; });
+        var isAdv = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "advisory" || nwsRank((f.properties || {}).event) === "statement"; });
         var parts = keep.map(nwsLine).concat(deskWarn);
         var body = parts.join("\u00a0".repeat(160));
         if (window.__hurrTick) body += "\u00a0".repeat(160) + spaceSentences("Hurricane tracker. " + window.__hurrTick);
-        var tone = isEmerg ? "emergency" : isWarn ? "warning" : "watch";
+        var tone = isEmerg ? "emergency" : isWarn ? "warning" : isWatch ? "watch" : isAdv ? "advisory" : "watch";
         bar.className = "alert-ticker on " + tone;
         if (typeof paintHdrAlert === "function") paintHdrAlert(keep, isWarn || isEmerg);
         var lab = document.getElementById("alertlab");
-        if (lab) lab.textContent = isEmerg ? "EMERGENCY" : isWarn ? "WARNING" : "WATCH";
+        if (lab) lab.textContent = isEmerg ? "EMERGENCY" : isWarn ? "WARNING" : isWatch ? "WATCH" : "ADVISORY";
         if (isEmerg) maybeAlarmEmergencies(keep.filter(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; }));
         frame.classList.add("has-alert"); stackTickers();
         setTicker(txt, body, tickSpeedPx());
