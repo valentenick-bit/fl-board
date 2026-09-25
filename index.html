@@ -4811,7 +4811,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 920;
+    window.BOARD_VER = 921;
 
     
     function communityShort() {
@@ -5107,7 +5107,7 @@ Cart shop:</textarea>
       zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1", gmapsCap: "50",
       community: "",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
-      brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefBoard: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", briefPrevBoard: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
+      brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefBoard: "1", briefWxHold: "0", briefPrevMaster: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", briefPrevBoard: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
       horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device",
@@ -5121,7 +5121,7 @@ Cart shop:</textarea>
       if (s.dateFmt !== "us" && s.dateFmt !== "num-us" && s.dateFmt !== "intl") s.dateFmt = "us";
       s.eventMiles = "25";
       s.sportMiles = "150";
-      ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","briefToday","briefBoard","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
+      ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","briefToday","briefBoard","briefWxHold","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
         if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
         else if (v === false || v === 0 || v === "off" || v === "false") s[k] = "0";
@@ -12867,6 +12867,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v921 — Active weather ticker parks sports/today/board briefing. Weather briefing stays; settings restore when the alert bar drops.",
       "v920 — Page rotation follows the dock left to right, including when weather/storm rotation is on.",
       "v919 — Weather briefing is spoken as a conversation: now, feel, wind, alerts, then what comes next.",
       "v918 — Weather ticker lists every NWS product on the pin and changes color by advisory / watch / warning / emergency.",
@@ -22201,6 +22202,40 @@ function drawSurgeChart(points) {
       el.style.display = "inline-flex";
       requestAnimationFrame(function () { spinEl(el, speed || tickSpeedPx(), true); });
     }
+    function weatherTickerOn() {
+      var bar = document.getElementById("alertbar");
+      return !!(bar && bar.classList.contains("on"));
+    }
+    function syncBriefToWeatherTicker() {
+      var on = weatherTickerOn();
+      var s = typeof getSet === "function" ? getSet() : {};
+      if (on) {
+        if (s.briefWxHold !== "1") {
+          if (typeof putSet === "function") putSet({
+            briefWxHold: "1",
+            briefPrevMaster: s.brief == null ? "1" : String(s.brief),
+            briefPrevWx: s.briefWx == null ? "1" : String(s.briefWx),
+            briefPrevSports: s.briefSports == null ? "1" : String(s.briefSports),
+            briefPrevToday: s.briefToday == null ? "1" : String(s.briefToday),
+            briefPrevBoard: s.briefBoard == null ? "1" : String(s.briefBoard),
+            brief: "1",
+            briefWx: "1",
+            briefSports: "0",
+            briefToday: "0",
+            briefBoard: "0"
+          });
+        }
+      } else if (s.briefWxHold === "1") {
+        if (typeof putSet === "function") putSet({
+          briefWxHold: "0",
+          brief: s.briefPrevMaster || "1",
+          briefWx: s.briefPrevWx || "1",
+          briefSports: s.briefPrevSports || "1",
+          briefToday: s.briefPrevToday || "1",
+          briefBoard: s.briefPrevBoard || "1"
+        });
+      }
+    }
     function writeBriefingSoon() {
       try { clearTimeout(window.__briefSoon); } catch (e) {}
       window.__briefSoon = setTimeout(function () {
@@ -24470,6 +24505,7 @@ function homeCountyGuess() {
           bar.className = "alert-ticker";
           txt.setAttribute("data-hash", "");
           frame.classList.remove("has-alert"); stackTickers();
+          if (typeof syncBriefToWeatherTicker === "function") syncBriefToWeatherTicker();
           writeBriefing();
           return;
         }
@@ -24489,6 +24525,7 @@ function homeCountyGuess() {
         if (isEmerg) maybeAlarmEmergencies(keep.filter(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; }));
         frame.classList.add("has-alert"); stackTickers();
         setTicker(txt, body, tickSpeedPx());
+        if (typeof syncBriefToWeatherTicker === "function") syncBriefToWeatherTicker();
         writeBriefing();
       }).catch(function (err) {
         if (window.__nwsAlerts && window.__nwsAlerts.length) {
