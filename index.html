@@ -3347,6 +3347,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <div id="radar-home-pin" class="radar-home-pin" title="Home"></div>
             <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
           </div>
+          <div class="sea-map-pills" id="wx-map-pills">
+            <button type="button" data-wx-map="radar" class="on">Radar</button>
+            <button type="button" data-wx-map="bolt">Lightning</button>
+          </div>
           <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">Looping radar · home pin</span></p>
         </div>
         <div class="wx-top-left">
@@ -3437,13 +3441,13 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <div class="sheet-map-pane" id="sea-chart" hidden></div>
           </div>
           <div class="sea-map-pills" id="sea-map-pills">
-            <button type="button" data-sea-map="waves" class="on">Waves</button>
+            <button type="button" data-sea-map="waves">Waves</button>
             <button type="button" data-sea-map="swell">Swell</button>
             <button type="button" data-sea-map="currents">Current</button>
-            <button type="button" data-sea-map="chart">Chart</button>
+            <button type="button" data-sea-map="chart" class="on">Chart</button>
             <button type="button" data-sea-map="ais">Traffic</button>
           </div>
-          <p class="wx-map-cap"><b id="sea-map-kind">Waves</b><span id="sea-map-note">Pinned on home</span></p>
+          <p class="wx-map-cap"><b id="sea-map-kind">Chart</b><span id="sea-map-note">Pinned on home</span></p>
         </div>
         <div class="sea-top-left">
         <p class="sheet-kicker">Boating</p>
@@ -4960,7 +4964,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 955;
+    window.BOARD_VER = 958;
 
     
     function communityShort() {
@@ -5784,12 +5788,12 @@ Cart shop:</textarea>
         "&lon=" + Number(lon).toFixed(4) +
         "&detailLat=" + Number(lat).toFixed(4) +
         "&detailLon=" + Number(lon).toFixed(4) +
-        "&zoom=8&level=surface&overlay=" + overlay +
+        "&zoom=6&level=surface&overlay=" + overlay +
         "&product=ecmwf&marker=true&message=true&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F";
     }
     function homeVesselEmbed() {
       var lat = homeLat(), lon = homeLon();
-      return "https://www.vesselfinder.com/aismap?zoom=10&lat=" + Number(lat).toFixed(4) + "&lon=" + Number(lon).toFixed(4) + "&names=1";
+      return "https://www.vesselfinder.com/aismap?zoom=8&lat=" + Number(lat).toFixed(4) + "&lon=" + Number(lon).toFixed(4) + "&names=1";
     }
     function homeWindyEmbed(overlay) {
       var lat = homeLat(), lon = homeLon();
@@ -5820,17 +5824,15 @@ Cart shop:</textarea>
       el.hidden = false;
       el.style.display = "block";
       if (window.__seaChart && window.__seaChart.map) {
-        if (window.__seaChart.pin !== pin) {
-          window.__seaChart.map.setView([lat, lon], 11);
-          if (window.__seaChart.marker) window.__seaChart.marker.setLatLng([lat, lon]);
-          window.__seaChart.pin = pin;
-        }
+        window.__seaChart.map.setView([lat, lon], 9);
+        if (window.__seaChart.marker) window.__seaChart.marker.setLatLng([lat, lon]);
+        window.__seaChart.pin = pin;
         setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (e) {} }, 80);
         setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (e) {} }, 400);
         return;
       }
       el.innerHTML = "";
-      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 11);
+      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 9);
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
         maxZoom: 16, attribution: "Esri Ocean"
       }).addTo(map);
@@ -6137,7 +6139,7 @@ Cart shop:</textarea>
         el.src = url;
         el.setAttribute("data-src", url);
       }
-      try { if (typeof showSeaMap === "function") showSeaMap(window.__seaMapView || ((typeof seaKind === "function" && seaKind() === "inland") ? "chart" : "waves")); } catch (e1) {}
+      try { if (typeof showSeaMap === "function") showSeaMap(window.__seaMapView || "chart"); } catch (e1) {}
       try { if (typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky"); else setFrame("sky-map", typeof homeSkyEmbed === "function" ? homeSkyEmbed() : ""); } catch (e2) {}
       var seaNote = document.getElementById("sea-map-note");
       if (seaNote && !window.__seaMapView) seaNote.textContent = "Waves · pin on " + (homePlace() || "home");
@@ -9386,13 +9388,27 @@ function currentRotation() {
         p.style.opacity = "";
       });
       if (id === "storms" && typeof paintStormPage === "function") paintStormPage();
+      if (id !== "marine") {
+        var seaF = document.getElementById("sea-map");
+        if (seaF && seaF.getAttribute("src") && seaF.getAttribute("src") !== "about:blank") {
+          seaF.src = "about:blank";
+          seaF.removeAttribute("data-src");
+        }
+      }
+      if (id !== "tenday") {
+        var bolt = document.getElementById("wx-bolt-view");
+        if (bolt && /blitzortung/i.test(bolt.getAttribute("src") || bolt.src || "")) {
+          bolt.src = "about:blank";
+          bolt.removeAttribute("data-src");
+        }
+      }
       if (id === "land" && typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
       if (id === "land" && typeof paintLandReport === "function") paintLandReport();
       if (id === "land" && typeof showLandMap === "function") showLandMap(window.__landMapView || "traffic");
       if (id === "sky" && typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky");
       if (id === "sky" && typeof paintSkyCall === "function") paintSkyCall();
       if (id === "marine" && typeof showSeaMap === "function") {
-        showSeaMap(window.__seaMapView || ((typeof seaKind === "function" && seaKind() === "inland") ? "chart" : "waves"));
+        showSeaMap(window.__seaMapView || "chart");
         if (window.__seaChart && window.__seaChart.map) setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (eS) {} }, 220);
       }
       if (jump) {
@@ -12640,7 +12656,8 @@ function currentRotation() {
     }
     function bumpBoardActivity() {
       window.__lastAct = Date.now();
-      if (window.__offRotHold || offRotationPage()) holdOffRotation();
+      if (window.__offRotHold) return;
+      if (offRotationPage()) holdOffRotation();
     }
     function pinOrHold(id) {
       clearTimeout(rot); clearInterval(rot); clearTimeout(idle); clearTimeout(window.__holdT);
@@ -13655,7 +13672,10 @@ function currentRotation() {
         if (stamp) stamp.style.display = "";
       }
       if (lab) lab.textContent = which === "bolt" ? "Lightning" : "Radar";
-      if (note) note.textContent = which === "bolt" ? "Strikes near the house" : "Looping last 2 hours at home";
+      if (note) note.textContent = which === "bolt" ? "Blitzortung strikes on the home pin" : "Looping last 2 hours at home";
+      document.querySelectorAll("#wx-map-pills button").forEach(function (b) {
+        b.className = (b.getAttribute("data-wx-map") === (which === "bolt" ? "bolt" : "radar")) ? "on" : "";
+      });
     }
     function syncWxMapFrame() {
       var set = typeof getSet === "function" ? getSet() : {};
@@ -13672,14 +13692,28 @@ function currentRotation() {
       }
       if (bolt && (!bolt.src || bolt.src === "about:blank" || bolt.src.indexOf("blitzortung") < 0)) bolt.src = boltUrl();
       /* radar frames are owned by startHomeRadarLoop */
-      var onBolt = false;
-      wxMapShow("radar");
-      window.__wxMapTimer = setInterval(function () {
-        if (!(typeof boltWanted === "function" && boltWanted())) { syncWxMapFrame(); return; }
-        onBolt = !onBolt;
-        wxMapShow(onBolt ? "bolt" : "radar");
-      }, 8000);
+      if (window.__wxMapPick === "bolt") wxMapShow("bolt");
+      else wxMapShow("radar");
       if (typeof noteFeed === "function") noteFeed("wx-map-frame", true, "radar + lightning");
+    }
+
+    if (!window.__wxMapPillsBound) {
+      window.__wxMapPillsBound = true;
+      document.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest && e.target.closest("#wx-map-pills [data-wx-map]");
+        if (!b) return;
+        var which = b.getAttribute("data-wx-map");
+        window.__wxMapPick = which;
+        var bolt = document.getElementById("wx-bolt-view");
+        if (which === "bolt" && bolt) {
+          var url = typeof boltUrl === "function" ? boltUrl() : "";
+          if (url && bolt.getAttribute("data-src") !== url) {
+            bolt.src = url;
+            bolt.setAttribute("data-src", url);
+          }
+        }
+        if (typeof wxMapShow === "function") wxMapShow(which === "bolt" ? "bolt" : "radar");
+      });
     }
     function boltWanted() {
       var near = window.__strikesNear || {};
@@ -13900,6 +13934,9 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v958 — Do not auto-load Windy/lightning iframes on rotation. Chart is default; overlays load on tap.",
+      "v957 — Sea maps start zoomed out one or two levels (Windy 6, chart 9, AIS 8).",
+      "v956 — Weather map pills: Radar and Lightning. Lightning is on Weather, not Sea.",
       "v955 — Sea map pills restored: Waves, Swell, Current (Windy embed on pin), Chart (NOAA), Traffic (VesselFinder).",
       "v954 — Off-rotation pages stay put until 60s of no activity, then the loop resumes.",
       "v953 — Inland Sea uses USGS river stage instead of a fake 1–2 ft ocean swell.",
