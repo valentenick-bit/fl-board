@@ -217,6 +217,11 @@
     header.sky-storm .hdr-cloud-svg.c3,
     header.sky-warn .hdr-cloud-svg.c3 { width:150px; }
     .hdr-cloud-svg.c4, .hdr-cloud-svg.c5 { display:none; }
+    header.sky-cloud .hdr-cloud-svg.c1 { width:120px; }
+    header.sky-cloud .hdr-cloud-svg.c2 { width:100px; }
+    header.sky-cloud .hdr-cloud-svg.c3 { width:130px; }
+    header.sky-cloud .hdr-cloud-svg.c4,
+    header.sky-cloud .hdr-cloud-svg.c5 { display:block; width:140px; color:#6e7f90; }
     header.sky-storm .hdr-cloud-svg.c4,
     header.sky-storm .hdr-cloud-svg.c5,
     header.sky-warn .hdr-cloud-svg.c4,
@@ -4938,7 +4943,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 944;
+    window.BOARD_VER = 945;
 
     
     function communityShort() {
@@ -10021,13 +10026,22 @@ function currentRotation() {
       var cloudy = (/mostly cloudy/.test(txt) && !/partly/.test(txt)) || (/cloudy/.test(txt) && !/partly|mostly sunny/.test(txt)) || (cover != null && cover >= 70);
       var partly = /partly cloudy|partly sunny|mostly sunny|few clouds|scattered/.test(txt) || (cover != null && cover >= 20 && cover < 70);
       var clear = /sunny|clear|fair/.test(txt) && !/partly|mostly cloudy|cloudy/.test(txt) || (cover != null && cover < 20);
+      var popSoon = 0;
+      hours.slice(0, 4).forEach(function (h) {
+        var p = h && h.probabilityOfPrecipitation;
+        var v = p && p.value != null ? Number(p.value) : Number(h && h.pop);
+        if (isFinite(v) && v > popSoon) popSoon = v;
+      });
       var kind = storm ? "storm" : overcast ? "overcast" : rain && cloudy ? "cloudy" : rain && partly ? "partly" : rain ? "rain" : cloudy ? "cloudy" : partly ? "partly" : patchy ? "partly" : clear ? "clear" : "unknown";
       if (cover != null && !storm && !liveBolt) {
-        if (cover >= 90) kind = "overcast";
-        else if (cover >= 70) kind = "cloudy";
+        if (cover >= 85) kind = "overcast";
+        else if (cover >= 60) kind = "cloudy";
         else if (cover >= 20) kind = "partly";
-        else if (!rain) kind = "clear";
+        else if (!rain && popSoon < 40) kind = "clear";
       }
+      if (!storm && popSoon >= 60 && kind === "clear") kind = "partly";
+      if (!storm && popSoon >= 60 && (kind === "partly" || kind === "cloudy")) kind = cover != null && cover >= 70 ? "overcast" : "cloudy";
+      if (!storm && rain) kind = cover != null && cover >= 70 ? "overcast" : (kind === "clear" ? "cloudy" : kind);
       var cap = cover != null
         ? Math.max(kind === "clear" ? 0.06 : 0.18, Math.min(0.88, 0.10 + cover / 100 * 0.78))
         : kind === "storm" || kind === "rain" || kind === "overcast" ? 0.82
@@ -10377,7 +10391,7 @@ function currentRotation() {
       var nearStrikes = window.__strikesNear || {};
       var stormNow = wx.kind === "storm" || !!(nearStrikes.close5 || nearStrikes.close10);
       var slot = nextSlot;
-      var coverW = stormNow || wx.kind === "storm" ? "heavy" : (wx.kind === "overcast" ? "mid" : "light");
+      var coverW = stormNow || wx.kind === "storm" || wx.kind === "rain" ? "heavy" : (wx.kind === "overcast" || wx.kind === "cloudy" ? "mid" : "light");
       window.__skyCover = coverW;
       var skyKey = [slot, warn ? "warn" : "", wx.kind || "", coverW].join("|");
       if (window.__skyKey !== skyKey) {
@@ -10386,8 +10400,8 @@ function currentRotation() {
         else if (slot === "dusk") head.classList.add("sky-dusk");
         else if (slot === "night") head.classList.add("sky-night","night");
         else if (stormNow) head.classList.add("sky-storm");
-        else if (wx.kind === "overcast") head.classList.add("sky-cloud");
-        else if (wx.kind === "partly" || wx.kind === "cloudy" || rainingNow || sunny) head.classList.add("sky-partly");
+        else if (wx.kind === "overcast" || wx.kind === "cloudy" || wx.kind === "rain") head.classList.add("sky-cloud");
+        else if (wx.kind === "partly") head.classList.add("sky-partly");
         else head.classList.add("sky-sun");
         if (warn) head.classList.add("sky-warn");
         head.classList.remove("sky-cover-light","sky-cover-mid","sky-cover-heavy");
@@ -13709,6 +13723,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v945 — Header sky uses live cloud cover and incoming rain; overcast no longer looks like a clear day.",
       "v944 — NOAA Hartford (WXJ41) retries WeatherUSA then Broadcastify; keep-alive no longer says Tampa.",
       "v943 — Header radio pill shows Mute while playing. Storms page gets a weather-sized satellite frame for the selected storm.",
       "v942 — Radio hard-stops on pin change. No global last-played, no Tampa 94.9 default.",
@@ -22593,13 +22608,15 @@ function wxSvg(kind, box) {
       var temps = (om && om.hourly && om.hourly.temperature_2m) || [];
       var hours = [];
       for (var i = 0; i < times.length && i < 48; i++) {
+        var clouds = (om.hourly && om.hourly.cloud_cover) || [];
         hours.push({
           startTime: times[i],
           endTime: times[i + 1] || times[i],
           shortForecast: omWord(codes[i]),
           temperature: temps[i],
           windSpeed: String(Math.round(winds[i] || 0)) + " mph",
-          probabilityOfPrecipitation: { value: pops[i] }
+          probabilityOfPrecipitation: { value: pops[i] },
+          cloudCover: clouds[i]
         });
       }
       return hours;
@@ -22628,6 +22645,13 @@ function wxSvg(kind, box) {
       var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
       var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
       window.__nowWx = { temp: tempF, feel: feelF, wind: wind, gust: gust, word: word, greet: greet };
+      window.__wxNow = window.__wxNow || {};
+      if (om.current.cloud_cover != null) {
+        window.__wxNow.cloudCover = Number(om.current.cloud_cover);
+        window.__wxNow.cloud = Number(om.current.cloud_cover);
+      }
+      if (om.current.precipitation != null) window.__wxNow.rain = Number(om.current.precipitation) > 0;
+      window.__wxNow.sky = word;
       if (typeof applyHeaderTreeWind === "function") applyHeaderTreeWind();
       var tempEl = document.getElementById("live-temp");
       var feelEl = document.getElementById("live-feels");
@@ -22971,7 +22995,7 @@ function wxSvg(kind, box) {
       if (!isFinite(homeLat()) || !isFinite(homeLon())) return;
       var hdr = { "Accept": "application/geo+json", "User-Agent": "CommonsBoard/1.0 (valente.nick@gmail.com)" };
       var gwxP = pullGoogleWx();
-      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,uv_index,relative_humidity_2m,dew_point_2m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_sum,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York")
+      var omP = fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index,cloud_cover,precipitation&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,uv_index,relative_humidity_2m,dew_point_2m,surface_pressure,precipitation,cloud_cover&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_sum,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York")
         .then(function (r) { return r.json(); })
         .catch(function () { return null; });
       fetch("https://api.weather.gov/points/" + homePoint(), { headers: hdr })
