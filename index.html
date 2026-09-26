@@ -2607,6 +2607,13 @@
     #wx-radar-live { display:block !important; position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:9; background:#d7e6ef; }
     #wx-radar-windy { display:none !important; }
     #wx-radar-view { display:block !important; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:8 !important; background:#0b1220; }
+    #wx-bolt-view { position:absolute; inset:0; width:100%; height:100%; border:0; z-index:6; background:#0b1220; display:none; }
+    #wx-radar-stage.wx-show-bolt #wx-radar-live,
+    #wx-radar-stage.wx-show-bolt #wx-radar-view,
+    #wx-radar-stage.wx-show-bolt #wx-radar-map,
+    #wx-radar-stage.wx-show-bolt #radar-home-pin,
+    #wx-radar-stage.wx-show-bolt #wx-radar-stamp { display:none !important; }
+    #wx-radar-stage.wx-show-bolt #wx-bolt-view { display:block !important; z-index:12 !important; }
     .buzz-card { display:flex; gap:10px; align-items:stretch; }
     .buzz-card .ev-rail { flex:0 0 76px; }
     .buzz-card .ev-thumb { width:76px; height:76px; object-fit:cover; border-radius:14px; display:block; }
@@ -4964,7 +4971,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 958;
+    window.BOARD_VER = 959;
 
     
     function communityShort() {
@@ -13653,18 +13660,21 @@ function currentRotation() {
       var note = document.getElementById("wx-map-note");
       var stamp = document.getElementById("wx-radar-stamp");
       var pin = document.getElementById("radar-home-pin");
+      var stage = document.getElementById("wx-radar-stage");
+      var live = document.getElementById("wx-radar-live");
+      if (stage) stage.classList.toggle("wx-show-bolt", which === "bolt");
       if (bolt) {
         bolt.classList.toggle("on", which === "bolt");
         bolt.style.display = which === "bolt" ? "block" : "none";
-        bolt.style.zIndex = which === "bolt" ? "6" : "0";
+        bolt.style.zIndex = which === "bolt" ? "12" : "0";
       }
       if (which === "bolt") {
+        if (live) { live.style.display = "none"; live.style.zIndex = "0"; }
         if (map) map.style.display = "none";
         if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
         if (pin) pin.style.display = "none";
         if (stamp) stamp.style.display = "none";
       } else {
-        var live = document.getElementById("wx-radar-live");
         if (live) { live.style.display = "block"; live.style.zIndex = "9"; }
         if (map) map.style.display = "none";
         if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
@@ -13934,6 +13944,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v959 — Lightning pill hides the live radar layer so Blitzortung can show.",
       "v958 — Do not auto-load Windy/lightning iframes on rotation. Chart is default; overlays load on tap.",
       "v957 — Sea maps start zoomed out one or two levels (Windy 6, chart 9, AIS 8).",
       "v956 — Weather map pills: Radar and Lightning. Lightning is on Weather, not Sea.",
