@@ -4943,7 +4943,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 945;
+    window.BOARD_VER = 946;
 
     
     function communityShort() {
@@ -8420,12 +8420,16 @@ function gatorRange() {
     }
     var NWR_STREAMS = {
       WXJ41: [
-        "https://radio.weatherusa.net/NWR/WXJ41.mp3",
+        "scan:47751",
+        "scan:25922",
+        "https://broadcastify.cdnstream1.com/47751",
         "https://broadcastify.cdnstream1.com/25922",
-        "https://audio.broadcastify.com/25922.mp3"
+        "https://relay.broadcastify.com/3dm76hyntrcg.mp3"
       ],
       WXJ42: [
-        "https://radio.weatherusa.net/NWR/WXJ42.mp3"
+        "scan:47752",
+        "https://broadcastify.cdnstream1.com/47752",
+        "https://relay.broadcastify.com/sq6bz0cn3krf.mp3"
       ],
       KHB35: [
         "https://radio.weatherusa.net/NWR/KHB35.mp3"
@@ -8457,7 +8461,7 @@ function gatorRange() {
       return list[i % list.length];
     }
     function isNoaaStream(u) {
-      return /weatherusa|\/NWR\/|broadcastify\.(cdnstream1|com)\/(25922|audio)|audio\.broadcastify/i.test(String(u || ""));
+      return /weatherusa|\/NWR\/|scan:(47751|25922|47752)\b|broadcastify\.(cdnstream1|com)\/(47751|25922|47752)|relay\.broadcastify|3dm76hyntrcg|sq6bz0cn3krf/i.test(String(u || ""));
     }
     function noaaName() { return getSet().nwrName || "NOAA Weather Radio"; }
     function scanPack() {
@@ -9457,11 +9461,29 @@ function currentRotation() {
         audio.pause();
         audio.src = stream;
         if (typeof setLoudness === "function") setLoudness(audio, stream);
+        if (typeof isNoaaStream === "function" && isNoaaStream(url)) {
+          audio.onerror = function () {
+            var list = typeof noaaStreamList === "function" ? noaaStreamList() : [];
+            window.__nwrTry = (window.__nwrTry || 0) + 1;
+            if (window.__nwrTry < list.length) {
+              if (status) status.textContent = "Trying another NOAA feed…";
+              playStation(list[window.__nwrTry], label || (typeof noaaName === "function" ? noaaName() : "NOAA"), { keepSaved: true, nwrRetry: true, force: true });
+            } else if (status) status.textContent = (label || "NOAA") + " did not start.";
+          };
+        }
         var playP = audio.play();
         if (playP && playP.catch) playP.catch(function () {
+          if (typeof isNoaaStream === "function" && isNoaaStream(url)) {
+            var list = typeof noaaStreamList === "function" ? noaaStreamList() : [];
+            window.__nwrTry = (window.__nwrTry || 0) + 1;
+            if (window.__nwrTry < list.length) {
+              playStation(list[window.__nwrTry], label || (typeof noaaName === "function" ? noaaName() : "NOAA"), { keepSaved: true, nwrRetry: true, force: true });
+              return;
+            }
+          }
           if (status) status.textContent = "Tap Police or Fire again if the scanner is quiet. Broadcastify may play a short ad first.";
         });
-        if (status) status.textContent = (label || "Scanner") + " is on. Quiet until a call. Broadcastify may play a short ad first.";
+        if (status) status.textContent = (label || (typeof isNoaaStream === "function" && isNoaaStream(url) ? "NOAA" : "Scanner")) + " is on. Broadcastify may play a short ad first.";
         if (typeof noteFeed === "function") noteFeed("scanner", true, label || feedId);
         return;
       }
@@ -9486,17 +9508,30 @@ function currentRotation() {
       var playUrl = url;
       if (opts.nwrRetry || (typeof isNoaaStream === "function" ? isNoaaStream(url) : /weatherusa|NWR/i.test(url))) {
         if (!opts.nwrRetry) window.__nwrTry = 0;
-        playUrl = noaaUrl().split("?")[0] + "?r=" + Date.now();
-        audio.onerror = function () {
-          var list = typeof noaaStreamList === "function" ? noaaStreamList() : noaaCalls();
-          window.__nwrTry = (window.__nwrTry || 0) + 1;
-          if (window.__nwrTry < list.length) {
-            if (status) status.textContent = "Trying another NOAA feed for " + (noaaName() || "this pin") + "…";
-            playStation(noaaUrl(), noaaName(), { keepSaved: true, nwrRetry: true, force: true });
-          } else if (status) status.textContent = (noaaName() || "NOAA") + " did not start for " + homePlace() + ".";
-        };
+        playUrl = noaaUrl();
+        if (String(playUrl).indexOf("scan:") === 0) {
+          opts = Object.assign({}, opts, { nwrRetry: true, force: true, keepSaved: true });
+          url = playUrl;
+        } else {
+          audio.onerror = function () {
+            var list = typeof noaaStreamList === "function" ? noaaStreamList() : noaaCalls();
+            window.__nwrTry = (window.__nwrTry || 0) + 1;
+            if (window.__nwrTry < list.length) {
+              if (status) status.textContent = "Trying another NOAA feed for " + (noaaName() || "this pin") + "…";
+              playStation(noaaUrl(), noaaName(), { keepSaved: true, nwrRetry: true, force: true });
+            } else if (status) status.textContent = (noaaName() || "NOAA") + " did not start for " + homePlace() + ".";
+          };
+        }
       } else {
         audio.onerror = null;
+      }
+      if (String(url).indexOf("scan:") === 0) {
+        window.__radioWant = { url: url, label: label || (typeof noaaName === "function" ? noaaName() : "NOAA") };
+        if (typeof rememberRadio === "function") rememberRadio(url, window.__radioWant.label);
+        clearInterval(window.__nwrKeep);
+        var feedId = url.slice(5);
+        playUrl = "https://broadcastify.cdnstream1.com/" + feedId;
+        if (status) status.textContent = "Starting " + (window.__radioWant.label || "NOAA") + "…";
       }
       audio.src = playUrl;
       setLoudness(audio, url);
@@ -13723,6 +13758,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v946 — NOAA Hartford plays Broadcastify WXJ41 (feeds 47751 then 25922). Stop cache-busting Icecast URLs.",
       "v945 — Header sky uses live cloud cover and incoming rain; overcast no longer looks like a clear day.",
       "v944 — NOAA Hartford (WXJ41) retries WeatherUSA then Broadcastify; keep-alive no longer says Tampa.",
       "v943 — Header radio pill shows Mute while playing. Storms page gets a weather-sized satellite frame for the selected storm.",
