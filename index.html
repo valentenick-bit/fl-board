@@ -1319,6 +1319,7 @@
     html.dark .leave-card { background:#3a241f; }
     .leave-card[hidden], #allclear[hidden] { display:none !important; }
     #allclear { background:#2a9d8f; color:#fff; font-size:13px; font-weight:700; letter-spacing:.04em; padding:7px 12px; text-align:center; }
+    .frame.has-alert #allclear { display:none !important; }
     html.dark #allclear { background:#1e6e66; }
     .stamp { display:block; margin-top:6px; font-size:11px; letter-spacing:.04em; color:var(--muted); opacity:.8; }
     .health-ok { color:#2a9d8f; }
@@ -3103,7 +3104,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v967</span>
+      <span class="hdr-ver" id="hdr-ver">v968</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4987,7 +4988,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 967;
+    window.BOARD_VER = 968;
 
     
     function communityShort() {
@@ -20046,8 +20047,11 @@ function mustEatsFL() {
       document.querySelectorAll(".leave-card").forEach(function (card) { card.hidden = !warn; });
       var copy = warn ? leaveCopy(ev) : "No warning. Stay put.";
       document.querySelectorAll(".leave-body").forEach(function (el) { el.textContent = copy; });
-      if (warn) {
-        window.__wasWarn = true;
+      var tickerOn = (typeof weatherTickerOn === "function" && weatherTickerOn()) ||
+        !!(window.__nwsHigh && window.__nwsHigh.length) ||
+        !!(window.__nwsLow && window.__nwsLow.length);
+      if (warn || tickerOn) {
+        if (warn) window.__wasWarn = true;
         try { localStorage.removeItem("bw-clear-until"); } catch (e) {}
         if (banner) banner.hidden = true;
       } else {
@@ -24034,6 +24038,8 @@ function wxSvg(kind, box) {
       markTicker("alert", alertOn);
       markTicker("civic", civicOn);
       markTicker("brk", breakOn);
+      var allClear = document.getElementById("allclear");
+      if (allClear && (alertOn || civicOn)) allClear.hidden = true;
       if (frame) {
         frame.classList.toggle("has-alert", alertOn);
         frame.classList.toggle("has-civic", civicOn);
@@ -26187,6 +26193,7 @@ function homeCountyGuess() {
           txt.setAttribute("data-hash", "");
           frame.classList.remove("has-alert"); stackTickers();
           if (typeof syncBriefToWeatherTicker === "function") syncBriefToWeatherTicker();
+          if (typeof paintLeaveAndClear === "function") paintLeaveAndClear();
           writeBriefing();
           return;
         }
@@ -26207,6 +26214,7 @@ function homeCountyGuess() {
         frame.classList.add("has-alert"); stackTickers();
         setTicker(txt, body, tickSpeedPx());
         if (typeof syncBriefToWeatherTicker === "function") syncBriefToWeatherTicker();
+        if (typeof paintLeaveAndClear === "function") paintLeaveAndClear();
         writeBriefing();
       }).catch(function (err) {
         if (window.__nwsAlerts && window.__nwsAlerts.length) {
