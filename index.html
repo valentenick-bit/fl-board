@@ -4943,7 +4943,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 947;
+    window.BOARD_VER = 949;
 
     
     function communityShort() {
@@ -5776,30 +5776,50 @@ Cart shop:</textarea>
       var lat = homeLat(), lon = homeLon();
       return "https://www.marinetraffic.com/en/ais/embed/zoom:11/centery:" + lat.toFixed(4) + "/centerx:" + lon.toFixed(4) + "/maptype:4/shownames:true/mmsi:0/showmenu:false";
     }
-    function paintSeaChart() {
+    function paintSeaChart(kind) {
       var el = document.getElementById("sea-chart");
-      if (!el || typeof L === "undefined") return;
+      if (!el) return;
       var lat = homeLat(), lon = homeLon();
+      var pin = lat + "," + lon;
+      kind = kind || window.__seaMapView || "chart";
+      if (typeof L === "undefined") {
+        el.innerHTML = "<p class=\"hint\">Chart library did not load. Check the network and refresh.</p>";
+        return;
+      }
+      el.hidden = false;
+      el.style.display = "block";
       if (window.__seaChart && window.__seaChart.map) {
-        window.__seaChart.map.setView([lat, lon], window.__seaChart.map.getZoom() || 12);
+        if (window.__seaChart.pin !== pin) {
+          window.__seaChart.map.setView([lat, lon], 11);
+          if (window.__seaChart.marker) window.__seaChart.marker.setLatLng([lat, lon]);
+          window.__seaChart.pin = pin;
+        }
+        setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (e) {} }, 80);
+        setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (e) {} }, 400);
         return;
       }
       el.innerHTML = "";
-      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 12);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OSM" }).addTo(map);
-      L.tileLayer("https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.92, attribution: "NOAA RNC" }).addTo(map);
+      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 11);
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
+        maxZoom: 16, attribution: "Esri Ocean"
+      }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.35, attribution: "© OSM" }).addTo(map);
+      L.tileLayer("https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.88, attribution: "NOAA RNC" }).addTo(map);
       L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "OpenSeaMap" }).addTo(map);
-      L.circleMarker([lat, lon], { radius: 6, color: "#c45c26", fillColor: "#f2b05e", fillOpacity: 1, weight: 2 }).addTo(map);
-      window.__seaChart = { map: map, pin: lat + "," + lon };
-      setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 200);
+      var marker = L.circleMarker([lat, lon], { radius: 7, color: "#c45c26", fillColor: "#f2b05e", fillOpacity: 1, weight: 2 }).addTo(map);
+      marker.bindTooltip("Home pin", { permanent: false });
+      window.__seaChart = { map: map, pin: pin, marker: marker };
+      [80, 250, 700].forEach(function (ms) {
+        setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, ms);
+      });
     }
     function showSeaMap(id) {
       var views = {
-        waves: { label: "Waves", note: "Windy swell and wind waves on the home pin", url: homeWindyEmbed("waves"), chart: false },
-        swell: { label: "Swell", note: "Windy swell overlay on the home pin", url: homeWindyEmbed("swell"), chart: false },
-        currents: { label: "Current", note: "Windy surface current on the home pin", url: homeWindyEmbed("currents"), chart: false },
-        chart: { label: "Chart", note: "NOAA raster chart + channel marks + soundings", url: "", chart: true },
-        ais: { label: "Traffic", note: "Ships and tows near the pin", url: homeAisEmbed(), chart: false }
+        waves: { label: "Waves", note: "NOAA chart + OpenSeaMap at the home pin. Wave numbers are on the cards.", chart: true },
+        swell: { label: "Swell", note: "NOAA chart at the home pin. Swell and period are on the cards.", chart: true },
+        currents: { label: "Current", note: "NOAA chart at the home pin. Current and drift are on the cards.", chart: true },
+        chart: { label: "Chart", note: "NOAA raster chart + channel marks + soundings", chart: true },
+        ais: { label: "Traffic", note: "Nautical chart at the pin. Open MarineTraffic for live AIS.", chart: true }
       };
       if (!views[id]) id = "waves";
       window.__seaMapView = id;
@@ -5813,20 +5833,12 @@ Cart shop:</textarea>
       document.querySelectorAll("#sea-map-pills button").forEach(function (b) {
         b.className = b.getAttribute("data-sea-map") === id ? "on" : "";
       });
-      if (v.chart) {
-        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
-        if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
-        paintSeaChart();
-      } else {
-        if (chart) { chart.hidden = true; chart.classList.remove("on"); chart.style.display = "none"; }
-        if (frame) {
-          frame.classList.add("on");
-          frame.style.display = "block";
-          if (v.url && frame.getAttribute("data-src") !== v.url) {
-            frame.src = v.url;
-            frame.setAttribute("data-src", v.url);
-          }
-        }
+      if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); }
+      if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
+      paintSeaChart(id);
+      if (id === "ais") {
+        var extra = document.getElementById("sea-map-note");
+        if (extra) extra.innerHTML = v.note + " · " + (homePlace() || "home") + " · <a href=\"https://www.marinetraffic.com/en/ais/home/centerx:" + homeLon().toFixed(3) + "/centery:" + homeLat().toFixed(3) + "/zoom:11\" target=\"_blank\" rel=\"noopener\">Live AIS</a>";
       }
       if (typeof noteFeed === "function") noteFeed("sea-map", true, id);
     }
@@ -8420,16 +8432,12 @@ function gatorRange() {
     }
     var NWR_STREAMS = {
       WXJ41: [
-        "scan:47751",
-        "scan:25922",
-        "https://broadcastify.cdnstream1.com/47751",
-        "https://broadcastify.cdnstream1.com/25922",
-        "https://relay.broadcastify.com/3dm76hyntrcg.mp3"
+        "https://radio.weatherusa.net/NWR/WXJ41.mp3",
+        "https://radio.weatherusa.net/NWR/WXJ42.mp3"
       ],
       WXJ42: [
-        "scan:47752",
-        "https://broadcastify.cdnstream1.com/47752",
-        "https://relay.broadcastify.com/sq6bz0cn3krf.mp3"
+        "https://radio.weatherusa.net/NWR/WXJ42.mp3",
+        "https://radio.weatherusa.net/NWR/WXJ41.mp3"
       ],
       KHB35: [
         "https://radio.weatherusa.net/NWR/KHB35.mp3"
@@ -8752,7 +8760,7 @@ function gatorRange() {
       TBW: ["KHB32", "NOAA Tampa", "KHB34"], MFL: ["KHB34", "NOAA Miami", "KHB32"], KEY: ["KHB34", "NOAA Key West", "KHB32"],
       JAX: ["KHB39", "NOAA Jacksonville", "WXJ70"], MLB: ["WXJ70", "NOAA Melbourne", "KHB39"], TAE: ["WWF70", "NOAA Tallahassee", "KHB40"],
       MOB: ["KHB40", "NOAA Mobile", "KHB43"], LIX: ["KHB43", "NOAA New Orleans", "KHB40"], HGX: ["KHB40", "NOAA Houston", "KHB43"],
-      BOX: ["WXJ41", "NOAA Hartford", "WXJ42", "KHB35"], OKX: ["KWO35", "NOAA New York", "KHB35"], LWX: ["KHB36", "NOAA Washington", "KHB35"],
+      BOX: ["WXJ42", "NOAA Hartford", "WXJ41", "KHB35"], OKX: ["KWO35", "NOAA New York", "KHB35"], LWX: ["KHB36", "NOAA Washington", "KHB35"],
       ILN: ["WXM50", "NOAA Cincinnati", "KHB36"], IND: ["WXM94", "NOAA Indianapolis", "WXM50"], LOT: ["KXI49", "NOAA Chicago", "WXM94"],
       FFC: ["KXI75", "NOAA Atlanta", "KHB39"], GSP: ["WXL70", "NOAA Greenville", "WXJ22"], CAE: ["WXJ22", "NOAA Columbia", "WXL70"],
       CHS: ["WXJ20", "NOAA Charleston", "WXJ22"], ILM: ["WXK92", "NOAA Wilmington", "WXJ20"],
@@ -9700,7 +9708,7 @@ function currentRotation() {
         if (typeof playStation === "function") playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
         return;
       }
-      if (/weatherusa|\/NWR\//i.test(pinSaved) || /weatherusa|\/NWR\//i.test(want)) {
+      if ((typeof isNoaaStream === "function" && (isNoaaStream(pinSaved) || isNoaaStream(want))) || /weatherusa|\/NWR\//i.test(pinSaved) || /weatherusa|\/NWR\//i.test(want)) {
         if (typeof playStation === "function") playStation(noaaUrl(), noaaName(), { keepSaved: true });
         return;
       }
@@ -13773,6 +13781,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v949 — NOAA Hartford uses the same WeatherUSA Icecast path as Tampa (WXJ42 Meriden if WXJ41 is down).",
+      "v948 — Sea maps use Leaflet NOAA + OpenSeaMap on the home pin. Drop Nullschool/MarineTraffic iframes that refuse to load.",
       "v947 — NOAA Hartford uses the Broadcastify player on the card. Hotlinked CDN audio is blocked.",
       "v946 — NOAA Hartford plays Broadcastify WXJ41 (feeds 47751 then 25922). Stop cache-busting Icecast URLs.",
       "v945 — Header sky uses live cloud cover and incoming rain; overcast no longer looks like a clear day.",
