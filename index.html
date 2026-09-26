@@ -4588,7 +4588,7 @@ Cart shop:</textarea>
         <div class="rowbtns">
           <button type="button" id="nwr-btn" data-stream="https://radio.weatherusa.net/NWR/KHB32.mp3">NOAA</button>
         </div>
-        <p class="hint" id="nwr-note"><b>NOAA Weather Radio.</b> Station follows the home address office.</p>
+        <p class="hint" id="nwr-note"><b>NOAA Weather Radio.</b> Station follows the home address office. <a id="nwr-listen" href="https://www.broadcastify.com/listen/feed/47751" target="_blank" rel="noopener">Open NOAA Hartford</a></p>
         <p class="hint"><b>Warnings now.</b> <span id="live-nwr-alert">Checking NWS for this address…</span></p>
         <p class="hint"><b>Marine now.</b> <span id="live-nwr-marine">Coastal waters update with the Sea page.</span></p>
       </div>
@@ -4943,7 +4943,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 946;
+    window.BOARD_VER = 947;
 
     
     function communityShort() {
@@ -9413,9 +9413,9 @@ function currentRotation() {
     var NOAA_URL = noaaUrl();
     window.__radioWant = { url: "", label: "" };
     function setLoudness(audio, url) {
-      var noaa = /weatherusa|NWR/i.test(url || "");
+      var noaa = (typeof isNoaaStream === "function" && isNoaaStream(url)) || /weatherusa|NWR/i.test(url || "");
       var room = getSet().vol === "room";
-      audio.volume = noaa ? (window.__nwrAlert ? (room ? 0.8 : 0.62) : (room ? 0.7 : 0.55)) : (room ? 0.55 : 0.22);
+      audio.volume = noaa ? (window.__nwrAlert ? (room ? 0.9 : 0.8) : (room ? 0.85 : 0.75)) : (room ? 0.55 : 0.22);
     }
     function playStation(url, label, opts) {
       opts = opts || {};
@@ -9454,9 +9454,15 @@ function currentRotation() {
         rememberRadio(url, label || "");
       if (typeof paintHdrRadio === "function") paintHdrRadio();
         clearInterval(window.__nwrKeep);
-        hideScan();
         if (!opts.keepSaved) saveRadio(url);
         var feedId = url.slice(5);
+        var noaaScan = typeof isNoaaStream === "function" && isNoaaStream(url);
+        if (scan && noaaScan) {
+          scan.style.display = "block";
+          scan.src = "https://m.broadcastify.com/listen/feed/" + feedId;
+        } else {
+          hideScan();
+        }
         var stream = "https://broadcastify.cdnstream1.com/" + feedId;
         audio.pause();
         audio.src = stream;
@@ -9483,7 +9489,9 @@ function currentRotation() {
           }
           if (status) status.textContent = "Tap Police or Fire again if the scanner is quiet. Broadcastify may play a short ad first.";
         });
-        if (status) status.textContent = (label || (typeof isNoaaStream === "function" && isNoaaStream(url) ? "NOAA" : "Scanner")) + " is on. Broadcastify may play a short ad first.";
+        if (status) status.textContent = noaaScan
+          ? ((label || "NOAA Hartford") + " — tap Play in the player below if you do not hear it yet.")
+          : ((label || "Scanner") + " is on. Broadcastify may play a short ad first.");
         if (typeof noteFeed === "function") noteFeed("scanner", true, label || feedId);
         return;
       }
@@ -9621,6 +9629,13 @@ function currentRotation() {
       if (nwr) {
         nwr.setAttribute("data-stream", noaaUrl());
         nwr.textContent = noaaName();
+      }
+      var listen = document.getElementById("nwr-listen");
+      if (listen) {
+        var raw = String(noaaUrl() || "");
+        var fid = raw.indexOf("scan:") === 0 ? raw.slice(5) : (/(\d{4,})$/.test(raw) ? raw.match(/(\d{4,})$/)[1] : "47751");
+        listen.href = "https://www.broadcastify.com/listen/feed/" + fid;
+        listen.textContent = "Open " + (noaaName() || "NOAA");
       }
       var sel = document.getElementById("set-station");
       if (sel) {
@@ -13758,6 +13773,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v947 — NOAA Hartford uses the Broadcastify player on the card. Hotlinked CDN audio is blocked.",
       "v946 — NOAA Hartford plays Broadcastify WXJ41 (feeds 47751 then 25922). Stop cache-busting Icecast URLs.",
       "v945 — Header sky uses live cloud cover and incoming rain; overcast no longer looks like a clear day.",
       "v944 — NOAA Hartford (WXJ41) retries WeatherUSA then Broadcastify; keep-alive no longer says Tampa.",
