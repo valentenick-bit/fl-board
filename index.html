@@ -3097,7 +3097,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v964</span>
+      <span class="hdr-ver" id="hdr-ver">v965</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4981,7 +4981,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 964;
+    window.BOARD_VER = 965;
 
     
     function communityShort() {
@@ -5891,13 +5891,22 @@ Cart shop:</textarea>
       box.hidden = false;
       box.classList.add("on");
       box.style.display = "block";
-      var srcdoc = "<!doctype html><html><head><meta charset='utf-8'><style>html,body{margin:0;height:100%;background:#0b1220}iframe{border:0}</style></head><body>" +
-        "<script>var width='100%';var height='100%';var latitude=" + lat.toFixed(4) + ";var longitude=" + lon.toFixed(4) + ";var zoom=6;var names=true;<\/script>" +
-        "<script src='https://www.vesselfinder.com/aismap.js'><\/script>" +
-        "<p style='position:absolute;left:8px;bottom:8px;margin:0;font:12px sans-serif;background:#0b1220cc;color:#fff;padding:4px 8px;border-radius:6px'>" +
-        "<a href='https://www.vesselfinder.com/?lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) + "&zoom=6' target='_blank' rel='noopener' style='color:#9cf'>Open live AIS</a></p>" +
-        "</body></html>";
-      box.innerHTML = "<iframe title='Live ships' style='position:absolute;inset:0;width:100%;height:100%;border:0;background:#0b1220' srcdoc="" + srcdoc.replace(/"/g, """) + ""></iframe>";
+      var html = [
+        "<!doctype html><html><head><meta charset='utf-8'>",
+        "<style>html,body{margin:0;height:100%;background:#0b1220}</style></head><body>",
+        "<script>var width='100%';var height='100%';var latitude=" + lat.toFixed(4) + ";var longitude=" + lon.toFixed(4) + ";var zoom=6;var names=true;<\/script>",
+        "<script src='https://www.vesselfinder.com/aismap.js'><\/script>",
+        "<p style='position:absolute;left:8px;bottom:8px;margin:0;font:12px sans-serif;background:#0b1220cc;color:#fff;padding:4px 8px;border-radius:6px'>",
+        "<a href='https://www.vesselfinder.com/?lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) + "&zoom=6' target='_blank' rel='noopener' style='color:#9cf'>Open live AIS<\/a></p>",
+        "</body></html>"
+      ].join("");
+      var url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+      box.innerHTML = "";
+      var ifr = document.createElement("iframe");
+      ifr.title = "Live ships";
+      ifr.setAttribute("style", "position:absolute;inset:0;width:100%;height:100%;border:0;background:#0b1220");
+      ifr.src = url;
+      box.appendChild(ifr);
     }
     function showSeaMap(id) {
       var views = {
