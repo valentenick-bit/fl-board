@@ -4921,7 +4921,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 941;
+    window.BOARD_VER = 942;
 
     
     function communityShort() {
@@ -9346,6 +9346,15 @@ function currentRotation() {
     }
     function playStation(url, label, opts) {
       opts = opts || {};
+      if (url && !opts.force && typeof radioAllowedOnThisPin === "function" && !radioAllowedOnThisPin(url)) {
+        if (/weatherusa|\/NWR\//i.test(url) && typeof noaaUrl === "function") {
+          url = noaaUrl();
+          label = typeof noaaName === "function" ? noaaName() : "NOAA";
+        } else {
+          url = "";
+          label = "Mute";
+        }
+      }
       var audio = document.getElementById("radioPlayer");
       var status = document.getElementById("radio-status");
       if (!audio) return;
@@ -9450,6 +9459,7 @@ function currentRotation() {
       function reconnect() {
         var want = window.__radioWant || {};
         if (!want.url) return;
+        if (typeof radioAllowedOnThisPin === "function" && !radioAllowedOnThisPin(want.url) && !/weatherusa|\/NWR\//i.test(want.url)) return;
         playStation(want.url, radioLabelFor(want.url, want.label), { keepSaved: true });
       }
       ["ended", "error", "stalled"].forEach(function (ev) {
@@ -9597,12 +9607,16 @@ function currentRotation() {
 
     function fillZipRadio() {
       window.__radioGen = (window.__radioGen || 0) + 1; var gen = window.__radioGen;
+      var pinNow = typeof radioPinKey === "function" ? radioPinKey() : "";
       var audioNow = document.getElementById("radioPlayer");
-      var liveNow = (window.__radioWant && window.__radioWant.url) || (audioNow && audioNow.getAttribute("src")) || "";
-      if (liveNow && typeof radioAllowedOnThisPin === "function" && !radioAllowedOnThisPin(liveNow) && !/weatherusa|\/NWR\//i.test(liveNow)) {
-        if (audioNow) { try { audioNow.pause(); audioNow.removeAttribute("src"); } catch (eStop) {} }
+      if (window.__radioPinSeen && window.__radioPinSeen !== pinNow) {
         window.__radioWant = { url: "", label: "" };
+        if (audioNow) {
+          try { audioNow.pause(); audioNow.removeAttribute("src"); audioNow.load(); } catch (eStop) {}
+        }
+        if (typeof noteFeed === "function") noteFeed("radio", true, "pin " + pinNow + " retune");
       }
+      window.__radioPinSeen = pinNow;
       var preset = radioMarketPreset();
       function applyList(list) {
         if (gen !== window.__radioGen) return;
@@ -10163,12 +10177,19 @@ function currentRotation() {
       dest.textContent = fmtWindLine((src && src.textContent) || "");
     }
     function radioLast() {
-      try { return JSON.parse(localStorage.getItem("bw-radio-last") || "null"); } catch (e) { return null; }
+      try {
+        var rec = JSON.parse(localStorage.getItem("bw-radio-last") || "null");
+        if (!rec) return typeof savedRadioRecForPin === "function" ? savedRadioRecForPin() : null;
+        var pin = typeof radioPinKey === "function" ? radioPinKey() : "";
+        if (rec.pin && pin && rec.pin !== pin) return typeof savedRadioRecForPin === "function" ? savedRadioRecForPin() : null;
+        return rec;
+      } catch (e) { return typeof savedRadioRecForPin === "function" ? savedRadioRecForPin() : null; }
     }
     function rememberRadio(url, label) {
       if (!url) return;
       var name = radioLabelFor(url, label);
-      try { localStorage.setItem("bw-radio-last", JSON.stringify({ url: url, label: name })); } catch (e) {}
+      if (typeof saveRadioForPin === "function") saveRadioForPin(url, name);
+      try { localStorage.setItem("bw-radio-last", JSON.stringify({ url: url, label: name, pin: (typeof radioPinKey === "function" ? radioPinKey() : "") })); } catch (e) {}
       if (window.__radioWant && window.__radioWant.url === url) window.__radioWant.label = name;
     }
     function radioLabelLooksBlank(label) {
@@ -10210,16 +10231,24 @@ function currentRotation() {
       return !!(url && audio && !audio.paused && audio.getAttribute("src"));
     }
     function toggleHdrRadio() {
+      var rec = typeof savedRadioRecForPin === "function" ? savedRadioRecForPin() : {};
       var want = window.__radioWant || {};
-      var last = radioLast() || {};
       if (radioIsPlaying()) {
-        rememberRadio(want.url || last.url, want.label || last.label);
+        if (typeof saveRadioForPin === "function") saveRadioForPin(want.url || rec.url, want.label || rec.label);
         if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
       } else {
-        var url = last.url || want.url || (typeof savedRadio === "function" ? savedRadio() : "") || "";
-        var label = last.label || want.label || "";
-        if (!url) url = "https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac";
-        if (!label) label = "94.9 Magic";
+        var url = rec.url || want.url || "";
+        var label = rec.label || want.label || "";
+        if (url && typeof radioAllowedOnThisPin === "function" && !radioAllowedOnThisPin(url)) {
+          if (/weatherusa|\/NWR\//i.test(url) && typeof noaaUrl === "function") {
+            url = noaaUrl();
+            label = typeof noaaName === "function" ? noaaName() : "NOAA";
+          } else { url = ""; label = ""; }
+        }
+        if (!url) {
+          var first = document.querySelector('#radio-stations button[data-stream]:not([data-stream=""])');
+          if (first) { url = first.getAttribute("data-stream") || ""; label = first.textContent || ""; }
+        }
         if (typeof playStation === "function") playStation(url, label);
       }
       if (typeof paintHdrRadio === "function") paintHdrRadio();
@@ -13605,6 +13634,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v942 — Radio hard-stops on pin change. No global last-played, no Tampa 94.9 default.",
       "v941 — Radio follows the current home pin; it will not keep playing another pin’s station.",
       "v940 — Radio pill shows the playing station name, not the word station.",
       "v939 — Sources table adds Collected at: sensor, model cell, or office vs the home pin.",
@@ -25533,7 +25563,7 @@ function homeCountyGuess() {
             var audio = document.getElementById("radioPlayer");
             var src = (audio && (audio.getAttribute("src") || audio.src)) || "";
             var saved = "";
-            try { saved = savedRadio() || (getSet() && getSet().station) || ""; } catch (eS) {}
+            try { saved = (typeof savedRadioForPin === "function" ? savedRadioForPin() : savedRadio()) || ""; } catch (eS) {}
             var want = (window.__radioWant && window.__radioWant.url) || "";
             var cands = [want, src, saved];
             var pick = "";
