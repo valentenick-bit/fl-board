@@ -3097,7 +3097,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v963</span>
+      <span class="hdr-ver" id="hdr-ver">v964</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3450,6 +3450,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div class="radar-crop radar-stage" id="sea-map-stage">
             <iframe class="sheet-map-pane on" id="sea-map" title="Marine map" src="about:blank" allowfullscreen></iframe>
             <div class="sheet-map-pane" id="sea-chart" hidden></div>
+            <div class="sheet-map-pane" id="sea-ais" hidden></div>
           </div>
           <div class="sea-map-pills" id="sea-map-pills">
             <button type="button" data-sea-map="waves">Waves</button>
@@ -4980,7 +4981,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 963;
+    window.BOARD_VER = 964;
 
     
     function communityShort() {
@@ -5841,7 +5842,7 @@ Cart shop:</textarea>
       el.hidden = false;
       el.style.display = "block";
       if (window.__seaChart && window.__seaChart.map) {
-        window.__seaChart.map.setView([lat, lon], 9);
+        window.__seaChart.map.setView([lat, lon], 6);
         if (window.__seaChart.marker) window.__seaChart.marker.setLatLng([lat, lon]);
         window.__seaChart.pin = pin;
         setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (e) {} }, 80);
@@ -5849,7 +5850,7 @@ Cart shop:</textarea>
         return;
       }
       el.innerHTML = "";
-      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 9);
+      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 6);
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
         maxZoom: 16, attribution: "Esri Ocean"
       }).addTo(map);
@@ -5883,6 +5884,21 @@ Cart shop:</textarea>
       }
       return true;
     }
+    function paintSeaTraffic() {
+      var box = document.getElementById("sea-ais");
+      if (!box) return;
+      var lat = Number(homeLat()), lon = Number(homeLon());
+      box.hidden = false;
+      box.classList.add("on");
+      box.style.display = "block";
+      var srcdoc = "<!doctype html><html><head><meta charset='utf-8'><style>html,body{margin:0;height:100%;background:#0b1220}iframe{border:0}</style></head><body>" +
+        "<script>var width='100%';var height='100%';var latitude=" + lat.toFixed(4) + ";var longitude=" + lon.toFixed(4) + ";var zoom=6;var names=true;<\/script>" +
+        "<script src='https://www.vesselfinder.com/aismap.js'><\/script>" +
+        "<p style='position:absolute;left:8px;bottom:8px;margin:0;font:12px sans-serif;background:#0b1220cc;color:#fff;padding:4px 8px;border-radius:6px'>" +
+        "<a href='https://www.vesselfinder.com/?lat=" + lat.toFixed(4) + "&lon=" + lon.toFixed(4) + "&zoom=6' target='_blank' rel='noopener' style='color:#9cf'>Open live AIS</a></p>" +
+        "</body></html>";
+      box.innerHTML = "<iframe title='Live ships' style='position:absolute;inset:0;width:100%;height:100%;border:0;background:#0b1220' srcdoc="" + srcdoc.replace(/"/g, """) + ""></iframe>";
+    }
     function showSeaMap(id) {
       var views = {
         waves: { label: "Waves", note: "Combined sea height (swell + wind waves) at the home pin", url: homeMarineOverlay("waves"), chart: false },
@@ -5903,12 +5919,19 @@ Cart shop:</textarea>
       document.querySelectorAll("#sea-map-pills button").forEach(function (b) {
         b.className = b.getAttribute("data-sea-map") === id ? "on" : "";
       });
+      var aisBox = document.getElementById("sea-ais");
       if (v.chart) {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); frame.removeAttribute("data-src"); }
+        if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; aisBox.innerHTML = ""; }
         if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
         paintSeaChart(id);
+      } else if (id === "ais") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); frame.removeAttribute("data-src"); }
+        if (chart) { chart.hidden = true; chart.classList.remove("on"); chart.style.display = "none"; }
+        paintSeaTraffic();
       } else {
         if (chart) { chart.hidden = true; chart.classList.remove("on"); chart.style.display = "none"; }
+        if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; aisBox.innerHTML = ""; }
         if (frame) {
           frame.classList.add("on");
           frame.style.display = "block";
