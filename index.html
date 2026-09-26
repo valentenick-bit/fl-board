@@ -1253,6 +1253,10 @@
     .boat-alerts { margin:4px 0 6px; }
     .boat-alerts .boat-alert { display:block; margin:3px 0; font-size:14px; line-height:1.35; }
     .boat-alerts .boat-alert em { font-style:normal; font-weight:700; letter-spacing:.04em; text-transform:uppercase; font-size:11px; margin-right:6px; color:#8a2a18; }
+    .fish-card #fish-kind { display:block; margin:2px 0 8px; font-family:"Fraunces",Georgia,serif; font-size:18px; font-weight:600; }
+    .fish-sec { margin:8px 0 0; }
+    .fish-sec b { display:block; font-size:12px; letter-spacing:.06em; text-transform:uppercase; opacity:.72; margin-bottom:4px; }
+    .fish-sec a { color:inherit; }
     .boat-facts { display:grid; grid-template-columns:1fr 1fr; gap:3px 14px; margin-top:6px; font-size:13px; color:var(--muted); }
     .boat-facts b { color:var(--navy); font-weight:700; }
     html.dark .boat-facts b { color:#f7f1e6; }
@@ -3490,7 +3494,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         </div>
         <div class="sheet-notes">
-        <div class="card"><b id="fish-title">What’s biting</b><span id="live-fish">Loading the local bite…</span></div>
+        <div class="card fish-card" id="fish-card">
+          <b id="fish-title">Fishing report</b>
+          <strong id="fish-kind">Checking waters at the pin…</strong>
+          <span id="live-fish">Looking up freshwater and saltwater reports…</span>
+          <div id="fish-news" class="boat-facts"></div>
+        </div>
         <div class="card" id="sea-uscg-card"><b>USCG</b><span id="live-sea-uscg">Checking notices for this pin…</span></div>
         <div class="card sea-cam-card" id="sea-cam-card">
           <b id="sea-cam-title">Water cam</b>
@@ -4971,7 +4980,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 959;
+    window.BOARD_VER = 960;
 
     
     function communityShort() {
@@ -13944,6 +13953,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v960 — Fishing report: fresh and salt from the home pin, plus local run/record news.",
       "v959 — Lightning pill hides the live radar layer so Blitzortung can show.",
       "v958 — Do not auto-load Windy/lightning iframes on rotation. Chart is default; overlays load on tap.",
       "v957 — Sea maps start zoomed out one or two levels (Windy 6, chart 9, AIS 8).",
@@ -19716,8 +19726,10 @@ function mustEatsFL() {
       load();
       setInterval(load, 10 * 60 * 1000);
     })();
-    (function fishReport() {
+        (function fishReport() {
       var el = document.getElementById("live-fish");
+      var kindEl = document.getElementById("fish-kind");
+      var newsEl = document.getElementById("fish-news");
       if (!el) return;
       function parseRss(xml) {
         var out = [];
@@ -19727,38 +19739,133 @@ function mustEatsFL() {
           var chunk = parts[i];
           var tm = chunk.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
           var lm = chunk.match(/<link[^>]*>([\s\S]*?)<\/link>/i);
+          var dm = chunk.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i);
           var title = tm ? tm[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
           var link = lm ? lm[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, "").trim() : "";
-          if (title) out.push({ title: title, link: link });
+          var when = dm ? dm[1].trim() : "";
+          if (title) out.push({ title: title, link: link, when: when });
         }
         return out;
       }
-      function load() {
-        var place = homePlace();
-        var q = encodeURIComponent(place + " " + homeState() + " fishing report when:14d");
-        var raw = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
-        fetch("https://corsproxy.io/?" + encodeURIComponent(raw)).then(function (r) { return r.text(); }).then(function (xml) {
-          var rows = parseRss(xml).filter(function (it) { return /fish|bite|snook|redfish|trout|bass|inshore|nearshore/i.test(it.title); });
-          if (!rows.length) {
-            el.textContent = "No fresh fishing report for " + place + " this week. Check local tackle shops.";
-            touchFeed("fishing", true, "no fresh items");
-            return;
+      function cleanTitle(t) {
+        return String(t || "").replace(/\s*[-–|]\s*[^-–|]{0,40}$/, "").replace(/\s+/g, " ").trim();
+      }
+      function bucket(title) {
+        var t = String(title || "");
+        if (/record|trophy|world record|state record|personal best/i.test(t)) return "hot";
+        if (/\brun\b|running|migration|pushed in|showing up|stocking|stocked|opener|derby/i.test(t)) return "hot";
+        if (/salt|snook|redfish|red drum|tarpon|permit|striper|striped bass|bluefish|fluke|flounder|snapper|grouper|mahi|tuna|kingfish|spanish|inshore|nearshore|offshore|gulf|sound|surf/i.test(t)) return "salt";
+        if (/trout|largemouth|smallmouth|pickerel|pike|catfish|crappie|fresh|pond|lake|river|stream|stock/i.test(t)) return "fresh";
+        return "gen";
+      }
+      function seasonLine(kind, st, place) {
+        var m = new Date().getMonth() + 1;
+        st = String(st || "").toUpperCase();
+        if (kind === "gulf" || (st === "FL" && kind !== "inland")) {
+          if (m >= 9 && m <= 11) return "Fall on the Gulf: snook, redfish, and trout on the flats. Tarpon taper. Look for mullet schools.";
+          if (m >= 4 && m <= 8) return "Warm-season Gulf: snook and tarpon in passes, trout and reds in the backwater.";
+          return "Winter Gulf: sheepshead, reds, and trout in creeks. Snook slow in cold snaps.";
+        }
+        if (kind === "sound" || st === "CT" || st === "RI" || st === "NY") {
+          if (kind === "inland") {
+            if (m >= 9 && m <= 11) return "Fall freshwater: trout stocking starts, bass still eat, pickerel in weedy ponds.";
+            if (m >= 4 && m <= 6) return "Spring freshwater: trout opener and stocked rivers, then bass as water warms.";
+            return "Cold-water freshwater: trout in tailwaters if open, pike and pickerel slow and deep.";
           }
-          el.innerHTML = rows.slice(0, 3).map(function (r) {
-            return "<b>" + r.title.replace(/\s*[-–|]\s*[^-–|]+$/, "") + "</b>" + (r.link ? ' <a href="' + r.link + '" target="_blank" rel="noopener">Open</a>' : "");
-          }).join("<br>");
-            touchFeed("fishing", true, rows.length + " items");
+          if (m >= 9 && m <= 11) return "Fall Sound: stripers and blues on bait, porgies and sea bass on structure. Fluke winding down.";
+          if (m >= 5 && m <= 8) return "Summer Sound: fluke, scup, sea bass; stripers early and late.";
+          return "Winter Sound: tautog on wrecks when boats go, some schoolie bass in rivers.";
+        }
+        if (kind === "pacific") return "Check the local landing for salmon, rockfish, and crab rules this week.";
+        if (kind === "atlantic") return "Atlantic week: look for the current migratory bite — drum, blues, or kings depending on water temp.";
+        return "Match the hatch to this pin: ponds and rivers first, nearest salt second.";
+      }
+      function official(st, kind) {
+        st = String(st || "").toUpperCase();
+        if (st === "FL") return { label: "FWC fishing", href: "https://myfwc.com/fishing/" };
+        if (st === "CT") return { label: "CT DEEP fishing", href: "https://portal.ct.gov/deep/fishing/ct-fishing" };
+        if (st === "RI") return { label: "RI DEM marine", href: "https://dem.ri.gov/natural-resources-bureau/marine-fisheries" };
+        if (st === "NY") return { label: "NY DEC fishing", href: "https://dec.ny.gov/things-to-do/freshwater-fishing" };
+        if (st === "MA") return { label: "MassWildlife fishing", href: "https://www.mass.gov/orgs/division-of-fisheries-and-wildlife" };
+        if (st === "TX") return { label: "TPWD fishing", href: "https://tpwd.texas.gov/fishboat/fish/" };
+        return { label: "State fishing", href: "https://www.fws.gov/program/national-fish-habitat-partnership" };
+      }
+      function gNews(q) {
+        var raw = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
+        return fetch("https://corsproxy.io/?" + encodeURIComponent(raw)).then(function (r) { return r.ok ? r.text() : ""; }).catch(function () { return ""; });
+      }
+      function line(item) {
+        var t = cleanTitle(item.title);
+        if (t.length > 140) t = t.slice(0, 137) + "…";
+        if (item.link) return '<div><a href="' + item.link.replace(/"/g, "") + '" target="_blank" rel="noopener">' + t + "</a></div>";
+        return "<div>" + t + "</div>";
+      }
+      function load() {
+        var place = (typeof homePlace === "function" && homePlace()) || "home";
+        var st = (typeof homeState === "function" && homeState()) || "";
+        var kind = (typeof seaKind === "function" && seaKind()) || "inland";
+        var salt = kind !== "inland";
+        if (kindEl) {
+          kindEl.textContent = salt
+            ? ("Salt water first · " + place)
+            : ("Fresh water first · " + place);
+        }
+        var queries = [
+          place + " " + st + " fishing report",
+          st + " freshwater fishing report OR trout stocking",
+          salt
+            ? (place + " " + st + " saltwater fishing report OR inshore bite")
+            : (st + " saltwater fishing report OR striped bass OR Long Island Sound"),
+          st + " record fish OR fish running OR fishing derby"
+        ];
+        Promise.all(queries.map(gNews)).then(function (xmls) {
+          var seen = {};
+          var rows = [];
+          xmls.forEach(function (xml) {
+            parseRss(xml).forEach(function (it) {
+              var key = cleanTitle(it.title).toLowerCase();
+              if (!key || seen[key]) return;
+              if (!/fish|bite|snook|redfish|trout|bass|inshore|nearshore|stock|fluke|tarpon|striper|tuna|snapper|derby|angling/i.test(it.title)) return;
+              seen[key] = 1;
+              it.bucket = bucket(it.title);
+              rows.push(it);
+            });
+          });
+          var fresh = rows.filter(function (r) { return r.bucket === "fresh"; });
+          var saltRows = rows.filter(function (r) { return r.bucket === "salt"; });
+          var hot = rows.filter(function (r) { return r.bucket === "hot"; });
+          var gen = rows.filter(function (r) { return r.bucket === "gen"; });
+          if (!fresh.length) fresh = gen.slice(0, 3);
+          var html = "";
+          html += '<div class="fish-sec"><b>This week</b><div>' + seasonLine(kind, st, place) + "</div></div>";
+          html += '<div class="fish-sec"><b>Fresh water</b>';
+          html += fresh.length ? fresh.slice(0, 3).map(line).join("") : "<div>No new freshwater write-up this week. Check the state stocking page.</div>";
+          html += "</div>";
+          html += '<div class="fish-sec"><b>Salt water</b>';
+          if (saltRows.length) html += saltRows.slice(0, 3).map(line).join("");
+          else if (salt) html += "<div>No new saltwater report near " + place + " this week.</div>";
+          else html += "<div>Nearest salt is the coast / Sound. Reports above if a run is in the news.</div>";
+          html += "</div>";
+          if (hot.length) {
+            html += '<div class="fish-sec"><b>Runs, records, news</b>' + hot.slice(0, 3).map(line).join("") + "</div>";
+          }
+          var off = official(st, kind);
+          html += '<div class="fish-sec"><b>Official</b><div><a href="' + off.href + '" target="_blank" rel="noopener">' + off.label + "</a></div></div>";
+          el.innerHTML = html;
+          if (newsEl) newsEl.innerHTML = "";
+          if (typeof touchFeed === "function") touchFeed("fishing", true, rows.length + " clips · " + kind);
+          else if (typeof noteFeed === "function") noteFeed("live-fish", true, rows.length + " clips");
         }).catch(function () {
-          el.textContent = "No fishing report loaded for " + (typeof homePlace === "function" ? homePlace() : "home") + ". Try a local bait shop.";
-          touchFeed("fishing", true, "fallback");
+          el.textContent = "Could not reach fishing news for " + place + ". Use the state page and a local bait shop.";
+          if (typeof touchFeed === "function") touchFeed("fishing", true, "news miss");
         });
       }
       window.__reloadFish = load;
       window.reloadFish = load;
       load();
-      setInterval(load, 12 * 60 * 60 * 1000);
+      setInterval(load, 6 * 60 * 60 * 1000);
     })();
-    (function gatorWatch() {
+(function gatorWatch() {
       var el = document.getElementById("live-gator");
       var card = document.getElementById("gator-card");
       if (!el) return;
