@@ -4080,6 +4080,7 @@ Cart shop:</textarea>
                 <th>Stat</th>
                 <th>Primary source</th>
                 <th>Backup</th>
+                <th>Collected at</th>
                 <th>Last update</th>
               </tr>
             </thead>
@@ -4920,7 +4921,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 938;
+    window.BOARD_VER = 939;
 
     
     function communityShort() {
@@ -7907,6 +7908,118 @@ Cart shop:</textarea>
       if (extra.length) bits.push(extra.join(" · "));
       return bits;
     }
+    function pinCoordLine() {
+      var lat = typeof homeLat === "function" ? homeLat() : null;
+      var lon = typeof homeLon === "function" ? homeLon() : null;
+      if (!isFinite(lat) || !isFinite(lon)) return "home pin";
+      return Number(lat).toFixed(4) + ", " + Number(lon).toFixed(4);
+    }
+    function collectedAtFor(id) {
+      var s = typeof getSet === "function" ? getSet() : {};
+      var pin = pinCoordLine();
+      var place = typeof homePlace === "function" ? homePlace() : "home";
+      var obs = window.__obsSite || {};
+      var obsLine = obs.id
+        ? ((obs.id + (obs.name && obs.name !== obs.id ? " · " + obs.name : "")) +
+           (obs.miles != null ? " · " + obs.miles + " mi from pin" : "") +
+           (isFinite(obs.lat) ? " · " + Number(obs.lat).toFixed(3) + ", " + Number(obs.lon).toFixed(3) : ""))
+        : (window.__obsStation ? String(window.__obsStation) + " (NWS list, coords pending)" : "nearest NWS METAR not resolved yet");
+      var radar = s.radar || (typeof homeRadar === "function" ? homeRadar() : "") || "";
+      var radarNames = {
+        KBOX:"Boston / Taunton NEXRAD", KOKX:"Upton NY NEXRAD", KENX:"Albany NEXRAD",
+        KTBW:"Tampa / Ruskin NEXRAD", KAMX:"Miami NEXRAD", KMLB:"Melbourne NEXRAD",
+        KJAX:"Jacksonville NEXRAD", KEVX:"Eglin NEXRAD", KTLH:"Tallahassee NEXRAD",
+        KGYX:"Portland ME NEXRAD", KCXX:"Burlington VT NEXRAD"
+      };
+      var tide = (typeof homeTide === "function" ? homeTide() : s.tide) || "";
+      var tideName = s.tideName || tide;
+      var river = window.__riverGauge || {};
+      var wfo = s.wfo || window.__nwsWfo || "";
+      switch (id) {
+        case "wx-now":
+        case "humid":
+        case "hourly":
+        case "tenday":
+        case "rain":
+        case "aqi":
+        case "pollen":
+        case "heatrisk":
+          return "Open-Meteo model cell at the pin (" + pin + ") — not a thermometer or anemometer on the lot";
+        case "wind":
+          return "Primary: model 10 m wind at " + pin + ". Backup sensor: " + obsLine;
+        case "alerts":
+        case "frost":
+        case "firewx":
+        case "noreast":
+          return "NWS office " + (wfo || "?") + " products for the pin zone · " + pin;
+        case "radar":
+          return radar ? ("NEXRAD " + radar + (radarNames[radar] ? " · " + radarNames[radar] : "") + " dish, not the backyard") : ("Home radar site not geocoded yet · pin " + pin);
+        case "lightning":
+          return "Strikes plotted within 10–25 mi of " + pin;
+        case "land-call":
+          return "Hazards issued for the pin zone · " + pin;
+        case "traffic":
+          return "Map centered on " + (s.address || pin);
+        case "flood":
+          return river.id
+            ? ("USGS " + river.id + " · " + (river.short || river.name || "gauge") + (river.miles != null ? " · " + river.miles + " mi from pin" : ""))
+            : (river.why || "No USGS gauge stored yet");
+        case "quake":
+          return "USGS events near " + pin + " (and significant worldwide)";
+        case "boat":
+        case "rip":
+        case "sea-maps":
+          return "Marine products for WFO " + (wfo || "?") + " / waters nearest " + place + " · pin " + pin;
+        case "tide":
+        case "surge":
+          return tide
+            ? ("NOAA CO-OPS " + tide + (tideName && tideName !== tide ? " · " + tideName : "") + " — gauge, not the dock thermometer")
+            : ("Tide station not assigned · pin " + pin);
+        case "sst":
+          return "Open-Meteo marine cell at " + pin + (tide ? "; inlet temp from NOAA " + (tideName || tide) : "");
+        case "redtide":
+          return /FL/i.test(String(s.state || (typeof homeState === "function" ? homeState() : "")))
+            ? "FWC / Healthy Beaches samples on the FL Gulf/Atlantic coast — statewide map, not a sensor at the pin"
+            : "Not sampled at this pin";
+        case "fishing":
+        case "breaking":
+        case "picks":
+          return "Headlines / places searched around " + place + " · " + pin;
+        case "sky-watch":
+        case "sunmoon":
+        case "planets":
+        case "spacewx":
+          return "Sky computed for " + pin + " (no backyard observatory)";
+        case "iss":
+          return "ISS position vs " + pin;
+        case "horo":
+          return "Sign APIs — not location-based";
+        case "storms":
+        case "storm-maps":
+          return "NHC basin / storm center (often thousands of miles from the pin). Distance-to-home uses " + pin;
+        case "today":
+          return "Synthesized for " + place + " · " + pin;
+        case "community":
+        case "bw-events":
+          return "Account community name (BeachWalk pages follow community, not the map pin)";
+        case "events":
+          return "Live search + events-" + (String(s.zip || "").slice(0,5) || "ZIP") + ".json around " + pin;
+        case "eats":
+        case "golf":
+          return "Venues near " + pin + " (Places cache / OpenGolf / OSM)";
+        case "house":
+        case "deliveries":
+        case "flights":
+          return "Household files / Gmail automation — not a field sensor";
+        case "radio":
+          return "Streams and NOAA " + (s.nwrName || s.nwrCall || "NWR") + " for WFO " + (wfo || "?") + " · scanners near " + place;
+        case "prep":
+        case "civic":
+          return "Alerts and kit for " + place + " · " + pin;
+        default:
+          return pin;
+      }
+    }
     function sourcesReportText(rows) {
       var pin = srcPinText();
       var lines = [
@@ -7916,7 +8029,7 @@ Cart shop:</textarea>
         "pin: " + pin.join(" · ")
       ];
       rows.forEach(function (r) {
-        lines.push([r.page, r.stat, r.primary, r.backup || "—", r.updated || "—"].join(" | "));
+        lines.push([r.page, r.stat, r.primary, r.backup || "—", r.at || "—", r.updated || "—"].join(" | "));
       });
       return lines.join("\n");
     }
@@ -7962,6 +8075,7 @@ Cart shop:</textarea>
       var painted = catalog.map(function (r) {
         var meta = srcFeedMeta(r.feeds || [r.id]);
         r.updated = meta.at ? srcAge(meta.at) : "no ping yet";
+        r.at = typeof collectedAtFor === "function" ? collectedAtFor(r.id) : pinCoordLine();
         r._ok = meta.ok;
         r._detail = meta.detail;
         return r;
@@ -7970,7 +8084,8 @@ Cart shop:</textarea>
         var cls = r._ok === false ? "src-stale" : (r.updated !== "no ping yet" ? "src-ok" : "");
         return "<tr data-src=\"" + r.id + "\"><td>" + r.page + "</td><td>" + r.stat +
           (r._detail ? "<br><small>" + String(r._detail).replace(/</g, "") + "</small>" : "") +
-          "</td><td>" + r.primary + "</td><td>" + (r.backup || "—") + "</td><td class=\"" + cls + "\">" + r.updated + "</td></tr>";
+          "</td><td>" + r.primary + "</td><td>" + (r.backup || "—") + "</td><td>" + (r.at || "—") +
+          "</td><td class=\"" + cls + "\">" + r.updated + "</td></tr>";
       }).join("");
       window.__srcRows = painted;
       if (typeof noteFeed === "function") noteFeed("sources", true, painted.length + " rows");
@@ -13441,6 +13556,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v939 — Sources table adds Collected at: sensor, model cell, or office vs the home pin.",
       "v938 — Sources page is a live inventory table: page, stat, primary, backup, last update, plus a copy pill.",
       "v937 — 10-day forecast is a horizontal row of day capsules (high, low, icon, rain chance, weekday, date).",
       "v936 — Storm page on a phone: one-column maps, no hidden metrics, Nor'easter no longer duplicates the stats card.",
@@ -22712,6 +22828,17 @@ function wxSvg(kind, box) {
               var pick = feats[0];
               if (pick && pick.properties && pick.properties.stationIdentifier) {
                 window.__obsStation = pick.properties.stationIdentifier;
+                var geo = (pick.geometry && pick.geometry.coordinates) || [];
+                var slat = geo.length >= 2 ? Number(geo[1]) : null;
+                var slon = geo.length >= 2 ? Number(geo[0]) : null;
+                var mi = (isFinite(slat) && isFinite(slon) && typeof milesLatLon === "function") ? milesLatLon(slat, slon) : null;
+                window.__obsSite = {
+                  id: pick.properties.stationIdentifier,
+                  name: pick.properties.name || pick.properties.stationIdentifier,
+                  lat: slat,
+                  lon: slon,
+                  miles: (mi != null && isFinite(mi)) ? Math.round(mi * 10) / 10 : null
+                };
               }
               if (!pick) return {};
               return fetch(pick.id + "/observations/latest", { headers: hdr }).then(function (r) { return r.json(); });
