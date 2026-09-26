@@ -3437,10 +3437,13 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <div class="sheet-map-pane" id="sea-chart" hidden></div>
           </div>
           <div class="sea-map-pills" id="sea-map-pills">
-            <button type="button" data-sea-map="chart" class="on">Chart</button>
+            <button type="button" data-sea-map="waves" class="on">Waves</button>
+            <button type="button" data-sea-map="swell">Swell</button>
+            <button type="button" data-sea-map="currents">Current</button>
+            <button type="button" data-sea-map="chart">Chart</button>
             <button type="button" data-sea-map="ais">Traffic</button>
           </div>
-          <p class="wx-map-cap"><b id="sea-map-kind">Chart</b><span id="sea-map-note">Pinned on home</span></p>
+          <p class="wx-map-cap"><b id="sea-map-kind">Waves</b><span id="sea-map-note">Pinned on home</span></p>
         </div>
         <div class="sea-top-left">
         <p class="sheet-kicker">Boating</p>
@@ -4957,7 +4960,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 954;
+    window.BOARD_VER = 955;
 
     
     function communityShort() {
@@ -5774,6 +5777,20 @@ Cart shop:</textarea>
     function nullschoolPin(lat, lon, path) {
       return "https://earth.nullschool.net/#" + path + "/orthographic=" + Number(lon).toFixed(3) + "," + Number(lat).toFixed(3) + ",2600";
     }
+    function homeMarineOverlay(kind) {
+      var lat = homeLat(), lon = homeLon();
+      var overlay = kind === "swell" ? "swell" : kind === "currents" ? "currents" : "waves";
+      return "https://embed.windy.com/embed2.html?lat=" + Number(lat).toFixed(4) +
+        "&lon=" + Number(lon).toFixed(4) +
+        "&detailLat=" + Number(lat).toFixed(4) +
+        "&detailLon=" + Number(lon).toFixed(4) +
+        "&zoom=8&level=surface&overlay=" + overlay +
+        "&product=ecmwf&marker=true&message=true&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F";
+    }
+    function homeVesselEmbed() {
+      var lat = homeLat(), lon = homeLon();
+      return "https://www.vesselfinder.com/aismap?zoom=10&lat=" + Number(lat).toFixed(4) + "&lon=" + Number(lon).toFixed(4) + "&names=1";
+    }
     function homeWindyEmbed(overlay) {
       var lat = homeLat(), lon = homeLon();
       overlay = overlay || "waves";
@@ -5849,13 +5866,13 @@ Cart shop:</textarea>
     }
     function showSeaMap(id) {
       var views = {
-        chart: { label: "Chart", note: "NOAA chart + channel marks at the home pin", chart: true },
-        ais: { label: "Traffic", note: "Same chart. Live AIS opens MarineTraffic.", chart: true },
-        waves: { label: "Chart", note: "NOAA chart at the home pin", chart: true },
-        swell: { label: "Chart", note: "NOAA chart at the home pin", chart: true },
-        currents: { label: "Chart", note: "NOAA chart at the home pin", chart: true }
+        waves: { label: "Waves", note: "Wave height on the home pin", url: homeMarineOverlay("waves"), chart: false },
+        swell: { label: "Swell", note: "Swell on the home pin", url: homeMarineOverlay("swell"), chart: false },
+        currents: { label: "Current", note: "Surface current on the home pin", url: homeMarineOverlay("currents"), chart: false },
+        chart: { label: "Chart", note: "NOAA raster chart + channel marks", url: "", chart: true },
+        ais: { label: "Traffic", note: "Ships near the pin", url: homeVesselEmbed(), chart: false }
       };
-      if (!views[id]) id = "waves";
+      if (!views[id]) id = (typeof seaKind === "function" && seaKind() === "inland") ? "chart" : "waves";
       window.__seaMapView = id;
       var v = views[id];
       var frame = document.getElementById("sea-map");
@@ -5867,13 +5884,26 @@ Cart shop:</textarea>
       document.querySelectorAll("#sea-map-pills button").forEach(function (b) {
         b.className = b.getAttribute("data-sea-map") === id ? "on" : "";
       });
-      if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); }
-      if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
-      paintSeaChart(id);
+      if (v.chart) {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); frame.removeAttribute("data-src"); }
+        if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
+        paintSeaChart(id);
+      } else {
+        if (chart) { chart.hidden = true; chart.classList.remove("on"); chart.style.display = "none"; }
+        if (frame) {
+          frame.classList.add("on");
+          frame.style.display = "block";
+          if (v.url && frame.getAttribute("data-src") !== v.url) {
+            frame.src = v.url;
+            frame.setAttribute("data-src", v.url);
+          }
+        }
+      }
       if (typeof applyInlandSeaCards === "function") applyInlandSeaCards();
-      if (id === "ais") {
-        var extra = document.getElementById("sea-map-note");
-        if (extra) extra.innerHTML = v.note + " · " + (homePlace() || "home") + " · <a href=\"https://www.marinetraffic.com/en/ais/home/centerx:" + homeLon().toFixed(3) + "/centery:" + homeLat().toFixed(3) + "/zoom:11\" target=\"_blank\" rel=\"noopener\">Live AIS</a>";
+      if (id === "ais" && note) {
+        note.innerHTML = v.note + " · " + (homePlace() || "home") +
+          " · <a href=\"https://www.marinetraffic.com/en/ais/home/centerx:" + homeLon().toFixed(3) +
+          "/centery:" + homeLat().toFixed(3) + "/zoom:11\" target=\"_blank\" rel=\"noopener\">MarineTraffic</a>";
       }
       if (typeof noteFeed === "function") noteFeed("sea-map", true, id);
     }
@@ -6107,7 +6137,7 @@ Cart shop:</textarea>
         el.src = url;
         el.setAttribute("data-src", url);
       }
-      try { if (typeof showSeaMap === "function") showSeaMap(window.__seaMapView || "chart"); } catch (e1) {}
+      try { if (typeof showSeaMap === "function") showSeaMap(window.__seaMapView || ((typeof seaKind === "function" && seaKind() === "inland") ? "chart" : "waves")); } catch (e1) {}
       try { if (typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky"); else setFrame("sky-map", typeof homeSkyEmbed === "function" ? homeSkyEmbed() : ""); } catch (e2) {}
       var seaNote = document.getElementById("sea-map-note");
       if (seaNote && !window.__seaMapView) seaNote.textContent = "Waves · pin on " + (homePlace() || "home");
@@ -9362,7 +9392,7 @@ function currentRotation() {
       if (id === "sky" && typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky");
       if (id === "sky" && typeof paintSkyCall === "function") paintSkyCall();
       if (id === "marine" && typeof showSeaMap === "function") {
-        showSeaMap(window.__seaMapView || "chart");
+        showSeaMap(window.__seaMapView || ((typeof seaKind === "function" && seaKind() === "inland") ? "chart" : "waves"));
         if (window.__seaChart && window.__seaChart.map) setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (eS) {} }, 220);
       }
       if (jump) {
@@ -13870,6 +13900,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v955 — Sea map pills restored: Waves, Swell, Current (Windy embed on pin), Chart (NOAA), Traffic (VesselFinder).",
       "v954 — Off-rotation pages stay put until 60s of no activity, then the loop resumes.",
       "v953 — Inland Sea uses USGS river stage instead of a fake 1–2 ft ocean swell.",
       "v952 — Sources table column widths: page/stat tight, primary/backup wide, times compact.",
