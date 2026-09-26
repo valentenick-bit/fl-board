@@ -4921,7 +4921,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 939;
+    window.BOARD_VER = 941;
 
     
     function communityShort() {
@@ -9302,22 +9302,24 @@ function currentRotation() {
     function radioByPin() {
       try { return JSON.parse(localStorage.getItem("bw-radio-pin") || "{}") || {}; } catch (e) { return {}; }
     }
-    function saveRadioForPin(url) {
+    function saveRadioForPin(url, label) {
       var all = radioByPin();
-      all[radioPinKey()] = url == null ? "" : String(url);
+      all[radioPinKey()] = { url: url == null ? "" : String(url), label: label || "" };
       try { localStorage.setItem("bw-radio-pin", JSON.stringify(all)); } catch (e) {}
     }
-    function savedRadioForPin() {
-      var all = radioByPin();
-      var k = radioPinKey();
-      if (Object.prototype.hasOwnProperty.call(all, k)) return all[k];
-      return savedRadio();
+    function savedRadioRecForPin() {
+      var rec = radioByPin()[radioPinKey()];
+      if (rec == null) return { url: "", label: "" };
+      if (typeof rec === "string") return { url: rec, label: "" };
+      return { url: rec.url || "", label: rec.label || "" };
     }
-    function saveRadio(url) {
+    function savedRadioForPin() {
+      return savedRadioRecForPin().url;
+    }
+    function saveRadio(url, label) {
       var v = url == null ? "" : String(url);
       try { localStorage.setItem("bw-radio", v); } catch (e) {}
-      putSet({ station: v });
-      saveRadioForPin(v);
+      saveRadioForPin(v, label);
     }
     function markRadioOn(url) {
       var cur = url == null ? (savedRadio() != null ? savedRadio() : "") : url;
@@ -9386,8 +9388,9 @@ function currentRotation() {
         return;
       }
       hideScan();
-      window.__radioWant = { url: url, label: label || "" };
-      rememberRadio(url, label || "");
+      label = radioLabelFor(url, label);
+      window.__radioWant = { url: url, label: label };
+      rememberRadio(url, label);
       if (typeof paintHdrRadio === "function") paintHdrRadio();
       if (!opts.keepSaved) saveRadio(url);
       if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert) {
@@ -9419,10 +9422,10 @@ function currentRotation() {
       }
       audio.src = playUrl;
       setLoudness(audio, url);
-      if (status) status.textContent = "Starting " + (label || "station") + "…";
+      if (status) status.textContent = "Starting " + (radioLabelFor(url, label) || "radio") + "…";
       var play = audio.play();
       if (play && play.then) play.then(function () {
-        if (status) status.textContent = "Playing " + (label || "station");
+        if (status) status.textContent = "Playing " + (radioLabelFor(url, label) || "radio");
         if (typeof paintHdrRadio === "function") paintHdrRadio();
       }).catch(function () {
         if (status) status.textContent = "Tap a station once — Chrome blocks sound until a click.";
@@ -9447,7 +9450,7 @@ function currentRotation() {
       function reconnect() {
         var want = window.__radioWant || {};
         if (!want.url) return;
-        playStation(want.url, want.label || "station", { keepSaved: true });
+        playStation(want.url, radioLabelFor(want.url, want.label), { keepSaved: true });
       }
       ["ended", "error", "stalled"].forEach(function (ev) {
         audio.addEventListener(ev, function () {
@@ -9532,6 +9535,22 @@ function currentRotation() {
       if (wfo === "TBW" && st === "FL") return RADIO_PRESETS.TBW;
       return null;
     }
+    function radioUrlKey(u) {
+      return String(u || "").split("?")[0];
+    }
+    function radioAllowedOnThisPin(url) {
+      if (!url) return true;
+      if (/^scan:/i.test(url)) return true;
+      if (/weatherusa|\/NWR\//i.test(url)) {
+        var nwr = typeof noaaUrl === "function" ? radioUrlKey(noaaUrl()) : "";
+        return !!(nwr && radioUrlKey(url) === nwr);
+      }
+      var buttons = document.querySelectorAll("#radio-stations button[data-stream]");
+      var key = radioUrlKey(url);
+      return Array.prototype.some.call(buttons, function (b) {
+        return radioUrlKey(b.getAttribute("data-stream")) === key;
+      });
+    }
     function retuneRadioForPin() {
       if (typeof paintScanners === "function") paintScanners();
       var nwr = document.getElementById("nwr-btn");
@@ -9539,46 +9558,51 @@ function currentRotation() {
         nwr.setAttribute("data-stream", typeof noaaUrl === "function" ? noaaUrl() : "");
         nwr.textContent = typeof noaaName === "function" ? noaaName() : "NOAA";
       }
+      var rec = typeof savedRadioRecForPin === "function" ? savedRadioRecForPin() : { url: "", label: "" };
+      var pinSaved = rec.url || "";
       var want = (window.__radioWant && window.__radioWant.url) || "";
-      var pinSaved = typeof savedRadioForPin === "function" ? savedRadioForPin() : (typeof savedRadio === "function" ? savedRadio() : "");
-      var buttons = document.querySelectorAll("#radio-stations button[data-stream]");
-      function inList(url) {
-        if (!url) return true;
-        if (/weatherusa|\/NWR\/|KHB|WXJ|KWO|WXM|KXI/i.test(url)) return true;
-        return Array.prototype.some.call(buttons, function (b) { return b.getAttribute("data-stream") === url; });
-      }
+      var audio = document.getElementById("radioPlayer");
+      var live = (audio && (audio.getAttribute("src") || audio.src)) || "";
+
       if (window.__nwrAlert) {
         if (typeof playStation === "function") playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
         return;
       }
-      if (/weatherusa|\/NWR\//i.test(want)) {
+      if (/weatherusa|\/NWR\//i.test(pinSaved) || /weatherusa|\/NWR\//i.test(want)) {
         if (typeof playStation === "function") playStation(noaaUrl(), noaaName(), { keepSaved: true });
         return;
       }
-      if (pinSaved === "") {
-        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
-        return;
-      }
-      if (pinSaved && inList(pinSaved)) {
-        var lab = "";
+      if (pinSaved && radioAllowedOnThisPin(pinSaved)) {
+        var lab = rec.label || "";
+        var buttons = document.querySelectorAll("#radio-stations button[data-stream]");
         Array.prototype.forEach.call(buttons, function (b) {
-          if (b.getAttribute("data-stream") === pinSaved) lab = b.textContent || "";
+          if (radioUrlKey(b.getAttribute("data-stream")) === radioUrlKey(pinSaved)) lab = b.textContent || lab;
         });
-        if (/weatherusa|\/NWR\//i.test(pinSaved)) lab = noaaName();
-        if (typeof playStation === "function") playStation(pinSaved, lab || "station", { keepSaved: true });
+        if (typeof playStation === "function") playStation(pinSaved, radioLabelFor(pinSaved, lab), { keepSaved: true });
         return;
       }
-      if (want && inList(want)) return;
       if (String((typeof getSet === "function" && getSet().kiosk) || "") === "1") {
         var first = document.querySelector('#radio-stations button[data-stream]:not([data-stream=""])');
         if (first && typeof playStation === "function") playStation(first.getAttribute("data-stream"), first.textContent);
         else if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
         return;
       }
+      if (want && !radioAllowedOnThisPin(want) || live && !radioAllowedOnThisPin(live) || pinSaved && !radioAllowedOnThisPin(pinSaved)) {
+        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+        return;
+      }
+      if (want && radioAllowedOnThisPin(want)) return;
       if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
     }
+
     function fillZipRadio() {
       window.__radioGen = (window.__radioGen || 0) + 1; var gen = window.__radioGen;
+      var audioNow = document.getElementById("radioPlayer");
+      var liveNow = (window.__radioWant && window.__radioWant.url) || (audioNow && audioNow.getAttribute("src")) || "";
+      if (liveNow && typeof radioAllowedOnThisPin === "function" && !radioAllowedOnThisPin(liveNow) && !/weatherusa|\/NWR\//i.test(liveNow)) {
+        if (audioNow) { try { audioNow.pause(); audioNow.removeAttribute("src"); } catch (eStop) {} }
+        window.__radioWant = { url: "", label: "" };
+      }
       var preset = radioMarketPreset();
       function applyList(list) {
         if (gen !== window.__radioGen) return;
@@ -9614,7 +9638,7 @@ function currentRotation() {
     window.__fillZipRadio = fillZipRadio;
     fillZipRadio();
     (function radioAuto() {
-      var saved = savedRadio();
+      var saved = typeof savedRadioForPin === "function" ? savedRadioForPin() : savedRadio();
       var btn = null;
       if (saved === "") btn = document.querySelector('.rowbtns button[data-stream=""]');
       else if (saved) btn = document.querySelector('.rowbtns button[data-stream="' + saved + '"]');
@@ -10143,11 +10167,35 @@ function currentRotation() {
     }
     function rememberRadio(url, label) {
       if (!url) return;
-      try { localStorage.setItem("bw-radio-last", JSON.stringify({ url: url, label: label || "" })); } catch (e) {}
+      var name = radioLabelFor(url, label);
+      try { localStorage.setItem("bw-radio-last", JSON.stringify({ url: url, label: name })); } catch (e) {}
+      if (window.__radioWant && window.__radioWant.url === url) window.__radioWant.label = name;
+    }
+    function radioLabelLooksBlank(label) {
+      return !String(label || "").trim() || /^(station|mute|radio|on)$/i.test(String(label).trim());
+    }
+    function radioLabelFor(url, label) {
+      if (!radioLabelLooksBlank(label)) return String(label).trim();
+      url = String(url || "");
+      if (/weatherusa|\/NWR\//i.test(url) && typeof noaaName === "function") return noaaName();
+      var nodes = document.querySelectorAll("#radio-stations button[data-stream], #set-radio button[data-stream], #set-radio button[data-scan], #nwr-btn");
+      for (var i = 0; i < nodes.length; i++) {
+        var u = nodes[i].getAttribute("data-stream") || nodes[i].getAttribute("data-scan") || "";
+        if (!u) continue;
+        if (u === url || (url && u && url.indexOf(u) >= 0) || (url && u && u.indexOf(url.split("?")[0]) >= 0)) {
+          var t = (nodes[i].textContent || "").trim();
+          if (!radioLabelLooksBlank(t)) return t;
+        }
+      }
+      var last = typeof radioLast === "function" ? radioLast() : null;
+      if (last && last.url && (last.url === url || last.url.split("?")[0] === url.split("?")[0]) && !radioLabelLooksBlank(last.label)) return last.label;
+      var want = window.__radioWant || {};
+      if (want.url && want.url === url && !radioLabelLooksBlank(want.label)) return want.label;
+      return "";
     }
     function radioShortName(label) {
       label = String(label || "").trim();
-      if (!label || /mute/i.test(label)) return "Radio";
+      if (!label || /mute|^station$/i.test(label)) return "Radio";
       var freq = label.match(/\d{2,3}\.\d/);
       if (freq) return freq[0];
       if (/NOAA|NWR/i.test(label)) return "NOAA";
@@ -10182,12 +10230,13 @@ function currentRotation() {
       var want = window.__radioWant || {};
       var last = radioLast() || {};
       var playing = radioIsPlaying();
-      var label = want.label || last.label || "";
+      var url = want.url || last.url || "";
+      var label = radioLabelFor(url, want.label || last.label || "");
       el.hidden = false;
       el.classList.toggle("on", playing);
       el.classList.toggle("muted", !playing);
-      el.textContent = playing ? "Mute" : radioShortName(label);
-      el.title = playing ? "Mute radio" : ("Play " + (label || "radio"));
+      el.textContent = radioShortName(label);
+      el.title = playing ? ("Playing " + (label || "radio") + " — tap to mute") : ("Play " + (label || "radio"));
     }
     function paintHdrAlert(keep, isWarn) {
       var el = document.getElementById("hdr-alert");
@@ -13556,6 +13605,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v941 — Radio follows the current home pin; it will not keep playing another pin’s station.",
+      "v940 — Radio pill shows the playing station name, not the word station.",
       "v939 — Sources table adds Collected at: sensor, model cell, or office vs the home pin.",
       "v938 — Sources page is a live inventory table: page, stat, primary, backup, last update, plus a copy pill.",
       "v937 — 10-day forecast is a horizontal row of day capsules (high, low, icon, rain chance, weekday, date).",
@@ -25521,7 +25572,7 @@ function homeCountyGuess() {
               return;
             }
             window.__forceRadio = true;
-            playStation(url, (prev && prev.label) || "station", { keepSaved: true });
+            playStation(url, radioLabelFor(url, prev && prev.label), { keepSaved: true });
             if (typeof saveRadio === "function") saveRadio(url);
             window.__forceRadio = false;
           }
