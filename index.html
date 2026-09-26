@@ -3104,7 +3104,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v968</span>
+      <span class="hdr-ver" id="hdr-ver">v969</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3460,10 +3460,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <div class="sheet-map-pane" id="sea-ais" hidden></div>
           </div>
           <div class="sea-map-pills" id="sea-map-pills">
-            <button type="button" data-sea-map="waves">Waves</button>
+            <button type="button" data-sea-map="waves" class="on">Waves</button>
             <button type="button" data-sea-map="swell">Swell</button>
             <button type="button" data-sea-map="currents">Current</button>
-            <button type="button" data-sea-map="chart" class="on">Chart</button>
+            <button type="button" data-sea-map="chart">Chart</button>
             <button type="button" data-sea-map="ais">Traffic</button>
           </div>
           <p class="wx-map-cap"><b id="sea-map-kind">Chart</b><span id="sea-map-note">Pinned on home</span></p>
@@ -4988,7 +4988,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 968;
+    window.BOARD_VER = 969;
 
     
     function communityShort() {
@@ -5841,7 +5841,7 @@ Cart shop:</textarea>
       if (!el) return;
       var lat = homeLat(), lon = homeLon();
       var pin = lat + "," + lon;
-      kind = kind || window.__seaMapView || "chart";
+      kind = kind || window.__seaMapView || "waves";
       if (typeof L === "undefined") {
         el.innerHTML = "<p class=\"hint\">Chart library did not load. Check the network and refresh.</p>";
         return;
@@ -5915,6 +5915,22 @@ Cart shop:</textarea>
       ifr.src = url;
       box.appendChild(ifr);
     }
+    function stopSeaMapRotate() {
+      if (window.__seaMapTimer) { clearInterval(window.__seaMapTimer); window.__seaMapTimer = 0; }
+    }
+    function startSeaMapRotate() {
+      stopSeaMapRotate();
+      if (!window.__seaMapView) window.__seaMapView = "waves";
+      window.__seaMapTimer = setInterval(function () {
+        var page = document.querySelector(".page.on");
+        if (!page || page.id !== "marine" || document.hidden) return;
+        if (window.__paused) return;
+        var order = ["waves", "swell", "currents", "chart", "ais"];
+        var i = order.indexOf(window.__seaMapView);
+        if (i < 0) i = 0;
+        if (typeof showSeaMap === "function") showSeaMap(order[(i + 1) % order.length]);
+      }, 12000);
+    }
     function showSeaMap(id) {
       var views = {
         waves: { label: "Waves", note: "Combined sea height (swell + wind waves) at the home pin", url: homeMarineOverlay("waves"), chart: false },
@@ -5923,7 +5939,7 @@ Cart shop:</textarea>
         chart: { label: "Chart", note: "NOAA nautical chart — depths, channels, and buoys at the home pin", url: "", chart: true },
         ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false }
       };
-      if (!views[id]) id = (typeof seaKind === "function" && seaKind() === "inland") ? "chart" : "waves";
+      if (!views[id]) id = "waves";
       window.__seaMapView = id;
       var v = views[id];
       var frame = document.getElementById("sea-map");
@@ -6167,6 +6183,7 @@ Cart shop:</textarea>
         var b = e.target && e.target.closest ? e.target.closest("button[data-sea-map]") : null;
         if (!b) return;
         if (typeof showSeaMap === "function") showSeaMap(b.getAttribute("data-sea-map"));
+        if (typeof startSeaMapRotate === "function") startSeaMapRotate();
       });
     })();
 
@@ -6199,7 +6216,7 @@ Cart shop:</textarea>
         el.src = url;
         el.setAttribute("data-src", url);
       }
-      try { if (typeof showSeaMap === "function") showSeaMap(window.__seaMapView || "chart"); } catch (e1) {}
+      try { if (typeof showSeaMap === "function") showSeaMap(window.__seaMapView || "waves"); } catch (e1) {}
       try { if (typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky"); else setFrame("sky-map", typeof homeSkyEmbed === "function" ? homeSkyEmbed() : ""); } catch (e2) {}
       var seaNote = document.getElementById("sea-map-note");
       if (seaNote && !window.__seaMapView) seaNote.textContent = "Waves · pin on " + (homePlace() || "home");
@@ -9471,6 +9488,7 @@ function currentRotation() {
       });
       if (id === "storms" && typeof paintStormPage === "function") paintStormPage();
       if (id !== "marine") {
+        if (typeof stopSeaMapRotate === "function") stopSeaMapRotate();
         var seaF = document.getElementById("sea-map");
         if (seaF && seaF.getAttribute("src") && seaF.getAttribute("src") !== "about:blank") {
           seaF.src = "about:blank";
@@ -9490,7 +9508,8 @@ function currentRotation() {
       if (id === "sky" && typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky");
       if (id === "sky" && typeof paintSkyCall === "function") paintSkyCall();
       if (id === "marine" && typeof showSeaMap === "function") {
-        showSeaMap(window.__seaMapView || "chart");
+        showSeaMap(window.__seaMapView || "waves");
+        if (typeof startSeaMapRotate === "function") startSeaMapRotate();
         if (window.__seaChart && window.__seaChart.map) setTimeout(function () { try { window.__seaChart.map.invalidateSize(); } catch (eS) {} }, 220);
       }
       if (jump) {
