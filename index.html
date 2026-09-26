@@ -4957,7 +4957,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 952;
+    window.BOARD_VER = 954;
 
     
     function communityShort() {
@@ -5833,7 +5833,10 @@ Cart shop:</textarea>
       var tide = document.getElementById("live-tide-today");
       var station = document.getElementById("live-tide-station");
       var river = document.getElementById("live-sea-river") || document.getElementById("live-river");
-      var riverTxt = river && river.textContent && !/—|loading/i.test(river.textContent) ? river.textContent.trim() : "";
+      var g = window.__riverGauge;
+      var gaugeTxt = g && g.stage != null ? ((g.short || "Gauge") + " " + Number(g.stage).toFixed(1) + " ft") : "";
+      if (river && gaugeTxt) river.textContent = gaugeTxt;
+      var riverTxt = river && river.textContent && !/—|loading/i.test(river.textContent) ? river.textContent.trim() : gaugeTxt;
       if (tide) tide.textContent = riverTxt ? ("River · " + riverTxt) : "No ocean tide at this inland pin";
       if (station) station.textContent = "Inland pin";
       var surge = document.getElementById("live-surge");
@@ -11222,6 +11225,8 @@ function currentRotation() {
       if (g && g.stage != null) gTxt = (g.short || "Gauge") + " " + Number(g.stage).toFixed(1) + " ft";
       var floodTxt = floodOn ? ((hasAlert(/warning/) ? "Warning" : "Advisory") + (gTxt ? " · " + gTxt : "")) : "";
       showWxTile("tile-flood", floodOn && !!(g || hasAlert(/flood/)), floodTxt);
+      if (typeof applyInlandSeaCards === "function") applyInlandSeaCards();
+      if (typeof paintSeaMetricChrome === "function") paintSeaMetricChrome();
       if (typeof noteFeed === "function") noteFeed("river-gauge", true, gTxt || (g && g.why) || "no nearby gauge");
       var fogAlert = hasAlert(/dense fog|freezing fog/);
       var fogHours = (window.__hours || []).filter(function (h) {
@@ -12566,16 +12571,68 @@ function currentRotation() {
       }, ms || 20000);
     }
     window.holdThenRotate = holdThenRotate;
+    function currentPageId() {
+      var on = document.querySelector(".page.on");
+      return (on && on.id) || "";
+    }
+    function offRotationPage(id) {
+      id = id || currentPageId();
+      if (!id) return false;
+      if (typeof pageOnRotation === "function") return !pageOnRotation(id);
+      var list = typeof rotateList === "function" ? rotateList() : [];
+      return list.indexOf(id) < 0;
+    }
+    function holdOffRotation() {
+      window.__holdPage = true;
+      window.__offRotHold = true;
+      window.__lastAct = Date.now();
+      clearTimeout(rot); clearInterval(rot); clearTimeout(idle);
+      clearTimeout(window.__holdT);
+      function resumeWhenIdle() {
+        if (typeof popIsOpen === "function" ? popIsOpen() : window.__popOpen) return;
+        if (window.__paused) return;
+        var on = currentPageId();
+        if (on && !offRotationPage(on)) {
+          window.__offRotHold = false;
+          window.__holdPage = false;
+          return;
+        }
+        var left = 60000 - (Date.now() - (window.__lastAct || 0));
+        if (left > 250) {
+          window.__holdT = setTimeout(resumeWhenIdle, left);
+          return;
+        }
+        window.__offRotHold = false;
+        window.__holdPage = false;
+        if (typeof startRotate === "function") startRotate(true);
+      }
+      window.__holdT = setTimeout(resumeWhenIdle, 60000);
+    }
+    function bumpBoardActivity() {
+      window.__lastAct = Date.now();
+      if (window.__offRotHold || offRotationPage()) holdOffRotation();
+    }
     function pinOrHold(id) {
       clearTimeout(rot); clearInterval(rot); clearTimeout(idle); clearTimeout(window.__holdT);
-      if (window.STICKY_PAGES[id]) {
-        window.__holdPage = true;
+      window.__lastAct = Date.now();
+      if (offRotationPage(id) || (window.STICKY_PAGES && window.STICKY_PAGES[id])) {
+        holdOffRotation();
         return;
       }
+      window.__offRotHold = false;
       window.__holdPage = false;
       holdThenRotate(20000);
     }
     window.pinOrHold = pinOrHold;
+    window.bumpBoardActivity = bumpBoardActivity;
+    if (!window.__actBound) {
+      window.__actBound = true;
+      ["pointerdown","keydown","touchstart","wheel","scroll"].forEach(function (ev) {
+        document.addEventListener(ev, function () {
+          if (typeof bumpBoardActivity === "function") bumpBoardActivity();
+        }, { capture: true, passive: true });
+      });
+    }
     function startRotate(immediate) {
       if (typeof popIsOpen === "function" ? popIsOpen() : window.__popOpen) {
         window.__holdPage = true;
@@ -13813,6 +13870,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v954 — Off-rotation pages stay put until 60s of no activity, then the loop resumes.",
+      "v953 — Inland Sea uses USGS river stage instead of a fake 1–2 ft ocean swell.",
       "v952 — Sources table column widths: page/stat tight, primary/backup wide, times compact.",
       "v951 — Sea audit: chart+traffic pills only, hide empty inland rows, drop broken water-cam iframes.",
       "v950 — Inland pins (South Windsor) do not show ocean tide or surge from New London.",
@@ -22114,9 +22173,13 @@ function drawSurgeChart(points) {
         });
       }
       var seas = document.getElementById("live-seas");
-      if (seas && days && days[0] && days[0].detailedForecast) {
+      var inland = typeof seaKind === "function" && seaKind() === "inland";
+      if (seas && inland) {
+        seas.textContent = "Inland pin — no open-water seas";
+      } else if (seas && days && days[0] && days[0].detailedForecast) {
         var m = /(\d+(?:\.\d+)?)\s*(?:to\s*)?(\d+)?\s*foot/i.exec(days[0].detailedForecast);
-        seas.textContent = m ? (m[2] ? m[1] + "–" + m[2] + " ft" : m[1] + " ft") : "1–2 ft";
+        if (m) seas.textContent = m[2] ? m[1] + "–" + m[2] + " ft" : m[1] + " ft";
+        else if (!seas.textContent || seas.textContent === "—" || seas.textContent === "…") seas.textContent = "See coastal forecast";
       } else if (seas && (!seas.textContent || seas.textContent === "…")) {
         seas.textContent = "See coastal waters";
       }
