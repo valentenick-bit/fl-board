@@ -4943,7 +4943,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 949;
+    window.BOARD_VER = 950;
 
     
     function communityShort() {
@@ -5813,6 +5813,23 @@ Cart shop:</textarea>
         setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, ms);
       });
     }
+
+    function applyInlandSeaCards() {
+      if (typeof seaKind !== "function" || seaKind() !== "inland") return false;
+      var tide = document.getElementById("live-tide-today");
+      var station = document.getElementById("live-tide-station");
+      var river = document.getElementById("live-sea-river") || document.getElementById("live-river");
+      var riverTxt = river && river.textContent && !/—|loading/i.test(river.textContent) ? river.textContent.trim() : "";
+      if (tide) tide.textContent = riverTxt ? ("River · " + riverTxt) : "No ocean tide at this inland pin";
+      if (station) station.textContent = "Inland pin";
+      var surge = document.getElementById("live-surge");
+      if (surge) surge.textContent = "Not a coastal pin";
+      if (typeof noteFeed === "function") {
+        noteFeed("tide", true, "inland");
+        noteFeed("surge", true, "inland");
+      }
+      return true;
+    }
     function showSeaMap(id) {
       var views = {
         waves: { label: "Waves", note: "NOAA chart + OpenSeaMap at the home pin. Wave numbers are on the cards.", chart: true },
@@ -5836,6 +5853,7 @@ Cart shop:</textarea>
       if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); }
       if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
       paintSeaChart(id);
+      if (typeof applyInlandSeaCards === "function") applyInlandSeaCards();
       if (id === "ais") {
         var extra = document.getElementById("sea-map-note");
         if (extra) extra.innerHTML = v.note + " · " + (homePlace() || "home") + " · <a href=\"https://www.marinetraffic.com/en/ais/home/centerx:" + homeLon().toFixed(3) + "/centery:" + homeLat().toFixed(3) + "/zoom:11\" target=\"_blank\" rel=\"noopener\">Live AIS</a>";
@@ -13781,6 +13799,7 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v950 — Inland pins (South Windsor) do not show ocean tide or surge from New London.",
       "v949 — NOAA Hartford uses the same WeatherUSA Icecast path as Tampa (WXJ42 Meriden if WXJ41 is down).",
       "v948 — Sea maps use Leaflet NOAA + OpenSeaMap on the home pin. Drop Nullschool/MarineTraffic iframes that refuse to load.",
       "v947 — NOAA Hartford uses the Broadcastify player on the card. Hotlinked CDN audio is blocked.",
@@ -14270,7 +14289,9 @@ function currentRotation() {
         if (el) {
           var use = next.length ? next : preds.slice(-4);
           if (use.length) {
-            el.textContent = use.map(function (p) {
+            if (typeof applyInlandSeaCards === "function" && applyInlandSeaCards()) {
+              /* inland pin keeps river text */
+            } else el.textContent = use.map(function (p) {
               var when = new Date(String(p.t).replace(" ", "T")).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
               return (p.type === "H" ? "High" : "Low") + " " + when + " " + Number(p.v).toFixed(2) + " ft";
             }).join(" · ");
