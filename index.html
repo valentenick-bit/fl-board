@@ -3097,7 +3097,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v962</span>
+      <span class="hdr-ver" id="hdr-ver">v963</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4980,7 +4980,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 962;
+    window.BOARD_VER = 963;
 
     
     function communityShort() {
@@ -5798,18 +5798,19 @@ Cart shop:</textarea>
       return "https://earth.nullschool.net/#" + path + "/orthographic=" + Number(lon).toFixed(3) + "," + Number(lat).toFixed(3) + ",2600";
     }
     function homeMarineOverlay(kind) {
-      var lat = homeLat(), lon = homeLon();
-      var overlay = kind === "swell" ? "swell" : kind === "currents" ? "currents" : "waves";
-      return "https://embed.windy.com/embed2.html?lat=" + Number(lat).toFixed(4) +
-        "&lon=" + Number(lon).toFixed(4) +
-        "&detailLat=" + Number(lat).toFixed(4) +
-        "&detailLon=" + Number(lon).toFixed(4) +
-        "&zoom=6&level=surface&overlay=" + overlay +
-        "&product=ecmwf&marker=true&message=true&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F";
+      var lat = Number(homeLat()).toFixed(4), lon = Number(homeLon()).toFixed(4);
+      var overlay = "waves", product = "ecmwfWaves";
+      if (kind === "swell") { overlay = "swell1"; product = "ecmwfWaves"; }
+      else if (kind === "currents") { overlay = "currents"; product = "cmems"; }
+      return "https://embed.windy.com/embed.html?type=map&location=coordinates" +
+        "&lat=" + lat + "&lon=" + lon +
+        "&zoom=6&overlay=" + overlay + "&product=" + product + "&level=surface" +
+        "&marker=true&metricWind=mph&metricTemp=%C2%B0F&detail=false&message=false";
     }
     function homeVesselEmbed() {
-      var lat = homeLat(), lon = homeLon();
-      return "https://www.vesselfinder.com/aismap?zoom=8&lat=" + Number(lat).toFixed(4) + "&lon=" + Number(lon).toFixed(4) + "&names=1";
+      var lat = Number(homeLat()).toFixed(4), lon = Number(homeLon()).toFixed(4);
+      return "https://www.vesselfinder.com/aismap?zoom=8&lat=" + lat + "&lon=" + lon +
+        "&names=true&width=800&height=480&track=false";
     }
     function homeWindyEmbed(overlay) {
       var lat = homeLat(), lon = homeLon();
@@ -5884,11 +5885,11 @@ Cart shop:</textarea>
     }
     function showSeaMap(id) {
       var views = {
-        waves: { label: "Waves", note: "Wave height on the home pin", url: homeMarineOverlay("waves"), chart: false },
-        swell: { label: "Swell", note: "Swell on the home pin", url: homeMarineOverlay("swell"), chart: false },
-        currents: { label: "Current", note: "Surface current on the home pin", url: homeMarineOverlay("currents"), chart: false },
-        chart: { label: "Chart", note: "NOAA raster chart + channel marks", url: "", chart: true },
-        ais: { label: "Traffic", note: "Ships near the pin", url: homeVesselEmbed(), chart: false }
+        waves: { label: "Waves", note: "Combined sea height (swell + wind waves) at the home pin", url: homeMarineOverlay("waves"), chart: false },
+        swell: { label: "Swell", note: "Primary swell height and direction at the home pin", url: homeMarineOverlay("swell"), chart: false },
+        currents: { label: "Current", note: "Ocean current speed and direction at the home pin", url: homeMarineOverlay("currents"), chart: false },
+        chart: { label: "Chart", note: "NOAA nautical chart — depths, channels, and buoys at the home pin", url: "", chart: true },
+        ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false }
       };
       if (!views[id]) id = (typeof seaKind === "function" && seaKind() === "inland") ? "chart" : "waves";
       window.__seaMapView = id;
@@ -5911,9 +5912,13 @@ Cart shop:</textarea>
         if (frame) {
           frame.classList.add("on");
           frame.style.display = "block";
-          if (v.url && frame.getAttribute("data-src") !== v.url) {
-            frame.src = v.url;
+          if (v.url) {
+            frame.removeAttribute("src");
+            frame.src = "about:blank";
             frame.setAttribute("data-src", v.url);
+            setTimeout(function () {
+              if (window.__seaMapView === id) frame.src = v.url;
+            }, 40);
           }
         }
       }
