@@ -1609,8 +1609,19 @@
     .storm-hist-card .metric-spark { min-height:88px; }
     @media (max-width:720px) { .storm-charts { grid-template-columns:1fr; } }
     .storm-picks { margin:0 0 10px; }
-    .storm-frames { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; }
+    .storm-frames { display:none; }
     .storm-frame { position:relative; border-radius:14px; overflow:hidden; background:#0b1c28; min-height:220px; }
+    #storms .storm-sat-frame { width:100%; margin:0 0 12px; max-width:100%; }
+    #storms .storm-sat-frame .radar-crop {
+      width:100%; height:auto; min-height:240px; aspect-ratio:4 / 3;
+      border-radius:14px; overflow:hidden; background:#0b1c28;
+    }
+    #storms .storm-sat-frame img {
+      position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    }
+    @media (orientation:portrait) {
+      #storms .storm-sat-frame .radar-crop { max-height:34vh; min-height:0; aspect-ratio:600 / 550; }
+    }
     #storms.sheet .storm-frames { margin-top:8px; }
     #storms.sheet #storm-lead { margin:0 0 10px; }
     #sky-planets { display:flex; flex-wrap:wrap; gap:8px; }
@@ -3648,6 +3659,12 @@ Cart shop:</textarea>
         <div class="card" id="hurr-disc" hidden><b>NHC discussion</b><span></span></div>
         <div class="card" id="hurr-adv" hidden><b>Public advisory</b><span></span></div>
         <div class="card"><b id="storm-basin-label">Basin outlook</b><span id="live-cane">Checking the National Hurricane Center</span></div>
+        <div class="wx-map-frame storm-sat-frame" id="storm-sat-frame">
+          <div class="radar-crop radar-stage" id="storm-sat-stage">
+            <img class="wx-map-pane on" id="storm-sat-view" alt="Storm satellite" />
+          </div>
+          <p class="wx-map-cap"><b id="storm-sat-label">Satellite</b><span id="storm-sat-note">Selected storm</span></p>
+        </div>
         <div class="storm-frames" id="storm-frames">
           <div class="storm-frame storm-wide" id="storm-hero">
             <img id="hurr-frame" alt="Hurricane view" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
@@ -4921,7 +4938,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 942;
+    window.BOARD_VER = 944;
 
     
     function communityShort() {
@@ -7499,28 +7516,40 @@ Cart shop:</textarea>
         window.__stormMapFail = (window.__stormMapFail || 0) + 1;
       };
       function drawStormFrames(extra) {
-        if (!frames || gen !== window.__stormMapGen) return;
         extra = (extra || []).filter(function (sl) { return sl && (sl.src || (sl.srcs && sl.srcs[0])); }).slice(0, 6);
-        frames.innerHTML = extra.map(function (sl, i) {
-          var srcs = (sl.srcs || [sl.src]).filter(Boolean);
-          return '<div class="storm-frame' + (i === 0 ? " storm-wide" : "") + '"><img alt="' + sl.cap + '" data-srcs="' + srcs.join("|").replace(/"/g, "") + '" src="' + srcs[0] + '" onerror="window.stormImgFallback(this)"/><b>' + sl.cap + "</b></div>";
-        }).join("");
-        if (frames) frames.hidden = false;
+        window.__hurrSlides = extra;
+        window.__hurrI = 0;
+        if (typeof showHurrSlide === "function") showHurrSlide(true);
+        if (frames) frames.hidden = true;
+        if (gen !== window.__stormMapGen) return;
         var total = extra.length;
         setTimeout(function () {
           if (gen !== window.__stormMapGen) return;
-          var broken = frames.querySelectorAll(".broken").length;
-          var ok = total - broken;
-          if (typeof noteFeed === "function") noteFeed("storm-maps", broken === 0, ok + "/" + total + " maps");
+          var sat = document.getElementById("storm-sat-view");
+          var broken = (sat && sat.parentNode && sat.parentNode.classList.contains("broken")) ? 1 : 0;
+          if (typeof noteFeed === "function") noteFeed("storm-maps", broken === 0, (total ? total - broken : 0) + "/" + total + " maps");
         }, 2500);
       }
       var extra = [];
+      if (s && window.__stormFocus !== "ne") {
+        var sid = String(s.id || "").toUpperCase();
+        var nm = s.name || "Storm";
+        var ir = typeof nhcGraphic === "function" ? nhcGraphic(s, "ir") : "";
+        var vis = typeof nhcGraphic === "function" ? nhcGraphic(s, "vis") : "";
+        var floaters = sid ? [
+          "https://cdn.star.nesdis.noaa.gov/FLOATER/" + sid + "/GEOCOLOR/1000x1000.jpg",
+          "https://cdn.star.nesdis.noaa.gov/FLOATER/" + sid + "/GEOCOLOR/latest.jpg"
+        ] : [];
+        extra.push({ srcs: [ir].concat(floaters).filter(Boolean), cap: nm + " IR loop" });
+        extra.push({ srcs: [vis].concat(floaters).filter(Boolean), cap: nm + " visible loop" });
+        extra.push({ srcs: floaters.slice(), cap: nm + " GeoColor" });
+      }
       extra.push({ src: b.sat, cap: b.satCap });
       extra.push({ src: b.radar, cap: b.radarCap });
       extra.push({ src: b.two2, cap: "2-day outlook" });
       extra.push({ src: b.two5, cap: "5-day outlook" });
       if (!s) {
-        drawStormFrames([{ src: b.two5, cap: (b.label || "Basin") + " 5-day outlook" }]);
+        drawStormFrames([{ src: b.sat || b.two5, cap: (b.satCap || b.label || "Basin") + " satellite" }, { src: b.two5, cap: (b.label || "Basin") + " 5-day outlook" }]);
         var gLink0 = document.getElementById("cane-refs");
         if (gLink0) gLink0.innerHTML = '<a href="' + b.gtwo + '" target="_blank" rel="noopener">' + (b.label || "NHC") + " outlook</a>";
         return;
@@ -8384,11 +8413,46 @@ function gatorRange() {
       var list = s.nwrCalls || [s.nwrCall || "KHB32"];
       return list.filter(Boolean);
     }
+    var NWR_STREAMS = {
+      WXJ41: [
+        "https://radio.weatherusa.net/NWR/WXJ41.mp3",
+        "https://broadcastify.cdnstream1.com/25922",
+        "https://audio.broadcastify.com/25922.mp3"
+      ],
+      WXJ42: [
+        "https://radio.weatherusa.net/NWR/WXJ42.mp3"
+      ],
+      KHB35: [
+        "https://radio.weatherusa.net/NWR/KHB35.mp3"
+      ],
+      KHB32: [
+        "https://radio.weatherusa.net/NWR/KHB32.mp3"
+      ],
+      KHB34: [
+        "https://radio.weatherusa.net/NWR/KHB34.mp3"
+      ]
+    };
+    function noaaStreamList() {
+      var calls = typeof noaaCalls === "function" ? noaaCalls() : ["KHB32"];
+      var out = [], seen = {};
+      calls.forEach(function (call) {
+        var c = String(call || "").toUpperCase();
+        var list = (NWR_STREAMS[c] || ["https://radio.weatherusa.net/NWR/" + c + ".mp3"]).slice();
+        list.forEach(function (u) {
+          if (!u || seen[u]) return;
+          seen[u] = 1;
+          out.push(u);
+        });
+      });
+      return out.length ? out : ["https://radio.weatherusa.net/NWR/KHB32.mp3"];
+    }
     function noaaUrl() {
+      var list = noaaStreamList();
       var i = window.__nwrTry || 0;
-      var calls = noaaCalls();
-      var call = calls[i % calls.length] || "KHB32";
-      return "https://radio.weatherusa.net/NWR/" + call + ".mp3";
+      return list[i % list.length];
+    }
+    function isNoaaStream(u) {
+      return /weatherusa|\/NWR\/|broadcastify\.(cdnstream1|com)\/(25922|audio)|audio\.broadcastify/i.test(String(u || ""));
     }
     function noaaName() { return getSet().nwrName || "NOAA Weather Radio"; }
     function scanPack() {
@@ -8679,7 +8743,7 @@ function gatorRange() {
       TBW: ["KHB32", "NOAA Tampa", "KHB34"], MFL: ["KHB34", "NOAA Miami", "KHB32"], KEY: ["KHB34", "NOAA Key West", "KHB32"],
       JAX: ["KHB39", "NOAA Jacksonville", "WXJ70"], MLB: ["WXJ70", "NOAA Melbourne", "KHB39"], TAE: ["WWF70", "NOAA Tallahassee", "KHB40"],
       MOB: ["KHB40", "NOAA Mobile", "KHB43"], LIX: ["KHB43", "NOAA New Orleans", "KHB40"], HGX: ["KHB40", "NOAA Houston", "KHB43"],
-      BOX: ["WXJ41", "NOAA Hartford", "KHB35"], OKX: ["KWO35", "NOAA New York", "KHB35"], LWX: ["KHB36", "NOAA Washington", "KHB35"],
+      BOX: ["WXJ41", "NOAA Hartford", "WXJ42", "KHB35"], OKX: ["KWO35", "NOAA New York", "KHB35"], LWX: ["KHB36", "NOAA Washington", "KHB35"],
       ILN: ["WXM50", "NOAA Cincinnati", "KHB36"], IND: ["WXM94", "NOAA Indianapolis", "WXM50"], LOT: ["KXI49", "NOAA Chicago", "WXM94"],
       FFC: ["KXI75", "NOAA Atlanta", "KHB39"], GSP: ["WXL70", "NOAA Greenville", "WXJ22"], CAE: ["WXJ22", "NOAA Columbia", "WXL70"],
       CHS: ["WXJ20", "NOAA Charleston", "WXJ22"], ILM: ["WXK92", "NOAA Wilmington", "WXJ20"],
@@ -9415,16 +9479,16 @@ function currentRotation() {
         return;
       }
       var playUrl = url;
-      if (/weatherusa|NWR/i.test(url)) {
+      if (opts.nwrRetry || (typeof isNoaaStream === "function" ? isNoaaStream(url) : /weatherusa|NWR/i.test(url))) {
         if (!opts.nwrRetry) window.__nwrTry = 0;
         playUrl = noaaUrl().split("?")[0] + "?r=" + Date.now();
         audio.onerror = function () {
-          var calls = noaaCalls();
+          var list = typeof noaaStreamList === "function" ? noaaStreamList() : noaaCalls();
           window.__nwrTry = (window.__nwrTry || 0) + 1;
-          if (window.__nwrTry < calls.length) {
-            if (status) status.textContent = "Trying another NOAA tower…";
-            playStation(noaaUrl(), noaaName(), { keepSaved: true, nwrRetry: true });
-          } else if (status) status.textContent = "NOAA stream did not start for " + homePlace() + ".";
+          if (window.__nwrTry < list.length) {
+            if (status) status.textContent = "Trying another NOAA feed for " + (noaaName() || "this pin") + "…";
+            playStation(noaaUrl(), noaaName(), { keepSaved: true, nwrRetry: true, force: true });
+          } else if (status) status.textContent = (noaaName() || "NOAA") + " did not start for " + homePlace() + ".";
         };
       } else {
         audio.onerror = null;
@@ -9442,13 +9506,13 @@ function currentRotation() {
       clearInterval(window.__nwrKeep);
       if (/weatherusa|NWR/i.test(url)) {
         window.__nwrKeep = setInterval(function () {
-          if (!window.__radioWant || !/weatherusa|NWR/i.test(window.__radioWant.url || "")) return;
+          if (!window.__radioWant || !(typeof isNoaaStream === "function" ? isNoaaStream(window.__radioWant.url) : /weatherusa|NWR/i.test(window.__radioWant.url || ""))) return;
           var a = document.getElementById("radioPlayer");
           var st = document.getElementById("radio-status");
           if (!a) return;
           a.src = noaaUrl().split("?")[0] + "?r=" + Date.now();
           a.play().then(function () {
-            if (st) st.textContent = "Playing NOAA Tampa";
+            if (st) st.textContent = "Playing " + (typeof noaaName === "function" ? noaaName() : "NOAA");
           }).catch(function () {});
         }, 3 * 60 * 1000);
       }
@@ -9551,9 +9615,12 @@ function currentRotation() {
     function radioAllowedOnThisPin(url) {
       if (!url) return true;
       if (/^scan:/i.test(url)) return true;
-      if (/weatherusa|\/NWR\//i.test(url)) {
-        var nwr = typeof noaaUrl === "function" ? radioUrlKey(noaaUrl()) : "";
-        return !!(nwr && radioUrlKey(url) === nwr);
+      if (typeof isNoaaStream === "function" ? isNoaaStream(url) : /weatherusa|\/NWR\//i.test(url)) {
+        var list = typeof noaaStreamList === "function" ? noaaStreamList() : [];
+        var key = radioUrlKey(url);
+        if (list.some(function (u) { return radioUrlKey(u) === key; })) return true;
+        var calls = typeof noaaCalls === "function" ? noaaCalls() : [];
+        return calls.some(function (c) { return String(url).toUpperCase().indexOf(String(c).toUpperCase()) >= 0; });
       }
       var buttons = document.querySelectorAll("#radio-stations button[data-stream]");
       var key = radioUrlKey(url);
@@ -10264,8 +10331,8 @@ function currentRotation() {
       el.hidden = false;
       el.classList.toggle("on", playing);
       el.classList.toggle("muted", !playing);
-      el.textContent = radioShortName(label);
-      el.title = playing ? ("Playing " + (label || "radio") + " — tap to mute") : ("Play " + (label || "radio"));
+      el.textContent = playing ? "Mute" : (radioShortName(label) || "Radio");
+      el.title = playing ? ("Mute " + (label || "radio")) : ("Play " + (label || "radio"));
     }
     function paintHdrAlert(keep, isWarn) {
       var el = document.getElementById("hdr-alert");
@@ -12901,13 +12968,21 @@ function currentRotation() {
       if (reset) window.__hurrI = 0;
       var s = slides[window.__hurrI % slides.length];
       window.__hurrI += 1;
-      var img = document.getElementById("hurr-frame");
-      var cap = document.getElementById("hurr-cap");
-      if (img) img.src = s.src + (s.src.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
-      if (cap) cap.textContent = s.cap;
+      var srcs = (s.srcs || [s.src]).filter(Boolean);
+      var img = document.getElementById("storm-sat-view") || document.getElementById("hurr-frame");
+      var cap = document.getElementById("storm-sat-label") || document.getElementById("hurr-cap");
+      var note = document.getElementById("storm-sat-note");
+      if (img && srcs[0]) {
+        img.setAttribute("data-srcs", srcs.join("|"));
+        var src = srcs[0];
+        img.src = src + (src.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+        img.onerror = function () { if (typeof window.stormImgFallback === "function") window.stormImgFallback(img); };
+      }
+      if (cap) cap.textContent = s.cap || "Satellite";
+      if (note) note.textContent = slides.length > 1 ? ("View " + ((window.__hurrI - 1) % slides.length + 1) + " of " + slides.length) : "Full storm view";
     }
     setInterval(function () {
-      var pg = document.getElementById("hurr");
+      var pg = document.getElementById("storms") || document.getElementById("hurr");
       if (pg && pg.classList.contains("on")) showHurrSlide(false);
     }, 10000);
     function allDockPages() {
@@ -13634,6 +13709,8 @@ function currentRotation() {
     }
 
     window.BOARD_NOTES = [
+      "v944 — NOAA Hartford (WXJ41) retries WeatherUSA then Broadcastify; keep-alive no longer says Tampa.",
+      "v943 — Header radio pill shows Mute while playing. Storms page gets a weather-sized satellite frame for the selected storm.",
       "v942 — Radio hard-stops on pin change. No global last-played, no Tampa 94.9 default.",
       "v941 — Radio follows the current home pin; it will not keep playing another pin’s station.",
       "v940 — Radio pill shows the playing station name, not the word station.",
