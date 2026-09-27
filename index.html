@@ -1705,7 +1705,7 @@
     .hurr-stage img { width:100%; height:100%; object-fit:contain; display:block; background:#111; }
     .hurr-cap { position:absolute; left:10px; bottom:10px; background:rgba(18,16,28,.72); color:#f7f1e6; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; padding:5px 9px; border-radius:999px; }
     #hurr-stats span { display:block; margin-top:4px; }
-    img.radar-loop { width:100%; height:100%; object-fit:cover; display:block; }
+    img.radar-loop { width:100%; height:100%; object-fit:contain; display:block; }
     .radar-crop:not(.radar-stage) .radar-loop { transform:scale(1.28); transform-origin:50% 78%; }
     table { width:100%; border-collapse:collapse; }
     td { padding:10px 4px; border-bottom:1px solid #e2d9c8; font-size:15px; }
@@ -2541,10 +2541,10 @@
       background:rgba(15,28,44,.72); color:#fff; font:700 12px/1 ui-sans-serif,system-ui;
       padding:4px 8px; border-radius:999px; pointer-events:none;
     }
-    #wx-radar-view.wx-map-pane { width:100%; height:100%; object-fit:cover; background:#123; }
+    #wx-radar-view.wx-map-pane { width:100%; height:100%; object-fit:contain; background:#123; }
 
     #wx-radar-map { position:absolute; inset:0; z-index:8; background:#d7e6ef; }
-    #wx-radar-view { display:block !important; object-fit:cover; z-index:2; }
+    #wx-radar-view { display:block !important; object-fit:contain; z-index:2; }
     #wx-radar-windy { display:none !important; }
     #golf-list .kind-tag.golf-pub, .kind-tag.golf-pub { background:#1b6b62 !important; color:#fff !important; }
     #golf-list .kind-tag.golf-priv, .kind-tag.golf-priv { background:#1e3a5f !important; color:#fff !important; }
@@ -2623,7 +2623,7 @@
     #wx-radar-windy { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:2; background:#123; }
 
 
-    #wx-radar-live { display:block !important; position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:9; background:#d7e6ef; }
+    #wx-radar-live { display:block; position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:9; background:#d7e6ef; }
     #wx-radar-windy { display:none !important; }
     #wx-radar-view { display:block !important; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:8 !important; background:#0b1220; }
     #wx-bolt-view { position:absolute; inset:0; width:100%; height:100%; border:0; z-index:6; background:#0b1220; display:none; }
@@ -3112,7 +3112,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v978</span>
+      <span class="hdr-ver" id="hdr-ver">v979</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3368,7 +3368,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="wx-top">
                 <div class="wx-map-frame" id="wx-map-frame">
           <div class="radar-crop radar-stage" id="wx-radar-stage">
-            <img class="wx-map-pane on" id="wx-radar-view" alt="Radar loop at home" />
+            <iframe class="wx-map-pane on" id="wx-radar-live" title="Radar loop" src="about:blank" allowfullscreen></iframe>
+            <img class="wx-map-pane" id="wx-radar-view" alt="Radar loop at home" />
             <div id="wx-radar-stamp" class="wx-radar-stamp"></div>
             <div id="radar-home-pin" class="radar-home-pin" title="Home"></div>
             <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
@@ -3377,7 +3378,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-wx-map="radar" class="on">Radar</button>
             <button type="button" data-wx-map="bolt">Lightning</button>
           </div>
-          <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">Looping radar · home pin</span></p>
+          <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">2-hour loop · pulled back from the pin</span></p>
         </div>
         <div class="wx-top-left">
         <p class="wx-nowline" id="wx-nowline">Updating…</p>
@@ -4996,7 +4997,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 978;
+    window.BOARD_VER = 979;
 
     
     function communityShort() {
@@ -6232,7 +6233,7 @@ Cart shop:</textarea>
       if (skyNote) skyNote.textContent = "Live sky from " + (homePlace() || "home");
     }
     function homeBoltEmbed() {
-      return "https://map.blitzortung.org/#10/" + homeLat() + "/" + homeLon();
+      return "https://map.blitzortung.org/#8/" + homeLat() + "/" + homeLon();
     }
     function matrixOrigin() {
       var addr = homeAddress();
@@ -8727,9 +8728,20 @@ function gatorRange() {
       var code = String(site || "TBW").toUpperCase().replace(/^K/, "");
       var kcode = "K" + code;
       var pane = document.getElementById("wx-radar-view");
+      var live = document.getElementById("wx-radar-live");
+      if (live) {
+        var rv = "https://www.rainviewer.com/map.html?loc=" +
+          Number(homeLat()).toFixed(4) + "," + Number(homeLon()).toFixed(4) +
+          ",7&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&c=3&o=83&lm=0&th=0&sm=0&sn=1";
+        if (live.getAttribute("data-src") !== rv) {
+          live.setAttribute("data-src", rv);
+          live.src = rv;
+        }
+      }
       var loops = [
         "https://radar.weather.gov/ridge/standard/" + kcode + "_loop.gif?t=" + Date.now(),
         "https://radar.weather.gov/ridge/standard/SOUTHEAST_loop.gif?t=" + Date.now(),
+        "https://radar.weather.gov/ridge/standard/NORTHEAST_loop.gif?t=" + Date.now(),
         "https://radar.weather.gov/ridge/standard/CONUS_loop.gif?t=" + Date.now()
       ];
       if (pane) {
