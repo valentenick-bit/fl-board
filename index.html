@@ -1112,7 +1112,7 @@
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
     .hourly, .tenday { min-width:0; width:100%; max-width:100%; }
-    .hourly { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; background:transparent; border:0; border-radius:0; }
+    .hourly { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:none; overscroll-behavior-x:none; background:transparent; border:0; border-radius:0; }
     .hourly .day { flex:0 0 64px; width:64px; }
     .hourly .day { align-items:center; }
     .hourly .day .hi,
@@ -1930,7 +1930,7 @@
     .cam-cap { position:absolute; left:10px; bottom:10px; margin:0; padding:4px 10px; border-radius:999px; background:rgba(14,12,28,.55); color:#f7f1e6; font-size:12px; letter-spacing:.04em; }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
-    .tenday { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; background:transparent; border:0; border-radius:0; scrollbar-width:thin; }
+    .tenday { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior:none; overscroll-behavior-x:none; background:transparent; border:0; border-radius:0; scrollbar-width:thin; }
     .tenday .day {
       flex:0 0 64px; width:64px; box-sizing:border-box;
       display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
@@ -3130,7 +3130,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v989</span>
+      <span class="hdr-ver" id="hdr-ver">v990</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5015,7 +5015,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 989;
+    window.BOARD_VER = 990;
 
     
     function communityShort() {
@@ -22946,7 +22946,7 @@ function drawSurgeChart(points) {
       document.addEventListener("touchstart", function (e) {
         var t = e.changedTouches && e.changedTouches[0];
         strip = (e.target && e.target.closest) ? e.target.closest(".hourly, .tenday") : null;
-        if (!strip || !t) return;
+        if (!strip || !t) { strip = null; return; }
         x0 = t.clientX; y0 = t.clientY; sl0 = strip.scrollLeft; axis = "";
       }, { capture: true, passive: true });
       document.addEventListener("touchmove", function (e) {
@@ -22954,28 +22954,31 @@ function drawSurgeChart(points) {
         var t = e.changedTouches && e.changedTouches[0];
         if (!t) return;
         var dx = t.clientX - x0, dy = t.clientY - y0;
-        if (!axis && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+        if (!axis && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
         if (axis !== "x") return;
         var max = Math.max(0, strip.scrollWidth - strip.clientWidth);
         var next = sl0 - dx;
-        if (next <= 0 || next >= max) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
+        if (next < 0) next = 0;
+        if (next > max) next = max;
+        strip.scrollLeft = next;
+        e.preventDefault();
+        e.stopPropagation();
       }, { capture: true, passive: false });
       document.addEventListener("touchend", function () { strip = null; axis = ""; }, { capture: true, passive: true });
+      document.addEventListener("touchcancel", function () { strip = null; axis = ""; }, { capture: true, passive: true });
       document.addEventListener("wheel", function (e) {
         var row = (e.target && e.target.closest) ? e.target.closest(".hourly, .tenday") : null;
         if (!row) return;
-        var dx = e.deltaX;
-        if (e.shiftKey && !dx) dx = e.deltaY;
-        if (!dx || Math.abs(e.deltaY) > Math.abs(dx) && !e.shiftKey) return;
-        var atStart = row.scrollLeft <= 0 && dx < 0;
-        var atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1 && dx > 0;
-        if (atStart || atEnd) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
+        var dx = e.deltaX, dy = e.deltaY;
+        if (e.shiftKey && !dx) dx = dy;
+        if (Math.abs(dx) < Math.abs(dy) && !e.shiftKey) return;
+        var max = Math.max(0, row.scrollWidth - row.clientWidth);
+        var next = row.scrollLeft + dx;
+        if (next < 0) next = 0;
+        if (next > max) next = max;
+        row.scrollLeft = next;
+        e.preventDefault();
+        e.stopPropagation();
       }, { capture: true, passive: false });
     }
     function resetForecastStrips() {
