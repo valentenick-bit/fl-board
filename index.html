@@ -2146,7 +2146,19 @@
     :root { --foot: 148px; }
     html.dockless { --foot: 58px; }
     html.dark.phone .board-foot { background:#1a1630; }
+
+    html.scrolling header .palm,
+    html.scrolling header .hdr-tree,
+    html.scrolling header .hdr-cloud-svg,
+    html.scrolling .sky-scene * {
+      animation-play-state: paused !important;
+    }
     html.phone main {
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+
+        html.phone main {
       flex:1 1 auto !important;
       min-height:0 !important;
       overflow-y:auto !important;
@@ -3130,7 +3142,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v993</span>
+      <span class="hdr-ver" id="hdr-ver">v994</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5015,7 +5027,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 993;
+    window.BOARD_VER = 994;
 
     
     function communityShort() {
@@ -10230,6 +10242,10 @@ function currentRotation() {
       }
       function tick(now) {
         now = now || performance.now();
+        if (document.documentElement.classList.contains("scrolling")) {
+          setTimeout(function () { requestAnimationFrame(tick); }, 400);
+          return;
+        }
         var max = cap();
         var head = document.querySelector("header");
         var hh = head ? head.offsetHeight : 80;
@@ -10317,7 +10333,7 @@ function currentRotation() {
           return;
         }
         window.__skyTickOn = true;
-        setTimeout(function () { requestAnimationFrame(tick); }, 125);
+        setTimeout(function () { requestAnimationFrame(tick); }, document.documentElement.classList.contains("scrolling") ? 400 : (document.documentElement.classList.contains("phone") ? 250 : 125));
       }
       document.addEventListener("visibilitychange", function () {
         if (!document.hidden && !window.__skyTickOn) requestAnimationFrame(tick);
@@ -26266,6 +26282,24 @@ function homeCountyGuess() {
         if (typeof touchFeed === "function") touchFeed("alerts", false, "NWS alerts fetch failed" + (err && err.message ? (" · " + err.message) : ""));
       });
     }
+    (function bindScrollPause() {
+      var main = document.querySelector("main");
+      if (!main || main.getAttribute("data-scrollpause") === "1") return;
+      main.setAttribute("data-scrollpause", "1");
+      var t = 0;
+      main.addEventListener("scroll", function () {
+        document.documentElement.classList.add("scrolling");
+        clearTimeout(t);
+        t = setTimeout(function () { document.documentElement.classList.remove("scrolling"); }, 180);
+      }, { passive: true });
+      document.addEventListener("touchstart", function () {
+        document.documentElement.classList.add("scrolling");
+      }, { passive: true });
+      document.addEventListener("touchend", function () {
+        clearTimeout(t);
+        t = setTimeout(function () { document.documentElement.classList.remove("scrolling"); }, 180);
+      }, { passive: true });
+    })();
     pollAlerts();
     try { lockForecastStrips(); } catch (eLock) {}
     /* v992-bind */
