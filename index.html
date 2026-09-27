@@ -3257,7 +3257,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1018</span>
+      <span class="hdr-ver" id="hdr-ver">v1019</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5138,7 +5138,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1018;
+    window.BOARD_VER = 1019;
 
     
     function communityShort() {
@@ -20713,6 +20713,9 @@ function mustEatsFL() {
       }
     }
     function paintHealth() {
+      var nowH = Date.now();
+      if (window.__healthLast && nowH - window.__healthLast < 2000) return;
+      window.__healthLast = nowH;
       window.__paintingHealth = true;
       var probed = null;
       try {
@@ -21067,7 +21070,15 @@ function mustEatsFL() {
     paintLeaveAndClear();
     paintHealth();
     wireAcFilter();
-    setInterval(function () { paintStamps(); paintHealth(); paintLeaveAndClear(); if (typeof paintSources === "function") paintSources(); }, 15000);
+    setInterval(function () {
+      if (document.hidden) return;
+      paintStamps();
+      paintLeaveAndClear();
+      var onHealth = document.getElementById("health");
+      if (onHealth && onHealth.classList.contains("on") && typeof paintHealth === "function") paintHealth();
+      var onSrc = document.getElementById("sources");
+      if (onSrc && onSrc.classList.contains("on") && typeof paintSources === "function") paintSources();
+    }, 30000);
 
 
     (function seedWxTiles() {
