@@ -129,11 +129,6 @@
           }
           return;
         }
-        var focusId = t.getAttribute("data-focus");
-        if (focusId && typeof showFocus === "function" && t.closest && t.closest("#dock")) {
-          showFocus(focusId);
-          return;
-        }
         var id = t.getAttribute("data-p");
         if (id === "storms") {
           var fromCane = !!(t.closest && t.closest("#today-cane, #chip-cane, .today-chip.cane"));
@@ -1743,11 +1738,7 @@
     .menu-grid button { min-height:52px; border:0; border-radius:16px; background:#fff; font-weight:800; font-size:15px; color:var(--navy); box-shadow:0 0 0 1px var(--hair); }
     .menu-grid button.on { background:var(--navy); color:#f7f1e6; }
     @media (max-width:640px) { .menu-grid { grid-template-columns:repeat(2,1fr); } }
-    .dock { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; padding:6px 8px 4px; background:var(--sand-2); }
-    .focus-pills { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; padding:0 10px 8px; background:var(--sand-2); }
-    .focus-pills button { border:0; border-radius:999px; background:transparent; font-weight:700; font-size:13px; color:var(--navy); padding:4px 10px; opacity:.5; }
-    .focus-pills button.on { background:#fff; opacity:1; box-shadow:0 1px 2px rgba(0,0,0,.08); }
-    html.dark .focus-pills button.on { background:#2a3344; color:#e8eef6; }
+    .dock { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:6px 8px 8px; background:var(--sand-2); }
     .dock button { flex:none; }
     .dock button { min-height:30px; border:0; border-radius:999px; background:transparent; font-weight:700; font-size:15px; color:var(--navy); padding:4px 2px; opacity:.55; }
     .dock button.on { background:#fff; opacity:1; font-weight:700; box-shadow:0 0 0 1px var(--hair); }
@@ -3113,7 +3104,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1000</span>
+      <span class="hdr-ver" id="hdr-ver">v969</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4380,7 +4371,7 @@ Cart shop:</textarea>
 
 <section id="menu" class="page">
         <h2 data-k="All pages">Menu</h2>
-        <p class="pill-key">Wall 1.0 — Outside, Out, House, HOA. This menu is the Board drawer.</p>
+        <p class="pill-key">Daily pages plus house and storms. Developer pages live on Status.</p>
         <div class="menu-block">
           <h3>Daily</h3>
           <div class="menu-grid">
@@ -4879,13 +4870,16 @@ Cart shop:</textarea>
     <div class="board-foot">
     <div class="dock-wrap">
     <nav class="dock" id="dock">
-      <button type="button" data-focus="outside" data-p="now" class="on">Outside</button>
-      <button type="button" data-focus="out" data-p="ent">Out</button>
-      <button type="button" data-focus="house" data-p="house">House</button>
-      <button type="button" data-focus="hoa" data-p="comm">HOA</button>
-      <button type="button" data-focus="board" data-p="menu">Board</button>
+      <button type="button" data-p="now" class="on">Today</button>
+      <button type="button" data-p="tenday">Weather</button>
+      <button type="button" data-p="land">Land</button>
+      <button type="button" data-p="marine">Sea</button>
+      <button type="button" data-p="sky">Sky</button>
+      <button type="button" data-p="comm">Community</button>
+        <button type="button" data-p="ent">Events</button>
+        <button type="button" data-p="eats">Restaurants</button>
+        <button type="button" data-p="golf">Golf</button>
     </nav>
-    <nav class="focus-pills" id="focus-pills" aria-label="Pages in this focus"></nav>
     </div>
     <div class="ticker-stack">
     <div id="allclear" hidden>All clear — the last warning for this zip has ended.</div>
@@ -4994,7 +4988,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1000;
+    window.BOARD_VER = 969;
 
     
     function communityShort() {
@@ -5076,7 +5070,7 @@ Cart shop:</textarea>
       setTimeout(pad, 600);
     })();
     window.ROT_DEFAULTS = {
-      normal: ["now","tenday","storms","land","marine","sky","ent","eats","golf","house","prep","comm"],
+      normal: ["now","tenday","land","marine","sky","comm","ent","eats","golf"],
       storm: ["tenday","storms","marine","contacts","prep","house"]
     };
     var ROT_DEFAULTS = window.ROT_DEFAULTS;
@@ -9564,8 +9558,6 @@ function currentRotation() {
         var a = document.getElementById("tropics-view");
         if (a) a.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg?t=" + Date.now();
       }
-      if (typeof paintFocusPills === "function") paintFocusPills(id);
-      if (typeof markFocusDock === "function") markFocusDock(id);
     }
     function radioPinKey() {
       return typeof pinTrashKey === "function" ? pinTrashKey() : "default";
@@ -14710,105 +14702,24 @@ function currentRotation() {
     function rebuildDock() {
       var dock = document.getElementById("dock");
       if (!dock) return;
-      var focuses = (window.WALL_FOCUSES || []).filter(function (f) {
-        if (f.id === "hoa" && typeof focusHasComm === "function" && !focusHasComm()) return false;
-        return true;
-      });
-      dock.innerHTML = focuses.map(function (f) {
-        var first = (typeof focusPages === "function" ? focusPages(f) : f.pages)[0] || f.pages[0];
-        return '<button type="button" data-focus="' + f.id + '" data-p="' + first + '">' + f.label + "</button>";
+      var list = window.__storm
+        ? (typeof warnList === "function" ? warnList() : ["tenday","storms","marine","contacts","prep","house"])
+        : (typeof rotateList === "function" ? rotateList() : ["now","tenday","land","marine","sky","comm","ent","eats","golf"]);
+      if (!list || !list.length) list = ["now","tenday"];
+      dock.innerHTML = list.filter(Boolean).map(function (id) {
+        return '<button type="button" data-p="' + id + '">' + (typeof pageLabel === "function" ? pageLabel(id) : id) + "</button>";
       }).join("");
       if (typeof paintCommNav === "function") paintCommNav();
-      var n = Math.max(focuses.length, 2);
+      var n = Math.max(list.length, 2);
       dock.style.gridTemplateColumns = "repeat(" + n + ",1fr)";
       if (typeof showPage === "function") {
         var on = document.querySelector(".page.on");
         if (on) document.querySelectorAll("#dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === on.id); });
       }
     }
-    window.WALL_FOCUSES = [
-      { id: "outside", label: "Outside", pages: ["now", "tenday", "storms", "land", "marine", "sky"] },
-      { id: "out", label: "Out", pages: ["ent", "eats", "golf", "wink"] },
-      { id: "house", label: "House", pages: ["house", "prep", "contacts", "villa"] },
-      { id: "hoa", label: "HOA", pages: ["comm"] },
-      { id: "board", label: "Board", pages: ["menu"] }
-    ];
-    function focusHasComm() {
-      try {
-        var n = typeof commName === "function" ? commName() : "";
-        return !!(n && String(n).trim());
-      } catch (e) { return true; }
-    }
-    function focusById(id) {
-      var list = window.WALL_FOCUSES || [];
-      for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
-      return list[0];
-    }
-    function focusOfPage(pageId) {
-      var list = window.WALL_FOCUSES || [];
-      for (var i = 0; i < list.length; i++) {
-        if ((list[i].pages || []).indexOf(pageId) >= 0) return list[i];
-      }
-      return focusById("outside");
-    }
-    function focusPages(fid) {
-      var f = typeof fid === "string" ? focusById(fid) : fid;
-      if (!f) return [];
-      return (f.pages || []).filter(function (id) {
-        if (f.id === "hoa" && !focusHasComm()) return false;
-        return !!(id && document.getElementById(id));
-      });
-    }
-    function showFocus(fid) {
-      var pages = focusPages(fid);
-      if (!pages.length) pages = focusById(fid) && focusById(fid).pages || ["now"];
-      if (typeof showPage === "function") showPage(pages[0] || "now");
-    }
-    function paintFocusPills(pageId) {
-      var box = document.getElementById("focus-pills");
-      if (!box) return;
-      var f = focusOfPage(pageId);
-      if (!f || f.id === "board") {
-        var boardPages = ["menu", "health", "sources", "settings", "account", "guide", "kioskpage"];
-        box.innerHTML = boardPages.filter(function (id) { return document.getElementById(id); }).map(function (id) {
-          var lab = typeof pageLabel === "function" ? pageLabel(id) : id;
-          if (id === "menu") lab = "Menu";
-          if (id === "health") lab = "Status";
-          return '<button type="button" data-p="' + id + '"' + (id === pageId ? ' class="on"' : "") + ">" + lab + "</button>";
-        }).join("");
-        return;
-      }
-      var pages = focusPages(f);
-      box.innerHTML = pages.map(function (id) {
-        var lab = typeof pageLabel === "function" ? pageLabel(id) : id;
-        return '<button type="button" data-p="' + id + '"' + (id === pageId ? ' class="on"' : "") + ">" + lab + "</button>";
-      }).join("");
-    }
-    function markFocusDock(pageId) {
-      var f = focusOfPage(pageId);
-      var fid = f ? f.id : "outside";
-      if (pageId === "menu" || pageId === "health" || pageId === "sources" || pageId === "settings" || pageId === "account" || pageId === "guide" || pageId === "kioskpage" || pageId === "ideas" || pageId === "business") fid = "board";
-      document.querySelectorAll("#dock [data-focus]").forEach(function (b) {
-        b.classList.toggle("on", b.getAttribute("data-focus") === fid);
-      });
-    }
     function rotateList() {
       var skip = { villa:1, health:1, guide:1, ideas:1, sources:1, menu:1, triggers:1, kioskpage:1, settings:1, sports:1, radio:1, account:1, welcome:1, business:1 };
       var seen = {};
-      if (window.WALL_FOCUSES) {
-        var grouped = [];
-        window.WALL_FOCUSES.forEach(function (f) {
-          if (f.id === "board") return;
-          if (f.id === "hoa" && typeof focusHasComm === "function" && !focusHasComm()) return;
-          (f.pages || []).forEach(function (id) {
-            if (!id || skip[id] || seen[id] || (typeof rotVisible === "function" && !rotVisible(id))) return;
-            if (!document.getElementById(id)) return;
-            seen[id] = true;
-            grouped.push(id);
-          });
-        });
-        if (grouped.length) return grouped;
-      }
       var list = loadRots().normal.filter(function (id) {
         if (!id || skip[id] || seen[id] || !rotVisible(id)) return false;
         seen[id] = true;
