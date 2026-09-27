@@ -3175,7 +3175,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1004</span>
+      <span class="hdr-ver" id="hdr-ver">v1005</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5060,7 +5060,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1004;
+    window.BOARD_VER = 1005;
 
     
     function communityShort() {
@@ -10187,9 +10187,14 @@ function currentRotation() {
       var moon = document.getElementById("hdr-moon");
       var sunPos = window.__sunUp && window.__sunWin ? arcPos(window.__sunWin, 0, 0) : null;
       var moonPos = window.__moonWin ? arcPos(window.__moonWin, 4, 8) : null;
-      if (sun && sunPos) {
-        park(sun, sunPos, 44);
-        sun.style.opacity = "";
+      if (sun) {
+        if (sunPos) park(sun, sunPos, 28);
+        if (window.__sunUp || sun.classList.contains("up")) {
+          sun.classList.add("up");
+          sun.style.opacity = "1";
+        } else {
+          sun.style.opacity = "0";
+        }
       }
       if (moon && moonPos) {
         park(moon, moonPos, 28);
@@ -23784,12 +23789,11 @@ function wxSvg(kind, box) {
                 ? '<span class="dpop">' + (bolt && !popN ? "⚡" : Math.round(Number(popN)) + "%") + "</span>"
                 : '<span class="dpop"></span>';
               var label = hi === 0 ? "Now" : when;
-              var on = hi === 0 ? " on" : "";
-              return '<button type="button" class="day' + on + (bolt ? " storm" : "") + '">' +
+              return '<div class="day' + (bolt ? " storm" : "") + '">' +
                 '<span class="hi">' + fmtTempN(h.temperature) + "°</span>" +
                 wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime(), popN), 26) +
                 pop +
-                '<span class="ddate">' + label + "</span></button>";
+                '<span class="ddate">' + label + "</span></div>";
             }).join("");
             if (typeof lockForecastStrips === "function") lockForecastStrips();
           }
