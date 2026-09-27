@@ -198,7 +198,17 @@
     @media (max-width: 720px) {
       .hdr-moon { width:22px; height:22px; }
     }
-    .hdr-cloud-svg { position:absolute; z-index:4; opacity:0; color:#ffffff; filter:drop-shadow(0 1px 2px rgba(255,255,255,.45)) drop-shadow(0 2px 3px rgba(20,40,70,.16)); pointer-events:none; will-change:left,opacity; }
+    .hdr-cloud-svg { position:absolute; z-index:4; opacity:.45; color:#ffffff; filter:drop-shadow(0 1px 2px rgba(255,255,255,.45)) drop-shadow(0 2px 3px rgba(20,40,70,.16)); pointer-events:none; animation:cloud-drift 48s linear infinite; will-change:transform; }
+    header.sky-sun .hdr-cloud-svg { opacity:.22; }
+    header.sky-partly .hdr-cloud-svg { opacity:.4; }
+    header.sky-cloud .hdr-cloud-svg, header.sky-storm .hdr-cloud-svg { opacity:.72; }
+    @keyframes cloud-drift {
+      from { transform: translateX(-25vw); }
+      to { transform: translateX(110vw); }
+    }
+    .hdr-cloud-svg:nth-child(2n) { animation-duration: 56s; animation-delay: -12s; }
+    .hdr-cloud-svg:nth-child(3n) { animation-duration: 40s; animation-delay: -22s; }
+    .hdr-cloud-svg:nth-child(4n) { animation-duration: 64s; animation-delay: -8s; }
     .hdr-cloud-svg circle, .hdr-cloud-svg ellipse { fill:currentColor; }
     .hdr-cloud-svg.c1 { width:78px; top:8%; left:-20%; }
     .hdr-cloud-svg.c2 { width:62px; top:26%; left:-20%; }
@@ -3146,7 +3156,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v996</span>
+      <span class="hdr-ver" id="hdr-ver">v997</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5031,7 +5041,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 996;
+    window.BOARD_VER = 997;
 
     
     function communityShort() {
@@ -10345,10 +10355,7 @@ function currentRotation() {
         window.__skyTickOn = true;
         setTimeout(function () { requestAnimationFrame(tick); }, document.documentElement.classList.contains("phone") ? 500 : 160);
       }
-      document.addEventListener("visibilitychange", function () {
-        if (!document.hidden && !window.__skyTickOn) requestAnimationFrame(tick);
-      });
-      requestAnimationFrame(tick);
+      window.__skyTickOn = false;
     })();
     function layoutPalms() {
       var head = document.querySelector("header");
