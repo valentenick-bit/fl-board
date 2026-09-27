@@ -1966,7 +1966,7 @@
       gap:2px; padding:10px 6px 8px;
       background:rgba(255,255,255,.55); border:2px solid transparent; border-radius:28px;
       font-size:12px; font-weight:700; color:var(--navy); text-align:center;
-      cursor:pointer; user-select:none;
+      cursor:default; user-select:none; pointer-events:none;
     }
     .tenday .day,
     .hourly .day { min-height:148px; }
@@ -3175,7 +3175,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1002</span>
+      <span class="hdr-ver" id="hdr-ver">v1003</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5060,7 +5060,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1002;
+    window.BOARD_VER = 1003;
 
     
     function communityShort() {
@@ -9009,7 +9009,10 @@ function gatorRange() {
           var mphN = isFinite(mph) ? mph : 8;
       var dur = 220 - Math.max(0, Math.min(28, mphN)) * 4;
       document.documentElement.style.setProperty("--cloud-dur", dur.toFixed(0) + "s");
-      document.documentElement.style.setProperty("--cloud-dir", lean >= 0 ? "normal" : "reverse");
+      document.documentElement.style.setProperty("--cloud-dir", lean >= 0 ? "reverse" : "normal");
+      document.querySelectorAll(".hdr-cloud-svg").forEach(function (c) {
+        c.style.animationDirection = lean >= 0 ? "reverse" : "normal";
+      });
 }
     function paintHeaderTrees() {
       var box = document.querySelector("header .palms");
@@ -23047,30 +23050,21 @@ function drawSurgeChart(points) {
     function paintTendayCapsules(rows) {
       var td = document.querySelector(".tenday");
       if (!td || !rows || !rows.length) return;
-      var cur = window.__tenPick;
-      if (cur == null || cur < 0 || cur >= rows.length) cur = 0;
-      window.__tenPick = cur;
       window.__tenRows = rows;
       td.innerHTML = rows.map(function (r, i) {
         var popN = Number(r.pop);
         var pop = isFinite(popN) && popN >= 10 ? '<span class="dpop">' + Math.round(popN) + "%</span>" : '<span class="dpop"></span>';
         var kind = r.kind || (typeof wxKind === "function" ? wxKind(r.fx || "", null, r.pop) : "partly");
         var icon = typeof wxSvg === "function" ? wxSvg(kind, 26) : "";
-        var on = i === cur ? " on" : "";
-        var today = r.today || r.label === "Today" ? " today" : "";
-        return '<button type="button" class="day' + today + on + '" data-ten="' + i + '">' +
+        var today = r.today || r.label === "Today" || i === 0 ? " today" : "";
+        return '<div class="day' + today + '" data-ten="' + i + '">' +
           '<span class="hi">' + (r.hi != null && r.hi !== "" ? fmtTempN(r.hi) + "°" : "—") + "</span>" +
           '<span class="lo">' + (r.lo != null && r.lo !== "" ? fmtTempN(r.lo) + "°" : "—") + "</span>" +
           icon + pop +
           '<span class="dname">' + (r.label || "") + "</span>" +
-          '<span class="ddate">' + (r.date || "") + "</span></button>";
+          '<span class="ddate">' + (r.date || "") + "</span></div>";
       }).join("");
-      td.onclick = function (e) {
-        var b = e.target.closest("[data-ten]");
-        if (!b) return;
-        window.__tenPick = Number(b.getAttribute("data-ten"));
-        paintTendayCapsules(window.__tenRows || rows);
-      };
+      td.onclick = null;
       if (typeof paintTodayDays === "function") try { paintTodayDays(); } catch (eD) {}
       if (typeof lockForecastStrips === "function") lockForecastStrips();
     }
