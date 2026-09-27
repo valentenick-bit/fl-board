@@ -199,7 +199,8 @@
     @media (max-width: 720px) {
       .hdr-moon { width:22px; height:22px; }
     }
-    .hdr-cloud-svg { position:absolute; z-index:4; opacity:.45; color:#ffffff; filter:drop-shadow(0 1px 2px rgba(255,255,255,.45)) drop-shadow(0 2px 3px rgba(20,40,70,.16)); pointer-events:none; animation:cloud-drift var(--cloud-dur, 160s) linear infinite; will-change:transform; }
+    .hdr-cloud-svg { position:absolute; z-index:4; opacity:.45; color:#ffffff; filter:drop-shadow(0 1px 2px rgba(255,255,255,.45)) drop-shadow(0 2px 3px rgba(20,40,70,.16)); pointer-events:none; animation:cloud-drift var(--cloud-dur, 160s) linear infinite;
+      animation-direction:var(--cloud-dir, normal); will-change:transform; }
     header.sky-sun .hdr-cloud-svg { opacity:.22; }
     header.sky-partly .hdr-cloud-svg { opacity:.4; }
     header.sky-cloud .hdr-cloud-svg, header.sky-storm .hdr-cloud-svg { opacity:.72; }
@@ -3174,7 +3175,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1001</span>
+      <span class="hdr-ver" id="hdr-ver">v1002</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5059,7 +5060,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1001;
+    window.BOARD_VER = 1002;
 
     
     function communityShort() {
@@ -8984,11 +8985,13 @@ function gatorRange() {
       if (!isFinite(gust)) gust = mph;
       var blob = String(wx.wind || "") + " " + ((document.getElementById("live-wind") || {}).textContent || "");
       var dir = (blob.match(/\b(N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)\b/i) || [])[1] || "";
+      // Wind is FROM dir. Header left = east, right = west (sun path).
+      // Downwind is opposite: from the east, blow toward the west (right).
+      var from = String(dir || "").toUpperCase();
       var lean = 0;
-      if (/E$|ENE|ESE/i.test(dir) && !/^NE$|^SE$/i.test(dir)) lean = -1;
-      else if (/W$|WNW|WSW/i.test(dir) && !/^NW$|^SW$/i.test(dir)) lean = 1;
-      else if (/^NE$|^SE$/i.test(dir)) lean = -0.55;
-      else if (/^NW$|^SW$/i.test(dir)) lean = 0.55;
+      if (/^(NNE|NE|ENE|E|ESE|SE|SSE)$/.test(from)) lean = 1;
+      else if (/^(NNW|NW|WNW|W|WSW|SW|SSW)$/.test(from)) lean = -1;
+      else if (from === "N" || from === "S") lean = 0;
       var force = Math.max(0.6, Math.min(11, mph * 0.38 + Math.max(0, gust - mph) * 0.18));
       var baseDur = Math.max(1.5, Math.min(5.4, 5.1 - force * 0.28));
       var trees = box.querySelectorAll(".hdr-tree");
@@ -9006,6 +9009,7 @@ function gatorRange() {
           var mphN = isFinite(mph) ? mph : 8;
       var dur = 220 - Math.max(0, Math.min(28, mphN)) * 4;
       document.documentElement.style.setProperty("--cloud-dur", dur.toFixed(0) + "s");
+      document.documentElement.style.setProperty("--cloud-dir", lean >= 0 ? "normal" : "reverse");
 }
     function paintHeaderTrees() {
       var box = document.querySelector("header .palms");
@@ -12730,7 +12734,6 @@ function currentRotation() {
     window.togglePause = function () {
       window.__paused = !window.__paused;
       window.__holdPage = !!window.__paused;
-      try { sessionStorage.setItem("bw-paused", window.__paused ? "1" : "0"); } catch (eP) {}
       var b = document.getElementById("pausebtn");
       var m = document.getElementById("pausemenu");
       if (b) { b.classList.toggle("on", window.__paused); b.textContent = window.__paused ? "▶" : "❚❚"; }
@@ -26379,7 +26382,11 @@ function homeCountyGuess() {
         t = setTimeout(function () { document.documentElement.classList.remove("scrolling"); }, 180);
       }, { passive: true });
     })();
-    try { if (sessionStorage.getItem("bw-paused") === "1") { window.__paused = true; window.__holdPage = true; var pb = document.getElementById("pausebtn"); if (pb) { pb.classList.add("on"); pb.textContent = "▶"; } } } catch (eBootP) {}
+    try { sessionStorage.removeItem("bw-paused"); } catch (eBootP) {}
+    window.__paused = false;
+    window.__holdPage = false;
+    var pb0 = document.getElementById("pausebtn");
+    if (pb0) { pb0.classList.remove("on"); pb0.textContent = "❚❚"; }
     pollAlerts();
     setInterval(function () { if (!document.hidden && typeof placeSunMoonArc === "function") placeSunMoonArc(); }, 20000);
     try { lockForecastStrips(); } catch (eLock) {}
