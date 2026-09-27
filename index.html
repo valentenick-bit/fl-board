@@ -1111,7 +1111,8 @@
     #ent-list .card { padding:10px 12px; margin-bottom:8px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
-    .hourly { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; overscroll-behavior-x:contain;  background:transparent; border:0; border-radius:0; }
+    .hourly, .tenday { min-width:0; width:100%; max-width:100%; }
+    .hourly { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; background:transparent; border:0; border-radius:0; }
     .hourly .day { flex:0 0 64px; width:64px; }
     .hourly .day { align-items:center; }
     .hourly .day .hi,
@@ -1525,7 +1526,7 @@
     }
     #tenday .wx-top { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,46%); gap:12px 16px; align-items:start; }
     #tenday .wx-map-frame { grid-column:2; grid-row:1; margin:0; max-width:100%; }
-    #tenday .wx-top-left { grid-column:1; grid-row:1; min-width:0; }
+    #tenday .wx-top-left { grid-column:1; grid-row:1; min-width:0; max-width:100%; overflow:hidden; }
     @media (orientation:portrait) {
       #tenday .wx-top { grid-template-columns:1fr; }
       #tenday .wx-map-frame { grid-column:1; grid-row:1; max-width:none; width:100%; margin:0 0 10px; }
@@ -1929,7 +1930,7 @@
     .cam-cap { position:absolute; left:10px; bottom:10px; margin:0; padding:4px 10px; border-radius:999px; background:rgba(14,12,28,.55); color:#f7f1e6; font-size:12px; letter-spacing:.04em; }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
-    .tenday { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; overscroll-behavior-x:contain;  background:transparent; border:0; border-radius:0; scrollbar-width:thin; }
+    .tenday { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; background:transparent; border:0; border-radius:0; scrollbar-width:thin; }
     .tenday .day {
       flex:0 0 64px; width:64px; box-sizing:border-box;
       display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
@@ -3129,7 +3130,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v986</span>
+      <span class="hdr-ver" id="hdr-ver">v987</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5014,7 +5015,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 986;
+    window.BOARD_VER = 987;
 
     
     function communityShort() {
@@ -8693,207 +8694,48 @@ function gatorRange() {
     function stopRainviewerLoop() {
       if (window.__rvTimer) { clearInterval(window.__rvTimer); window.__rvTimer = 0; }
     }
-    function startHomeRadarLoop(lat, lon, pin, st) {
-      stopRainviewerLoop();
-      lat = Number(lat); lon = Number(lon);
-      if (!isFinite(lat) || !isFinite(lon)) return;
-      var stage = document.getElementById("wx-radar-stage");
-      if (!stage) return;
-      var oldWindy = document.getElementById("wx-radar-windy");
-      if (oldWindy) oldWindy.remove();
-      var live = document.getElementById("wx-radar-live");
-      if (!live) {
-        live = document.createElement("iframe");
-        live.id = "wx-radar-live";
-        live.title = "Radar loop at home";
-        live.setAttribute("allowfullscreen", "true");
-        stage.insertBefore(live, stage.firstChild);
-      }
-      var rv = typeof rainviewerPin === "function" ? rainviewerPin(lat, lon, 8) : ("https://www.rainviewer.com/map.html?loc=" + lat.toFixed(4) + "," + lon.toFixed(4) + ",8");
-      live.style.display = "none";
-      live.style.position = "absolute";
-      live.style.inset = "0";
-      live.style.zIndex = "9";
-      if (live.getAttribute("data-src") !== rv) {
-        live.src = rv;
-        live.setAttribute("data-src", rv);
-      }
-      var hideGif = document.getElementById("wx-radar-view");
-      if (hideGif) hideGif.style.display = "";
-      var hideMap = document.getElementById("wx-radar-map");
-      if (hideMap) hideMap.style.display = "none";
-      if (typeof noteFeed === "function") noteFeed("radar", true, "windy z12 " + lat.toFixed(3) + "," + lon.toFixed(3));
-      return;
-      live.style.display = "none";
-      function nearestRadarSite(la, lo, given) {
-        var g = String(given || "").toUpperCase().replace(/^K/, "");
-        if (/^[A-Z]{3}$/.test(g)) return g;
-        var sites = [
-          { id:"BOX", lat:41.9559, lon:-71.1369 },
-          { id:"OKX", lat:40.8656, lon:-72.8639 },
-          { id:"ENX", lat:42.5866, lon:-74.0644 },
-          { id:"GYX", lat:43.8913, lon:-70.2564 },
-          { id:"TBW", lat:27.7055, lon:-82.4018 },
-          { id:"MIA", lat:25.6111, lon:-80.4127 },
-          { id:"MLB", lat:28.1133, lon:-80.6540 },
-          { id:"JAX", lat:30.4847, lon:-81.7019 },
-          { id:"TLH", lat:30.3975, lon:-84.3289 },
-          { id:"AMX", lat:25.6111, lon:-80.4128 },
-          { id:"LWX", lat:38.9753, lon:-77.4875 },
-          { id:"OKC", lat:35.2383, lon:-97.4603 }
-        ];
-        var best = "TBW", bestD = 1e9;
-        sites.forEach(function (s) {
-          var d = Math.hypot(la - s.lat, lo - s.lon);
-          if (d < bestD) { bestD = d; best = s.id; }
-        });
-        return best;
-      }
-      var site = nearestRadarSite(lat, lon, st);
-      var code = String(site || "TBW").toUpperCase().replace(/^K/, "");
-      var kcode = "K" + code;
-      var pane = document.getElementById("wx-radar-view");
-      var live = document.getElementById("wx-radar-live");
-      if (live) {
-        var rv = "https://www.rainviewer.com/map.html?loc=" +
-          Number(homeLat()).toFixed(4) + "," + Number(homeLon()).toFixed(4) +
-          ",7&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&c=3&o=83&lm=0&th=0&sm=0&sn=1";
-        if (live.getAttribute("data-src") !== rv) {
-          live.setAttribute("data-src", rv);
-          live.src = rv;
-        }
-      }
-      var region = "NORTHEAST";
-      var stU = String(st || (typeof homeState === "function" && homeState()) || "").toUpperCase();
-      if (["FL","GA","AL","SC","NC","MS","LA","TN"].indexOf(stU) >= 0 || lon < -80 && lat < 35) region = "SOUTHEAST";
-      else if (["TX","OK","AR","NM"].indexOf(stU) >= 0) region = "SOUTHCENTRAL";
-      else if (["CA","OR","WA","NV","AZ"].indexOf(stU) >= 0) region = "PACSOUTHWEST";
-      var loops = [
-        "https://radar.weather.gov/ridge/standard/" + region + "_loop.gif?t=" + Date.now(),
-        "https://radar.weather.gov/ridge/standard/" + kcode + "_loop.gif?t=" + Date.now(),
-        "https://radar.weather.gov/ridge/standard/CONUS_loop.gif?t=" + Date.now()
+    function pickRadarCode(lat, lon, st) {
+      var code = String(st || "").toUpperCase().replace(/^K/, "");
+      if (/^[A-Z]{3}$/.test(code)) return code;
+      var sites = [
+        { id:"BOX", lat:41.9559, lon:-71.1369 },
+        { id:"OKX", lat:40.8656, lon:-72.8639 },
+        { id:"ENX", lat:42.5866, lon:-74.0644 },
+        { id:"GYX", lat:43.8913, lon:-70.2564 },
+        { id:"TBW", lat:27.7055, lon:-82.4018 },
+        { id:"MIA", lat:25.6111, lon:-80.4127 },
+        { id:"MLB", lat:28.1133, lon:-80.6540 },
+        { id:"JAX", lat:30.4847, lon:-81.7019 },
+        { id:"TLH", lat:30.3975, lon:-84.3289 },
+        { id:"LWX", lat:38.9753, lon:-77.4875 }
       ];
-      if (pane) {
-        pane.style.display = "block";
-        pane.onerror = function () {
-          var n = Number(pane.getAttribute("data-i") || 0) + 1;
-          if (n < loops.length) {
-            pane.setAttribute("data-i", String(n));
-            pane.src = loops[n];
-          }
-        };
-        pane.setAttribute("data-i", "0");
-        pane.src = loops[0];
-      }
-      if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + kcode + " loop");
-      function nearestRadarSite(la, lo, given) {
-        var g = String(given || "").toUpperCase().replace(/^K/, "");
-        if (/^[A-Z]{3}$/.test(g)) return g;
-        var sites = [
-          { id:"BOX", lat:41.9559, lon:-71.1369 },
-          { id:"OKX", lat:40.8656, lon:-72.8639 },
-          { id:"ENX", lat:42.5866, lon:-74.0644 },
-          { id:"GYX", lat:43.8913, lon:-70.2564 },
-          { id:"TBW", lat:27.7055, lon:-82.4018 },
-          { id:"MIA", lat:25.6111, lon:-80.4127 },
-          { id:"MLB", lat:28.1133, lon:-80.6540 },
-          { id:"JAX", lat:30.4847, lon:-81.7019 },
-          { id:"TLH", lat:30.3975, lon:-84.3289 },
-          { id:"AMX", lat:25.6111, lon:-80.4128 },
-          { id:"LWX", lat:38.9753, lon:-77.4875 },
-          { id:"OKC", lat:35.2383, lon:-97.4603 },
-          { id:"EVX", lat:30.5644, lon:-85.9214 },
-          { id:"BYX", lat:24.5975, lon:-81.7031 },
-          { id:"AMX", lat:25.6111, lon:-80.4128 }
-        ];
-        var best = "TBW", bestD = 1e9;
-        sites.forEach(function (s) {
-          var d = Math.hypot(la - s.lat, lo - s.lon);
-          if (d < bestD) { bestD = d; best = s.id; }
-        });
-        return best;
-      }
-      var site = nearestRadarSite(lat, lon, st);
-      var pane = document.getElementById("wx-radar-view");
-      var code = String(site || "BOX").toUpperCase().replace(/^K/, "");
-      var kcode = "K" + code;
-      var nws = "https://radar.weather.gov/ridge/standard/" + kcode + "_loop.gif?t=" + Date.now();
-      if (pane) {
-        pane.classList.add("on");
-        pane.style.display = "block";
-        pane.src = nws;
-      }
-      if (typeof noteFeed === "function") noteFeed("radar", true, "NWS " + kcode + " loop");
-      return;
-      if (pane) pane.style.display = "none";
-      var hostEl = document.getElementById("wx-radar-map");
-      if (!hostEl) {
-        hostEl = document.createElement("div");
-        hostEl.id = "wx-radar-map";
-        stage.insertBefore(hostEl, stage.firstChild);
-      }
-      var stamp = document.getElementById("wx-radar-stamp");
-      if (!stamp) {
-        stamp = document.createElement("div");
-        stamp.id = "wx-radar-stamp";
-        stamp.className = "wx-radar-stamp";
-        stage.appendChild(stamp);
-      }
-      var dark = document.documentElement.classList.contains("dark");
-      var baseUrl = dark
-        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-      if (window.__radarMap) {
-        try {
-          window.__radarMap.setView([lat, lon], 10);
-          if (window.__radarMarker) window.__radarMarker.setLatLng([lat, lon]);
-        } catch (eV) {}
-      } else {
-        window.__radarMap = L.map(hostEl, { zoomControl: true, attributionControl: false, scrollWheelZoom: true }).setView([lat, lon], 10);
-        window.__radarBase = L.tileLayer(baseUrl, { maxZoom: 16 }).addTo(window.__radarMap);
-        window.__radarMarker = L.circleMarker([lat, lon], {
-          radius: 7, color: "#fff", weight: 2, fillColor: "#e85d4c", fillOpacity: 1
-        }).addTo(window.__radarMap);
-        setTimeout(function () { try { window.__radarMap.invalidateSize(); } catch (eI) {} }, 400);
-      }
-      fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (d) {
-        var host = (d && d.host) || "https://tilecache.rainviewer.com";
-        var past = ((d && d.radar && d.radar.past) || []).slice();
-        if (!past.length) throw new Error("no frames");
-        (window.__radarLayers || []).forEach(function (ly) {
-          try { window.__radarMap.removeLayer(ly); } catch (eR) {}
-        });
-        var layers = past.map(function (f) {
-          return L.tileLayer(host + f.path + "/256/{z}/{x}/{y}/2/1_1.png", {
-            opacity: 0, zIndex: 3, tileSize: 256
-          });
-        });
-        window.__radarLayers = layers;
-        window.__radarTimes = past.map(function (f) { return f.time; });
-        layers.forEach(function (ly) { ly.addTo(window.__radarMap); });
-        var i = 0;
-        function show() {
-          layers.forEach(function (ly, j) { ly.setOpacity(j === i ? 0.72 : 0); });
-          if (stamp && window.__radarTimes[i]) {
-            var dt = new Date(window.__radarTimes[i] * 1000);
-            stamp.textContent = dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + " · " + (pin || "home");
-          }
-        }
-        function tick() {
-          show();
-          var last = i === layers.length - 1;
-          i = (i + 1) % layers.length;
-          window.__rvTimer = setTimeout(tick, last ? 1400 : 420);
-        }
-        tick();
-        if (typeof noteFeed === "function") noteFeed("radar", true, layers.length + " frame map · " + Number(lat).toFixed(3) + "," + Number(lon).toFixed(3));
-      }).catch(function () {
-        var nws = st ? ("https://radar.weather.gov/ridge/standard/" + st + "_loop.gif?t=" + Date.now()) : "";
-        var pane = document.getElementById("wx-radar-view");
-        if (pane && nws) { pane.style.display = "block"; pane.src = nws; }
-        if (typeof noteFeed === "function") noteFeed("radar", !!nws, "map fail");
+      var best = Number(lat) > 36 ? "BOX" : "TBW", bestD = 1e9;
+      sites.forEach(function (row) {
+        var d = Math.hypot(Number(lat) - row.lat, Number(lon) - row.lon);
+        if (d < bestD) { bestD = d; best = row.id; }
       });
+      return best;
     }
+    function startHomeRadarLoop(lat, lon, pin, st) {
+      var img = document.getElementById("wx-radar-view");
+      var live = document.getElementById("wx-radar-live");
+      var map = document.getElementById("wx-radar-map");
+      if (live) { live.style.display = "none"; try { live.src = "about:blank"; } catch (e0) {} }
+      if (map) map.style.display = "none";
+      var code = pickRadarCode(lat, lon, st);
+      var url = "https://radar.weather.gov/ridge/standard/K" + code + "_loop.gif?t=" + Date.now();
+      if (img) {
+        img.classList.add("on");
+        img.style.display = "block";
+        img.style.zIndex = "12";
+        img.style.opacity = "1";
+        img.src = url;
+      }
+      var note = document.getElementById("wx-map-note");
+      if (note) note.textContent = "NWS K" + code + " loop";
+      if (typeof noteFeed === "function") noteFeed("radar", true, "NWS K" + code + " loop");
+    }
+
     function applyRadar() {
       stopRainviewerLoop();
       var st = homeRadar();
@@ -10587,6 +10429,10 @@ function currentRotation() {
       }
       if (mph == null || !isFinite(Number(mph))) { dest.textContent = dir || ""; return; }
       dest.textContent = (dir ? dir + " " : "") + Math.round(Number(mph)) + " mph";
+      window.__nowWx = window.__nowWx || {};
+      if (dir) window.__nowWx.dir = dir;
+      if (mph != null && isFinite(Number(mph))) window.__nowWx.wind = Number(mph);
+      if (typeof applyHeaderTreeWind === "function") applyHeaderTreeWind();
     }
     function radioLast() {
       try {
