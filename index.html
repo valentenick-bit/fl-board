@@ -3257,7 +3257,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1015</span>
+      <span class="hdr-ver" id="hdr-ver">v1016</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5138,7 +5138,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1015;
+    window.BOARD_VER = 1016;
 
     
     function communityShort() {
@@ -9100,19 +9100,27 @@ function gatorRange() {
       var kind = typeof headerTreeKind === "function" ? headerTreeKind() : "palm";
       var seed = typeof headerTreeSeed === "function" ? headerTreeSeed() : 1;
       var want = document.documentElement.classList.contains("phone") ? 10 : 16;
-      var key = kind + ":v1015:" + want;
+      var key = kind + ":v1016:" + want;
       var rng = seed || 1;
       function rand() { rng = (rng * 1664525 + 1013904223) >>> 0; return rng / 4294967296; }
-      box.innerHTML = "";
+      if (box.getAttribute("data-trees") === key && box.querySelectorAll(".hdr-tree").length >= want) {
+        if (typeof applyHeaderTreeWind === "function") applyHeaderTreeWind();
+        return;
+      }
       var n = want;
         var html = "";
+        var leftSlots = document.documentElement.classList.contains("phone")
+          ? [1.2, 5.5, 10, 14.5, 19]
+          : [1, 4, 7, 10, 13.5, 17, 20.5, 24];
+        var rightSlots = document.documentElement.classList.contains("phone")
+          ? [79, 83.5, 88, 92.5, 97]
+          : [75, 78, 81, 84, 87, 90.5, 94, 97.5];
         for (var i = 0; i < n; i++) {
-          var leftSide = i < Math.ceil(n / 2);
-          var x = leftSide ? (0.4 + rand() * 26) : (73 + rand() * 25);
-          var h = document.documentElement.classList.contains("phone")
-            ? (78 + Math.round(rand() * 36))
-            : (96 + Math.round(rand() * 44));
-          var fat = kind === "palm" ? 0.52 + rand() * 0.18 : 0.58 + rand() * 0.2;
+          var leftSide = i < leftSlots.length;
+          var base = leftSide ? leftSlots[i] : rightSlots[i - leftSlots.length];
+          var x = base + (rand() * 1.2 - 0.6);
+          var h = 48 + Math.round(rand() * 28);
+          var fat = kind === "palm" ? 0.55 + rand() * 0.18 : 0.6 + rand() * 0.16;
           var w = Math.round(h * fat);
           html += '<span class="hdr-tree" style="left:' + x.toFixed(1) + "%;width:" + w + "px;height:" + h + 'px">' + headerOneTree(kind, i) + "</span>";
         }
