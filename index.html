@@ -316,7 +316,7 @@
     header.sky-night .sandshelf { background:#3a3428; }
     .palms { position:absolute; left:20px; right:20px; top:0; bottom:8px; pointer-events:none; z-index:6; overflow:visible; }
     .hdr-tree { position:absolute; bottom:0; line-height:0; pointer-events:none; --sway-dur:3.8s; --sway-delay:0s; --lean:0deg; --wag:2deg; --leaf-wag:3deg; --crown-lag:.18s; }
-    .hdr-tree .palm { position:relative; left:auto; bottom:auto; width:100%; height:100%; display:block; }
+    .hdr-tree .palm { position:relative !important; left:auto !important; bottom:0; width:100% !important; height:100% !important; display:block; }
     .palm { position:absolute; bottom:0; width:46px; height:72px; transform:none; opacity:1; overflow:visible; filter:drop-shadow(0 1px 1px rgba(12,28,46,.4)); }
     .palm .bend { transform-origin:24px 72px; animation:trunk-bend var(--sway-dur, 3.6s) ease-in-out infinite; animation-delay:var(--sway-delay, 0s); }
     .palm .crown { transform-origin:24px 24px; transform-box:view-box; animation:crown-sway var(--sway-dur, 3.6s) ease-in-out infinite; animation-delay:calc(var(--sway-delay, 0s) + var(--crown-lag, .2s)); }
@@ -3257,7 +3257,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1014</span>
+      <span class="hdr-ver" id="hdr-ver">v1015</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5138,7 +5138,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1014;
+    window.BOARD_VER = 1015;
 
     
     function communityShort() {
@@ -9099,26 +9099,26 @@ function gatorRange() {
       if (!box) return;
       var kind = typeof headerTreeKind === "function" ? headerTreeKind() : "palm";
       var seed = typeof headerTreeSeed === "function" ? headerTreeSeed() : 1;
-      var want = document.documentElement.classList.contains("phone") ? 10 : 15;
-      var key = kind + ":v1013:" + want;
+      var want = document.documentElement.classList.contains("phone") ? 10 : 16;
+      var key = kind + ":v1015:" + want;
       var rng = seed || 1;
       function rand() { rng = (rng * 1664525 + 1013904223) >>> 0; return rng / 4294967296; }
-      var have = box.querySelectorAll(".hdr-tree").length;
-      if (have < want || box.getAttribute("data-trees") !== key) {
-        var n = want;
+      box.innerHTML = "";
+      var n = want;
         var html = "";
         for (var i = 0; i < n; i++) {
           var leftSide = i < Math.ceil(n / 2);
-          var x = leftSide ? (0.6 + rand() * 19) : (80 + rand() * 18);
-          var h = 42 + Math.round(rand() * 48);
-          var fat = kind === "palm" ? 0.55 + rand() * 0.2 : 0.62 + rand() * 0.22;
+          var x = leftSide ? (0.4 + rand() * 26) : (73 + rand() * 25);
+          var h = document.documentElement.classList.contains("phone")
+            ? (78 + Math.round(rand() * 36))
+            : (96 + Math.round(rand() * 44));
+          var fat = kind === "palm" ? 0.52 + rand() * 0.18 : 0.58 + rand() * 0.2;
           var w = Math.round(h * fat);
           html += '<span class="hdr-tree" style="left:' + x.toFixed(1) + "%;width:" + w + "px;height:" + h + 'px">' + headerOneTree(kind, i) + "</span>";
         }
         box.setAttribute("data-trees", key);
         box.innerHTML = html;
         if (typeof noteFeed === "function") noteFeed("hdr-trees", true, kind + " · " + n + " edge");
-      }
       if (typeof applyHeaderTreeWind === "function") applyHeaderTreeWind();
     }
     function setPageK(id, k) {
