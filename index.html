@@ -1111,8 +1111,17 @@
     #ent-list .card { padding:10px 12px; margin-bottom:8px; }
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
-    .hourly { display:flex; flex-wrap:nowrap; gap:0; padding:10px 6px 8px; overflow-x:auto; background:rgba(255,255,255,.62); border:1px solid var(--hair); border-radius:22px; margin-bottom:8px; }
-    .hourly .hour { flex:1 1 0; min-width:0; background:transparent; border-radius:0; }
+    .hourly-card { background:#111; color:#f4f4f4; border-radius:22px; padding:14px 10px 12px; margin:0 0 10px; }
+    .hourly-head { display:flex; align-items:center; gap:8px; margin:0 6px 12px; font-size:16px; font-weight:750; letter-spacing:.01em; color:#fff; }
+    .hourly-head svg { width:18px; height:18px; flex:none; opacity:.95; }
+    .hourly { display:flex; flex-wrap:nowrap; gap:0; padding:0 2px; overflow-x:auto; background:transparent; border:0; border-radius:0; margin:0; }
+    .hourly .hour { flex:1 1 0; min-width:52px; background:transparent; border-radius:0; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding:2px 4px; font-size:12px; color:#d8d8d8; font-weight:700; }
+    .hourly .hour b { display:block; font-size:20px; font-weight:750; color:#fff; margin:0; order:1; }
+    .hourly .hour svg { width:28px; height:28px; margin:0; display:block; order:2; }
+    .hourly .hour .pop { display:block; font-size:12px; font-weight:650; color:#c8c8c8; min-height:16px; order:3; }
+    .hourly .hour .pop.bolt { color:#ffb347; }
+    .hourly .hour .pop.mute { color:#7a7a7a; }
+    .hourly .hour em { display:block; font-style:normal; font-weight:650; color:#c8c8c8; font-size:12px; order:4; }
     .hour { min-width:56px; background:transparent; border-radius:0; text-align:center; padding:4px 2px; font-size:12px; color:var(--muted); font-weight:700; }
     .hour b { display:block; font-size:18px; font-weight:800; color:var(--navy); margin-top:2px; }
     .hour svg { width:28px; height:28px; margin:2px auto; display:block; }
@@ -3104,7 +3113,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v973</span>
+      <span class="hdr-ver" id="hdr-ver">v974</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3373,7 +3382,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         <div class="wx-top-left">
         <p class="wx-nowline" id="wx-nowline">Updating…</p>
-        <p class="sheet-kicker">Hourly forecast</p>
+        <div class="hourly-card">
+        <p class="hourly-head"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v4.3l3 1.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Hourly forecast</p>
         <div class="hourly">
           <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
           <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
@@ -3381,6 +3391,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div class="hour">2p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>93&deg;</b></div>
           <div class="hour">5p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>88&deg;</b></div>
           <div class="hour">8p<svg viewBox="0 0 32 32"><path d="M6 12h16" stroke="#5c6b7a" fill="none" stroke-width="2"/></svg><b>80&deg;</b></div>
+        </div>
         </div>
         </div>
         </div>
@@ -4988,7 +4999,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 973;
+    window.BOARD_VER = 974;
 
     
     function communityShort() {
@@ -23725,14 +23736,13 @@ function wxSvg(kind, box) {
               if (endH > nowMs) { startH = si; break; }
             }
             box.innerHTML = hours.slice(startH, startH + n).map(function (h, hi) {
-              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).replace(" ", "").toLowerCase();
-              var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", hour12: true, timeZone: "America/New_York" }).replace(" ", "").replace(/\.\s*/g, "").toUpperCase();
+              var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value);
+              if (pop == null) pop = 0;
               var bolt = typeof hourMentionsThunder === "function" && hourMentionsThunder(h);
-              var popHtml = bolt
-                ? '<i class="pop bolt">' + (pop ? pop + "% ⚡" : "⚡") + "</i>"
-                : pop >= 10 ? '<i class="pop">' + pop + "%</i>" : '<i class="pop mute">·</i>';
-              var label = hi === 0 ? "now" : when;
-              return '<div class="hour' + (hi === 0 ? " now" : "") + (bolt ? " storm" : "") + '"><em>' + label + "</em>" + popHtml + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime(), pop), 26) + "<b>" + fmtTempN(h.temperature) + "°</b></div>";
+              var popHtml = '<i class="pop' + (bolt ? " bolt" : "") + '">' + (bolt && !pop ? "⚡" : pop + "%") + "</i>";
+              var label = hi === 0 ? "Now" : when;
+              return '<div class="hour' + (hi === 0 ? " now" : "") + (bolt ? " storm" : "") + '"><b>' + fmtTempN(h.temperature) + "°</b>" + wxSvg(wxKind(h.shortForecast, new Date(h.startTime).getTime(), pop), 26) + popHtml + "<em>" + label + "</em></div>";
             }).join("");
           }
           if (days.length && document.querySelector(".tenday")) {
