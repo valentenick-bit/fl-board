@@ -2147,6 +2147,10 @@
     html.dockless { --foot: 58px; }
     html.dark.phone .board-foot { background:#1a1630; }
 
+
+    html.phone .hdr-cloud-svg:nth-child(n+5) { display:none !important; }
+    html.phone header .palm { animation-duration: 7s !important; }
+    html.phone .sky-scene { will-change: auto; }
     html.scrolling header .palm,
     html.scrolling header .hdr-tree,
     html.scrolling header .hdr-cloud-svg,
@@ -3142,7 +3146,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v994</span>
+      <span class="hdr-ver" id="hdr-ver">v995</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5027,7 +5031,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 994;
+    window.BOARD_VER = 995;
 
     
     function communityShort() {
@@ -8981,7 +8985,7 @@ function gatorRange() {
       var rng = seed || 1;
       function rand() { rng = (rng * 1664525 + 1013904223) >>> 0; return rng / 4294967296; }
       if (!(box.getAttribute("data-trees") === key && box.querySelector(".palm"))) {
-        var n = 8 + Math.floor(rand() * 4);
+        var n = document.documentElement.classList.contains("phone") ? 4 : (6 + Math.floor(rand() * 3));
         var html = "";
         for (var i = 0; i < n; i++) {
           var leftSide = i < Math.ceil(n / 2);
@@ -10336,9 +10340,11 @@ function currentRotation() {
         setTimeout(function () { requestAnimationFrame(tick); }, document.documentElement.classList.contains("scrolling") ? 400 : (document.documentElement.classList.contains("phone") ? 250 : 125));
       }
       document.addEventListener("visibilitychange", function () {
+        if (document.documentElement.classList.contains("phone")) return;
         if (!document.hidden && !window.__skyTickOn) requestAnimationFrame(tick);
       });
-      requestAnimationFrame(tick);
+      if (!document.documentElement.classList.contains("phone")) requestAnimationFrame(tick);
+      else window.__skyTickOn = false;
     })();
     function layoutPalms() {
       var head = document.querySelector("header");
