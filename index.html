@@ -3257,7 +3257,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1017</span>
+      <span class="hdr-ver" id="hdr-ver">v1018</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5138,7 +5138,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1017;
+    window.BOARD_VER = 1018;
 
     
     function communityShort() {
@@ -5148,11 +5148,13 @@ Cart shop:</textarea>
       return first.slice(0, 14) || "Community";
     }
     function paintCommNav() { /* boot */
-      var shortN = communityShort();
+      var shortN = communityShort() || "BeachWalk";
       var full = typeof communityLabel === "function" ? communityLabel() : shortN;
+      if (!shortN || shortN === "Community" || shortN === "comm") shortN = "BeachWalk";
       document.querySelectorAll('[data-p="comm"]').forEach(function (b) { b.textContent = shortN; });
       var title = document.getElementById("comm-title");
-      if (title) title.textContent = full;
+      if (title) title.textContent = full || "BeachWalk";
+      if (typeof noteFeed === "function") noteFeed("comm-label", true, shortN);
     }
     setTimeout(function () { try { paintCommNav(); } catch (e) {} }, 0);
     setTimeout(function () { try { paintCommNav(); } catch (e) {} }, 800);
@@ -5444,6 +5446,7 @@ Cart shop:</textarea>
       var s = {};
       try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e) { s = {}; }
       Object.keys(SET_DEFAULTS).forEach(function (k) { if (s[k] == null) s[k] = SET_DEFAULTS[k]; });
+      if (!String(s.community || "").trim()) s.community = "BeachWalk by Manasota Key";
       if (s.dateFmt === "iso" || s.dateFmt === "num-intl" || s.dateFmt === "long") s.dateFmt = "intl";
       if (s.dateFmt !== "us" && s.dateFmt !== "num-us" && s.dateFmt !== "intl") s.dateFmt = "us";
       s.eventMiles = "25";
@@ -10027,7 +10030,7 @@ function currentRotation() {
     (function makeRain() {
       var layer = document.getElementById("rainlayer");
       if (!layer || layer.childNodes.length) return;
-      var nRain = document.documentElement.classList.contains("phone") ? 24 : 90;
+      var nRain = document.documentElement.classList.contains("phone") ? 18 : 36;
       for (var i = 0; i < nRain; i++) {
         var s = document.createElement("span");
         s.style.left = (-25 + Math.random() * 150) + "%";
@@ -10164,7 +10167,15 @@ function currentRotation() {
           }
           return (moonOn ? "showing" : "hidden") + " · up " + hh(w.rise) + "–" + hh(w.set);
         })(),
-        "clouds " + ((window.__skyWx && window.__skyWx.kind) || "unknown") + " @" + Math.round(((window.__skyWx && window.__skyWx.cap) || 0) * 100) + "%"
+        "clouds " + (function () {
+          var w = window.__skyWx;
+          if (!w && typeof skyWeatherNow === "function") w = skyWeatherNow();
+          var live = ((document.getElementById("live-cloud") || {}).textContent || "").replace(/[^\d.]/g, "");
+          var pct = (w && w.cover != null && isFinite(Number(w.cover))) ? Number(w.cover)
+            : (live ? Number(live) : Math.round(((w && w.cap) || 0) * 100));
+          var kind = (w && w.kind) || (pct >= 85 ? "overcast" : pct >= 60 ? "cloudy" : pct >= 20 ? "partly" : "clear");
+          return kind + " @" + Math.round(pct) + "%";
+        })()
       ].join(" · ");
       window.__headerPlan = { ok: ok, text: text, slot: slot, cls: cls, sunOn: sunOn, sunShould: sunShould, moonOn: moonOn };
       if (typeof noteFeed === "function") noteFeed("header", ok, text);
@@ -10371,7 +10382,9 @@ function currentRotation() {
         : kind === "partly" ? 0.42
         : kind === "clear" ? 0.08
         : 0.28;
-      return { kind: kind, cap: cap, text: txt.slice(0, 80), cover: cover };
+      var out = { kind: kind, cap: cap, text: txt.slice(0, 80), cover: cover };
+      window.__skyWx = out;
+      return out;
     }
     (function driftClouds() {
       function cap() {
