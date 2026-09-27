@@ -150,7 +150,8 @@
         var ids = ["now","tenday","land","marine","sky","comm","ent","eats","golf"];
         var n = 0;
         window.__fallbackRot = setInterval(function () {
-          if (window.__rotStarted) { clearInterval(window.__fallbackRot); return; }
+          if (window.__paused) return;
+          if (window.__rotStarted) { clearInterval(window.__fallbackRot); window.__fallbackRot = null; return; }
           n = (n + 1) % ids.length;
           var id = ids[n];
           if (typeof window.showPage === "function") window.showPage(id);
@@ -3173,7 +3174,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v999</span>
+      <span class="hdr-ver" id="hdr-ver">v1000</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5058,7 +5059,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 999;
+    window.BOARD_VER = 1000;
 
     
     function communityShort() {
@@ -12729,12 +12730,16 @@ function currentRotation() {
     window.togglePause = function () {
       window.__paused = !window.__paused;
       window.__holdPage = !!window.__paused;
+      try { sessionStorage.setItem("bw-paused", window.__paused ? "1" : "0"); } catch (eP) {}
       var b = document.getElementById("pausebtn");
       var m = document.getElementById("pausemenu");
       if (b) { b.classList.toggle("on", window.__paused); b.textContent = window.__paused ? "▶" : "❚❚"; }
       if (m) m.textContent = window.__paused ? "Resume rotation" : "Pause rotation";
       clearTimeout(rot); clearInterval(rot);
-      if (!window.__paused) startRotate();
+      clearTimeout(window.__holdT); clearTimeout(idle);
+      if (window.__fallbackRot) { clearInterval(window.__fallbackRot); window.__fallbackRot = null; }
+      if (window.__paused) return;
+      if (typeof startRotate === "function") startRotate();
     };
     document.addEventListener("click", function (e) {
       var jump = e.target && e.target.closest ? e.target.closest("#hdr-tempjump") : null;
@@ -12754,7 +12759,7 @@ function currentRotation() {
         if (typeof holdThenRotate === "function") holdThenRotate(90000);
         return;
       }
-      if (e.target && (e.target.id === "pausebtn" || e.target.id === "pausemenu")) {
+      if (e.target && e.target.closest && (e.target.closest("#pausebtn") || e.target.closest("#pausemenu") || e.target.id === "pausebtn" || e.target.id === "pausemenu")) {
         e.preventDefault();
         window.togglePause();
         return;
@@ -12831,6 +12836,7 @@ function currentRotation() {
         holdOffRotation();
         return;
       }
+      if (window.__paused) return;
       window.__offRotHold = false;
       window.__holdPage = false;
       holdThenRotate(20000);
@@ -12846,6 +12852,7 @@ function currentRotation() {
       });
     }
     function startRotate(immediate) {
+      if (window.__paused) return;
       if (typeof popIsOpen === "function" ? popIsOpen() : window.__popOpen) {
         window.__holdPage = true;
         rot = setTimeout(function () { if (typeof startRotate === "function") startRotate(); }, 2000);
@@ -12856,8 +12863,9 @@ function currentRotation() {
       clearTimeout(rot);
       if (typeof rebuildDock === "function") rebuildDock();
       function step() {
+        if (window.__paused) return;
         if (document.hidden) { rot = setTimeout(step, 15000); return; }
-        if (window.__paused || window.__holdPage) { rot = setTimeout(step, 2000); return; }
+        if (window.__holdPage) { rot = setTimeout(step, 2000); return; }
         if (typeof syncStormDock === "function") syncStormDock();
         if (typeof rebuildDock === "function") rebuildDock();
         pages = typeof rotationPages === "function" ? rotationPages() : (window.__storm ? warnList() : rotateList());
@@ -26371,6 +26379,7 @@ function homeCountyGuess() {
         t = setTimeout(function () { document.documentElement.classList.remove("scrolling"); }, 180);
       }, { passive: true });
     })();
+    try { if (sessionStorage.getItem("bw-paused") === "1") { window.__paused = true; window.__holdPage = true; var pb = document.getElementById("pausebtn"); if (pb) { pb.classList.add("on"); pb.textContent = "▶"; } } } catch (eBootP) {}
     pollAlerts();
     setInterval(function () { if (!document.hidden && typeof placeSunMoonArc === "function") placeSunMoonArc(); }, 20000);
     try { lockForecastStrips(); } catch (eLock) {}
