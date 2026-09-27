@@ -3130,7 +3130,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v988</span>
+      <span class="hdr-ver" id="hdr-ver">v989</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5015,7 +5015,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 988;
+    window.BOARD_VER = 989;
 
     
     function communityShort() {
@@ -10409,6 +10409,41 @@ function currentRotation() {
       else if (typeof kph2mph === "function" && !/mi|mph/i.test(u) && v > 60) v = kph2mph(v);
       else if (!/mi|mph/i.test(u) && v > 80) v *= 0.621371;
       return Math.round(v);
+    }
+
+    function headerTempF(obs, om) {
+      if (obs && obs.temperature && obs.temperature.value != null && obs.timestamp) {
+        var age = Date.now() - new Date(obs.timestamp).getTime();
+        if (isFinite(age) && age < 2 * 3600 * 1000) {
+          var v = Number(obs.temperature.value);
+          var u = String(obs.temperature.unitCode || "");
+          if (/degC|celsius/i.test(u)) return Math.round(v * 9/5 + 32);
+          return Math.round(v);
+        }
+      }
+      if (om && om.current && om.current.temperature_2m != null && !om.error) return Math.round(om.current.temperature_2m);
+      return null;
+    }
+    function headerWindFromObs(obs, om) {
+      var out = { mph: null, dir: "" };
+      if (obs && obs.windSpeed && obs.windSpeed.value != null && obs.timestamp) {
+        var age = Date.now() - new Date(obs.timestamp).getTime();
+        if (isFinite(age) && age < 2 * 3600 * 1000) {
+          var v = Number(obs.windSpeed.value);
+          var u = String(obs.windSpeed.unitCode || "");
+          if (/m_s/.test(u)) v *= 2.23694;
+          else if (/km/.test(u)) v *= 0.621371;
+          out.mph = Math.round(v);
+          if (obs.windDirection && obs.windDirection.value != null && typeof compassFromDeg === "function")
+            out.dir = compassFromDeg(obs.windDirection.value);
+        }
+      }
+      if ((out.mph == null || !out.dir) && om && om.current && !om.error) {
+        if (out.mph == null && om.current.wind_speed_10m != null) out.mph = Math.round(om.current.wind_speed_10m);
+        if (!out.dir && om.current.wind_direction_10m != null && typeof compassFromDeg === "function")
+          out.dir = compassFromDeg(om.current.wind_direction_10m);
+      }
+      return out;
     }
     function paintHdrWind() {
       var dest = document.getElementById("hdr-wind");
@@ -22903,43 +22938,45 @@ function drawSurgeChart(points) {
       return (dt.getMonth() + 1) + "/" + dt.getDate();
     }
 
-    function lockForecastStrip(el) {
-      if (!el || el.getAttribute("data-hlock") === "v988") return;
-      el.setAttribute("data-hlock", "v988");
-      var x0 = 0, y0 = 0, sl0 = 0, axis = "";
-      el.addEventListener("touchstart", function (e) {
+    function lockForecastStrip(el) { /* bound globally */ }
+    function lockForecastStrips() {
+      if (window.__forecastLockBound) return;
+      window.__forecastLockBound = true;
+      var x0 = 0, y0 = 0, sl0 = 0, axis = "", strip = null;
+      document.addEventListener("touchstart", function (e) {
         var t = e.changedTouches && e.changedTouches[0];
-        if (!t) return;
-        x0 = t.clientX; y0 = t.clientY; sl0 = el.scrollLeft; axis = "";
-      }, { passive: true });
-      el.addEventListener("touchmove", function (e) {
+        strip = (e.target && e.target.closest) ? e.target.closest(".hourly, .tenday") : null;
+        if (!strip || !t) return;
+        x0 = t.clientX; y0 = t.clientY; sl0 = strip.scrollLeft; axis = "";
+      }, { capture: true, passive: true });
+      document.addEventListener("touchmove", function (e) {
+        if (!strip) return;
         var t = e.changedTouches && e.changedTouches[0];
         if (!t) return;
         var dx = t.clientX - x0, dy = t.clientY - y0;
-        if (!axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) axis = Math.abs(dx) >= Math.abs(dy) * 1.15 ? "x" : "y";
+        if (!axis && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
         if (axis !== "x") return;
-        var atStart = sl0 <= 0 && dx > 0;
-        var atEnd = sl0 + el.clientWidth >= el.scrollWidth - 1 && dx < 0;
-        if (atStart || atEnd) {
+        var max = Math.max(0, strip.scrollWidth - strip.clientWidth);
+        var next = sl0 - dx;
+        if (next <= 0 || next >= max) {
           e.preventDefault();
           e.stopPropagation();
         }
-      }, { passive: false });
-      el.addEventListener("wheel", function (e) {
+      }, { capture: true, passive: false });
+      document.addEventListener("touchend", function () { strip = null; axis = ""; }, { capture: true, passive: true });
+      document.addEventListener("wheel", function (e) {
+        var row = (e.target && e.target.closest) ? e.target.closest(".hourly, .tenday") : null;
+        if (!row) return;
         var dx = e.deltaX;
-        if (!dx && e.shiftKey) dx = e.deltaY;
+        if (e.shiftKey && !dx) dx = e.deltaY;
         if (!dx || Math.abs(e.deltaY) > Math.abs(dx) && !e.shiftKey) return;
-        var atStart = el.scrollLeft <= 0 && dx < 0;
-        var atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1 && dx > 0;
+        var atStart = row.scrollLeft <= 0 && dx < 0;
+        var atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1 && dx > 0;
         if (atStart || atEnd) {
           e.preventDefault();
           e.stopPropagation();
         }
-      }, { passive: false });
-    }
-    function lockForecastStrips() {
-      lockForecastStrip(document.querySelector(".hourly"));
-      lockForecastStrip(document.querySelector(".tenday"));
+      }, { capture: true, passive: false });
     }
     function resetForecastStrips() {
       [".hourly", ".tenday"].forEach(function (sel) {
@@ -23541,6 +23578,9 @@ function wxSvg(kind, box) {
           var gust = (obs && obsFresh(obs, 90)) ? nwsSpeedMph(obs.windGust) : null;
           if (gust == null && om.current && om.current.wind_gusts_10m != null) gust = Math.round(om.current.wind_gusts_10m);
           window.__nowWx = window.__nowWx || {};
+          var liveW = typeof headerWindFromObs === "function" ? headerWindFromObs(obs, om) : null;
+          if (liveW && liveW.mph != null) windMph = liveW.mph;
+          if (liveW && liveW.dir) windDir = liveW.dir;
           window.__nowWx.wind = windMph;
           if (windDir) window.__nowWx.dir = windDir;
           else if (!window.__nowWx.dir && omDir) window.__nowWx.dir = omDir;
@@ -23556,6 +23596,8 @@ function wxSvg(kind, box) {
           if (obs && obs.timestamp) window.__obsAt = new Date(obs.timestamp).getTime();
           else if (om.current && om.current.time) window.__obsAt = new Date(om.current.time).getTime();
           else window.__obsAt = Date.now();
+          var liveT = typeof headerTempF === "function" ? headerTempF(obs, om) : null;
+          if (liveT != null) tempF = liveT;
           window.__nowTempF = tempF;
           var feelF = null;
           if (gwx && gwx.now && gwxDeg(gwx.now.feelsLikeTemperature) != null) feelF = Math.round(gwxDeg(gwx.now.feelsLikeTemperature));
