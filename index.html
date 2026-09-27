@@ -615,8 +615,7 @@
     .hdr-meta { display:none; }
     .who-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
     .who-row .card b { display:block; margin-bottom:6px; }
-    html, body, .frame { overflow-x:hidden; overscroll-behavior-x:none; }
-    main { flex:1; padding:8px 10px calc(var(--foot, 120px) + 8px); overflow-x:hidden; overflow-y:auto; min-height:0; overscroll-behavior:none; overscroll-behavior-y:contain; }
+    main { flex:1; padding:8px 10px calc(var(--foot, 120px) + 8px); overflow-y:auto; min-height:0; overscroll-behavior-y:contain; }
     .ptr { position:absolute; left:0; right:0; top:88px; height:0; overflow:hidden; display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--navy); pointer-events:none; z-index:9; }
     .ptr.on { height:28px; }
     .page { display:none !important; opacity:1; background:transparent; border-radius:16px; padding:8px 8px 4px; }
@@ -1113,7 +1112,7 @@
     .go { background:var(--teal); } .win { background:var(--gold); color:var(--navy); } .no { background:var(--coral); }
     .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; margin-bottom:12px; }
     .hourly, .tenday { min-width:0; width:100%; max-width:100%; }
-    .hourly { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow:hidden; touch-action:none; overscroll-behavior:none; background:transparent; border:0; border-radius:0; }
+    .hourly { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; -webkit-overflow-scrolling:touch; background:transparent; border:0; border-radius:0; }
     .hourly .day { flex:0 0 64px; width:64px; }
     .hourly .day { align-items:center; }
     .hourly .day .hi,
@@ -1931,7 +1930,7 @@
     .cam-cap { position:absolute; left:10px; bottom:10px; margin:0; padding:4px 10px; border-radius:999px; background:rgba(14,12,28,.55); color:#f7f1e6; font-size:12px; letter-spacing:.04em; }
 
     .warn { background:#fff3d6; padding:8px 12px; font-size:12px; }
-    .tenday { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow:hidden; touch-action:none; overscroll-behavior:none; background:transparent; border:0; border-radius:0; }
+    .tenday { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; margin:6px 0 10px; padding:2px 2px 8px; overflow-x:auto; -webkit-overflow-scrolling:touch; background:transparent; border:0; border-radius:0; scrollbar-width:thin; }
     .tenday .day {
       flex:0 0 64px; width:64px; box-sizing:border-box;
       display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
@@ -3131,7 +3130,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v992</span>
+      <span class="hdr-ver" id="hdr-ver">v993</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5016,7 +5015,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 992;
+    window.BOARD_VER = 993;
 
     
     function communityShort() {
@@ -22939,46 +22938,8 @@ function drawSurgeChart(points) {
       return (dt.getMonth() + 1) + "/" + dt.getDate();
     }
 
-    function lockForecastStrip(el) { /* bound globally */ }
-    function lockForecastStrips() {
-      if (window.__forecastLockBound === "v992") return;
-      window.__forecastLockBound = "v992";
-      var x0 = 0, sl0 = 0, strip = null;
-      function rowFrom(t) {
-        return (t && t.closest) ? t.closest(".hourly, .tenday") : null;
-      }
-      function clampScroll(el, v) {
-        var max = Math.max(0, el.scrollWidth - el.clientWidth);
-        if (v < 0) v = 0;
-        if (v > max) v = max;
-        el.scrollLeft = v;
-      }
-      document.addEventListener("touchstart", function (e) {
-        var t = e.changedTouches && e.changedTouches[0];
-        strip = rowFrom(e.target);
-        if (!strip || !t) { strip = null; return; }
-        x0 = t.clientX; sl0 = strip.scrollLeft;
-      }, { capture: true, passive: false });
-      document.addEventListener("touchmove", function (e) {
-        if (!strip) return;
-        var t = e.changedTouches && e.changedTouches[0];
-        if (!t) return;
-        clampScroll(strip, sl0 - (t.clientX - x0));
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      }, { capture: true, passive: false });
-      document.addEventListener("touchend", function () { strip = null; }, { capture: true, passive: true });
-      document.addEventListener("touchcancel", function () { strip = null; }, { capture: true, passive: true });
-      document.addEventListener("wheel", function (e) {
-        var row = rowFrom(e.target);
-        if (!row) return;
-        clampScroll(row, row.scrollLeft + (e.deltaX || (e.shiftKey ? e.deltaY : 0)));
-        if (e.deltaX || e.shiftKey) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-        }
-      }, { capture: true, passive: false });
-    }
+    function lockForecastStrip(el) { return; }
+    function lockForecastStrips() { return; }
     function resetForecastStrips() {
       [".hourly", ".tenday"].forEach(function (sel) {
         var el = document.querySelector(sel);
