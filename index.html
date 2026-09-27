@@ -3104,7 +3104,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v970</span>
+      <span class="hdr-ver" id="hdr-ver">v971</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4988,7 +4988,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 970;
+    window.BOARD_VER = 971;
 
     
     function communityShort() {
@@ -10512,15 +10512,20 @@ function currentRotation() {
       var dest = document.getElementById("hdr-wind");
       if (!dest) return;
       var wx = window.__nowWx || {};
-      var line = "";
-      if (wx.wind != null && isFinite(Number(wx.wind))) {
-        line = typeof fmtWindLine === "function" ? fmtWindLine(wx.dir || "", wx.wind) : ((wx.dir ? wx.dir + " " : "") + Math.round(wx.wind) + " mph");
-        if (wx.gust != null && Number(wx.gust) >= Number(wx.wind) + 4) line += " gust " + Math.round(wx.gust);
-      } else {
-        var src = document.getElementById("live-wind");
-        line = typeof fmtWindLine === "function" ? fmtWindLine((src && src.textContent) || "") : ((src && src.textContent) || "");
+      var dir = String(wx.dir || "").trim();
+      var mph = wx.wind;
+      if (mph == null || !isFinite(Number(mph))) {
+        var src = ((document.getElementById("live-wind") || {}).textContent || "");
+        var m = src.match(/(-?\d+(?:\.\d+)?)/);
+        if (m) mph = Number(m[1]);
+        if (!dir) {
+          var d = src.match(/\b(N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)\b/i);
+          if (d) dir = d[1].toUpperCase();
+        }
       }
-      dest.textContent = line;
+      if (!dir && window.__wxNow && window.__wxNow.windDir) dir = window.__wxNow.windDir;
+      if (!dir && wx.deg != null && typeof compassFromDeg === "function") dir = compassFromDeg(wx.deg);
+      dest.textContent = typeof fmtWindLine === "function" ? fmtWindLine(dir, mph) : ((dir ? dir + " " : "") + (mph != null ? Math.round(mph) + " mph" : ""));
     }
     function radioLast() {
       try {
@@ -23126,7 +23131,7 @@ function wxSvg(kind, box) {
       var word = omWord(om.current.weather_code).toLowerCase();
       var hrNow = parseInt(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }), 10);
       var greet = hrNow < 12 ? "Good morning." : hrNow < 17 ? "Good afternoon." : "Good evening.";
-      window.__nowWx = { temp: tempF, feel: feelF, wind: wind, gust: gust, word: word, greet: greet };
+      window.__nowWx = { temp: tempF, feel: feelF, wind: wind, gust: gust, dir: (typeof compassFromDeg === "function" ? compassFromDeg(om.current && om.current.wind_direction_10m) : ""), deg: om.current && om.current.wind_direction_10m, word: word, greet: greet };
       window.__wxNow = window.__wxNow || {};
       if (om.current.cloud_cover != null) {
         window.__wxNow.cloudCover = Number(om.current.cloud_cover);
@@ -23555,14 +23560,15 @@ function wxSvg(kind, box) {
           if (rh == null && om.current && om.current.relative_humidity_2m != null) rh = Math.round(om.current.relative_humidity_2m);
           if ((dewF == null || isNaN(dewF)) && om.current && om.current.dew_point_2m != null) dewF = Math.round(om.current.dew_point_2m);
           var windMph = null, windDir = "", windSrc = "";
+          var omDir = (om && om.current && typeof compassFromDeg === "function") ? compassFromDeg(om.current.wind_direction_10m) : "";
           if (obs && obsFresh(obs, 90) && obs.windSpeed && obs.windSpeed.value != null) {
             windMph = nwsSpeedMph(obs.windSpeed);
-            windDir = degToCard(obs.windDirection && obs.windDirection.value) || "";
+            windDir = degToCard(obs.windDirection && obs.windDirection.value) || omDir || "";
             windSrc = "station";
           }
           if (windMph == null && om && om.current && om.current.wind_speed_10m != null) {
             windMph = Math.round(Number(om.current.wind_speed_10m));
-            windDir = typeof compassFromDeg === "function" ? compassFromDeg(om.current.wind_direction_10m) : (windDir || "");
+            windDir = omDir || windDir;
             windSrc = "pin";
           }
           if (windMph == null && nowH && nowH.windSpeed) {
