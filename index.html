@@ -3104,7 +3104,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v969</span>
+      <span class="hdr-ver" id="hdr-ver">v970</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4988,7 +4988,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 969;
+    window.BOARD_VER = 970;
 
     
     function communityShort() {
@@ -10491,11 +10491,36 @@ function currentRotation() {
       if (n == null) return d || "";
       return (d ? d + " " : "") + (typeof fmtWindSpd === "function" ? fmtWindSpd(n) : (n + " mph"));
     }
+    function obsFresh(obs, maxMin) {
+      try {
+        if (!obs || !obs.timestamp) return false;
+        return (Date.now() - new Date(obs.timestamp).getTime()) < (maxMin || 90) * 60000;
+      } catch (e) { return false; }
+    }
+    function nwsSpeedMph(pack) {
+      if (!pack || pack.value == null || pack.value === "") return null;
+      var v = Number(pack.value);
+      if (!isFinite(v)) return null;
+      var u = String(pack.unitCode || pack.unit || "");
+      if (/m_s|m\/s/i.test(u)) v *= 2.23694;
+      else if (/km/i.test(u)) v *= 0.621371;
+      else if (typeof kph2mph === "function" && !/mi|mph/i.test(u) && v > 60) v = kph2mph(v);
+      else if (!/mi|mph/i.test(u) && v > 80) v *= 0.621371;
+      return Math.round(v);
+    }
     function paintHdrWind() {
-      var src = document.getElementById("live-wind");
       var dest = document.getElementById("hdr-wind");
       if (!dest) return;
-      dest.textContent = fmtWindLine((src && src.textContent) || "");
+      var wx = window.__nowWx || {};
+      var line = "";
+      if (wx.wind != null && isFinite(Number(wx.wind))) {
+        line = typeof fmtWindLine === "function" ? fmtWindLine(wx.dir || "", wx.wind) : ((wx.dir ? wx.dir + " " : "") + Math.round(wx.wind) + " mph");
+        if (wx.gust != null && Number(wx.gust) >= Number(wx.wind) + 4) line += " gust " + Math.round(wx.gust);
+      } else {
+        var src = document.getElementById("live-wind");
+        line = typeof fmtWindLine === "function" ? fmtWindLine((src && src.textContent) || "") : ((src && src.textContent) || "");
+      }
+      dest.textContent = line;
     }
     function radioLast() {
       try {
@@ -23529,12 +23554,31 @@ function wxSvg(kind, box) {
           }
           if (rh == null && om.current && om.current.relative_humidity_2m != null) rh = Math.round(om.current.relative_humidity_2m);
           if ((dewF == null || isNaN(dewF)) && om.current && om.current.dew_point_2m != null) dewF = Math.round(om.current.dew_point_2m);
-          var windTxt = nowH.windSpeed || "";
-          var windDir = nowH.windDirection || degToCard(obs.windDirection && obs.windDirection.value);
-          if (!windTxt && obs.windSpeed && obs.windSpeed.value != null) windTxt = kph2mph(obs.windSpeed.value) + " mph";
-          var gust = obs.windGust && obs.windGust.value != null ? kph2mph(obs.windGust.value) : null;
+          var windMph = null, windDir = "", windSrc = "";
+          if (obs && obsFresh(obs, 90) && obs.windSpeed && obs.windSpeed.value != null) {
+            windMph = nwsSpeedMph(obs.windSpeed);
+            windDir = degToCard(obs.windDirection && obs.windDirection.value) || "";
+            windSrc = "station";
+          }
+          if (windMph == null && om && om.current && om.current.wind_speed_10m != null) {
+            windMph = Math.round(Number(om.current.wind_speed_10m));
+            windDir = typeof compassFromDeg === "function" ? compassFromDeg(om.current.wind_direction_10m) : (windDir || "");
+            windSrc = "pin";
+          }
+          if (windMph == null && nowH && nowH.windSpeed) {
+            var mH = String(nowH.windSpeed).match(/(\d+(?:\.\d+)?)/g);
+            if (mH && mH.length) windMph = Math.round(Number(mH[mH.length - 1]));
+            windDir = nowH.windDirection || windDir;
+            windSrc = "forecast";
+          }
+          var windTxt = windMph != null ? windMph + " mph" : (nowH.windSpeed || "");
+          var gust = (obs && obsFresh(obs, 90)) ? nwsSpeedMph(obs.windGust) : null;
           if (gust == null && om.current && om.current.wind_gusts_10m != null) gust = Math.round(om.current.wind_gusts_10m);
-          if (gust == null && om.current && om.current.wind_gusts_10m != null) gust = Math.round(om.current.wind_gusts_10m);
+          window.__nowWx = window.__nowWx || {};
+          window.__nowWx.wind = windMph;
+          window.__nowWx.dir = windDir;
+          window.__nowWx.gust = gust;
+          window.__nowWx.windSrc = windSrc;
           var pres = pa2inhg(obs.barometricPressure && obs.barometricPressure.value);
           var tempEl = document.getElementById("live-temp");
           var feelEl = document.getElementById("live-feels");
@@ -23581,8 +23625,7 @@ function wxSvg(kind, box) {
           var presNote = document.getElementById("live-pres-note");
           var meta = document.getElementById("live-meta");
           if (windEl) {
-            var line = (windDir + " " + windTxt).replace(/\s+/g, " ").trim();
-            windEl.textContent = (typeof fmtWindLine === "function" ? fmtWindLine(line) : line) || line || "—";
+            windEl.textContent = (typeof fmtWindLine === "function" ? fmtWindLine(windDir, windMph) : ((windDir ? windDir + " " : "") + (windTxt || "—")));
             if (typeof paintHdrWind === "function") paintHdrWind();
           }
           if (gustEl) gustEl.textContent = gust != null ? gust + " mph" : (wind ? wind + " mph" : "light");
