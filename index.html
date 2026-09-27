@@ -3130,7 +3130,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v987</span>
+      <span class="hdr-ver" id="hdr-ver">v988</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5015,7 +5015,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 987;
+    window.BOARD_VER = 988;
 
     
     function communityShort() {
@@ -9399,6 +9399,10 @@ function currentRotation() {
           bolt.src = "about:blank";
           bolt.removeAttribute("data-src");
         }
+      }
+      if (id === "tenday") {
+        if (typeof resetForecastStrips === "function") resetForecastStrips();
+        if (typeof lockForecastStrips === "function") lockForecastStrips();
       }
       if (id === "land" && typeof paintGoogleTraffic === "function") paintGoogleTraffic(true);
       if (id === "land" && typeof paintLandReport === "function") paintLandReport();
@@ -22899,10 +22903,49 @@ function drawSurgeChart(points) {
       return (dt.getMonth() + 1) + "/" + dt.getDate();
     }
 
-    function lockForecastStrip(el) { return; }
-        function lockForecastStrips() {
+    function lockForecastStrip(el) {
+      if (!el || el.getAttribute("data-hlock") === "v988") return;
+      el.setAttribute("data-hlock", "v988");
+      var x0 = 0, y0 = 0, sl0 = 0, axis = "";
+      el.addEventListener("touchstart", function (e) {
+        var t = e.changedTouches && e.changedTouches[0];
+        if (!t) return;
+        x0 = t.clientX; y0 = t.clientY; sl0 = el.scrollLeft; axis = "";
+      }, { passive: true });
+      el.addEventListener("touchmove", function (e) {
+        var t = e.changedTouches && e.changedTouches[0];
+        if (!t) return;
+        var dx = t.clientX - x0, dy = t.clientY - y0;
+        if (!axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) axis = Math.abs(dx) >= Math.abs(dy) * 1.15 ? "x" : "y";
+        if (axis !== "x") return;
+        var atStart = sl0 <= 0 && dx > 0;
+        var atEnd = sl0 + el.clientWidth >= el.scrollWidth - 1 && dx < 0;
+        if (atStart || atEnd) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, { passive: false });
+      el.addEventListener("wheel", function (e) {
+        var dx = e.deltaX;
+        if (!dx && e.shiftKey) dx = e.deltaY;
+        if (!dx || Math.abs(e.deltaY) > Math.abs(dx) && !e.shiftKey) return;
+        var atStart = el.scrollLeft <= 0 && dx < 0;
+        var atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1 && dx > 0;
+        if (atStart || atEnd) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, { passive: false });
+    }
+    function lockForecastStrips() {
       lockForecastStrip(document.querySelector(".hourly"));
       lockForecastStrip(document.querySelector(".tenday"));
+    }
+    function resetForecastStrips() {
+      [".hourly", ".tenday"].forEach(function (sel) {
+        var el = document.querySelector(sel);
+        if (el) el.scrollLeft = 0;
+      });
     }
     function paintTendayCapsules(rows) {
       var td = document.querySelector(".tenday");
@@ -23462,8 +23505,9 @@ function wxSvg(kind, box) {
             return dirs[Math.round(d / 22.5) % 16];
           }
           var tempF = null;
-          if (om && om.current && om.current.temperature_2m != null) tempF = Math.round(om.current.temperature_2m);
-          else if (obs && typeof obsFresh === "function" && obsFresh(obs, 90) && obs.temperature && obs.temperature.value != null) tempF = c2f(obs.temperature.value);
+          var obsAgeOk = obs && obs.temperature && obs.temperature.value != null && obs.timestamp && (nowMs - new Date(obs.timestamp).getTime()) < 60 * 60 * 1000;
+          if (obsAgeOk) tempF = c2f(obs.temperature.value);
+          else if (om && om.current && om.current.temperature_2m != null) tempF = Math.round(om.current.temperature_2m);
           else if (gwx && gwx.now && typeof gwxDeg === "function" && gwxDeg(gwx.now.temperature) != null) tempF = Math.round(gwxDeg(gwx.now.temperature));
           else if (nowH.temperature != null) tempF = nowH.temperature;
           var dewF = nowH.dewpoint && nowH.dewpoint.value != null ? Math.round(nowH.dewpoint.value) : c2f(obs.dewpoint && obs.dewpoint.value);
