@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1029</span>
+      <span class="hdr-ver" id="hdr-ver">v1030</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1029;
+    window.BOARD_VER = 1030;
 
     
     function communityShort() {
@@ -16461,8 +16461,8 @@ function currentRotation() {
         }
         one("hot", "(concert OR festival OR \"live music\" OR tickets OR \"sold out\" OR comedy) (" + pin + ")", ["concert","festival","ticket","music","comedy","fair"]);
         one("table", "(restaurant OR dining OR brunch OR \"best restaurant\" OR chef) (" + pin + ")", ["restaurant","dining","brunch","chef","reservation"]);
-        one("hh", "(\"happy hour\" OR \"hour specials\" OR \"$5\" OR \"$6\") (" + pin + ")", ["happy hour","specials","draft","appetizer"]);
-        one("shop", "(sale OR clearance OR \"percent off\" OR bogo OR \"warehouse sale\") (" + pin + ")", ["sale","clearance","off","bogo","deal"]);
+        one("hh", "(\"happy hour\" OR \"drink specials\" OR \"bar specials\" OR \"half off apps\") (" + pin + ")", ["happy hour","specials","draft","appetizer","drink"]);
+        one("shop", "(sale OR clearance OR \"percent off\" OR coupon OR bogo OR \"warehouse sale\") (" + pin + ")", ["sale","clearance","off","bogo","deal"]);
       }
 
       function fillBuzzFallbacks(pack) {
@@ -16677,32 +16677,73 @@ function currentRotation() {
         });
       }
 
+      function looksLikeDeal(text, kind) {
+        var t = String(text || "").toLowerCase();
+        if (!t) return false;
+        if (kind === "hh") return /happy hour|drink special|bar special|half[- ]off app|apps?\s*for\s*\$|drafts?\s*for\s*\$|\$[1-9]\s*(draft|beer|well|app)|wine hour/.test(t);
+        if (kind === "takeout") return /take[- ]?out|pick[- ]?up special|family meal|coupon|%\s*off|bogo|free delivery|combo meal|dinner for two|pack(?:ed)? to go/.test(t);
+        if (kind === "shop") return /%\s*off|clearance|bogo|warehouse sale|weekly ad|rewards|\$5 back|markdown/.test(t);
+        return false;
+      }
       function pinDealRows(kind) {
         var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 25) || 25;
-        var rows = (window.__eatPool || []).concat(window.__eats || []).concat(window.__golfs || []);
         var seen = {};
         var out = [];
-        rows.forEach(function (r) {
+        function add(r, offer) {
           if (!r || !r.name) return;
+          var text = offer || r.offer || r.deal || r.desc || "";
+          if (!looksLikeDeal(text, kind)) return;
           var k = String(r.name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
           if (!k || seen[k]) return;
           var mi = r.miles;
           if (mi == null && r.lat != null && typeof milesOf === "function") mi = milesOf(r.lat, r.lon);
           if (mi != null && mi > miles) return;
           seen[k] = 1;
-          var addr = r.addr || r.area || (typeof homePlace === "function" ? homePlace() : "");
-          if (kind === "takeout") {
-            out.push({ name: r.name, kind: r.kind || r.cuisine || "Restaurant", offer: "Takeout near the pin — check today’s board and pack-up specials.", phone: r.phone || "", addr: addr, lat: r.lat, lon: r.lon, miles: mi, value: Math.round((Number(r.rating) || 4) * 4), takeout: true });
-          } else if (kind === "hh") {
-            out.push({ name: r.name, addr: addr, lat: r.lat, lon: r.lon, miles: mi, start: 15, end: 18, deal: "Ask about afternoon bar and early-dinner specials. Hours change — call ahead.", phone: r.phone || "", url: r.url || "" });
-          } else {
-            out.push({ name: r.name, addr: addr, lat: r.lat, lon: r.lon, miles: mi, kind: r.kind || "Shop", start: 9, end: 21, deal: "Local stop near the pin. Watch in-store and weekly ads for the live markdown." });
-          }
+          out.push({
+            name: r.name,
+            kind: r.kind || (kind === "hh" ? "Happy hour" : kind === "takeout" ? "Takeout" : "Shop"),
+            offer: String(text).replace(/\s+/g, " ").trim().slice(0, 220),
+            deal: String(text).replace(/\s+/g, " ").trim().slice(0, 220),
+            why: String(text).replace(/\s+/g, " ").trim().slice(0, 220),
+            phone: r.phone || "",
+            addr: r.addr || r.area || r.where || "",
+            where: r.addr || r.area || r.where || "",
+            lat: r.lat, lon: r.lon, miles: mi,
+            value: Number(r.value) || 12,
+            takeout: kind === "takeout",
+            url: r.url || r.link || ""
+          });
+        }
+        if (kind === "hh") {
+          (typeof seedHappyHours === "function" ? seedHappyHours() : []).forEach(function (r) { add(r, r.deal); });
+          (window.__hhDeals || []).forEach(function (r) { add(r, r.deal || r.offer); });
+        }
+        if (kind === "takeout") {
+          (typeof seedTakeoutCoupons === "function" ? seedTakeoutCoupons() : []).forEach(function (r) { add(r, r.offer || r.deal); });
+          (window.__coupons || []).forEach(function (r) { add(r, r.offer || r.deal); });
+        }
+        if (kind === "shop") {
+          (typeof seedShopDeals === "function" ? seedShopDeals() : []).forEach(function (r) { add(r, r.deal); });
+        }
+        var buzz = (window.__buzz && window.__buzz[kind === "takeout" ? "hh" : kind]) || [];
+        if (kind === "takeout") buzz = ((window.__buzz && window.__buzz.table) || []).concat((window.__buzz && window.__buzz.hh) || []);
+        buzz.forEach(function (row) {
+          var it = row && row.item;
+          if (!it) return;
+          var blob = (it.title || "") + " " + (it.desc || "");
+          if (!looksLikeDeal(blob, kind) && !(kind === "takeout" && looksLikeDeal(blob, "hh") && /take|coupon|off|pickup/.test(blob.toLowerCase()))) return;
+          add({
+            name: String(it.title || "").split(" - ")[0].split(" | ")[0].slice(0, 72),
+            addr: (typeof homePlace === "function" ? homePlace() : ""),
+            offer: blob,
+            deal: it.title,
+            link: it.link
+          }, blob);
         });
-        out.sort(function (a, b) { return (a.miles || 99) - (b.miles || 99); });
+        out.sort(function (a, b) { return (a.miles || 40) - (b.miles || 40); });
         return out.slice(0, 12);
       }
-      function fromOsmShops(cb) {
+            function fromOsmShops(cb) {
         var lat = homeLat(), lon = homeLon();
         if (!lat || !lon) return cb([]);
         var rad = Math.round(Math.min(20000, 25 * 1609.34));
@@ -16774,8 +16815,11 @@ function currentRotation() {
       }
 function paintTakeoutDeals() {
         function finish(list, triedOsm) {
+          window.__coupons = (list || []).slice();
           list = (list || []).concat(typeof pinDealRows === "function" ? pinDealRows("takeout") : []);
-          list = list.filter(couponStillOn).sort(function (a, b) { return couponScore(b) - couponScore(a); });
+          list = list.filter(function (r) {
+            return couponStillOn(r) && looksLikeDeal(r.offer || r.deal || "", "takeout");
+          }).sort(function (a, b) { return couponScore(b) - couponScore(a); });
           var day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
           var seed = 0;
           for (var i = 0; i < day.length; i++) seed += day.charCodeAt(i);
@@ -16897,11 +16941,29 @@ function paintTakeoutDeals() {
           }).catch(function () { next(i + 1); });
         })(0);
       }
+      function paintDealStack(id, colId, kind, emptyTxt, feedId) {
+        var box = document.getElementById(id);
+        var col = document.getElementById(colId);
+        if (!box) return;
+        var rows = typeof pinDealRows === "function" ? pinDealRows(kind) : [];
+        if (col) col.hidden = false;
+        if (!rows.length) {
+          box.innerHTML = '<div class="card ev-card"><div class="ev-body"><b>No advertised deals yet</b><span class="eat-why">' + escBuzz(emptyTxt) + "</span></div></div>";
+          if (typeof noteFeed === "function") noteFeed(feedId, true, "none near pin");
+          return;
+        }
+        box.innerHTML = rows.slice(0, 5).map(function (r) { return buzzCardHtml(r, kind === "takeout" ? "table" : kind); }).join("");
+        if (typeof stampLocPills === "function") stampLocPills(box);
+        if (typeof noteFeed === "function") noteFeed(feedId, true, rows[0].name);
+        if (typeof writeBriefingSoon === "function") writeBriefingSoon();
+      }
       function paintEatDeal() {
         loadBuzzPack(function () {
-          paintBuzzBox("today-deal", "today-deal-col", "hh",
-            "No happy-hour deal within 25 miles of home is getting advertised chatter right now. When the pin moves, this search moves with it.",
-            "eat-deal");
+          loadHappyHours(function () {
+            paintDealStack("today-deal", "today-deal-col", "hh",
+              "No published happy-hour specials within 25 miles of the pin right now. This card waits for a posted deal or coupon, not just a top-rated restaurant.",
+              "eat-deal");
+          });
         });
       }
       function paintDayParts() {
@@ -16963,8 +17025,8 @@ function paintTakeoutDeals() {
       }
       function paintShopDeal() {
         loadBuzzPack(function () {
-          paintBuzzBox("today-shop", "today-shop-col", "shop",
-            "No store within 25 miles of home is pushing a loud sale in local coverage this week.",
+          paintDealStack("today-shop", "today-shop-col", "shop",
+            "No store within 25 miles of the pin is advertising a sale or coupon right now.",
             "shop-deal");
         });
       }
