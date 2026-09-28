@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1030</span>
+      <span class="hdr-ver" id="hdr-ver">v1031</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1030;
+    window.BOARD_VER = 1031;
 
     
     function communityShort() {
@@ -5284,7 +5284,7 @@ Cart shop:</textarea>
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|deals(?:-\d{5})?\.json|coupons(?:-\d{5})?\.json|ticketmaster\.com|espn\.com|\/nws-alerts|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 400) {
             if (!optional) {
@@ -16724,6 +16724,7 @@ function currentRotation() {
         }
         if (kind === "shop") {
           (typeof seedShopDeals === "function" ? seedShopDeals() : []).forEach(function (r) { add(r, r.deal); });
+          (window.__shopDeals || []).forEach(function (r) { add(r, r.deal); });
         }
         var buzz = (window.__buzz && window.__buzz[kind === "takeout" ? "hh" : kind]) || [];
         if (kind === "takeout") buzz = ((window.__buzz && window.__buzz.table) || []).concat((window.__buzz && window.__buzz.hh) || []);
@@ -16850,7 +16851,10 @@ function paintTakeoutDeals() {
             });
           }
         }
-        var urls = typeof gitFileUrls === "function" ? gitFileUrls("coupons.json") : ["./coupons.json"];
+        var zipNow = String((typeof getSet === "function" && getSet().zip) || "").replace(/\D/g, "").slice(0, 5);
+        var urls = [];
+        if (zipNow.length === 5 && typeof gitFileUrls === "function") urls = urls.concat(gitFileUrls("coupons-" + zipNow + ".json"));
+        urls = urls.concat(typeof gitFileUrls === "function" ? gitFileUrls("coupons.json") : ["./coupons.json"]);
         function next(i) {
           if (i >= urls.length) { finish(seedTakeoutCoupons()); return; }
           fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
@@ -16920,10 +16924,12 @@ function paintTakeoutDeals() {
       }
       function loadHappyHours(cb) {
         if (window.__hhDeals && window.__hhDeals.length) { if (cb) cb(window.__hhDeals); return; }
-        var urls = [
-          "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/deals.json?cb=" + Date.now(),
-          "/deals.json?cb=" + Date.now()
-        ];
+        var zipNow = String((typeof getSet === "function" && getSet().zip) || "").replace(/\D/g, "").slice(0, 5);
+        var names = [];
+        if (zipNow.length === 5) names.push("deals-" + zipNow + ".json");
+        names.push("deals.json");
+        var urls = [];
+        names.forEach(function (n) { urls = urls.concat(typeof gitFileUrls === "function" ? gitFileUrls(n) : [n]); });
         function done(list) {
           window.__hhDeals = mergeHappyHours(list);
           if (cb) cb(window.__hhDeals);
@@ -16935,6 +16941,7 @@ function paintTakeoutDeals() {
             return res.json();
           }).then(function (j) {
             var list = (j && (j.deals || j.happyHours || j.items)) || [];
+            if (j && j.shop && j.shop.length) window.__shopDeals = j.shop;
             if (!list.length) throw new Error("empty");
             list.forEach(function (r) { r.fresh = true; });
             done(list);
@@ -17570,15 +17577,9 @@ function paint() {
           "&latlong=" + lat + "," + lon + "&radius=" + miles + "&unit=miles&size=50&sort=date,asc";
         var urls = [
           location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles + "&key=" + key,
-          tmBase,
-          tmBase + "&classificationName=" + encodeURIComponent("Arts & Theatre"),
-          tmBase + "&classificationName=Sports",
-          tmBase + "&classificationName=Miscellaneous",
-          tmBase + "&keyword=festival",
-          tmBase + "&keyword=fair",
-          tmBase + "&keyword=market",
-          tmBase + "&keyword=bingo",
-          tmBase + "&keyword=" + encodeURIComponent("community")
+          "https://corsproxy.io/?" + encodeURIComponent(tmBase),
+          "https://corsproxy.io/?" + encodeURIComponent(tmBase + "&classificationName=" + encodeURIComponent("Arts & Theatre")),
+          "https://corsproxy.io/?" + encodeURIComponent(tmBase + "&keyword=festival")
         ];
                 function next(i) {
           if (i >= urls.length) {
