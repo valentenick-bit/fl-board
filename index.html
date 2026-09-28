@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1027</span>
+      <span class="hdr-ver" id="hdr-ver">v1028</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1027;
+    window.BOARD_VER = 1028;
 
     
     function communityShort() {
@@ -5456,7 +5456,7 @@ Cart shop:</textarea>
       brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefBoard: "1", briefWxHold: "0", briefPrevMaster: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", briefPrevBoard: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
-      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "50", sportMiles: "150", lang: "device",
+      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device",
       jokeDay: "1"
     };
     function getSet() {
@@ -5466,7 +5466,7 @@ Cart shop:</textarea>
       if (!String(s.community || "").trim()) s.community = "BeachWalk by Manasota Key";
       if (s.dateFmt === "iso" || s.dateFmt === "num-intl" || s.dateFmt === "long") s.dateFmt = "intl";
       if (s.dateFmt !== "us" && s.dateFmt !== "num-us" && s.dateFmt !== "intl") s.dateFmt = "us";
-      if (!s.eventMiles) s.eventMiles = "50";
+      if (!s.eventMiles) s.eventMiles = "25";
       if (!s.sportMiles) s.sportMiles = "150";
       ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","briefToday","briefBoard","briefWxHold","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
@@ -17098,6 +17098,9 @@ function paintTakeoutDeals() {
       if (/\bconcert\b|amphitheatre|amphitheater/.test(s)) return { label: "Concert", cls: "concert" };
       if (/theatre|theater|broadway/.test(s)) return { label: "Theater", cls: "theater" };
       if (/farmer.?s?\s*market|farmers market|flea market/.test(s)) return { label: "Farmers market", cls: "market" };
+      if (/potluck|mixer|meetup|social hour|happy hour|fundraiser|benefit|pancake|spaghetti dinner|church supper|library program|book club|community night|town hall|parade|block party|yard sale|tag sale/.test(s)) return { label: "Gathering", cls: "market" };
+      if (/trivia/.test(s)) return { label: "Trivia", cls: "trivia" };
+      if (/karaoke/.test(s)) return { label: "Karaoke", cls: "karaoke" };
       if (/car show|cruise.?in|truck show|cars and coffee|auto show/.test(s)) return { label: "Car show", cls: "cars" };
       if (/karaoke/.test(s)) return { label: "Karaoke", cls: "karaoke" };
       if (/\btrivia\b/.test(s)) return { label: "Trivia", cls: "trivia" };
@@ -17394,7 +17397,7 @@ function paint() {
       }
       function parseTown(d) {
         var ev = (d && d._embedded && d._embedded.events) || [];
-        var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 40);
+        var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 25);
         var out = [];
         ev.forEach(function (e) {
           var start = (e.dates && e.dates.start) || {};
@@ -17434,16 +17437,21 @@ function paint() {
         var lat = (typeof homeLat === "function" && homeLat()) || 0;
         var lon = (typeof homeLon === "function" && homeLon()) || 0;
         if (!lat || !lon) { if (done) done(); return; }
-        var miles = Math.min(120, Number((typeof getSet === "function" && getSet().eventMiles) || 50) || 50);
+        var miles = Math.min(80, Number((typeof getSet === "function" && getSet().eventMiles) || 25) || 25);
         var key = encodeURIComponent(tmKey());
-        var tm = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" + key +
-          "&latlong=" + lat + "," + lon + "&radius=" + miles + "&unit=miles&size=80&sort=date,asc";
-        var place = encodeURIComponent((typeof homePlace === "function" ? homePlace() : "") || "");
+        var tmBase = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" + key +
+          "&latlong=" + lat + "," + lon + "&radius=" + miles + "&unit=miles&size=50&sort=date,asc";
         var urls = [
           location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles + "&key=" + key,
-          tm,
-          tm + (place ? "&keyword=" + place.split(",")[0] : ""),
-          "https://corsproxy.io/?" + encodeURIComponent(tm)
+          tmBase,
+          tmBase + "&classificationName=" + encodeURIComponent("Arts & Theatre"),
+          tmBase + "&classificationName=Sports",
+          tmBase + "&classificationName=Miscellaneous",
+          tmBase + "&keyword=festival",
+          tmBase + "&keyword=fair",
+          tmBase + "&keyword=market",
+          tmBase + "&keyword=bingo",
+          tmBase + "&keyword=" + encodeURIComponent("community")
         ];
                 function next(i) {
           if (i >= urls.length) {
@@ -17469,7 +17477,59 @@ function paint() {
         }
         next(0);
       }
-      function loadLocal(done) {
+      function parseGatherItems(d) {
+        var items = (d && d.items) || (d && d.feed && d.feed.entry) || [];
+        var place = String(typeof homePlace === "function" ? homePlace() : "").toLowerCase();
+        var city = place.split(",")[0];
+        var out = [];
+        items.forEach(function (it) {
+          var title = String(it.title || it.name || "").replace(/ - .*$/, "").trim();
+          var blob = (title + " " + String(it.description || it.content || it.summary || "")).toLowerCase();
+          if (!title) return;
+          if (!/(festival|fair|market|bingo|trivia|karaoke|concert|comedy|parade|potluck|meetup|mixer|fundraiser|community|church|library|open mic|car show|live music|gathering)/.test(blob)) return;
+          if (city && city.length > 3 && blob.indexOf(city) < 0 && place && blob.indexOf(place.split(",")[0]) < 0) {
+            /* still keep if event words are strong */
+            if (!/(festival|fair|farmers market|bingo|parade|block party)/.test(blob)) return;
+          }
+          var when = new Date(it.pubDate || it.published || it.date || Date.now() + 86400000);
+          if (isNaN(when.getTime())) when = new Date(Date.now() + 86400000);
+          out.push({
+            sum: title.slice(0, 140),
+            loc: (typeof homePlace === "function" ? homePlace() : "") || "",
+            when: when,
+            end: new Date(when.getTime() + 3 * 3600 * 1000),
+            src: "gather",
+            href: it.link || it.url || ""
+          });
+        });
+        return out;
+      }
+      function loadGather(done) {
+        var place = typeof homePlace === "function" ? homePlace() : "";
+        if (!place) { if (done) done(); return; }
+        var q = encodeURIComponent(place + ' (festival OR fair OR "farmers market" OR bingo OR trivia OR karaoke OR parade OR "open mic" OR "community event" OR potluck OR fundraiser OR "car show" OR "live music")');
+        var rss = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
+        var urls = [
+          "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss),
+          "https://corsproxy.io/?" + encodeURIComponent(rss)
+        ];
+        function next(i) {
+          if (i >= urls.length) { if (done) done(); return; }
+          fetch(urls[i]).then(function (r) { return r.json(); }).then(function (d) {
+            var parsed = parseGatherItems(d);
+            if (parsed.length) {
+              bag.eng = (bag.eng || []).concat(parsed);
+              try { paint(); } catch (eP) {}
+              if (done) done();
+              return;
+            }
+            next(i + 1);
+          }).catch(function () { next(i + 1); });
+        }
+        next(0);
+      }
+      window.reloadGather = loadGather;
+            function loadLocal(done) {
         var zipNow = String((typeof getSet === "function" && getSet().zip) || "").replace(/\D/g, "").slice(0, 5);
         var names = [];
         if (zipNow.length === 5) names.push("events-" + zipNow + ".json");
@@ -17522,6 +17582,7 @@ function paint() {
       try { paint(); } catch (ePaint) { try { console.warn(ePaint); } catch (e0) {} }
       loadLocal();
       if (typeof window.reloadTown === "function") window.reloadTown();
+      if (typeof window.reloadGather === "function") window.reloadGather();
       if (typeof window.reloadBwCal === "function") window.reloadBwCal();
       loadLocal();
       setInterval(function () {
