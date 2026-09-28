@@ -863,7 +863,15 @@
     .pausebtn.on { background:var(--navy); color:#fff; }
     html.dark .hdr-act { background:rgba(8,12,22,.72); }
     html.dark .pausebtn, html.dark .setgear { color:#f7f1e6; }
-    html.dark .pausebtn.on { background:var(--navy); color:#fff; }
+    html.dark .pausebtn.on { background:#c4a35a; color:#1a140c; }
+    html.dark .card span.kind-tag, html.dark span.kind-tag, html.dark .card span.music-tag {
+      background:#2c3848; color:#f3ead2;
+    }
+    html.dark .card span.kind-tag.music { background:#1b6b62; color:#fff; }
+    html.dark .card span.kind-tag.trivia { background:#e07a5f; color:#1a140c; }
+    html.dark .card span.place-tag { background:#1b6b62; color:#fff; }
+    html.dark .card span.place-tag.place-out { background:#c4a35a; color:#1a140c; }
+    html.dark .hdr-chip.muted { display:inline-flex; background:rgba(8,16,28,.55); color:#f7f1e6; }
     html.dark .go-sbar { background:rgba(247,241,230,.08); background-image:repeating-linear-gradient(to right, rgba(247,241,230,.2) 0, rgba(247,241,230,.2) 1px, transparent 1px, transparent 8.333%); }
     html.dark .go-strip { background:#242c28; }
     html.dark .go-sname { color:#efe4c8; }
@@ -3257,7 +3265,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1024</span>
+      <span class="hdr-ver" id="hdr-ver">v1025</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5138,7 +5146,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1024;
+    window.BOARD_VER = 1025;
 
     
     function communityShort() {
@@ -9678,6 +9686,7 @@ function currentRotation() {
         scan.removeAttribute("src");
       }
       if (!url) {
+        window.__radioMuted = true;
         window.__radioWant = { url: "", label: "" };
         clearInterval(window.__nwrKeep);
         audio.pause();
@@ -9688,6 +9697,7 @@ function currentRotation() {
         if (typeof paintHdrRadio === "function") paintHdrRadio();
         return;
       }
+      window.__radioMuted = false;
       if (String(url).indexOf("scan:") === 0) {
         window.__radioWant = { url: url, label: label || "" };
         rememberRadio(url, label || "");
@@ -9935,6 +9945,10 @@ function currentRotation() {
       var audio = document.getElementById("radioPlayer");
       var live = (audio && (audio.getAttribute("src") || audio.src)) || "";
 
+      if (window.__radioMuted && !window.__nwrAlert) {
+        if (typeof paintHdrRadio === "function") paintHdrRadio();
+        return;
+      }
       if (window.__nwrAlert) {
         if (typeof playStation === "function") playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
         return;
@@ -10768,7 +10782,7 @@ function currentRotation() {
       var url = want.url || last.url || "";
       var label = radioLabelFor(url, want.label || last.label || "");
       el.hidden = false;
-      el.classList.toggle("on", playing);
+      el.classList.add("on");
       el.classList.toggle("muted", !playing);
       el.textContent = playing ? "Mute" : (radioShortName(label) || "Radio");
       el.title = playing ? ("Mute " + (label || "radio")) : ("Play " + (label || "radio"));
