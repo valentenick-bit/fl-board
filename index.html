@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1026</span>
+      <span class="hdr-ver" id="hdr-ver">v1027</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1026;
+    window.BOARD_VER = 1027;
 
     
     function communityShort() {
@@ -5456,7 +5456,7 @@ Cart shop:</textarea>
       brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefBoard: "1", briefWxHold: "0", briefPrevMaster: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", briefPrevBoard: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
-      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device",
+      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "50", sportMiles: "150", lang: "device",
       jokeDay: "1"
     };
     function getSet() {
@@ -5466,8 +5466,8 @@ Cart shop:</textarea>
       if (!String(s.community || "").trim()) s.community = "BeachWalk by Manasota Key";
       if (s.dateFmt === "iso" || s.dateFmt === "num-intl" || s.dateFmt === "long") s.dateFmt = "intl";
       if (s.dateFmt !== "us" && s.dateFmt !== "num-us" && s.dateFmt !== "intl") s.dateFmt = "us";
-      s.eventMiles = "25";
-      s.sportMiles = "150";
+      if (!s.eventMiles) s.eventMiles = "50";
+      if (!s.sportMiles) s.sportMiles = "150";
       ["chipBolt","chipCane","chipTrash","wxradar","wxbolt","camNight","brief","briefWx","briefSports","briefToday","briefBoard","briefWxHold","breakOn","breakNat","breakLoc","noaa","radioauto","kiosk","contrast","tap","colorHelp","links","gmapsOn"].forEach(function (k) {
         var v = s[k];
         if (v === true || v === 1 || v === "on" || v === "true") s[k] = "1";
@@ -17309,7 +17309,7 @@ function paint() {
         var pile = [].concat(
           bwOn ? (bag.bw || []) : [],
           bag.local || [],
-          pinSWFL ? (bag.eng || []) : [],
+          bag.eng || [],
           bag.comedy || []
         );
         var all = foldEnt(pile).filter(function (e) {
@@ -17343,7 +17343,7 @@ function paint() {
           if (typeof noteFeed === "function") noteFeed("events", false, "no events");
           return;
         }
-        render("ent-list", merged.slice(0, 48));
+        render("ent-list", merged.slice(0, 80));
         var note = document.getElementById("ent-count");
         var nBw = merged.filter(function (e) { return typeof isBeachWalkEvent === "function" && isBeachWalkEvent(e); }).length;
         var nTick = merged.filter(function (e) { return /ticket|ticketmaster|axs|live nation/i.test(String(e.src || "") + " " + String(e.sum || "")); }).length;
@@ -17434,9 +17434,16 @@ function paint() {
         var lat = (typeof homeLat === "function" && homeLat()) || 0;
         var lon = (typeof homeLon === "function" && homeLon()) || 0;
         if (!lat || !lon) { if (done) done(); return; }
-        var miles = Math.min(100, Number((typeof getSet === "function" && getSet().eventMiles) || 40));
+        var miles = Math.min(120, Number((typeof getSet === "function" && getSet().eventMiles) || 50) || 50);
+        var key = encodeURIComponent(tmKey());
+        var tm = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" + key +
+          "&latlong=" + lat + "," + lon + "&radius=" + miles + "&unit=miles&size=80&sort=date,asc";
+        var place = encodeURIComponent((typeof homePlace === "function" ? homePlace() : "") || "");
         var urls = [
-          location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles + "&key=" + encodeURIComponent(tmKey())
+          location.origin + "/town-events?lat=" + lat + "&lon=" + lon + "&r=" + miles + "&key=" + key,
+          tm,
+          tm + (place ? "&keyword=" + place.split(",")[0] : ""),
+          "https://corsproxy.io/?" + encodeURIComponent(tm)
         ];
                 function next(i) {
           if (i >= urls.length) {
@@ -17453,7 +17460,7 @@ function paint() {
             }
             var parsed = parseTown(d);
             if (parsed.length) {
-              bag.eng = parsed;
+              bag.eng = (bag.eng || []).concat(parsed);
               if (typeof noteFeed === "function") noteFeed("town-events", true, parsed.length + " ticketed near " + (typeof homePlace === "function" ? homePlace() : "home"));
               try { paint(); } catch (eP) {}
             }
