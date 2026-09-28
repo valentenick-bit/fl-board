@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1028</span>
+      <span class="hdr-ver" id="hdr-ver">v1029</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1028;
+    window.BOARD_VER = 1029;
 
     
     function communityShort() {
@@ -16248,7 +16248,7 @@ function currentRotation() {
         var addr = (typeof homeAddress === "function" && homeAddress()) || "";
         var place = (typeof homePlace === "function" && homePlace()) || "";
         var zip = (getSet() && getSet().zip) || "";
-        return [place, zip, addr].filter(Boolean).join(" ") || "Englewood FL";
+        return [place, zip, addr].filter(Boolean).join(" ") || "near home";
       }
       function escBuzz(s) {
         return String(s || "").replace(/[<>]/g, "");
@@ -16439,7 +16439,7 @@ function currentRotation() {
       function loadBuzzPack(cb) {
         var pin = homeTownQuery();
         var key = buzzDayKey() + "|" + pin + "|" + (getSet() && getSet().lat) + "|" + (getSet() && getSet().lon);
-        if (window.__buzz.key === key && window.__buzz.at && Date.now() - window.__buzz.at < 6 * 60 * 60 * 1000) {
+        if (window.__buzz.key === key && window.__buzz.at && Date.now() - window.__buzz.at < 6 * 60 * 60 * 1000 && ((window.__buzz.hh && window.__buzz.hh.length) || (window.__buzz.shop && window.__buzz.shop.length))) {
           if (cb) cb(window.__buzz);
           return;
         }
@@ -16502,8 +16502,9 @@ function currentRotation() {
               { where: r.addr || r.area, addr: r.addr || r.area, rating: r.rating, reviews: r.reviews, miles: r.miles, lat: r.lat, lon: r.lon }));
           });
         }
-        if (!(pack.hh && pack.hh.length) && typeof seedHappyHours === "function") {
-          seedHappyHours().forEach(function (r) {
+        if (!(pack.hh && pack.hh.length)) {
+          var hhRows = (typeof seedHappyHours === "function" ? seedHappyHours() : []).concat(typeof pinDealRows === "function" ? pinDealRows("hh") : []);
+          hhRows.forEach(function (r) {
             var mi = (r.lat != null && typeof milesOf === "function") ? milesOf(r.lat, r.lon) : 99;
             if (mi > 25) return;
             pack.hh.push(asItem(r.name + " happy hour",
@@ -16511,14 +16512,26 @@ function currentRotation() {
               { where: r.addr, addr: r.addr, lat: r.lat, lon: r.lon, miles: mi }));
           });
         }
-        if (!(pack.shop && pack.shop.length) && typeof seedShopDeals === "function") {
-          seedShopDeals().forEach(function (r) {
+        if (!(pack.shop && pack.shop.length)) {
+          var shopRows = (typeof seedShopDeals === "function" ? seedShopDeals() : []).concat(typeof pinDealRows === "function" ? pinDealRows("shop") : []);
+          shopRows.forEach(function (r) {
             var mi = (r.lat != null && typeof milesOf === "function") ? milesOf(r.lat, r.lon) : 99;
             if (mi > 25) return;
             pack.shop.push(asItem(r.name,
               (r.deal || "Store near home.") + " near home.",
               { where: r.addr, addr: r.addr, lat: r.lat, lon: r.lon, miles: mi }));
           });
+          if (!pack.shop.length && !window.__shopOsmTried && typeof fromOsmShops === "function") {
+            window.__shopOsmTried = 1;
+            fromOsmShops(function (shops) {
+              (shops || []).slice(0, 8).forEach(function (r) {
+                var mi = r.miles != null ? r.miles : (r.lat != null && typeof milesOf === "function" ? milesOf(r.lat, r.lon) : 99);
+                if (mi > 25) return;
+                pack.shop.push(asItem(r.name, (r.deal || "Store near home.") + " near home.", { where: r.addr, addr: r.addr, lat: r.lat, lon: r.lon, miles: mi }));
+              });
+              if (typeof paintShopDeal === "function") paintShopDeal();
+            });
+          }
         }
       }
       function firstBuzz(kind) {
@@ -16663,7 +16676,47 @@ function currentRotation() {
             "hot-ticket");
         });
       }
+
+      function pinDealRows(kind) {
+        var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 25) || 25;
+        var rows = (window.__eatPool || []).concat(window.__eats || []).concat(window.__golfs || []);
+        var seen = {};
+        var out = [];
+        rows.forEach(function (r) {
+          if (!r || !r.name) return;
+          var k = String(r.name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+          if (!k || seen[k]) return;
+          var mi = r.miles;
+          if (mi == null && r.lat != null && typeof milesOf === "function") mi = milesOf(r.lat, r.lon);
+          if (mi != null && mi > miles) return;
+          seen[k] = 1;
+          var addr = r.addr || r.area || (typeof homePlace === "function" ? homePlace() : "");
+          if (kind === "takeout") {
+            out.push({ name: r.name, kind: r.kind || r.cuisine || "Restaurant", offer: "Takeout near the pin — check today’s board and pack-up specials.", phone: r.phone || "", addr: addr, lat: r.lat, lon: r.lon, miles: mi, value: Math.round((Number(r.rating) || 4) * 4), takeout: true });
+          } else if (kind === "hh") {
+            out.push({ name: r.name, addr: addr, lat: r.lat, lon: r.lon, miles: mi, start: 15, end: 18, deal: "Ask about afternoon bar and early-dinner specials. Hours change — call ahead.", phone: r.phone || "", url: r.url || "" });
+          } else {
+            out.push({ name: r.name, addr: addr, lat: r.lat, lon: r.lon, miles: mi, kind: r.kind || "Shop", start: 9, end: 21, deal: "Local stop near the pin. Watch in-store and weekly ads for the live markdown." });
+          }
+        });
+        out.sort(function (a, b) { return (a.miles || 99) - (b.miles || 99); });
+        return out.slice(0, 12);
+      }
+      function fromOsmShops(cb) {
+        var lat = homeLat(), lon = homeLon();
+        if (!lat || !lon) return cb([]);
+        var rad = Math.round(Math.min(20000, 25 * 1609.34));
+        var q = "[out:json][timeout:18];(node[shop~\"supermarket|mall|department_store|clothes|doityourself|wholesale\"](around:" + rad + "," + lat + "," + lon + "););out body 30;";
+        fetch("https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+          var els = (d && d.elements) || [];
+          cb(els.filter(function (el) { return el.tags && el.tags.name; }).map(function (el) {
+            var mi = typeof milesOf === "function" ? milesOf(el.lat, el.lon) : null;
+            return { name: el.tags.name, kind: el.tags.shop || "Shop", addr: [el.tags["addr:street"], el.tags["addr:city"]].filter(Boolean).join(", "), lat: el.lat, lon: el.lon, miles: mi, deal: "Open near the pin. Check the weekly ad for live sale prices." };
+          }));
+        }).catch(function () { cb([]); });
+      }
       function seedTakeoutCoupons() {
+        if (typeof homeNearKey === "function" && !homeNearKey()) return [];
         return [
           { name: "SandBar Tiki & Grille", kind: "Seafood", offer: "Call for today’s takeout board — dockside seafood and baskets.", phone: "941-474-1517", addr: "1975 Beach Rd, Englewood", lat: 26.9248, lon: -82.3535, value: 12, takeout: true },
           { name: "Lock 'N Key", kind: "American", offer: "Weekly lunch and dinner specials — ask which plates are packed for takeout.", phone: "941-474-1517", addr: "1980 Beach Rd, Englewood", lat: 26.9252, lon: -82.3526, value: 14, takeout: true },
@@ -16683,7 +16736,7 @@ function currentRotation() {
           var exp = new Date(String(row.expires) + "T23:59:59");
           if (!isNaN(exp.getTime()) && exp.getTime() < Date.now()) return false;
         }
-        return couponMiles(row) <= 5.15;
+        return couponMiles(row) <= 25.15;
       }
       function couponScore(row) {
         var miles = couponMiles(row);
@@ -16720,8 +16773,9 @@ function currentRotation() {
         }, "coupon");
       }
 function paintTakeoutDeals() {
-        function finish(list) {
-          list = (list || []).filter(couponStillOn).sort(function (a, b) { return couponScore(b) - couponScore(a); });
+        function finish(list, triedOsm) {
+          list = (list || []).concat(typeof pinDealRows === "function" ? pinDealRows("takeout") : []);
+          list = list.filter(couponStillOn).sort(function (a, b) { return couponScore(b) - couponScore(a); });
           var day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
           var seed = 0;
           for (var i = 0; i < day.length; i++) seed += day.charCodeAt(i);
@@ -16737,11 +16791,20 @@ function paintTakeoutDeals() {
           var todayBox = document.getElementById("today-coupons");
           var html = top.length
             ? top.map(couponCardHtml).join("")
-            : '<div class="card ev-card"><div class="ev-body"><b>No takeout coupons inside 5 miles</b><span class="eat-why">When coupons.json has live deals near the home pin, the best 3–5 for today show here.</span></div></div>';
+            : '<div class="card ev-card"><div class="ev-body"><b>No takeout spots inside 25 miles yet</b><span class="eat-why">When coupons.json has live deals near the home pin, the best 3–5 for today show here.</span></div></div>';
           if (todayBox) todayBox.innerHTML = html;
           if (todayBox && typeof stampLocPills === "function") stampLocPills(todayBox);
-          if (typeof noteFeed === "function") noteFeed("coupons", true, top.length ? (top.length + " deals") : "none inside 5 mi");
+          if (typeof noteFeed === "function") noteFeed("coupons", true, top.length ? (top.length + " deals") : "none inside 25 mi");
           if (typeof writeBriefingSoon === "function") writeBriefingSoon();
+          if (!top.length && !triedOsm && !window.__takeoutOsmTried && typeof fromOsmEats === "function") {
+            window.__takeoutOsmTried = 1;
+            fromOsmEats(function (places) {
+              var rows = (places || []).map(function (r) {
+                return { name: r.name, kind: r.kind || "Restaurant", offer: "Takeout near the pin — ask what they are packing today.", phone: r.phone || "", addr: r.addr || "", lat: r.lat, lon: r.lon, miles: r.miles, value: 10, takeout: true };
+              });
+              finish(rows, true);
+            });
+          }
         }
         var urls = typeof gitFileUrls === "function" ? gitFileUrls("coupons.json") : ["./coupons.json"];
         function next(i) {
@@ -16755,6 +16818,7 @@ function paintTakeoutDeals() {
         next(0);
       }
       function seedHappyHours() {
+        if (typeof homeNearKey === "function" && !homeNearKey()) return [];
         return [
           { name: "SandBar Tiki & Grille", addr: "1975 Beach Rd, Englewood", lat: 26.9248, lon: -82.3535, start: 11, end: 18, deal: "Happy hour at the bar 11 AM–6 PM daily. Live music most afternoons and evenings on the dock.", phone: "941-474-1517", url: "https://sandbartiki.com/", closed: [] },
           { name: "Lock 'N Key", addr: "1980 Beach Rd, Englewood", lat: 26.9252, lon: -82.3526, start: 11, end: 18, deal: "Happy hour at the bar 11 AM–6 PM daily. Weekly lunch and dinner specials on the specials board.", phone: "941-474-1517", url: "https://lockandkeyrestaurant.com/menus/specials/", closed: [] },
@@ -16889,6 +16953,7 @@ function paintTakeoutDeals() {
       }
 
       function seedShopDeals() {
+        if (typeof homeNearKey === "function" && !homeNearKey()) return [];
         return [
           { name: "Bealls Florida", addr: "1500 Placida Rd, Englewood, FL 34223", lat: 26.9357490, lon: -82.3389567, kind: "Clothing", start: 10, end: 21, sunEnd: 20, deal: "Merchants Crossing. Bealls Rewards: $5 back per $100, 20% off during your birthday month. Clearance running in-store.", url: "https://stores.beallsflorida.com/fl/englewood/1500-placida-rd" },
           { name: "Walmart Supercenter", addr: "2931 S McCall Rd, Englewood, FL 34224", lat: 26.9321504, lon: -82.3103335, kind: "Grocery", start: 6, end: 23, deal: "Englewood Supercenter #1874. Groceries, household, pharmacy. Opens 6 a.m.", url: "https://www.walmart.com/store/1874-englewood-fl" },
