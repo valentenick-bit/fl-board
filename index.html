@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1033</span>
+      <span class="hdr-ver" id="hdr-ver">v1034</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1033;
+    window.BOARD_VER = 1034;
 
     
     function communityShort() {
@@ -14727,7 +14727,7 @@ function currentRotation() {
         line.textContent = (typeof homePlace === "function" ? homePlace() : "Englewood") + " · " + (fx || tmp || "see Today");
       }
       var td = document.querySelector(".tenday");
-      if (td && td.querySelectorAll(".day").length < 8) {
+      if (td && td.querySelectorAll(".day").length < 8 && !window.__tenFromNws) {
         var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
           "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=America%2FNew_York";
         fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
@@ -23538,7 +23538,9 @@ function wxSvg(kind, box) {
           name: new Date(times[i] + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" }),
           startTime: times[i] + "T12:00:00",
           temperature: Math.round(d.temperature_2m_max && d.temperature_2m_max[i]),
-          shortForecast: omWord(d.weather_code && d.weather_code[i])
+          temperatureMin: Math.round(d.temperature_2m_min && d.temperature_2m_min[i]),
+          shortForecast: omWord(d.weather_code && d.weather_code[i]),
+          probabilityOfPrecipitation: { value: (d.precipitation_probability_max && d.precipitation_probability_max[i]) || 0 }
         });
       }
       return out;
@@ -24172,11 +24174,16 @@ function wxSvg(kind, box) {
               var key = new Date(d.startTime).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
               if (byDate[key]) continue;
               var nxt = days[i+1] || {};
+              var night = /night/i.test(nxt.name || "") ? nxt : null;
+              var dayPop = (d.probabilityOfPrecipitation && d.probabilityOfPrecipitation.value);
+              var nightPop = night && night.probabilityOfPrecipitation ? night.probabilityOfPrecipitation.value : null;
+              var popN = Math.max(Number(dayPop) || 0, Number(nightPop) || 0);
+              var loN = night && night.temperature != null ? Number(night.temperature) : (d.temperatureMin != null ? Number(d.temperatureMin) : null);
               byDate[key] = {
                 fx: d.shortForecast || "",
                 hi: Number(d.temperature),
-                lo: /night/i.test(nxt.name || "") ? Number(nxt.temperature) : Number(d.temperature) - 12,
-                pop: (d.probabilityOfPrecipitation && d.probabilityOfPrecipitation.value) || 0
+                lo: loN,
+                pop: popN
               };
             }
             var rows = [];
@@ -24200,12 +24207,12 @@ function wxSvg(kind, box) {
                 var wid = Math.max(10, ((hi - lo) / (maxAll - minAll)) * 100);
                 return '<span class="tbar"><i style="left:' + left.toFixed(1) + "%;width:" + wid.toFixed(1) + '%"></i></span>';
               }
-              var caps = list.filter(function (r) { return r && r.row; }).map(function (r, i) {
-                var dt = new Date();
-                dt.setDate(dt.getDate() + i);
+              var caps = list.filter(function (r) { return r && r.row && r.row.hi != null; }).map(function (r) {
+                var parts = String(r.key || "").split("-");
+                var dateTxt = parts.length === 3 ? (Number(parts[1]) + "/" + Number(parts[2])) : r.label;
                 return {
                   label: r.label,
-                  date: (dt.getMonth() + 1) + "/" + dt.getDate(),
+                  date: dateTxt,
                   hi: r.row.hi,
                   lo: r.row.lo,
                   pop: r.row.pop,
@@ -24214,6 +24221,7 @@ function wxSvg(kind, box) {
                 };
               });
               window.__tenRows = list;
+              window.__tenFromNws = true;
               paintTendayCapsules(caps);
               var nowline = document.getElementById("wx-nowline");
               if (nowline) {
