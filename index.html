@@ -340,12 +340,24 @@
     .palm .crown, .palm .crown path, .palm .frond path { fill:#1a5a2e; stroke:#102e18; stroke-width:.8; }
     .palm.tree-maple .trunk, .palm.tree-oak .trunk { stroke-width:4.6; stroke:#3d2a14; }
     .palm.tree-maple .frond path, .palm.tree-maple .crown path { stroke:#1a1208; stroke-width:.35; }
-    .palm.tree-maple path.leaf-g { fill:#1f5a28; }
-    .palm.tree-maple path.leaf-d { fill:#163e1c; }
-    .palm.tree-maple path.leaf-l { fill:#3b7a32; }
-    .palm.tree-maple path.leaf-y { fill:#c9a03a; }
-    .palm.tree-maple path.leaf-o { fill:#c45a1e; }
-    .palm.tree-maple path.leaf-r { fill:#9a2f16; }
+    .palm.tree-maple path.leaf-g,
+    .palm.tree-maple path.leaf-d,
+    .palm.tree-maple path.leaf-l,
+    .palm.tree-maple path.leaf-y,
+    .palm.tree-maple path.leaf-o,
+    .palm.tree-maple path.leaf-r,
+    .palm.tree-maple path.leaf-b {
+      transition: fill 14s ease, opacity 14s ease, transform 14s ease;
+    }
+    .palm.tree-maple path.leaf-g { fill:var(--maple-g, #1f5a28); }
+    .palm.tree-maple path.leaf-d { fill:var(--maple-d, #163e1c); }
+    .palm.tree-maple path.leaf-l { fill:var(--maple-l, #3b7a32); }
+    .palm.tree-maple path.leaf-y { fill:var(--maple-y, #c9a03a); }
+    .palm.tree-maple path.leaf-o { fill:var(--maple-o, #c45a1e); }
+    .palm.tree-maple path.leaf-r { fill:var(--maple-r, #9a2f16); }
+    .palm.tree-maple path.leaf-b { fill:var(--maple-b, #8aaa4a); }
+    html.maple-winter .palm.tree-maple .crown { opacity:0; pointer-events:none; }
+    html.maple-winter .palm.tree-maple .frond { animation:none !important; }
     .palm.tree-oak .frond path, .palm.tree-oak .crown path { fill:#2a5a28; stroke:#123018; stroke-width:.6; }
     .palm.tree-maple .frond, .palm.tree-oak .frond { animation-duration: calc(var(--sway-dur, 3.6s) * 1.4); }
     .palm.tree-pine .trunk { stroke-width:2.3; stroke:#3a2a16; }
@@ -3283,7 +3295,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1040</span>
+      <span class="hdr-ver" id="hdr-ver">v1041</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5164,7 +5176,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1040;
+    window.BOARD_VER = 1041;
 
     
     function communityShort() {
@@ -9005,6 +9017,74 @@ function gatorRange() {
       for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
       return h >>> 0;
     }
+    function mapleDayOfYear(d) {
+      d = d || new Date();
+      var start = new Date(d.getFullYear(), 0, 1);
+      return Math.floor((d.getTime() - start.getTime()) / 86400000) + 1;
+    }
+    function mapleSeasonNow() {
+      var d = (typeof recNowET === "function") ? recNowET() : new Date();
+      if (!(d instanceof Date)) d = new Date();
+      var doy = mapleDayOfYear(d);
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : 41;
+      if (isFinite(lat) && lat < 0) doy = ((doy + 182 - 1) % 365) + 1;
+      var name = "winter", t = 0, leafN = 0, scale = 0.55;
+      if (doy >= 335 || doy < 60) {
+        name = "winter";
+        t = doy >= 335 ? (doy - 335) / 90 : (doy + 30) / 90;
+        leafN = doy >= 335 && doy < 350 ? 3 : 0;
+        scale = 0.5;
+      } else if (doy < 152) {
+        name = "spring";
+        t = (doy - 60) / 92;
+        leafN = t < 0.35 ? 5 : (t < 0.7 ? 8 : 12);
+        scale = 0.42 + t * 0.5;
+      } else if (doy < 244) {
+        name = "summer";
+        t = (doy - 152) / 92;
+        leafN = 12;
+        scale = 0.92;
+      } else {
+        name = "fall";
+        t = (doy - 244) / 91;
+        leafN = t > 0.82 ? 6 : 12;
+        scale = t > 0.82 ? 0.7 : 0.9;
+      }
+      return { name: name, t: Math.max(0, Math.min(1, t)), leafN: leafN, scale: scale, doy: doy };
+    }
+    function hexMix(a, b, t) {
+      function hex(h) {
+        h = String(h || "").replace("#", "");
+        return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+      }
+      var A = hex(a), B = hex(b);
+      function ch(i) {
+        var n = Math.round(A[i] + (B[i] - A[i]) * t);
+        return ("0" + Math.max(0, Math.min(255, n)).toString(16)).slice(-2);
+      }
+      return "#" + ch(0) + ch(1) + ch(2);
+    }
+    function applyMapleSeason() {
+      var sea = mapleSeasonNow();
+      var pal = {
+        winter: { g:"#5a4030", d:"#3a2818", l:"#6a4a28", y:"#7a5a30", o:"#5a3010", r:"#4a2410", b:"#6a5030" },
+        spring: { g:"#4a7a38", d:"#3a6230", l:"#8aaa4a", y:"#c4c46a", o:"#d0b070", r:"#7a9a40", b:"#c9d48a" },
+        summer: { g:"#1f5a28", d:"#163e1c", l:"#3b7a32", y:"#2d6a30", o:"#245a28", r:"#1a4a20", b:"#4a8a38" },
+        fall:   { g:"#3a5a20", d:"#2a4018", l:"#6a7a28", y:"#c9a03a", o:"#c45a1e", r:"#9a2f16", b:"#b47a28" }
+      };
+      var from = sea.name === "winter" ? pal.fall : sea.name === "spring" ? pal.winter : sea.name === "summer" ? pal.spring : pal.summer;
+      var to = pal[sea.name];
+      var edge = sea.name === "fall" ? Math.min(1, sea.t * 1.4) : sea.name === "spring" ? Math.min(1, sea.t * 1.2) : 1;
+      var root = document.documentElement;
+      ["g","d","l","y","o","r","b"].forEach(function (k) {
+        root.style.setProperty("--maple-" + k, hexMix(from[k], to[k], edge));
+      });
+      root.classList.remove("maple-winter", "maple-spring", "maple-summer", "maple-fall");
+      root.classList.add("maple-" + sea.name);
+      root.setAttribute("data-maple", sea.name);
+      return sea;
+    }
+
     function headerOneTree(kind, i) {
       var trunks = {
         palm: ["M23 72 C20 58 18 44 22 24","M24 72 C28 56 31 40 27 21","M25 72 C17 55 21 38 24 25","M22 72 C26 60 19 42 26 22","M24 72 C21 52 29 38 21 28"],
@@ -9050,13 +9130,20 @@ function gatorRange() {
         var spots = [
           [24,16],[17,20],[31,20],[21,12],[28,13],[13,26],[35,26],[24,24],[16,32],[32,32],[20,28],[28,28]
         ];
-        var tones = ["leaf-g","leaf-d","leaf-l","leaf-g","leaf-y","leaf-l","leaf-o","leaf-g","leaf-d","leaf-r","leaf-l","leaf-y"];
-        var month = new Date().getMonth() + 1;
+        var tones = ["leaf-g","leaf-d","leaf-l","leaf-b","leaf-y","leaf-l","leaf-o","leaf-g","leaf-d","leaf-r","leaf-l","leaf-y"];
+        var sea = typeof mapleSeasonNow === "function" ? mapleSeasonNow() : { name:"fall", t:0.4, leafN:12, scale:0.9 };
+        if (typeof applyMapleSeason === "function") applyMapleSeason();
         var frM = "";
-        for (var k = 0; k < spots.length; k++) {
-          var sc = 0.72 + ((i * 3 + k * 5) % 7) * 0.07;
+        var useN = Math.max(0, Math.min(spots.length, sea.leafN || 0));
+        for (var k = 0; k < useN; k++) {
+          var sc = (0.72 + ((i * 3 + k * 5) % 7) * 0.07) * (sea.scale || 0.9);
+          if (sea.name === "spring") sc *= 0.62 + sea.t * 0.38;
           var rot = ((i * 13 + k * 29) % 70) - 35;
-          var tone = (month >= 9 && month <= 11) ? tones[(i + k) % tones.length] : (k % 3 === 0 ? "leaf-d" : (k % 3 === 1 ? "leaf-l" : "leaf-g"));
+          var tone;
+          if (sea.name === "summer") tone = (k % 3 === 0 ? "leaf-d" : (k % 3 === 1 ? "leaf-l" : "leaf-g"));
+          else if (sea.name === "spring") tone = (k % 4 === 0 ? "leaf-b" : (k % 4 === 1 ? "leaf-l" : (k % 4 === 2 ? "leaf-y" : "leaf-g")));
+          else if (sea.name === "winter") tone = (k % 2 ? "leaf-o" : "leaf-r");
+          else tone = tones[(i + k) % tones.length];
           frM += '<g class="frond" style="animation-duration:calc(var(--sway-dur, 3.6s) * ' + (1.05 + ((i + k) % 4) * 0.08).toFixed(2) + ');animation-delay:calc(var(--sway-delay, 0s) - ' + ((i * 0.37 + k * 0.51) % 2.4).toFixed(2) + 's)">' +
             '<g transform="translate(' + spots[k][0] + ' ' + spots[k][1] + ') rotate(' + rot + ') scale(' + sc.toFixed(2) + ')"><path class="' + tone + '" d="' + lobe + '"/></g></g>';
         }
@@ -9126,6 +9213,7 @@ function gatorRange() {
     function paintHeaderTrees() {
       var box = document.querySelector("header .palms");
       if (!box) return;
+      if (typeof applyMapleSeason === "function") applyMapleSeason();
       var kind = typeof headerTreeKind === "function" ? headerTreeKind() : "palm";
       var have = box.querySelectorAll(".hdr-tree").length;
       if (have >= 4) {
