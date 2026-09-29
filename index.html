@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1032</span>
+      <span class="hdr-ver" id="hdr-ver">v1033</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1032;
+    window.BOARD_VER = 1033;
 
     
     function communityShort() {
@@ -16677,6 +16677,27 @@ function currentRotation() {
         });
       }
 
+      function dealNameKey(name) {
+        return String(name || "")
+          .toLowerCase()
+          .replace(/['’]/g, "")
+          .replace(/\b(the|restaurant|tavern|grill|bar|cafe|café|lounge|company|and|&)\b/g, " ")
+          .replace(/[^a-z0-9]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+      function dedupeDealRows(list) {
+        var seen = {};
+        var out = [];
+        (list || []).forEach(function (r) {
+          if (!r || !r.name) return;
+          var k = dealNameKey(r.name);
+          if (!k || seen[k]) return;
+          seen[k] = 1;
+          out.push(r);
+        });
+        return out;
+      }
       function looksLikeDeal(text, kind) {
         var t = String(text || "").toLowerCase();
         if (!t) return false;
@@ -16693,7 +16714,7 @@ function currentRotation() {
           if (!r || !r.name) return;
           var text = offer || r.offer || r.deal || r.desc || "";
           if (!looksLikeDeal(text, kind)) return;
-          var k = String(r.name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+          var k = dealNameKey(r.name);
           if (!k || seen[k]) return;
           var mi = r.miles;
           if (mi == null && r.lat != null && typeof milesOf === "function") mi = milesOf(r.lat, r.lon);
@@ -16818,9 +16839,9 @@ function paintTakeoutDeals() {
         function finish(list, triedOsm) {
           window.__coupons = (list || []).slice();
           list = (list || []).concat(typeof pinDealRows === "function" ? pinDealRows("takeout") : []);
-          list = list.filter(function (r) {
+          list = dedupeDealRows(list.filter(function (r) {
             return couponStillOn(r) && looksLikeDeal(r.offer || r.deal || "", "takeout");
-          }).sort(function (a, b) { return couponScore(b) - couponScore(a); });
+          })).sort(function (a, b) { return couponScore(b) - couponScore(a); });
           var day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
           var seed = 0;
           for (var i = 0; i < day.length; i++) seed += day.charCodeAt(i);
@@ -16952,7 +16973,7 @@ function paintTakeoutDeals() {
         var box = document.getElementById(id);
         var col = document.getElementById(colId);
         if (!box) return;
-        var rows = typeof pinDealRows === "function" ? pinDealRows(kind) : [];
+        var rows = dedupeDealRows(typeof pinDealRows === "function" ? pinDealRows(kind) : []);
         if (col) col.hidden = false;
         if (!rows.length) {
           box.innerHTML = '<div class="card ev-card"><div class="ev-body"><b>No advertised deals yet</b><span class="eat-why">' + escBuzz(emptyTxt) + "</span></div></div>";
@@ -17422,8 +17443,9 @@ function paintTakeoutDeals() {
             var o = out[i];
             var od = o.when ? new Date(o.when).toDateString() : "";
             if (od !== day) continue;
-            if (locKeyEnt(o) !== place) continue;
             if (!titlesOverlap(t0, normEntTitle(o.sum))) continue;
+            var samePlace = !place || !locKeyEnt(o) || locKeyEnt(o) === place;
+            if (!samePlace && t0 !== normEntTitle(o.sum) && !(t0.length >= 8 && normEntTitle(o.sum).indexOf(t0.slice(0, 8)) >= 0)) continue;
             hit = i;
             break;
           }
