@@ -16,7 +16,7 @@
         var phone = w <= 720 || (h <= 520 && w <= 980) || (coarse && Math.min(w, h) <= 520);
         if (phone) {
           document.documentElement.classList.add("phone");
-          setTimeout(function () { document.documentElement.classList.add("phone-still"); }, 10000);
+          setTimeout(function () { document.documentElement.classList.add("phone-still"); }, 1200);
         }
         if (phone && w > h) document.documentElement.classList.add("phone-land");
       })();
@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1035</span>
+      <span class="hdr-ver" id="hdr-ver">v1036</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1035;
+    window.BOARD_VER = 1036;
 
     
     function communityShort() {
@@ -5284,7 +5284,7 @@ Cart shop:</textarea>
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|deals(?:-\d{5})?\.json|coupons(?:-\d{5})?\.json|ticketmaster\.com|espn\.com|api\.fda\.gov|\/nws-alerts|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|deals(?:-\d{5})?\.json|coupons(?:-\d{5})?\.json|ticketmaster\.com|espn\.com|api\.fda\.gov|overpass|\/nws-alerts|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 400) {
             if (!optional) {
@@ -7520,7 +7520,7 @@ Cart shop:</textarea>
         if (hist) hist.hidden = false;
         if (ttl) ttl.textContent = "Advisory history · " + (s.name || "storm");
         if (note) note.textContent = (s.name || "This system") + " does not have an NHC best-track file yet, so there is nothing to plot.";
-        if (typeof noteFeed === "function") noteFeed("storm-hist", false, (s.name || "storm") + " · no ATCF file");
+        if (typeof noteFeed === "function") noteFeed("storm-hist", true, (s.name || "storm") + " · no ATCF file yet");
         return;
       }
       if (window.__btkFile && window.__btkFile !== want) {
@@ -16766,6 +16766,15 @@ function currentRotation() {
         return out.slice(0, 12);
       }
             function fromOsmShops(cb) {
+        if (document.documentElement.classList.contains("phone") && !window.__osmReady) {
+          if (!window.__osmShopWait) {
+            window.__osmShopWait = setTimeout(function () {
+              window.__osmReady = 1;
+              fromOsmShops(function () {});
+            }, 8000);
+          }
+          return cb([]);
+        }
         var lat = homeLat(), lon = homeLon();
         if (!lat || !lon) return cb([]);
         var rad = Math.round(Math.min(20000, 25 * 1609.34));
@@ -18563,6 +18572,15 @@ function mustEatsFL() {
         return [];
       }
       function fromOsmEats(cb) {
+        if (document.documentElement.classList.contains("phone") && !window.__osmReady) {
+          if (!window.__osmEatWait) {
+            window.__osmEatWait = setTimeout(function () {
+              window.__osmReady = 1;
+              fromOsmEats(function () {});
+            }, 8000);
+          }
+          return cb([]);
+        }
         var lat = homeLat(), lon = homeLon();
         var miles = Number((getSet() || {}).eventMiles || 25);
         var rad = Math.round(Math.min(25000, miles * 1609.34));
@@ -19052,6 +19070,15 @@ function mustEatsFL() {
         });
       }
       function fromOsmGolf(cb) {
+        if (document.documentElement.classList.contains("phone") && !window.__osmReady) {
+          if (!window.__osmGolfWait) {
+            window.__osmGolfWait = setTimeout(function () {
+              window.__osmReady = 1;
+              fromOsmGolf(function () {});
+            }, 8000);
+          }
+          return cb([]);
+        }
         var lat = homeLat(), lon = homeLon(), miles = golfMiles();
         var gkey = "golf-osm:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : lat);
         if (typeof gCacheGet === "function") {
