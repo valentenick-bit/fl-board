@@ -3283,7 +3283,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1039</span>
+      <span class="hdr-ver" id="hdr-ver">v1040</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5164,7 +5164,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1039;
+    window.BOARD_VER = 1040;
 
     
     function communityShort() {
@@ -25743,15 +25743,20 @@ function wxSvg(kind, box) {
           var sky = live("live-sky") || live("now-line");
           var temp = live("live-temp") || live("header-temp");
           var feel = live("live-feels") || live("live-feels-row");
-          var wind = live("wind") || live("header-wind") || live("live-wind-peak");
-          var gust = live("gusts");
+          var wind = live("live-wind") || live("hdr-wind");
+          var gust = live("live-gusts");
+          var peakTxt = live("live-wind-peak") || live("live-wind-peak-note");
           function firstMph(txt) {
-            var m = String(txt || "").match(/(\d{1,3})\s*(mph|kt|knots)?/i);
+            var raw = String(txt || "");
+            var m = raw.match(/(\d{1,3})\s*(mph|kt|knots)?/i);
             if (!m) return NaN;
             var n = Number(m[1]);
             if (/kt|knot/i.test(m[2] || "")) n = Math.round(n * 1.15078);
             if (n > 80 && !(window.__wxRisk && (window.__wxRisk.hurr || window.__wxRisk.cane))) return NaN;
             return n;
+          }
+          function isPeakTxt(txt) {
+            return /peak|overnight|midnight|\b12\s*am\b|\b0\s*am\b/i.test(String(txt || ""));
           }
           var rh = live("humidity") || live("live-rh");
           var dew = live("dew");
@@ -25773,18 +25778,34 @@ function wxSvg(kind, box) {
           }
           story.push(open);
           if (isFinite(tNum) && isFinite(fNum) && Math.abs(fNum - tNum) >= 3 && sky && sky.indexOf("feels") < 0) {
-            story.push("That extra warmth is the humidity talking, so plan for " + fNum + " when you step outside.");
+            if (fNum > tNum) story.push("Humidity makes it feel closer to " + fNum + " when you step outside.");
+            else story.push("It feels a few degrees cooler than the air temperature, more like " + fNum + ".");
           }
           var windN = firstMph(wind);
           var gustN = firstMph(gust);
-          if (!isFinite(gustN) || gustN <= windN) gustN = firstMph(live("live-wind-peak"));
+          if (/^light$/i.test(String(gust || "").trim())) gustN = NaN;
+          var peakN = isPeakTxt(peakTxt) || /mph/.test(peakTxt) ? firstMph(peakTxt) : NaN;
+          var wxNow = window.__nowWx || {};
+          if (!isFinite(windN) && isFinite(Number(wxNow.wind))) windN = Number(wxNow.wind);
+          if (!isFinite(gustN) && isFinite(Number(wxNow.gust))) gustN = Number(wxNow.gust);
           if (isFinite(windN) && windN >= 15) {
-            var wline = "The wind is doing real work at about " + windN + " miles an hour";
-            if (isFinite(gustN) && gustN > windN + 4) wline += ", with gusts up near " + gustN;
+            var wline = "The wind is doing real work at about " + Math.round(windN) + " miles an hour";
+            if (isFinite(gustN) && gustN > windN + 4) wline += ", with gusts up near " + Math.round(gustN);
             wline += ", so hats, umbrellas, and light chairs are going to fight you.";
             story.push(wline);
           } else if (isFinite(windN) && windN >= 8) {
-            story.push("There is a steady breeze around " + windN + " miles an hour" + (isFinite(gustN) && gustN > windN ? ", gusting toward " + gustN : "") + " — noticeable, not a reason to cancel the day.");
+            story.push("There is a steady breeze around " + Math.round(windN) + " miles an hour" + (isFinite(gustN) && gustN > windN ? ", gusting toward " + Math.round(gustN) : "") + " — noticeable, not a reason to cancel the day.");
+          } else if (isFinite(windN)) {
+            var calm = "Wind is light right now, about " + Math.round(windN) + " miles an hour";
+            if (isFinite(gustN) && gustN > windN + 3) calm += ", with short gusts to " + Math.round(gustN);
+            calm += ".";
+            story.push(calm);
+          }
+          if (isFinite(peakN) && isFinite(windN) && peakN >= windN + 6) {
+            var when = "";
+            var tm = String(peakTxt).match(/(\d{1,2}\s*(am|pm))/i);
+            if (tm) when = " around " + tm[1].toLowerCase();
+            story.push("That is not the overnight peak. Earlier it did reach " + Math.round(peakN) + " miles an hour" + when + ".");
           }
           var rhN = parseInt(String(rh).replace(/[^\d]/g, ""), 10);
           if (isFinite(rhN) && rhN >= 75 && isFinite(tNum) && tNum >= 70) {
