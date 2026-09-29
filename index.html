@@ -3274,7 +3274,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1034</span>
+      <span class="hdr-ver" id="hdr-ver">v1035</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5155,7 +5155,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1034;
+    window.BOARD_VER = 1035;
 
     
     function communityShort() {
@@ -23389,8 +23389,9 @@ function drawSurgeChart(points) {
       else if (/overcast/.test(s) || (/cloudy/.test(s) && !/partly|mostly sunny/.test(s))) kind = "cloud";
       else if (/partly|mostly cloudy|mostly sunny/.test(s)) kind = "partly";
       else if (/clear|sunny|fair/.test(s)) kind = "sun";
-      if (isNightAt(ms) && kind === "sun") kind = "moon";
-      if (isNightAt(ms) && kind === "partly") kind = "partly-night";
+      var forceDay = ms === "day" || ms === false;
+      if (!forceDay && isNightAt(ms) && kind === "sun") kind = "moon";
+      if (!forceDay && isNightAt(ms) && kind === "partly") kind = "partly-night";
       return kind;
     }
         function wmoKind(code) {
@@ -23427,7 +23428,8 @@ function drawSurgeChart(points) {
       td.innerHTML = rows.map(function (r, i) {
         var popN = Number(r.pop);
         var pop = isFinite(popN) && popN >= 10 ? '<span class="dpop">' + Math.round(popN) + "%</span>" : '<span class="dpop"></span>';
-        var kind = r.kind || (typeof wxKind === "function" ? wxKind(r.fx || "", null, r.pop) : "partly");
+        var fxDay = String(r.fx || "").split(/then/i).pop();
+        var kind = r.kind || (typeof wxKind === "function" ? wxKind(fxDay, "day", r.pop) : "partly");
         var icon = typeof wxSvg === "function" ? wxSvg(kind, 26) : "";
         var today = r.today || r.label === "Today" || i === 0 ? " today" : "";
         return '<div class="day' + today + '" data-ten="' + i + '">' +
@@ -25444,7 +25446,8 @@ function wxSvg(kind, box) {
       box.innerHTML = list.map(function (r) {
         if (!r || !r.row) return "";
         var pop = r.row.pop >= 10 ? '<i class="pop">' + r.row.pop + "%</i>" : "";
-        var svg = (typeof wxSvg === "function" && typeof wxKind === "function") ? wxSvg(wxKind(r.row.fx), 28) : "";
+        var fxDay = String((r.row && r.row.fx) || "").split(/then/i).pop();
+        var svg = (typeof wxSvg === "function" && typeof wxKind === "function") ? wxSvg(wxKind(fxDay, "day", r.row && r.row.pop), 28) : "";
         var hi = (typeof fmtTempN === "function" ? fmtTempN(r.row.hi) : r.row.hi);
         var lo = (typeof fmtTempN === "function" ? fmtTempN(r.row.lo) : r.row.lo);
         return '<div class="hour"><em>' + (r.label || "") + "</em>" + svg + "<b>" + hi + "°</b><i class=\"pop mute\">" + lo + "°</i>" + pop + "</div>";
