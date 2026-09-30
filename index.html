@@ -3295,7 +3295,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1045</span>
+      <span class="hdr-ver" id="hdr-ver">v1046</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5181,7 +5181,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1045;
+    window.BOARD_VER = 1046;
 
     
     function communityShort() {
@@ -5682,17 +5682,23 @@ Cart shop:</textarea>
         updated: new Date().toISOString(),
         address: String(s.address || "").trim(),
         place: String(s.place || "").trim(),
-        zip: String(s.zip || "").trim(),
+        zip: String(s.zip || "").replace(/\D/g, "").slice(0, 5),
         lat: Number(s.lat) || null,
         lon: Number(s.lon) || null,
-        miles: Number(s.eventMiles) || 20
+        state: String(s.state || "").trim(),
+        community: String(s.community || "").trim(),
+        miles: Number(s.eventMiles) || 25
       };
       try { localStorage.setItem("bw-pin", JSON.stringify(pin)); } catch (e) {}
       window.__homePin = pin;
       if (!pin.lat || !pin.lon) return pin;
       var body = JSON.stringify(pin);
-      ["/pin", location.origin + "/pin"].forEach(function (url) {
-        try { fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body }).catch(function () {}); } catch (e2) {}
+      var urls = ["/pin", "/pins"];
+      try { if (location.origin) { urls.push(location.origin + "/pin"); urls.push(location.origin + "/pins"); } } catch (e0) {}
+      urls.forEach(function (url) {
+        try {
+          fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body, keepalive: true }).catch(function () {});
+        } catch (e2) {}
       });
       return pin;
     }
@@ -17217,7 +17223,7 @@ function paintTakeoutDeals() {
         loadBuzzPack(function () {
           loadHappyHours(function () {
             paintDealStack("today-deal", "today-deal-col", "hh",
-              "No published happy-hour specials within 25 miles of the pin right now. This card waits for a posted deal or coupon, not just a top-rated restaurant.",
+              "No published happy-hour specials within 25 miles of this pin yet. The hunt runs after this device posts the pin; try again after the next refresh.",
               "eat-deal");
           });
         });
@@ -17282,7 +17288,7 @@ function paintTakeoutDeals() {
       function paintShopDeal() {
         loadBuzzPack(function () {
           paintDealStack("today-shop", "today-shop-col", "shop",
-            "No store within 25 miles of the pin is advertising a sale or coupon right now.",
+            "No store sale on file for this pin yet. A new address waits for the next hunt.",
             "shop-deal");
         });
       }
@@ -27192,6 +27198,7 @@ function homeCountyGuess() {
     }
     if (typeof applyLang === "function") applyLang();
     if (typeof syncBriefToWeatherTicker === "function") syncBriefToWeatherTicker();
+    if (typeof publishHomePin === "function") publishHomePin();
     pollAlerts();
     setInterval(function () { if (!document.hidden && typeof placeSunMoonArc === "function") placeSunMoonArc(); }, 20000);
     try { lockForecastStrips(); } catch (eLock) {}
