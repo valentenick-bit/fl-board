@@ -3306,7 +3306,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1048</span>
+      <span class="hdr-ver" id="hdr-ver">v1049</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5198,7 +5198,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1048;
+    window.BOARD_VER = 1049;
 
     
     function communityShort() {
@@ -7490,10 +7490,22 @@ Cart shop:</textarea>
     function saveStormHist(map) {
       try { localStorage.setItem("commons-storm-hist", JSON.stringify(map)); } catch (e) {}
     }
+    function stormAtcfId(s) {
+      if (!s) return "";
+      var blob = [s.id, s.stormId, s.StormId, s.binNumber, s.basinPlusNumber,
+        s.publicAdvisory && s.publicAdvisory.stormId,
+        s.forecastAdvisory && s.forecastAdvisory.stormId,
+        window.__hurrAdvText, window.__nhcDiscText].filter(Boolean).join(" ");
+      var m = String(blob).toUpperCase().match(/\b(AL|EP|CP|WP)(\d{2})(\d{4})\b/);
+      if (m) return m[1].toLowerCase() + m[2] + m[3];
+      var id = String((s.id || s.stormId || s.StormId || "")).toLowerCase().replace(/[^a-z0-9]/g, "");
+      m = id.match(/([a-z]{2})(\d{2})(\d{4})/);
+      return m ? m[1] + m[2] + m[3] : "";
+    }
     function stormAtcfFile(s) {
       if (!s) return "";
-      var id = String((s.id || s.stormId || s.StormId || "")).toLowerCase().replace(/[^a-z0-9]/g, "");
-      var m = id.match(/([a-z]{2})(\d{2})(\d{4})/);
+      var id = stormAtcfId(s);
+      var m = String(id).match(/([a-z]{2})(\d{2})(\d{4})/);
       if (m) return "b" + m[1] + m[2] + m[3] + ".dat";
       var name = String(s.name || s.Name || "").toLowerCase().replace(/[^a-z]/g, "");
       if (!name || name === "center" || name === "invest") return "";
@@ -7670,32 +7682,76 @@ Cart shop:</textarea>
         finish(row ? [row] : []);
       }).catch(function () { finish([]); });
     }
-        function loadStormBtk(s, done) {
+        function loadArchiveFixes(s, done) {
+      var id = typeof stormAtcfId === "function" ? stormAtcfId(s) : "";
+      var m = String(id).match(/([a-z]{2})(\d{2})(\d{4})/);
+      if (!m) { if (done) done([]); return; }
+      var basin = m[1], num = m[2], year = m[3];
+      var last = Number((s && s.publicAdvisory && s.publicAdvisory.advNum) || (window.__stormAdvNum) || 12) || 12;
+      if (last < 4) last = 9;
+      if (last > 40) last = 40;
+      var left = last, rows = [];
+      function finish() {
+        rows.sort(function (a, b) { return a.t - b.t; });
+        if (done) done(rows);
+      }
+      for (var n = 1; n <= last; n++) {
+        (function (adv) {
+          var pad = ("00" + adv).slice(-3);
+          var page = "https://www.nhc.noaa.gov/archive/" + year + "/" + basin + num + "/" + basin + num + year + ".public." + pad + ".shtml";
+          var urls = [
+            (typeof location !== "undefined" && location.origin ? location.origin + "/nws-proxy?u=" + encodeURIComponent(page) : ""),
+            "https://corsproxy.io/?" + encodeURIComponent(page),
+            "https://api.allorigins.win/raw?url=" + encodeURIComponent(page)
+          ].filter(Boolean);
+          function tryU(i) {
+            if (i >= urls.length) { if (--left <= 0) finish(); return; }
+            fetchQuick(urls[i], 4500).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+              var row = typeof parseNhcPublicAdv === "function" ? parseNhcPublicAdv(txt) : null;
+              if (row && row.t) rows.push({ t: row.t, wind: row.wind, kt: row.wind != null ? row.wind / 1.15078 : null, pres: row.pres, lat: row.lat, lon: row.lon, adv: row.adv });
+              if (--left <= 0) finish();
+            }).catch(function () { tryU(i + 1); });
+          }
+          tryU(0);
+        })(n);
+      }
+    }
+    function loadStormBtk(s, done) {
       var file = stormAtcfFile(s);
-      if (!file) { if (done) done([]); return; }
-      if (window.__btkAt && window.__btkFile === file && Date.now() - window.__btkAt < 20 * 60 * 1000 && window.__btkPts) {
+      function usePts(pts, via) {
+        pts = pts || [];
+        if (pts.length) {
+          window.__btkFile = file || via || "adv";
+          window.__btkAt = Date.now();
+          window.__btkPts = pts;
+          mergeStormHistPoints(s, pts);
+        }
+        if (typeof noteFeed === "function") noteFeed("storm-hist", !!pts.length, (s && s.name || file || "storm") + " · " + pts.length + " official fixes");
+        if (done) done(pts);
+      }
+      if (window.__btkAt && window.__btkFile === file && window.__btkPts && window.__btkPts.length && Date.now() - window.__btkAt < 20 * 60 * 1000) {
         mergeStormHistPoints(s, window.__btkPts);
         if (done) done(window.__btkPts);
         return;
       }
       var raw = "https://ftp.nhc.noaa.gov/atcf/btk/" + file;
-      var urls = [
-        raw,
-        "https://corsproxy.io/?" + encodeURIComponent(raw),
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent(raw),
-        "https://r.jina.ai/http://ftp.nhc.noaa.gov/atcf/btk/" + file
-      ];
+      var urls = [];
+      try {
+        if (location && location.origin) urls.push(location.origin + "/atcf?file=" + encodeURIComponent(file));
+      } catch (e0) {}
+      urls.push("https://commons.valente-nick.workers.dev/atcf?file=" + encodeURIComponent(file));
+      urls.push("https://corsproxy.io/?" + encodeURIComponent(raw));
+      urls.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(raw));
       function next(i) {
-        if (i >= urls.length) { if (done) done([]); return; }
-        fetchQuick(urls[i], 5000).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+        if (!file || i >= urls.length) {
+          loadArchiveFixes(s, function (rows) { usePts(rows, "archive"); });
+          return;
+        }
+        fetchQuick(urls[i], 6000).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
           if (!txt || txt.length < 40 || /<html/i.test(txt)) return next(i + 1);
           var pts = parseAtcfBtk(txt);
-          window.__btkFile = file;
-          window.__btkAt = Date.now();
-          window.__btkPts = pts;
-          mergeStormHistPoints(s, pts);
-          if (typeof noteFeed === "function") noteFeed("storm-hist", !!pts.length, (s.name || file) + " · " + pts.length + " fixes");
-          if (done) done(pts);
+          if (!pts || !pts.length) return next(i + 1);
+          usePts(pts, file);
         }).catch(function () { next(i + 1); });
       }
       next(0);
@@ -13519,7 +13575,7 @@ function currentRotation() {
         fetch(tries[i++], { cache: "no-store", signal: ctrl && ctrl.signal }).then(function (r) { return r.text(); }).then(function (raw) {
           clearTimeout(to);
           var tx = nhcExtractText(raw);
-          if (looksOfficialNhc(tx)) return done(tx);
+          if (looksOfficialNhc(tx)) { window.__hurrAdvText = tx; return done(tx); }
           next();
         }).catch(function () { clearTimeout(to); next(); });
       }

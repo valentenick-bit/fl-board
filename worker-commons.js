@@ -214,6 +214,27 @@ export default {
     if (url.pathname === "/pin" || url.pathname === "/pins") {
       return handlePins(request, env);
     }
+    if (url.pathname === "/atcf") {
+      const hdr = { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
+      const file = String(url.searchParams.get("file") || "").replace(/[^a-z0-9.]/gi, "");
+      if (!/^b[a-z]{2}\d{6}\.dat$/i.test(file)) {
+        return new Response("bad file", { status: 400, headers: hdr });
+      }
+      const srcs = [
+        "https://ftp.nhc.noaa.gov/atcf/btk/" + file,
+        "http://ftp.nhc.noaa.gov/atcf/btk/" + file
+      ];
+      for (const src of srcs) {
+        try {
+          const r = await fetch(src, { headers: { "User-Agent": "CommonsBoard/1.0 (atcf)" }, cf: { cacheTtl: 120 } });
+          if (!r.ok) continue;
+          const txt = await r.text();
+          if (txt && txt.length > 40 && !/<html/i.test(txt)) return new Response(txt, { status: 200, headers: hdr });
+        } catch (e) {}
+      }
+      return new Response("", { status: 502, headers: hdr });
+    }
     if (url.pathname === "/brief") {
       const hdr = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
       if (request.method === "OPTIONS") return new Response(null, { headers: hdr });
