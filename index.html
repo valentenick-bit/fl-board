@@ -3295,7 +3295,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1042</span>
+      <span class="hdr-ver" id="hdr-ver">v1043</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5181,7 +5181,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1042;
+    window.BOARD_VER = 1043;
 
     
     function communityShort() {
@@ -5665,7 +5665,16 @@ Cart shop:</textarea>
       Object.keys(part || {}).forEach(function (k) { s[k] = part[k]; });
       try { localStorage.setItem("bw-set", JSON.stringify(s)); } catch (e) {}
       var after = [s.address, s.lat, s.lon, s.zip, s.place, s.eventMiles].join("|");
-      if (after !== before && typeof publishHomePin === "function") publishHomePin(s);
+      if (after !== before) {
+        window.__hhDeals = null;
+        window.__hhDealsKey = "";
+        window.__coupons = null;
+        window.__shopDeals = null;
+        window.__buzz = window.__buzz || {};
+        window.__buzz.key = "";
+        window.__buzz.at = 0;
+        if (typeof publishHomePin === "function") publishHomePin(s);
+      }
       if (typeof applyA11y === "function") applyA11y();
       return s;
     }
@@ -16813,6 +16822,25 @@ function currentRotation() {
         if (kind === "shop") return /%\s*off|clearance|bogo|warehouse sale|weekly ad|rewards|\$5 back|markdown/.test(t);
         return false;
       }
+      function dealPinKey() {
+        var s = typeof getSet === "function" ? getSet() : {};
+        return String(s.zip || "") + "|" + Number(s.lat || 0).toFixed(3) + "|" + Number(s.lon || 0).toFixed(3);
+      }
+      function dealNearPin(r, miles) {
+        if (!r) return false;
+        miles = Number(miles || 25) || 25;
+        var s = typeof getSet === "function" ? getSet() : {};
+        var zip = String(s.zip || "").replace(/\D/g, "").slice(0, 5);
+        if (r.lat != null && r.lon != null && isFinite(Number(r.lat)) && isFinite(Number(r.lon)) && typeof milesOf === "function") {
+          r.miles = milesOf(Number(r.lat), Number(r.lon));
+          return r.miles <= miles;
+        }
+        var rz = String(r.zip || "").replace(/\D/g, "").slice(0, 5);
+        if (zip && rz && rz === zip) return true;
+        var addr = String(r.addr || r.where || r.area || "");
+        if (zip && addr.indexOf(zip) >= 0) return true;
+        return false;
+      }
       function pinDealRows(kind) {
         var miles = Number((typeof getSet === "function" && getSet().eventMiles) || 25) || 25;
         var seen = {};
@@ -16823,9 +16851,8 @@ function currentRotation() {
           if (!looksLikeDeal(text, kind)) return;
           var k = dealNameKey(r.name);
           if (!k || seen[k]) return;
+          if (!dealNearPin(r, miles)) return;
           var mi = r.miles;
-          if (mi == null && r.lat != null && typeof milesOf === "function") mi = milesOf(r.lat, r.lon);
-          if (mi != null && mi > miles) return;
           seen[k] = 1;
           out.push({
             name: r.name,
@@ -16991,7 +17018,7 @@ function paintTakeoutDeals() {
         var zipNow = String((typeof getSet === "function" && getSet().zip) || "").replace(/\D/g, "").slice(0, 5);
         var urls = [];
         if (zipNow.length === 5 && typeof gitFileUrls === "function") urls = urls.concat(gitFileUrls("coupons-" + zipNow + ".json"));
-        urls = urls.concat(typeof gitFileUrls === "function" ? gitFileUrls("coupons.json") : ["./coupons.json"]);
+        /* zip file only — never a generic coupons.json from another pin */
         function next(i) {
           if (i >= urls.length) { finish(seedTakeoutCoupons()); return; }
           fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
@@ -17060,15 +17087,18 @@ function paintTakeoutDeals() {
         return Object.keys(by).map(function (k) { return by[k]; });
       }
       function loadHappyHours(cb) {
-        if (window.__hhDeals && window.__hhDeals.length) { if (cb) cb(window.__hhDeals); return; }
+        var pinKey = dealPinKey();
+        if (window.__hhDealsKey === pinKey && window.__hhDeals && window.__hhDeals.length) { if (cb) cb(window.__hhDeals); return; }
+        window.__hhDeals = [];
+        window.__hhDealsKey = pinKey;
         var zipNow = String((typeof getSet === "function" && getSet().zip) || "").replace(/\D/g, "").slice(0, 5);
         var names = [];
         if (zipNow.length === 5) names.push("deals-" + zipNow + ".json");
-        names.push("deals.json");
         var urls = [];
         names.forEach(function (n) { urls = urls.concat(typeof gitFileUrls === "function" ? gitFileUrls(n) : [n]); });
         function done(list) {
-          window.__hhDeals = mergeHappyHours(list);
+          window.__hhDeals = mergeHappyHours(list).filter(function (r) { return dealNearPin(r, Number((getSet() || {}).eventMiles || 25)); });
+          window.__hhDealsKey = pinKey;
           if (cb) cb(window.__hhDeals);
         }
         (function next(i) {
