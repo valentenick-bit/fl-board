@@ -3295,7 +3295,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1043</span>
+      <span class="hdr-ver" id="hdr-ver">v1044</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5181,7 +5181,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1043;
+    window.BOARD_VER = 1044;
 
     
     function communityShort() {
@@ -5659,6 +5659,46 @@ Cart shop:</textarea>
       });
       return pin;
     }
+
+    function devicePinKey() {
+      var s = typeof getSet === "function" ? getSet() : {};
+      return [String(s.zip || ""), Number(s.lat || 0).toFixed(4), Number(s.lon || 0).toFixed(4), String(s.place || "")].join("|");
+    }
+    function wipePinScopedCaches() {
+      window.__hhDeals = null;
+      window.__hhDealsKey = "";
+      window.__coupons = null;
+      window.__shopDeals = null;
+      window.__buzz = { key: "", at: 0, hot: [], table: [], hh: [], shop: [] };
+      window.__eats = [];
+      window.__eatPool = [];
+      window.__eatPick = null;
+      window.__eatPinKey = "";
+      window.__eatBag = null;
+      window.__golfs = [];
+      window.__golfPool = [];
+      window.__golfPick = null;
+      window.__ent = [];
+      window.__entAll = [];
+      window.__entBag = null;
+      window.__localEvents = [];
+      window.__events = [];
+      window.__hours = [];
+      window.__nwsDays = [];
+      window.__nwsToday = {};
+      window.__om = null;
+      window.__omCurrent = null;
+      window.__nowWx = {};
+      window.__wxClimate = null;
+      window.__obsStation = null;
+      window.__riverGauge = null;
+      window.__radioWant = { url: "", label: "" };
+      window.__radioPinSeen = "";
+      window.__fillZipRadio = 0;
+      window.__yestTempF = null;
+      try { localStorage.removeItem("bw-eats-live"); } catch (e1) {}
+      try { localStorage.removeItem("bw-golf-live"); } catch (e2) {}
+    }
     function putSet(part) {
       var s = getSet();
       var before = [s.address, s.lat, s.lon, s.zip, s.place, s.eventMiles].join("|");
@@ -5666,13 +5706,7 @@ Cart shop:</textarea>
       try { localStorage.setItem("bw-set", JSON.stringify(s)); } catch (e) {}
       var after = [s.address, s.lat, s.lon, s.zip, s.place, s.eventMiles].join("|");
       if (after !== before) {
-        window.__hhDeals = null;
-        window.__hhDealsKey = "";
-        window.__coupons = null;
-        window.__shopDeals = null;
-        window.__buzz = window.__buzz || {};
-        window.__buzz.key = "";
-        window.__buzz.at = 0;
+        if (typeof wipePinScopedCaches === "function") wipePinScopedCaches();
         if (typeof publishHomePin === "function") publishHomePin(s);
       }
       if (typeof applyA11y === "function") applyA11y();
@@ -17829,7 +17863,6 @@ function paint() {
         var zipNow = String((typeof getSet === "function" && getSet().zip) || "").replace(/\D/g, "").slice(0, 5);
         var names = [];
         if (zipNow.length === 5) names.push("events-" + zipNow + ".json");
-        names.push("events.json");
         var urls = [];
         names.forEach(function (n) { urls = urls.concat(gitFileUrls(n)); });
         var gotZip = false;
@@ -17841,6 +17874,8 @@ function paint() {
           }
           fetch(urls[i]).then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (d) {
             var fromZipFile = /events-\d{5}\.json/i.test(String(urls[i] || ""));
+            var fileZip = String((d && d.zip) || "").replace(/\D/g, "").slice(0, 5);
+            if (fileZip && zipNow && fileZip !== zipNow) throw new Error("other pin");
             var rows = (d && d.events) || [];
             var parsed = rows.map(function (e) {
               var when = new Date(e.when);
