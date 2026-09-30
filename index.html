@@ -3295,7 +3295,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1041</span>
+      <span class="hdr-ver" id="hdr-ver">v1042</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3396,6 +3396,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <span id="greet-next"></span>
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for today&rsquo;s details</small>
+        </div>
+        <div class="card" id="wx-records">
+          <b>This date</b>
+          <span id="wx-records-body">Looking up the climate for this pin…</span>
         </div>
         <div class="daily-bits" id="today-bits">
           <div class="card joke-card" id="today-joke" hidden>
@@ -3580,6 +3584,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <div class="metric-row"><label>Peak wind</label><div><strong id="live-wind-peak">—</strong><small id="live-wind-peak-note"></small></div></div>
           </div>
           <div class="metric-row has-chart"><label>Temp</label><strong id="live-temp-row">—</strong><div class="metric-spark hist" id="temp-chart"></div></div>
+          <div class="metric-row"><label>This date</label><strong id="live-records">—</strong></div>
           <div class="metric-row has-chart"><label>Feels</label><strong id="live-feels-row">—</strong><div class="metric-spark hist" id="feel-chart"></div></div>
           <div class="metric-row has-chart"><label>Rain 24h</label><strong id="live-rain-24">—</strong><div class="metric-spark hist" id="rain-chart"></div></div>
           <div class="metric-row has-chart"><label>Rain month</label><strong id="live-rain-mo">—</strong><div class="metric-spark hist" id="rainmo-chart"></div></div>
@@ -4224,7 +4229,7 @@ Cart shop:</textarea>
         </div>
         <div class="card">
           <b>Weather records</b>
-          <span class="stamp">Context next to today’s number, not a trivia dump.</span>
+          <span class="stamp">Live 29 Sep 2026. Short card on Today plus a This date row on Weather. ERA5 archive at the pin.</span>
           <ul class="check-list">
             <li>Record high and record low for this date at the home pin (NWS/NCEI climate normal station nearest the address).</li>
             <li>Show whether today is near, at, or past that record. Same for overnight low.</li>
@@ -5176,7 +5181,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1041;
+    window.BOARD_VER = 1042;
 
     
     function communityShort() {
@@ -8211,6 +8216,7 @@ Cart shop:</textarea>
       var tideName = s.tideName || tide;
       var rows = [
         { id:"wx-now", page:"Weather", stat:"Now (temp, feels, sky)", primary:"Open-Meteo current at the home pin (10 m / 2 m model)", backup:"NWS hourly + nearest METAR; Google Weather if Maps toggle is on", feeds:["wx","gwx","now-line","greeting","live-temp","live-feels","live-sky"] },
+        { id:"wx-records", page:"Weather", stat:"This date (normal / record / last year)", primary:"Open-Meteo ERA5 archive daily max/min at the home pin, last 25 years, this calendar date", backup:"NWS climate station when a nearer official set exists", feeds:["wx-records","live-records"] },
         { id:"wind", page:"Weather", stat:"Wind and gusts", primary:"Open-Meteo current wind_speed_10m / wind_gusts_10m / wind_direction_10m at the pin", backup:"NWS hourly forecast wind text, then nearest METAR (often KBDL for 06074)", feeds:["wind","gusts","live-wind","live-wind-peak"] },
         { id:"humid", page:"Weather", stat:"Humidity, dew, pressure, UV", primary:"Open-Meteo current at the pin", backup:"NWS observation; Google Weather if Maps is on", feeds:["humidity","dew","pressure","uv"] },
         { id:"aqi", page:"Weather", stat:"Air quality", primary:"Open-Meteo air-quality (CAMS blend)", backup:"None", feeds:["aqi"] },
@@ -12275,6 +12281,10 @@ function currentRotation() {
             ? dlt + "° warmer than yesterday at this hour."
             : Math.abs(dlt) + "° cooler than yesterday at this hour.");
         }
+      }
+      var clim = window.__wxClimate;
+      if (clim && clim.recHi != null && wx.temp != null && Number(wx.temp) >= clim.recHi - 1) {
+        bits.push("Air temperature is within a degree of the record high for this date (" + clim.recHi + "°" + (clim.recHiYear ? " in " + clim.recHiYear : "") + ").");
       }
 
       var todayP = window.__nwsToday || {};
@@ -24028,6 +24038,150 @@ function wxSvg(kind, box) {
     }
 
     window.loadWx = refreshWeather;
+
+    function climateMd(d) {
+      d = d instanceof Date ? d : new Date();
+      return ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+    }
+    function loadWxRecords() {
+      if (!isFinite(homeLat()) || !isFinite(homeLon())) return;
+      var md = climateMd(typeof recNowET === "function" ? recNowET() : new Date());
+      var key = "wx-clim:" + homeLat().toFixed(2) + "," + homeLon().toFixed(2) + ":" + md;
+      try {
+        var cached = JSON.parse(localStorage.getItem(key) || "null");
+        if (cached && cached.at && Date.now() - cached.at < 18 * 3600000) {
+          window.__wxClimate = cached;
+          paintWxRecords(cached);
+          return;
+        }
+      } catch (eC) {}
+      var now = typeof recNowET === "function" ? recNowET() : new Date();
+      if (!(now instanceof Date)) now = new Date();
+      var y = now.getFullYear();
+      var start = (y - 25) + "-01-01";
+      var yest = new Date(now.getTime() - 86400000);
+      var end = yest.getFullYear() + "-" + ("0" + (yest.getMonth() + 1)).slice(-2) + "-" + ("0" + yest.getDate()).slice(-2);
+      var url = "https://archive-api.open-meteo.com/v1/archive?latitude=" + homeLat() + "&longitude=" + homeLon() +
+        "&start_date=" + start + "&end_date=" + end +
+        "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&temperature_unit=fahrenheit&timezone=America%2FNew_York";
+      fetch(url, { cache: "default" }).then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (d) {
+        var times = (d && d.daily && d.daily.time) || [];
+        var hi = (d.daily && d.daily.temperature_2m_max) || [];
+        var lo = (d.daily && d.daily.temperature_2m_min) || [];
+        var pr = (d.daily && d.daily.precipitation_sum) || [];
+        var same = [];
+        var recHi = -Infinity, recHiYear = "", recLo = Infinity, recLoYear = "";
+        var lastYearHi = null, lastYearLo = null;
+        var yHi = null, yLo = null;
+        var monthHi = -Infinity, monthHiDay = "", yearHi = -Infinity, yearHiDate = "", yearLo = Infinity, yearLoDate = "";
+        var lastFreeze = "", last90 = "", last100 = "";
+        var wetMonth = -Infinity, wetDate = "";
+        var ymdYest = end;
+        var thisMonth = ("0" + (now.getMonth() + 1)).slice(-2);
+        for (var i = 0; i < times.length; i++) {
+          var ds = String(times[i] || "");
+          var maxT = Number(hi[i]), minT = Number(lo[i]), rain = Number(pr[i]);
+          if (ds.slice(5) === md && isFinite(maxT)) {
+            same.push({ y: ds.slice(0, 4), hi: maxT, lo: minT });
+            if (maxT > recHi) { recHi = maxT; recHiYear = ds.slice(0, 4); }
+            if (isFinite(minT) && minT < recLo) { recLo = minT; recLoYear = ds.slice(0, 4); }
+            if (ds.slice(0, 4) === String(y - 1)) { lastYearHi = maxT; lastYearLo = minT; }
+          }
+          if (ds === ymdYest) { yHi = maxT; yLo = minT; }
+          if (ds.slice(0, 4) === String(y)) {
+            if (isFinite(maxT) && maxT > yearHi) { yearHi = maxT; yearHiDate = ds; }
+            if (isFinite(minT) && minT < yearLo) { yearLo = minT; yearLoDate = ds; }
+            if (ds.slice(5, 7) === thisMonth && isFinite(maxT) && maxT > monthHi) { monthHi = maxT; monthHiDay = ds; }
+            if (ds.slice(5, 7) === thisMonth && isFinite(rain) && rain > wetMonth) { wetMonth = rain; wetDate = ds; }
+          }
+          if (isFinite(minT) && minT <= 32) lastFreeze = ds;
+          if (isFinite(maxT) && maxT >= 90) last90 = ds;
+          if (isFinite(maxT) && maxT >= 100) last100 = ds;
+        }
+        if (!same.length) throw new Error("no same-date rows");
+        var nHi = 0, nLo = 0, cHi = 0, cLo = 0;
+        same.forEach(function (r) {
+          if (isFinite(r.hi)) { nHi += r.hi; cHi++; }
+          if (isFinite(r.lo)) { nLo += r.lo; cLo++; }
+        });
+        var out = {
+          at: Date.now(), pin: homePlace(), md: md, years: same.length,
+          normalHi: cHi ? Math.round(nHi / cHi) : null,
+          normalLo: cLo ? Math.round(nLo / cLo) : null,
+          recHi: isFinite(recHi) ? Math.round(recHi) : null,
+          recHiYear: recHiYear,
+          recLo: isFinite(recLo) ? Math.round(recLo) : null,
+          recLoYear: recLoYear,
+          lastYearHi: lastYearHi != null ? Math.round(lastYearHi) : null,
+          lastYearLo: lastYearLo != null ? Math.round(lastYearLo) : null,
+          yHi: yHi != null && isFinite(yHi) ? Math.round(yHi) : null,
+          yLo: yLo != null && isFinite(yLo) ? Math.round(yLo) : null,
+          monthHi: isFinite(monthHi) && monthHi > -100 ? Math.round(monthHi) : null,
+          monthHiDay: monthHiDay,
+          yearHi: isFinite(yearHi) && yearHi > -100 ? Math.round(yearHi) : null,
+          yearHiDate: yearHiDate,
+          yearLo: isFinite(yearLo) && yearLo < 200 ? Math.round(yearLo) : null,
+          yearLoDate: yearLoDate,
+          lastFreeze: lastFreeze,
+          last90: last90,
+          last100: last100,
+          wetMonth: isFinite(wetMonth) && wetMonth > 0 ? (Math.round(wetMonth * 100) / 100) : null,
+          wetDate: wetDate
+        };
+        window.__wxClimate = out;
+        try { localStorage.setItem(key, JSON.stringify(out)); } catch (eS) {}
+        paintWxRecords(out);
+        if (typeof noteFeed === "function") noteFeed("wx-records", true, "normal " + out.normalHi + "/" + out.normalLo + " · rec " + out.recHi);
+      }).catch(function () {
+        if (typeof noteFeed === "function") noteFeed("wx-records", false, "archive unavailable");
+        var el = document.getElementById("wx-records-body");
+        if (el) el.textContent = "Climate archive did not return for this pin yet.";
+      });
+    }
+    function fmtClimDate(iso) {
+      if (!iso) return "";
+      var p = String(iso).split("-");
+      if (p.length < 3) return iso;
+      var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return months[Number(p[1]) - 1] + " " + Number(p[2]);
+    }
+    function paintWxRecords(c) {
+      c = c || window.__wxClimate;
+      var body = document.getElementById("wx-records-body");
+      var row = document.getElementById("live-records");
+      if (!c || !c.normalHi) {
+        if (body && !c) body.textContent = "Looking up the climate for this pin…";
+        return;
+      }
+      var todayHi = null;
+      var todayP = window.__nwsToday || {};
+      if (todayP.temperature != null) todayHi = Number(todayP.temperature);
+      if (!isFinite(todayHi) && window.__tenRows && window.__tenRows[0]) todayHi = Number(window.__tenRows[0].hi);
+      var bits = [];
+      bits.push("Normal here on this date is " + c.normalHi + "° / " + c.normalLo + "°, from " + c.years + " years at this pin.");
+      bits.push("Record high " + c.recHi + "°" + (c.recHiYear ? " in " + c.recHiYear : "") + ", record low " + c.recLo + "°" + (c.recLoYear ? " in " + c.recLoYear : "") + ".");
+      if (c.lastYearHi != null) bits.push("Last year this date was " + c.lastYearHi + "° / " + c.lastYearLo + "°.");
+      if (c.yHi != null) bits.push("Yesterday finished " + c.yHi + "° / " + c.yLo + "°.");
+      if (isFinite(todayHi) && c.recHi != null && todayHi >= c.recHi - 1) {
+        bits.push(todayHi > c.recHi
+          ? "Today’s forecast high of " + Math.round(todayHi) + "° would break the record."
+          : "Today’s forecast high of " + Math.round(todayHi) + "° is right on the record.");
+      } else if (isFinite(todayHi) && c.normalHi != null) {
+        var off = Math.round(todayHi) - c.normalHi;
+        if (Math.abs(off) >= 3) bits.push("The forecast high is " + Math.abs(off) + "° " + (off > 0 ? "above" : "below") + " a normal day.");
+      }
+      var extra = [];
+      if (c.monthHi != null) extra.push("hottest this month " + c.monthHi + "°" + (c.monthHiDay ? " on " + fmtClimDate(c.monthHiDay) : ""));
+      if (c.yearHi != null) extra.push("hottest this year " + c.yearHi + "°" + (c.yearHiDate ? " on " + fmtClimDate(c.yearHiDate) : ""));
+      if (c.lastFreeze) extra.push("last freeze " + fmtClimDate(c.lastFreeze));
+      if (c.last90) extra.push("last 90° day " + fmtClimDate(c.last90));
+      if (c.last100) extra.push("last 100° day " + fmtClimDate(c.last100));
+      if (c.wetMonth) extra.push("wettest day this month " + c.wetMonth + "\" on " + fmtClimDate(c.wetDate));
+      if (extra.length) bits.push(extra.join(" · ") + ".");
+      if (body) body.textContent = bits.join(" ");
+      if (row) row.textContent = c.normalHi + "° / " + c.normalLo + "° normal · rec " + c.recHi + "° / " + c.recLo + "°";
+    }
+
     function refreshWeather() {
       if (!isFinite(homeLat()) || !isFinite(homeLon())) return;
       var hdr = { "Accept": "application/geo+json", "User-Agent": "CommonsBoard/1.0 (valente.nick@gmail.com)" };
@@ -24291,6 +24445,7 @@ function wxSvg(kind, box) {
             }).join("");
             if (typeof lockForecastStrips === "function") lockForecastStrips();
             if (typeof writeBriefingSoon === "function") writeBriefingSoon();
+            if (typeof loadWxRecords === "function") loadWxRecords();
           }
           if (days.length && document.querySelector(".tenday")) {
             var td = document.querySelector(".tenday");
