@@ -3295,7 +3295,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1044</span>
+      <span class="hdr-ver" id="hdr-ver">v1045</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4212,7 +4212,7 @@ Cart shop:</textarea>
 
         <div class="card">
           <b>Settings still unfinished</b>
-          <span class="stamp">Controls that save but do not finish the job.</span>
+          <span class="stamp">Live 29 Sep 2026. Pause, mute, and radio follow this device. Chrome language for dock/greetings. No home-pin timezone.</span>
           <ul class="check-list">
             <li>Translate the whole board when Language changes. Dates and times follow the language now. Labels, menus, greetings, and tickers stay English until there is a string catalog.</li>
             <li>Time zone override. Clock follows the device. Add Home time vs Device time if someone opens the board from another state and still wants Florida clocks.</li>
@@ -5181,7 +5181,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1044;
+    window.BOARD_VER = 1045;
 
     
     function communityShort() {
@@ -5485,6 +5485,43 @@ Cart shop:</textarea>
       horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device",
       jokeDay: "1"
     };
+
+    window.BOARD_I18N = {
+      en: { today:"Today", weather:"Weather", land:"Land", sea:"Sea", sky:"Sky", community:"Community", events:"Events", restaurants:"Restaurants", golf:"Golf", house:"House", settings:"Settings", mute:"Mute", radio:"Radio", pause:"Pause rotation", resume:"Resume rotation", goodMorning:"Good morning", goodAfternoon:"Good afternoon", goodEvening:"Good evening" },
+      es: { today:"Hoy", weather:"Tiempo", land:"Tierra", sea:"Mar", sky:"Cielo", community:"Comunidad", events:"Eventos", restaurants:"Restaurantes", golf:"Golf", house:"Casa", settings:"Ajustes", mute:"Silenciar", radio:"Radio", pause:"Pausar rotación", resume:"Reanudar rotación", goodMorning:"Buenos días", goodAfternoon:"Buenas tardes", goodEvening:"Buenas noches" },
+      fr: { today:"Aujourd’hui", weather:"Météo", land:"Terre", sea:"Mer", sky:"Ciel", community:"Communauté", events:"Événements", restaurants:"Restaurants", golf:"Golf", house:"Maison", settings:"Réglages", mute:"Muet", radio:"Radio", pause:"Pause", resume:"Reprendre", goodMorning:"Bonjour", goodAfternoon:"Bon après-midi", goodEvening:"Bonsoir" }
+    };
+    function boardLang() {
+      var raw = String((typeof getSet === "function" && getSet().lang) || "device");
+      if (raw === "device") raw = String(navigator.language || "en");
+      raw = raw.toLowerCase();
+      if (window.BOARD_I18N[raw]) return raw;
+      var short = raw.split("-")[0];
+      return window.BOARD_I18N[short] ? short : "en";
+    }
+    function t(key) {
+      var pack = (window.BOARD_I18N && window.BOARD_I18N[boardLang()]) || window.BOARD_I18N.en;
+      return (pack && pack[key]) || (window.BOARD_I18N.en && window.BOARD_I18N.en[key]) || key;
+    }
+    function applyLang() {
+      var lang = boardLang();
+      document.documentElement.lang = lang;
+      var dockMap = { now:"today", tenday:"weather", land:"land", marine:"sea", sky:"sky", comm:"community", ent:"events", eats:"restaurants", golf:"golf", house:"house" };
+      document.querySelectorAll("#dock button[data-p]").forEach(function (btn) {
+        var key = dockMap[btn.getAttribute("data-p")];
+        if (key) btn.textContent = t(key);
+      });
+      var pauseMenu = document.getElementById("pausemenu");
+      if (pauseMenu) pauseMenu.textContent = window.__paused ? t("resume") : t("pause");
+      var greet = document.getElementById("greet-hi");
+      if (greet) {
+        var g = (greet.textContent || "").trim();
+        if (/^good morning/i.test(g)) greet.textContent = t("goodMorning");
+        else if (/^good afternoon/i.test(g)) greet.textContent = t("goodAfternoon");
+        else if (/^good evening/i.test(g)) greet.textContent = t("goodEvening");
+      }
+    }
+
     function getSet() {
       var s = {};
       try { s = JSON.parse(localStorage.getItem("bw-set") || "{}") || {}; } catch (e) { s = {}; }
@@ -9777,16 +9814,21 @@ function currentRotation() {
     function radioByPin() {
       try { return JSON.parse(localStorage.getItem("bw-radio-pin") || "{}") || {}; } catch (e) { return {}; }
     }
-    function saveRadioForPin(url, label) {
+    function saveRadioForPin(url, label, muted) {
       var all = radioByPin();
-      all[radioPinKey()] = { url: url == null ? "" : String(url), label: label || "" };
+      var prev = all[radioPinKey()] || {};
+      all[radioPinKey()] = {
+        url: url == null ? (prev.url || "") : String(url),
+        label: label || prev.label || "",
+        muted: muted == null ? !!prev.muted : !!muted
+      };
       try { localStorage.setItem("bw-radio-pin", JSON.stringify(all)); } catch (e) {}
     }
     function savedRadioRecForPin() {
       var rec = radioByPin()[radioPinKey()];
-      if (rec == null) return { url: "", label: "" };
-      if (typeof rec === "string") return { url: rec, label: "" };
-      return { url: rec.url || "", label: rec.label || "" };
+      if (rec == null) return { url: "", label: "", muted: false };
+      if (typeof rec === "string") return { url: rec, label: "", muted: false };
+      return { url: rec.url || "", label: rec.label || "", muted: !!rec.muted };
     }
     function savedRadioForPin() {
       return savedRadioRecForPin().url;
@@ -10094,13 +10136,16 @@ function currentRotation() {
         nwr.setAttribute("data-stream", typeof noaaUrl === "function" ? noaaUrl() : "");
         nwr.textContent = typeof noaaName === "function" ? noaaName() : "NOAA";
       }
-      var rec = typeof savedRadioRecForPin === "function" ? savedRadioRecForPin() : { url: "", label: "" };
+      var rec = typeof savedRadioRecForPin === "function" ? savedRadioRecForPin() : { url: "", label: "", muted: false };
+      window.__radioWant = { url: rec.url || "", label: rec.label || "" };
       var pinSaved = rec.url || "";
-      var want = (window.__radioWant && window.__radioWant.url) || "";
+      var want = rec.url || "";
       var audio = document.getElementById("radioPlayer");
       var live = (audio && (audio.getAttribute("src") || audio.src)) || "";
+      if (rec.muted) window.__radioMuted = true;
 
       if (window.__radioMuted && !window.__nwrAlert) {
+        if (typeof playStation === "function" && live) playStation("", "Mute", { keepSaved: true });
         if (typeof paintHdrRadio === "function") paintHdrRadio();
         return;
       }
@@ -10909,7 +10954,7 @@ function currentRotation() {
       var rec = typeof savedRadioRecForPin === "function" ? savedRadioRecForPin() : {};
       var want = window.__radioWant || {};
       if (radioIsPlaying()) {
-        if (typeof saveRadioForPin === "function") saveRadioForPin(want.url || rec.url, want.label || rec.label);
+        if (typeof saveRadioForPin === "function") saveRadioForPin(want.url || rec.url, want.label || rec.label, true);
         if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
       } else {
         var url = rec.url || want.url || "";
@@ -10924,6 +10969,8 @@ function currentRotation() {
           var first = document.querySelector('#radio-stations button[data-stream]:not([data-stream=""])');
           if (first) { url = first.getAttribute("data-stream") || ""; label = first.textContent || ""; }
         }
+        if (typeof saveRadioForPin === "function") saveRadioForPin(url, label, false);
+        if (typeof saveRadioForPin === "function") saveRadioForPin(url, label, false);
         if (typeof playStation === "function") playStation(url, label);
       }
       if (typeof paintHdrRadio === "function") paintHdrRadio();
@@ -13027,6 +13074,7 @@ function currentRotation() {
     window.togglePause = function () {
       window.__paused = !window.__paused;
       window.__holdPage = !!window.__paused;
+      try { localStorage.setItem("bw-paused", window.__paused ? "1" : "0"); } catch (ePs) {}
       var b = document.getElementById("pausebtn");
       var m = document.getElementById("pausemenu");
       if (b) { b.classList.toggle("on", window.__paused); b.textContent = window.__paused ? "▶" : "❚❚"; }
@@ -20070,7 +20118,7 @@ function mustEatsFL() {
       var langSel = document.getElementById("set-lang");
       if (langSel) langSel.addEventListener("change", function () {
         putSet({ lang: langSel.value || "device" });
-        document.documentElement.lang = (langSel.value && langSel.value !== "device") ? langSel.value : (navigator.language || "en");
+        if (typeof applyLang === "function") applyLang();
         if (typeof clock === "function") clock();
         if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras();
@@ -27133,11 +27181,17 @@ function homeCountyGuess() {
         t = setTimeout(function () { document.documentElement.classList.remove("scrolling"); }, 180);
       }, { passive: true });
     })();
-    try { sessionStorage.removeItem("bw-paused"); } catch (eBootP) {}
-    window.__paused = false;
-    window.__holdPage = false;
+    try {
+      window.__paused = localStorage.getItem("bw-paused") === "1";
+    } catch (eBootP) { window.__paused = false; }
+    window.__holdPage = !!window.__paused;
     var pb0 = document.getElementById("pausebtn");
-    if (pb0) { pb0.classList.remove("on"); pb0.textContent = "❚❚"; }
+    if (pb0) {
+      pb0.classList.toggle("on", window.__paused);
+      pb0.textContent = window.__paused ? "▶" : "❚❚";
+    }
+    if (typeof applyLang === "function") applyLang();
+    if (typeof syncBriefToWeatherTicker === "function") syncBriefToWeatherTicker();
     pollAlerts();
     setInterval(function () { if (!document.hidden && typeof placeSunMoonArc === "function") placeSunMoonArc(); }, 20000);
     try { lockForecastStrips(); } catch (eLock) {}
