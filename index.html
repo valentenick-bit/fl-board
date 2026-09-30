@@ -3295,7 +3295,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1046</span>
+      <span class="hdr-ver" id="hdr-ver">v1047</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5181,7 +5181,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1046;
+    window.BOARD_VER = 1047;
 
     
     function communityShort() {
@@ -7574,7 +7574,7 @@ Cart shop:</textarea>
       ];
       function next(i) {
         if (i >= urls.length) { if (done) done([]); return; }
-        fetch(urls[i], { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+        fetchQuick(urls[i], 5000).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
           if (!txt || txt.length < 40 || /<html/i.test(txt)) return next(i + 1);
           var pts = parseAtcfBtk(txt);
           window.__btkFile = file;
@@ -14143,11 +14143,27 @@ function currentRotation() {
         setTimeout(function () { if (!fromCharts()) return; }, 8000);
       });
     }
+    function fetchQuick(url, ms) {
+      ms = Number(ms) || 4000;
+      var ctrl = typeof AbortController === "function" ? new AbortController() : null;
+      var t = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} }, ms);
+      return fetch(url, { cache: "no-store", signal: ctrl ? ctrl.signal : undefined }).then(function (r) {
+        clearTimeout(t);
+        return r;
+      }).catch(function (err) {
+        clearTimeout(t);
+        throw err;
+      });
+    }
     function loadIssPasses() {
       var el = document.getElementById("live-iss");
       if (!el) return;
+      if (window.__issFail && Date.now() - window.__issFail < 30 * 60 * 1000) {
+        if (typeof noteFeed === "function") noteFeed("iss", true, "position only");
+        return;
+      }
       var url = "https://sat.terrestre.ar/passes/25544?lat=" + homeLat() + "&lon=" + homeLon() + "&limit=2";
-      fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (rows) {
+      fetchQuick(url, 4000).then(function (r) { return r.ok ? r.json() : null; }).then(function (rows) {
         var pass = rows && (rows[0] || rows.passes && rows.passes[0]);
         if (!pass) return Promise.reject();
         var rise = pass.rise || pass.start || pass.max || {};
@@ -14161,6 +14177,7 @@ function currentRotation() {
         el.textContent = bit;
         if (typeof noteFeed === "function") noteFeed("iss", true, bit);
       }).catch(function () {
+        window.__issFail = Date.now();
         if (typeof noteFeed === "function") noteFeed("iss", true, "position only");
       });
     }
