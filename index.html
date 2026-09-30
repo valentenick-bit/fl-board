@@ -2109,6 +2109,17 @@
       main { padding:12px 18px 8px; }
     }
 
+    .saved-homes { list-style:none; margin:8px 0 10px; padding:0; display:flex; flex-direction:column; gap:8px; }
+    .saved-home { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--hair,#c9c1b4); border-radius:10px; background:rgba(255,255,255,.55); }
+    .saved-home b { flex:1; font-size:14px; font-weight:600; }
+    .saved-home span { display:block; font-size:12px; font-weight:400; color:var(--muted,#5c6b7a); }
+    .saved-home button { flex:none; border:0; border-radius:8px; padding:6px 10px; cursor:pointer; font:inherit; font-size:13px; background:#e8dfcf; color:var(--navy,#1b2a4a); }
+    .saved-home button.use { background:#2a9d8f; color:#fff; }
+    .saved-home.on { outline:2px solid #2a9d8f; }
+    html.dark .saved-home { background:#1a2330; border-color:#6b7a8d; }
+    html.dark .saved-home span { color:#c5d0dc; }
+    html.dark .saved-home button { background:#2a3545; color:#f2efe8; }
+    html.dark .saved-home button.use { background:#2a9d8f; color:#fff; }
     .addr-suggest { list-style:none; margin:0 0 8px; padding:0; border:1px solid #c9c1b4; border-radius:10px; background:#fff; max-height:220px; overflow:auto; }
     .addr-suggest li { padding:10px 12px; cursor:pointer; border-bottom:1px solid #eee; font-size:14px; }
     .addr-suggest li:last-child { border-bottom:0; }
@@ -3295,7 +3306,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1047</span>
+      <span class="hdr-ver" id="hdr-ver">v1048</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5017,6 +5028,12 @@ Cart shop:</textarea>
         <input id="set-address" type="text" placeholder="Number, street, city, state" autocomplete="off" />
         <ul id="addr-suggest" class="addr-suggest" hidden></ul>
         <button type="button" id="set-address-go" class="done" style="margin:8px 0 10px">Use this address</button>
+        <button type="button" id="set-address-save" class="done" style="margin:0 0 10px">Save this address</button>
+        <div id="saved-homes-wrap">
+          <label>Saved homes</label>
+          <ul id="saved-homes" class="saved-homes"></ul>
+          <p class="hint">Tap a saved home to switch this device’s pin. Community name stays as set above. Type a new street below anytime.</p>
+        </div>
         <p class="hint" id="addr-pin-status">Any US street address. Tap Use this address so weather, events, restaurants, golf, and maps follow this device’s pin. Other phones and laptops keep their own address.</p>
         <div class="set-line"><label>Use Google Maps</label>
           <div class="set-row" id="set-gmapson">
@@ -5181,7 +5198,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1047;
+    window.BOARD_VER = 1048;
 
     
     function communityShort() {
@@ -5818,6 +5835,102 @@ Cart shop:</textarea>
       var a = homeAddress();
       if (/englewood,?\s*(oh|ohio)/i.test(a)) return false;
       return z.indexOf("342") === 0 || z.indexOf("339") === 0 || (/FL/i.test(st) && /englewood|venice|north port|port charlotte|rotonda/i.test(a + " " + (getSet().place || "")));
+    }
+
+    function homesList() {
+      try { return JSON.parse(localStorage.getItem("bw-homes") || "[]") || []; } catch (e) { return []; }
+    }
+    function saveHomesList(rows) {
+      try { localStorage.setItem("bw-homes", JSON.stringify((rows || []).slice(0, 12))); } catch (e) {}
+    }
+    function homeLabelOf(s) {
+      s = s || {};
+      var place = String(s.place || "").trim();
+      if (place) return place;
+      var addr = String(s.address || "").trim();
+      if (addr) return addr.split(",")[0];
+      return String(s.zip || "Saved home");
+    }
+    function homeRowId(s) {
+      s = s || {};
+      var zip = String(s.zip || "").replace(/\D/g, "").slice(0, 5);
+      var lat = Number(s.lat), lon = Number(s.lon);
+      if (zip && isFinite(lat) && isFinite(lon)) return zip + "|" + lat.toFixed(4) + "|" + lon.toFixed(4);
+      if (zip) return "zip:" + zip;
+      if (isFinite(lat) && isFinite(lon)) return lat.toFixed(4) + "," + lon.toFixed(4);
+      return String(s.address || "").toLowerCase().replace(/\s+/g, " ").trim();
+    }
+    function upsertSavedHome(s) {
+      s = s || (typeof getSet === "function" ? getSet() : {});
+      if (!s || !(Number(s.lat) || String(s.address || "").trim())) return;
+      var row = {
+        id: homeRowId(s),
+        label: homeLabelOf(s),
+        address: String(s.address || "").trim(),
+        zip: String(s.zip || "").replace(/\D/g, "").slice(0, 5),
+        lat: Number(s.lat) || "",
+        lon: Number(s.lon) || "",
+        place: String(s.place || "").trim(),
+        state: String(s.state || "").trim()
+      };
+      if (!row.id) return;
+      var all = homesList();
+      var i = all.findIndex(function (h) { return h && (h.id === row.id || (row.zip && h.zip === row.zip)); });
+      if (i >= 0) all[i] = Object.assign({}, all[i], row);
+      else all.unshift(row);
+      saveHomesList(all);
+      if (typeof paintSavedHomes === "function") paintSavedHomes();
+    }
+    function applySavedHome(id) {
+      var h = homesList().filter(function (r) { return r && r.id === id; })[0];
+      if (!h) return;
+      if (typeof wipePinScopedCaches === "function") wipePinScopedCaches();
+      putSet({
+        address: h.address || "",
+        pinFor: h.address || "",
+        lat: h.lat || "",
+        lon: h.lon || "",
+        zip: h.zip || "",
+        place: h.place || "",
+        state: h.state || "",
+        radar: "", wfo: "", tide: "", tideName: "", nwrCall: "", nwrName: "", nwrUrl: "", county: "", same: ""
+      });
+      var box = document.getElementById("set-address");
+      if (box) box.value = h.address || "";
+      if (h.lat && h.lon) {
+        if (typeof applyHomeFeeds === "function") applyHomeFeeds();
+        if (typeof paint === "function") paint();
+      } else if (typeof geocodeHome === "function") {
+        geocodeHome(function () {
+          if (typeof applyHomeFeeds === "function") applyHomeFeeds();
+          if (typeof paint === "function") paint();
+        });
+      }
+      paintSavedHomes();
+    }
+    function removeSavedHome(id) {
+      saveHomesList(homesList().filter(function (h) { return h && h.id !== id; }));
+      paintSavedHomes();
+    }
+    function paintSavedHomes() {
+      var box = document.getElementById("saved-homes");
+      if (!box) return;
+      var s = typeof getSet === "function" ? getSet() : {};
+      var cur = homeRowId(s);
+      if (!homesList().length && (s.lat || s.address)) upsertSavedHome(s);
+      var rows = homesList();
+      if (!rows.length) {
+        box.innerHTML = "<li class=\"hint\" style=\"list-style:none\">No saved homes yet. Use an address, then tap Save this address.</li>";
+        return;
+      }
+      box.innerHTML = rows.map(function (h) {
+        var on = h.id === cur || (h.zip && h.zip === String(s.zip || ""));
+        var sub = [h.address || h.zip, h.zip && h.address && h.address.indexOf(h.zip) < 0 ? h.zip : ""].filter(Boolean).join(" · ");
+        return "<li class=\"saved-home" + (on ? " on" : "") + "\" data-id=\"" + String(h.id).replace(/"/g, "") + "\">" +
+          "<b>" + (h.label || "Home") + "<span>" + sub + "</span></b>" +
+          "<button type=\"button\" class=\"use\" data-act=\"use\">Use</button>" +
+          "<button type=\"button\" data-act=\"del\">Remove</button></li>";
+      }).join("");
     }
     function applyHomeFeeds() {
       if (typeof publishHomePin === "function") publishHomePin();
@@ -20054,6 +20167,7 @@ function mustEatsFL() {
         })();
         var addr = document.getElementById("set-address");
         if (addr) addr.value = s.address || addr.value;
+        if (typeof paintSavedHomes === "function") paintSavedHomes();
 
         var comm = document.getElementById("set-community");
         if (comm && document.activeElement !== comm) comm.value = s.community || "BeachWalk by Manasota Key";
@@ -20310,6 +20424,30 @@ function mustEatsFL() {
       }
       if (commGo) commGo.addEventListener("click", saveCommunity);
       if (commIn) commIn.addEventListener("change", saveCommunity);
+      var addrSave = document.getElementById("set-address-save");
+      if (addrSave) addrSave.addEventListener("click", function () {
+        var line = document.getElementById("set-address");
+        var typed = line ? line.value.trim() : "";
+        if (typed) putSet({ address: typed, pinFor: typed });
+        if (typeof getSet === "function" && getSet().lat) {
+          upsertSavedHome();
+        } else if (typeof geocodeHome === "function") {
+          geocodeHome(function () { upsertSavedHome(); if (typeof applyHomeFeeds === "function") applyHomeFeeds(); });
+        } else upsertSavedHome();
+      });
+      var homesBox = document.getElementById("saved-homes");
+      if (homesBox && !homesBox._bound) {
+        homesBox._bound = true;
+        homesBox.addEventListener("click", function (ev) {
+          var btn = ev.target.closest("button");
+          var row = ev.target.closest(".saved-home");
+          if (!row) return;
+          var id = row.getAttribute("data-id");
+          if (btn && btn.getAttribute("data-act") === "del") { ev.preventDefault(); removeSavedHome(id); return; }
+          applySavedHome(id);
+        });
+      }
+      if (typeof paintSavedHomes === "function") paintSavedHomes();
       var addrGo = document.getElementById("set-address-go");
       if (addrGo) addrGo.addEventListener("click", function () {
         var line = document.getElementById("set-address");
@@ -20318,6 +20456,7 @@ function mustEatsFL() {
         var bits = parseAddrLine(typed);
         putSet({ address: typed, pinFor: "", lat: "", lon: "", zip: bits.zip || "", place: bits.city ? (bits.city + (bits.state ? " " + bits.state : "")) : "", state: bits.state || "", radar: "", wfo: "", tide: "", tideName: "", nwrCall: "", nwrName: "", nwrUrl: "", county: "", same: "" });
         geocodeHome(function () {
+          upsertSavedHome();
           applyHomeFeeds();
           if (typeof paint === "function") paint();
         });
