@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1063</span>
+      <span class="hdr-ver" id="hdr-ver">v1064</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5310,7 +5310,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1063;
+    window.BOARD_VER = 1064;
 
     
     function communityShort() {
@@ -6576,36 +6576,49 @@ Cart shop:</textarea>
 
 
     function paintCloudPin(img, latN, lonN, note) {
-      var full = !(lonN >= -128 && lonN <= -58 && latN >= 14 && latN <= 53);
-      var src = full
-        ? "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg?" + Date.now()
-        : "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg?" + Date.now();
-      var bounds = full ? { w: -140, e: -10, n: 62, s: -8 } : { w: -128, e: -58, n: 53, s: 14 };
-      var im = new Image();
-      im.crossOrigin = "anonymous";
-      im.onload = function () {
-        var x = (lonN - bounds.w) / (bounds.e - bounds.w) * im.width;
-        var y = (bounds.n - latN) / (bounds.n - bounds.s) * im.height;
-        var c = document.createElement("canvas");
-        c.width = 900; c.height = 520;
-        var g = c.getContext("2d");
-        var sw = im.width / 3.4, sh = im.height / 3.4;
-        var sx = Math.max(0, Math.min(im.width - sw, x - sw / 2));
-        var sy = Math.max(0, Math.min(im.height - sh, y - sh / 2));
-        g.drawImage(im, sx, sy, sw, sh, 0, 0, 900, 520);
-        var px = (x - sx) / sw * 900, py = (y - sy) / sh * 520;
-        g.fillStyle = "#f2c14e";
-        g.beginPath(); g.arc(px, py, 8, 0, 6.3); g.fill();
-        g.strokeStyle = "#06101c"; g.lineWidth = 3; g.stroke();
-        g.fillStyle = "#f4efe6";
-        g.font = "700 18px Source Sans 3, sans-serif";
+      var z = 6;
+      var n = Math.pow(2, z);
+      var fx = (Number(lonN) + 180) / 360 * n;
+      var s = Math.sin(Number(latN) * Math.PI / 180);
+      var fy = (1 - Math.log((1 + s) / (1 - s)) / (2 * Math.PI)) / 2 * n;
+      var layer = Number(lonN) < -114 ? "GOES-West_ABI_GeoColor" : "GOES-East_ABI_GeoColor";
+      var day = new Date().toISOString().slice(0, 10);
+      function tileUrl(tx, ty) {
+        return "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/" + layer + "/default/" + day + "/GoogleMapsCompatible_Level7/" + z + "/" + ty + "/" + tx + ".jpg";
+      }
+      var c = document.createElement("canvas");
+      c.width = 768; c.height = 768;
+      var g = c.getContext("2d");
+      g.fillStyle = "#071422";
+      g.fillRect(0, 0, 768, 768);
+      var left = Math.floor(fx) - 1, top = Math.floor(fy) - 1;
+      var pending = 9, failed = 0;
+      function finish() {
+        if (--pending) return;
+        if (failed > 6) { if (note) note.textContent = "Cloud tiles did not load for this pin."; return; }
+        var px = (fx - left) * 256, py = (fy - top) * 256;
+        g.strokeStyle = "#06101c"; g.lineWidth = 3; g.beginPath(); g.arc(px, py, 9, 0, 6.3); g.stroke();
+        g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(px, py, 7, 0, 6.3); g.fill();
+        g.fillStyle = "#f4efe6"; g.font = "700 20px Source Sans 3, sans-serif";
         var name = (typeof homePlace === "function" && homePlace()) || "Home";
-        g.fillText(name, Math.min(px + 12, 760), Math.max(py - 12, 24));
+        g.fillText(name, Math.min(px + 14, 620), Math.max(py - 14, 28));
         img.src = c.toDataURL("image/jpeg", 0.86);
-        if (note) note.textContent = "Clouds cropped on " + name;
-      };
-      im.onerror = function () { img.src = src; if (note) note.textContent = "Cloud image did not crop. Showing the sector."; };
-      im.src = src;
+        if (note) note.textContent = "Clouds pinned on " + name;
+      }
+      for (var dy = 0; dy < 3; dy++) {
+        for (var dx = 0; dx < 3; dx++) {
+          (function (dx, dy) {
+            var im = new Image();
+            im.crossOrigin = "anonymous";
+            im.onload = function () { g.drawImage(im, dx * 256, dy * 256, 256, 256); finish(); };
+            im.onerror = function () { failed++; finish(); };
+            var tx = ((left + dx) % n + n) % n;
+            var ty = top + dy;
+            im.src = (ty < 0 || ty >= n) ? "" : tileUrl(tx, ty);
+            if (ty < 0 || ty >= n) finish();
+          })(dx, dy);
+        }
+      }
     }
 
     function paintIssSky(img, homeLatN, homeLonN, note) {
