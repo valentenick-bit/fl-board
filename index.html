@@ -3306,7 +3306,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1049</span>
+      <span class="hdr-ver" id="hdr-ver">v1050</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3635,6 +3635,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         <div class="metric-table" id="land-metrics">
           <div class="metric-row has-chart"><label>Air quality</label><div><strong id="live-aqi">—</strong><small id="live-aqi-note"></small></div><div class="metric-spark hist" id="aqi-chart"></div></div>
+          <div class="metric-row"><label>Pavement</label><strong id="live-pavement">—</strong><div></div></div>
+          <div class="metric-row"><label>Rain soon</label><strong id="live-rainsoon">—</strong><div></div></div>
           <div class="metric-row" id="tile-heatrisk"><label>Heat risk</label><strong id="live-heatrisk">—</strong><div></div></div>
           <div class="metric-row has-chart" id="tile-flood"><label>River</label><strong id="live-flood">—</strong><div class="metric-spark hist" id="river-chart"></div></div>
           <div class="metric-row" id="tile-fog"><label>Fog</label><strong id="live-fog">—</strong><div></div></div>
@@ -5198,7 +5200,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1049;
+    window.BOARD_VER = 1050;
 
     
     function communityShort() {
@@ -5932,6 +5934,33 @@ Cart shop:</textarea>
           "<button type=\"button\" data-act=\"del\">Remove</button></li>";
       }).join("");
     }
+
+    function loadNeighborAsks() {
+      var lat = typeof homeLat === "function" ? homeLat() : null;
+      var lon = typeof homeLon === "function" ? homeLon() : null;
+      if (lat == null || lon == null) return;
+      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+        "&current=soil_temperature_0cm&minutely_15=precipitation,precipitation_probability&forecast_minutely_15=8&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=auto";
+      fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+        var soil = d && d.current && d.current.soil_temperature_0cm;
+        var pav = document.getElementById("live-pavement");
+        if (pav && soil != null && isFinite(Number(soil))) pav.textContent = Math.round(Number(soil)) + "° ground";
+        var mins = (d && d.minutely_15) || {};
+        var prec = mins.precipitation || [];
+        var prob = mins.precipitation_probability || [];
+        var soon = document.getElementById("live-rainsoon");
+        if (!soon) return;
+        var hit = -1;
+        for (var i = 0; i < Math.min(prec.length, 2); i++) {
+          if (Number(prec[i]) >= 0.01 || Number(prob[i]) >= 40) { hit = i; break; }
+        }
+        if (hit === 0) soon.textContent = "Rain in the next 15 min";
+        else if (hit === 1) soon.textContent = "Rain in about 15–30 min";
+        else soon.textContent = "Dry next 30 min";
+        if (typeof noteFeed === "function") noteFeed("live-pavement", true, pav ? pav.textContent : "ok");
+        if (typeof noteFeed === "function") noteFeed("live-rainsoon", true, soon.textContent);
+      }).catch(function () {});
+    }
     function applyHomeFeeds() {
       if (typeof publishHomePin === "function") publishHomePin();
       if (typeof window.reloadTown === "function") window.reloadTown();
@@ -5939,6 +5968,7 @@ Cart shop:</textarea>
       if (typeof paintHouseMaint === "function") paintHouseMaint();
       if (typeof paintPrepGear === "function") paintPrepGear();
       if (typeof paintPrepStock === "function") paintPrepStock();
+      if (typeof loadNeighborAsks === "function") loadNeighborAsks();
       paintHomeChrome();
       var st = document.getElementById("addr-pin-status");
       var s = getSet();
@@ -15192,8 +15222,13 @@ function currentRotation() {
           var swellW = cur.swell_wave_height != null ? Number(cur.swell_wave_height) : null;
           var tot = cur.wave_height != null ? Number(cur.wave_height) : null;
           function ftlab(v) { return v == null ? "" : (v < 1.5 ? "1 ft" : v.toFixed(1) + " ft"); }
-          if (windW != null && swellW != null) seas.textContent = "Wind " + ftlab(windW) + " · swell " + ftlab(swellW);
-          else if (tot != null) seas.textContent = ftlab(tot);
+          var curV = cur.ocean_current_velocity != null ? Number(cur.ocean_current_velocity) : null;
+          var curD = cur.ocean_current_direction != null ? Number(cur.ocean_current_direction) : null;
+          var dirs = ["N","NE","E","SE","S","SW","W","NW"];
+          var curBit = curV != null ? (" · current " + curV.toFixed(1) + " mph" + (isFinite(curD) ? " " + dirs[Math.round(curD / 45) % 8] : "")) : "";
+          if (windW != null && swellW != null) seas.textContent = "Wind " + ftlab(windW) + " · swell " + ftlab(swellW) + curBit;
+          else if (tot != null) seas.textContent = ftlab(tot) + curBit;
+          else if (curBit) seas.textContent = curBit.replace(/^ · /, "");
         }
         var per = document.getElementById("live-period");
         if (per) {
@@ -23541,6 +23576,7 @@ function drawSurgeChart(points) {
       fetch("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=us_aqi,pm2_5,pm10,dust")
         .then(function (r) { return r.json(); })
         .then(function (d) {
+          if (typeof loadNeighborAsks === "function") loadNeighborAsks();
           var aqi = d.current && d.current.us_aqi;
           var el = document.getElementById("live-aqi");
           var note = document.getElementById("live-aqi-note");
