@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1060</span>
+      <span class="hdr-ver" id="hdr-ver">v1061</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5309,7 +5309,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1060;
+    window.BOARD_VER = 1061;
 
     
     function communityShort() {
@@ -6574,72 +6574,101 @@ Cart shop:</textarea>
 
 
     function paintIssSky(img, homeLatN, homeLonN, note) {
-      function draw(issLat, issLon, label) {
-        var c = document.createElement("canvas");
-        c.width = 900; c.height = 520;
-        var g = c.getContext("2d");
-        g.fillStyle = "#0b1c33";
-        g.fillRect(0, 0, 900, 520);
-        g.strokeStyle = "rgba(180,210,230,.35)";
-        g.lineWidth = 1;
-        for (var lon = -180; lon <= 180; lon += 30) {
-          var x = (lon + 180) / 360 * 900;
-          g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 520); g.stroke();
-        }
-        for (var latG = -60; latG <= 60; latG += 30) {
-          var y = (90 - latG) / 180 * 520;
-          g.beginPath(); g.moveTo(0, y); g.lineTo(900, y); g.stroke();
-        }
-        function dot(latP, lonP, color, r) {
-          var x = (Number(lonP) + 180) / 360 * 900;
-          var y = (90 - Number(latP)) / 180 * 520;
-          g.fillStyle = color;
-          g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fill();
-          return { x: x, y: y };
-        }
-        dot(homeLatN, homeLonN, "#f2c14e", 6);
-        if (issLat != null) {
-          var p = dot(issLat, issLon, "#7ec8ff", 8);
-          g.fillStyle = "#eef6ff";
-          g.font = "700 22px Source Sans 3, sans-serif";
-          g.fillText("ISS", p.x + 12, p.y - 10);
-        }
-        g.fillStyle = "#f2c14e";
-        g.font = "700 18px Source Sans 3, sans-serif";
-        g.fillText("Home", 24, 36);
-        g.fillStyle = "#d5e4f2";
-        g.font = "600 16px Source Sans 3, sans-serif";
-        g.fillText(label || "Looking up the station…", 24, 490);
-        if (img) img.src = c.toDataURL("image/png");
+      function project(latP, lonP, clat, clon) {
+        var la = latP * Math.PI / 180, lo = lonP * Math.PI / 180;
+        var cl = clat * Math.PI / 180, co = clon * Math.PI / 180;
+        var z = Math.sin(cl) * Math.sin(la) + Math.cos(cl) * Math.cos(la) * Math.cos(lo - co);
+        var x = Math.cos(la) * Math.sin(lo - co);
+        var y = Math.cos(cl) * Math.sin(la) - Math.sin(cl) * Math.cos(la) * Math.cos(lo - co);
+        return { x: x, y: y, z: z };
       }
-      draw(null, null, "Looking up the station…");
+      function draw(earth, iss, track, label) {
+        var c = document.createElement("canvas");
+        c.width = 900; c.height = 480;
+        var g = c.getContext("2d");
+        g.fillStyle = "#071422";
+        g.fillRect(0, 0, 900, 480);
+        if (earth && earth.naturalWidth) g.drawImage(earth, 0, 0, 900, 480);
+        function xy(latP, lonP) {
+          return { x: (Number(lonP) + 180) / 360 * 900, y: (90 - Number(latP)) / 180 * 480 };
+        }
+        if (track && track.length > 1) {
+          g.strokeStyle = "#7ec8ff";
+          g.lineWidth = 3;
+          g.beginPath();
+          track.forEach(function (pt, i) {
+            var p = xy(pt.lat, pt.lon);
+            if (i && Math.abs(p.x - xy(track[i - 1].lon && track[i - 1].lat, track[i - 1].lon).x) > 400) g.moveTo(p.x, p.y);
+            else if (i) g.lineTo(p.x, p.y);
+            else g.moveTo(p.x, p.y);
+          });
+          g.stroke();
+        }
+        function mark(latP, lonP, color, r) {
+          var p = xy(latP, lonP);
+          g.fillStyle = color;
+          g.beginPath(); g.arc(p.x, p.y, r, 0, 6.3); g.fill();
+          g.strokeStyle = "#06101c"; g.lineWidth = 2; g.stroke();
+        }
+        mark(homeLatN, homeLonN, "#f2c14e", 7);
+        if (iss) mark(iss.lat, iss.lon, "#ffffff", 8);
+        g.fillStyle = "rgba(6,16,28,.72)";
+        g.fillRect(0, 0, 900, 42);
+        g.fillRect(0, 444, 900, 36);
+        g.fillStyle = "#f4efe6";
+        g.font = "700 20px Source Sans 3, sans-serif";
+        g.fillText(label || "ISS", 16, 28);
+        g.font = "600 15px Source Sans 3, sans-serif";
+        g.fillText("Gold is home. White is the station. Blue is the next hour of track.", 16, 468);
+        if (img) img.src = c.toDataURL("image/jpeg", 0.85);
+      }
+      var earth = new Image();
+      earth.crossOrigin = "anonymous";
+      earth.src = "https://cdn.jsdelivr.net/npm/three-globe@2.31.1/example/img/earth-blue-marble.jpg";
+      var iss = null, track = [];
+      function ready() { draw(earth.complete && earth.naturalWidth ? earth : null, iss, track, iss ? ("ISS " + iss.lat.toFixed(1) + ", " + iss.lon.toFixed(1) + " · " + Math.round(iss.alt) + " km") : "Looking up the station…"); }
+      earth.onload = ready;
+      earth.onerror = ready;
+      ready();
+      var now = Math.floor(Date.now() / 1000);
+      var stamps = [];
+      for (var t = 0; t <= 60; t += 4) stamps.push(now + t * 60);
       var ctrl = new AbortController();
-      var timer = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 5000);
-      fetch("https://api.wheretheiss.at/v1/satellites/25544", { signal: ctrl.signal })
+      var timer = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 6000);
+      fetch("https://api.wheretheiss.at/v1/satellites/25544/positions?timestamps=" + stamps.join(","), { signal: ctrl.signal })
         .then(function (r) { return r.json(); })
-        .then(function (d) {
+        .then(function (rows) {
           clearTimeout(timer);
-          var la = Number(d.latitude), lo = Number(d.longitude);
-          var line = "ISS " + la.toFixed(1) + ", " + lo.toFixed(1) + " · " + Math.round(Number(d.altitude) || 0) + " km";
-          draw(la, lo, line);
-          if (note) note.textContent = line + " · home marked";
-          if (typeof noteFeed === "function") noteFeed("sky-map", true, "iss");
+          if (!Array.isArray(rows) || !rows.length) throw new Error("empty");
+          track = rows.map(function (d) { return { lat: Number(d.latitude), lon: Number(d.longitude) }; });
+          var d0 = rows[0];
+          iss = { lat: Number(d0.latitude), lon: Number(d0.longitude), alt: Number(d0.altitude) || 420 };
+          ready();
+          if (note) note.textContent = "ISS over " + iss.lat.toFixed(1) + ", " + iss.lon.toFixed(1) + " · next hour of track · home marked";
         })
         .catch(function () {
           clearTimeout(timer);
-          draw(null, null, "Station position did not answer. Home pin is marked.");
+          fetch("https://api.wheretheiss.at/v1/satellites/25544").then(function (r) { return r.json(); }).then(function (d) {
+            iss = { lat: Number(d.latitude), lon: Number(d.longitude), alt: Number(d.altitude) || 420 };
+            track = [iss];
+            ready();
+            if (note) note.textContent = "ISS over " + iss.lat.toFixed(1) + ", " + iss.lon.toFixed(1) + " · home marked";
+          }).catch(function () {
+            if (note) note.textContent = "Station position did not answer. Home pin is marked.";
+          });
         });
     }
+
     function showSkyMap(id) {
       var lat = homeLat(), lon = homeLon();
       var views = {
         sky: { label: "Night sky", note: "Live sky from the home pin", kind: "iframe", url: typeof homeSkyEmbed === "function" ? homeSkyEmbed() : "" },
         clouds: { label: "Clouds", note: "GOES-19 visible, sector for this pin", kind: "img", url: (function () {
-          var sector = "CONUS", path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg";
-          if (lat >= 23 && lat <= 32 && lon <= -80 && lon >= -100) { path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/gm/GEOCOLOR/1200x1200.jpg"; sector = "Gulf"; }
-          else if (lat < 23) { path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1200x1200.jpg"; sector = "Caribbean"; }
-          else if (lon <= -104) { path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/wus/GEOCOLOR/1200x1200.jpg"; sector = "West"; }
-          else if (lat >= 37) { path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ne/GEOCOLOR/1200x1200.jpg"; sector = "Northeast"; }
+          var path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg";
+          if (lat >= 24 && lat <= 36 && lon >= -100 && lon <= -75) path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/cgl/GEOCOLOR/1200x1200.jpg";
+          else if (lat >= 24 && lat < 40 && lon > -92) path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/se/GEOCOLOR/1200x1200.jpg";
+          else if (lat >= 37 && lon > -90) path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ne/GEOCOLOR/1200x1200.jpg";
+          else if (lat < 24) path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg";
           return path + "?" + Date.now();
         })() },
         aurora: { label: "Aurora", note: "NOAA OVATION northern oval", kind: "img", url: "https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg?" + Date.now() },
@@ -6667,7 +6696,11 @@ Cart shop:</textarea>
         paintIssSky(img, lat, lon, note);
       } else if (v.kind === "img") {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
-        if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.src = v.url; img.alt = v.label; }
+        if (img) {
+          img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = v.label;
+          img.onerror = function () { img.onerror = null; img.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg?" + Date.now(); };
+          img.src = v.url;
+        }
       } else {
         if (img) { img.hidden = true; img.classList.remove("on"); img.style.display = "none"; }
         if (frame) {
