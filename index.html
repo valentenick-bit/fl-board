@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1055</span>
+      <span class="hdr-ver" id="hdr-ver">v1056</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3666,9 +3666,13 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <div id="wx-radar-stamp" class="wx-radar-stamp"></div>
             <div id="radar-home-pin" class="radar-home-pin" title="Home"></div>
             <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
+            <iframe class="wx-map-pane" id="wx-sat-view" title="Satellite" src="about:blank" allowfullscreen hidden></iframe>
+            <iframe class="wx-map-pane" id="wx-now-view" title="Nowcast" src="about:blank" allowfullscreen hidden></iframe>
           </div>
           <div class="sea-map-pills" id="wx-map-pills">
             <button type="button" data-wx-map="radar" class="on">Radar</button>
+            <button type="button" data-wx-map="sat">Satellite</button>
+            <button type="button" data-wx-map="now">Nowcast</button>
             <button type="button" data-wx-map="bolt">Lightning</button>
           </div>
           <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">2-hour loop · pulled back from the pin</span></p>
@@ -3722,6 +3726,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-land-map="sat">Satellite</button>
             <button type="button" data-land-map="air">Air</button>
             <button type="button" data-land-map="rain">Rain</button>
+            <button type="button" data-land-map="drought">Drought</button>
+            <button type="button" data-land-map="rivers" id="land-rivers-pill" hidden>Rivers</button>
           </div>
           <p class="wx-map-cap"><b id="land-map-kind">Traffic</b><span id="traffic-links"><a id="gmaps-link" href="https://www.google.com/maps/@27.0010,-82.3680,13z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps</a></span></p>
         </div>
@@ -3770,6 +3776,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-sea-map="waves" class="on">Waves</button>
             <button type="button" data-sea-map="swell">Swell</button>
             <button type="button" data-sea-map="currents">Current</button>
+            <button type="button" data-sea-map="sst">Sea temp</button>
             <button type="button" data-sea-map="wind">Wind</button>
             <button type="button" data-sea-map="ais">Traffic</button>
           </div>
@@ -5301,7 +5308,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1055;
+    window.BOARD_VER = 1056;
 
     
     function communityShort() {
@@ -6322,7 +6329,9 @@ Cart shop:</textarea>
         traffic: { label: "Traffic", kind: "traffic" },
         sat: { label: "Satellite", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("satellite") : "" },
         air: { label: "Air", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("airquality") : "" },
-        rain: { label: "Rain", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("rain") : "" }
+        rain: { label: "Rain", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("rain") : "" },
+        drought: { label: "Drought", kind: "iframe", url: "https://droughtmonitor.unl.edu/CurrentMap.aspx" },
+        rivers: { label: "Rivers", kind: "iframe", url: "https://water.weather.gov/ahps/" }
       };
       if (!views[id]) id = "traffic";
       window.__landMapView = id;
@@ -6509,6 +6518,7 @@ Cart shop:</textarea>
         waves: { label: "Waves", note: "Combined sea height (swell + wind waves) at the home pin", url: homeMarineOverlay("waves"), chart: false },
         swell: { label: "Swell", note: "Primary swell height and direction at the home pin", url: homeMarineOverlay("swell"), chart: false },
         currents: { label: "Current", note: "Ocean current speed and direction at the home pin", url: homeMarineOverlay("currents"), chart: false },
+        sst: { label: "Sea temp", note: "Sea-surface temperature, pinned on home", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/ocean/primary/waves/overlay=sea_surface_temp") : "", chart: false },
         wind: { label: "Wind", note: "Surface wind speed and direction at the home pin", url: homeMarineOverlay("wind"), chart: false },
         ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false }
       };
@@ -6565,10 +6575,13 @@ Cart shop:</textarea>
       var lat = homeLat(), lon = homeLon();
       var views = {
         sky: { label: "Night sky", note: "Live sky from the home pin", kind: "iframe", url: typeof homeSkyEmbed === "function" ? homeSkyEmbed() : "" },
-        clouds: { label: "Clouds", note: "Satellite and cloud cover on the pin", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("satellite") : "" },
+        clouds: { label: "Clouds", note: "Satellite cloud cover pinned on home", kind: "iframe", url: typeof zoomEarthPin === "function" ? zoomEarthPin(homeLat(), homeLon(), 6) : "" },
         aurora: { label: "Aurora", note: "NOAA OVATION northern oval", kind: "img", url: "https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg?" + Date.now() },
         sun: { label: "Sun", note: "SDO AIA 193 — flares and holes", kind: "img", url: "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg?" + Date.now() }
       };
+      var kpNow = window.__kp != null ? Number(window.__kp) : 0;
+      document.querySelectorAll("#sky-map-pills [data-sky-map=\"aurora\"]").forEach(function (b) { b.hidden = !(kpNow >= 4); });
+      if (id === "aurora" && !(kpNow >= 4)) id = "sky";
       if (!views[id]) id = "sky";
       window.__skyMapView = id;
       var v = views[id];
@@ -9322,6 +9335,9 @@ function gatorRange() {
     function startHomeRadarLoop(lat, lon, pin, st) {
       var img = document.getElementById("wx-radar-view");
       var live = document.getElementById("wx-radar-live");
+      var sat = document.getElementById("wx-sat-view");
+      var nowc = document.getElementById("wx-now-view");
+      [sat, nowc, bolt].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
       var map = document.getElementById("wx-radar-map");
       if (live) { live.style.display = "none"; try { live.src = "about:blank"; } catch (e0) {} }
       if (map) map.style.display = "none";
@@ -14354,6 +14370,12 @@ function currentRotation() {
           var last = rows && rows.length ? rows[rows.length - 1] : null;
           var kp = last && (last.kp_index != null ? last.kp_index : last.Kp);
           window.__kp = kp != null ? Number(kp) : 0;
+          var rivers = document.getElementById("land-rivers-pill");
+          if (rivers) {
+            var blob = "";
+            try { blob = JSON.stringify(window.__nwsAlerts || []).toLowerCase(); } catch (eF) {}
+            rivers.hidden = blob.indexOf("flood") < 0;
+          }
           if (rows && rows.length && typeof drawHistChart === "function") {
             var now = Date.now();
             var pts = [];
@@ -14540,18 +14562,27 @@ function currentRotation() {
       var pin = document.getElementById("radar-home-pin");
       var stage = document.getElementById("wx-radar-stage");
       var live = document.getElementById("wx-radar-live");
+      var sat = document.getElementById("wx-sat-view");
+      var nowc = document.getElementById("wx-now-view");
+      [sat, nowc, bolt].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
       if (stage) stage.classList.toggle("wx-show-bolt", which === "bolt");
       if (bolt) {
         bolt.classList.toggle("on", which === "bolt");
         bolt.style.display = which === "bolt" ? "block" : "none";
         bolt.style.zIndex = which === "bolt" ? "12" : "0";
       }
-      if (which === "bolt") {
+      var extra = which === "sat" ? sat : (which === "now" ? nowc : (which === "bolt" ? bolt : null));
+      if (extra) {
+        extra.hidden = false;
+        extra.style.display = "block";
+        extra.style.zIndex = "12";
         if (live) { live.style.display = "none"; live.style.zIndex = "0"; }
         if (map) map.style.display = "none";
         if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
         if (pin) pin.style.display = "none";
         if (stamp) stamp.style.display = "none";
+        if (lab) lab.textContent = which === "sat" ? "Satellite" : (which === "now" ? "Nowcast" : "Lightning");
+        if (note) note.textContent = which === "sat" ? "Visible satellite pinned on home" : (which === "now" ? "About the next hour of rain" : "Lightning near the pin");
       } else {
         if (live) { live.style.display = "none"; live.style.zIndex = "0"; }
         if (map) map.style.display = "none";
@@ -14562,7 +14593,7 @@ function currentRotation() {
       if (lab) lab.textContent = which === "bolt" ? "Lightning" : "Radar";
       if (note) note.textContent = which === "bolt" ? "Blitzortung strikes on the home pin" : "Looping last 2 hours at home";
       document.querySelectorAll("#wx-map-pills button").forEach(function (b) {
-        b.className = (b.getAttribute("data-wx-map") === (which === "bolt" ? "bolt" : "radar")) ? "on" : "";
+        b.className = (b.getAttribute("data-wx-map") === which) ? "on" : "";
       });
     }
     function syncWxMapFrame() {
@@ -14593,6 +14624,8 @@ function currentRotation() {
         var which = b.getAttribute("data-wx-map");
         window.__wxMapPick = which;
         var bolt = document.getElementById("wx-bolt-view");
+        var lat = typeof homeLat === "function" ? homeLat() : 0;
+        var lon = typeof homeLon === "function" ? homeLon() : 0;
         if (which === "bolt" && bolt) {
           var url = typeof boltUrl === "function" ? boltUrl() : "";
           if (url && bolt.getAttribute("data-src") !== url) {
@@ -14600,7 +14633,17 @@ function currentRotation() {
             bolt.setAttribute("data-src", url);
           }
         }
-        if (typeof wxMapShow === "function") wxMapShow(which === "bolt" ? "bolt" : "radar");
+        if (which === "sat") {
+          var sat = document.getElementById("wx-sat-view");
+          var su = typeof zoomEarthPin === "function" ? zoomEarthPin(lat, lon, 7) : "";
+          if (sat && su && sat.getAttribute("data-src") !== su) { sat.src = su; sat.setAttribute("data-src", su); }
+        }
+        if (which === "now") {
+          var nowc = document.getElementById("wx-now-view");
+          var nu = typeof rainviewerPin === "function" ? rainviewerPin(lat, lon, 7) + "&oF=1" : "";
+          if (nowc && nu && nowc.getAttribute("data-src") !== nu) { nowc.src = nu; nowc.setAttribute("data-src", nu); }
+        }
+        if (typeof wxMapShow === "function") wxMapShow(which);
       });
     }
     function boltWanted() {
@@ -24615,7 +24658,7 @@ function wxSvg(kind, box) {
         var pr = (d.daily && d.daily.precipitation_sum) || [];
         var same = [];
         var recHi = -Infinity, recHiYear = "", recLo = Infinity, recLoYear = "";
-        var lastYearHi = null, lastYearLo = null;
+        var lastYearHi = null, lastYearLo = null, lastYearRain = null, rainSum = 0, rainN = 0, freezeDays = 0, firstFreeze = "";
         var yHi = null, yLo = null;
         var monthHi = -Infinity, monthHiDay = "", yearHi = -Infinity, yearHiDate = "", yearLo = Infinity, yearLoDate = "";
         var lastFreeze = "", last90 = "", last100 = "";
@@ -24629,7 +24672,8 @@ function wxSvg(kind, box) {
             same.push({ y: ds.slice(0, 4), hi: maxT, lo: minT });
             if (maxT > recHi) { recHi = maxT; recHiYear = ds.slice(0, 4); }
             if (isFinite(minT) && minT < recLo) { recLo = minT; recLoYear = ds.slice(0, 4); }
-            if (ds.slice(0, 4) === String(y - 1)) { lastYearHi = maxT; lastYearLo = minT; }
+            if (ds.slice(0, 4) === String(y - 1)) { lastYearHi = maxT; lastYearLo = minT; lastYearRain = rain; }
+            if (isFinite(rain)) { rainSum += rain; rainN++; }
           }
           if (ds === ymdYest) { yHi = maxT; yLo = minT; }
           if (ds.slice(0, 4) === String(y)) {
@@ -24638,7 +24682,7 @@ function wxSvg(kind, box) {
             if (ds.slice(5, 7) === thisMonth && isFinite(maxT) && maxT > monthHi) { monthHi = maxT; monthHiDay = ds; }
             if (ds.slice(5, 7) === thisMonth && isFinite(rain) && rain > wetMonth) { wetMonth = rain; wetDate = ds; }
           }
-          if (isFinite(minT) && minT <= 32) lastFreeze = ds;
+          if (isFinite(minT) && minT <= 32) { freezeDays++; lastFreeze = ds; if (!firstFreeze) firstFreeze = ds; }
           if (isFinite(maxT) && maxT >= 90) last90 = ds;
           if (isFinite(maxT) && maxT >= 100) last100 = ds;
         }
@@ -24658,6 +24702,10 @@ function wxSvg(kind, box) {
           recLoYear: recLoYear,
           lastYearHi: lastYearHi != null ? Math.round(lastYearHi) : null,
           lastYearLo: lastYearLo != null ? Math.round(lastYearLo) : null,
+          lastYearRain: lastYearRain != null && isFinite(lastYearRain) ? Math.round(lastYearRain * 100) / 100 : null,
+          avgRain: rainN ? Math.round((rainSum / rainN) * 100) / 100 : null,
+          freezeDays: freezeDays,
+          firstFreeze: firstFreeze,
           yHi: yHi != null && isFinite(yHi) ? Math.round(yHi) : null,
           yLo: yLo != null && isFinite(yLo) ? Math.round(yLo) : null,
           monthHi: isFinite(monthHi) && monthHi > -100 ? Math.round(monthHi) : null,
@@ -24704,26 +24752,38 @@ function wxSvg(kind, box) {
       var bits = [];
       bits.push("Normal here on this date is " + c.normalHi + "° / " + c.normalLo + "°, from " + c.years + " years at this pin.");
       bits.push("Record high " + c.recHi + "°" + (c.recHiYear ? " in " + c.recHiYear : "") + ", record low " + c.recLo + "°" + (c.recLoYear ? " in " + c.recLoYear : "") + ".");
-      if (c.lastYearHi != null) bits.push("Last year this date was " + c.lastYearHi + "° / " + c.lastYearLo + "°.");
-      if (c.yHi != null) bits.push("Yesterday finished " + c.yHi + "° / " + c.yLo + "°.");
+            if (c.yHi != null) bits.push("Yesterday finished " + c.yHi + "° / " + c.yLo + "°.");
       if (isFinite(todayHi) && c.recHi != null && todayHi >= c.recHi - 1) {
         bits.push(todayHi > c.recHi
           ? "Today’s forecast high of " + Math.round(todayHi) + "° would break the record."
           : "Today’s forecast high of " + Math.round(todayHi) + "° is right on the record.");
       } else if (isFinite(todayHi) && c.normalHi != null) {
         var off = Math.round(todayHi) - c.normalHi;
-        if (Math.abs(off) >= 3) bits.push("The forecast high is " + Math.abs(off) + "° " + (off > 0 ? "above" : "below") + " a normal day.");
+        bits.push("The forecast high is " + Math.abs(off) + "° " + (off > 0 ? "above" : "below") + " a normal day.");
       }
+      if (c.avgRain != null) bits.push("This date averages " + c.avgRain + " in of rain.");
+      if (c.lastYearHi != null) bits.push("Last year this date was " + c.lastYearHi + "° / " + c.lastYearLo + "°" + (c.lastYearRain != null ? (c.lastYearRain > 0 ? ", with " + c.lastYearRain + " in of rain" : ", and it stayed dry") : "") + ".");
+      try {
+        var lat = homeLat() * Math.PI / 180;
+        var doy = Math.floor((Date.now() - Date.UTC(new Date().getFullYear(), 0, 0)) / 86400000);
+        function dayLen(n) {
+          var dec = 23.44 * Math.PI / 180 * Math.sin(2 * Math.PI * (n - 81) / 365);
+          var h = Math.acos(-Math.tan(lat) * Math.tan(dec));
+          return isFinite(h) ? (h / Math.PI) * 24 : 12;
+        }
+        var nowLen = dayLen(doy), sol = Math.max(dayLen(172), dayLen(355));
+        bits.push("Day length is about " + nowLen.toFixed(1) + " hours, " + Math.abs(sol - nowLen).toFixed(1) + " hours off the solstice.");
+      } catch (eLen) {}
       var extra = [];
       if (c.monthHi != null) extra.push("hottest this month " + c.monthHi + "°" + (c.monthHiDay ? " on " + fmtClimDate(c.monthHiDay) : ""));
       if (c.yearHi != null) extra.push("hottest this year " + c.yearHi + "°" + (c.yearHiDate ? " on " + fmtClimDate(c.yearHiDate) : ""));
-      if (c.lastFreeze) extra.push("last freeze " + fmtClimDate(c.lastFreeze));
+      if (c.freezeDays) { if (c.firstFreeze) extra.push("first freeze " + fmtClimDate(c.firstFreeze)); if (c.lastFreeze) extra.push("last freeze " + fmtClimDate(c.lastFreeze)); }
       if (c.last90) extra.push("last 90° day " + fmtClimDate(c.last90));
       if (c.last100) extra.push("last 100° day " + fmtClimDate(c.last100));
       if (c.wetMonth) extra.push("wettest day this month " + c.wetMonth + "\" on " + fmtClimDate(c.wetDate));
       if (extra.length) bits.push(extra.join(" · ") + ".");
       if (body) body.textContent = bits.join(" ");
-      if (row) row.textContent = c.normalHi + "° / " + c.normalLo + "° normal · rec " + c.recHi + "° / " + c.recLo + "°";
+      if (row) row.textContent = c.normalHi + "° / " + c.normalLo + "° · rec " + c.recHi + "° / " + c.recLo + "°" + (c.avgRain != null ? " · " + c.avgRain + " in" : "");
     }
 
     function refreshWeather() {
