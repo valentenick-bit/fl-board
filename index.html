@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1059</span>
+      <span class="hdr-ver" id="hdr-ver">v1060</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5309,7 +5309,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1059;
+    window.BOARD_VER = 1060;
 
     
     function communityShort() {
@@ -6572,13 +6572,78 @@ Cart shop:</textarea>
     }
     window.showSeaMap = showSeaMap;
 
+
+    function paintIssSky(img, homeLatN, homeLonN, note) {
+      function draw(issLat, issLon, label) {
+        var c = document.createElement("canvas");
+        c.width = 900; c.height = 520;
+        var g = c.getContext("2d");
+        g.fillStyle = "#0b1c33";
+        g.fillRect(0, 0, 900, 520);
+        g.strokeStyle = "rgba(180,210,230,.35)";
+        g.lineWidth = 1;
+        for (var lon = -180; lon <= 180; lon += 30) {
+          var x = (lon + 180) / 360 * 900;
+          g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 520); g.stroke();
+        }
+        for (var latG = -60; latG <= 60; latG += 30) {
+          var y = (90 - latG) / 180 * 520;
+          g.beginPath(); g.moveTo(0, y); g.lineTo(900, y); g.stroke();
+        }
+        function dot(latP, lonP, color, r) {
+          var x = (Number(lonP) + 180) / 360 * 900;
+          var y = (90 - Number(latP)) / 180 * 520;
+          g.fillStyle = color;
+          g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fill();
+          return { x: x, y: y };
+        }
+        dot(homeLatN, homeLonN, "#f2c14e", 6);
+        if (issLat != null) {
+          var p = dot(issLat, issLon, "#7ec8ff", 8);
+          g.fillStyle = "#eef6ff";
+          g.font = "700 22px Source Sans 3, sans-serif";
+          g.fillText("ISS", p.x + 12, p.y - 10);
+        }
+        g.fillStyle = "#f2c14e";
+        g.font = "700 18px Source Sans 3, sans-serif";
+        g.fillText("Home", 24, 36);
+        g.fillStyle = "#d5e4f2";
+        g.font = "600 16px Source Sans 3, sans-serif";
+        g.fillText(label || "Looking up the station…", 24, 490);
+        if (img) img.src = c.toDataURL("image/png");
+      }
+      draw(null, null, "Looking up the station…");
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 5000);
+      fetch("https://api.wheretheiss.at/v1/satellites/25544", { signal: ctrl.signal })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          clearTimeout(timer);
+          var la = Number(d.latitude), lo = Number(d.longitude);
+          var line = "ISS " + la.toFixed(1) + ", " + lo.toFixed(1) + " · " + Math.round(Number(d.altitude) || 0) + " km";
+          draw(la, lo, line);
+          if (note) note.textContent = line + " · home marked";
+          if (typeof noteFeed === "function") noteFeed("sky-map", true, "iss");
+        })
+        .catch(function () {
+          clearTimeout(timer);
+          draw(null, null, "Station position did not answer. Home pin is marked.");
+        });
+    }
     function showSkyMap(id) {
       var lat = homeLat(), lon = homeLon();
       var views = {
         sky: { label: "Night sky", note: "Live sky from the home pin", kind: "iframe", url: typeof homeSkyEmbed === "function" ? homeSkyEmbed() : "" },
-        clouds: { label: "Clouds", note: "Satellite cloud cover pinned on home", kind: "iframe", url: typeof zoomEarthPin === "function" ? zoomEarthPin(homeLat(), homeLon(), 6) : "" },
+        clouds: { label: "Clouds", note: "GOES-19 visible, sector for this pin", kind: "img", url: (function () {
+          var sector = "CONUS", path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg";
+          if (lat >= 23 && lat <= 32 && lon <= -80 && lon >= -100) { path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/gm/GEOCOLOR/1200x1200.jpg"; sector = "Gulf"; }
+          else if (lat < 23) { path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1200x1200.jpg"; sector = "Caribbean"; }
+          else if (lon <= -104) { path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/wus/GEOCOLOR/1200x1200.jpg"; sector = "West"; }
+          else if (lat >= 37) { path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ne/GEOCOLOR/1200x1200.jpg"; sector = "Northeast"; }
+          return path + "?" + Date.now();
+        })() },
         aurora: { label: "Aurora", note: "NOAA OVATION northern oval", kind: "img", url: "https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg?" + Date.now() },
-        iss: { label: "ISS", note: "Live station track, centered on the home pin", kind: "iframe", url: "https://www.heavens-above.com/IssMap.aspx?lat=" + Number(lat).toFixed(4) + "&lng=" + Number(lon).toFixed(4) + "&alt=10&tz=EST" },
+        iss: { label: "ISS", note: "Live station position. Home pin is marked.", kind: "iss", url: "" },
         sun: { label: "Sun", note: "SDO AIA 193 — flares and holes", kind: "img", url: "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg?" + Date.now() }
       };
       var kpNow = window.__kp != null ? Number(window.__kp) : 0;
@@ -6596,7 +6661,11 @@ Cart shop:</textarea>
       document.querySelectorAll("#sky-map-pills button").forEach(function (b) {
         b.className = b.getAttribute("data-sky-map") === id ? "on" : "";
       });
-      if (v.kind === "img") {
+      if (v.kind === "iss") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "ISS"; }
+        paintIssSky(img, lat, lon, note);
+      } else if (v.kind === "img") {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.src = v.url; img.alt = v.label; }
       } else {
