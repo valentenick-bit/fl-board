@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1061</span>
+      <span class="hdr-ver" id="hdr-ver">v1062</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5309,7 +5309,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1061;
+    window.BOARD_VER = 1062;
 
     
     function communityShort() {
@@ -6573,6 +6573,40 @@ Cart shop:</textarea>
     window.showSeaMap = showSeaMap;
 
 
+
+    function paintCloudPin(img, latN, lonN, note) {
+      var full = !(lonN >= -128 && lonN <= -58 && latN >= 14 && latN <= 53);
+      var src = full
+        ? "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg?" + Date.now()
+        : "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg?" + Date.now();
+      var bounds = full ? { w: -140, e: -10, n: 62, s: -8 } : { w: -128, e: -58, n: 53, s: 14 };
+      var im = new Image();
+      im.crossOrigin = "anonymous";
+      im.onload = function () {
+        var x = (lonN - bounds.w) / (bounds.e - bounds.w) * im.width;
+        var y = (bounds.n - latN) / (bounds.n - bounds.s) * im.height;
+        var c = document.createElement("canvas");
+        c.width = 900; c.height = 520;
+        var g = c.getContext("2d");
+        var sw = im.width / 3.4, sh = im.height / 3.4;
+        var sx = Math.max(0, Math.min(im.width - sw, x - sw / 2));
+        var sy = Math.max(0, Math.min(im.height - sh, y - sh / 2));
+        g.drawImage(im, sx, sy, sw, sh, 0, 0, 900, 520);
+        var px = (x - sx) / sw * 900, py = (y - sy) / sh * 520;
+        g.fillStyle = "#f2c14e";
+        g.beginPath(); g.arc(px, py, 8, 0, 6.3); g.fill();
+        g.strokeStyle = "#06101c"; g.lineWidth = 3; g.stroke();
+        g.fillStyle = "#f4efe6";
+        g.font = "700 18px Source Sans 3, sans-serif";
+        var name = (typeof homePlace === "function" && homePlace()) || "Home";
+        g.fillText(name, Math.min(px + 12, 760), Math.max(py - 12, 24));
+        img.src = c.toDataURL("image/jpeg", 0.86);
+        if (note) note.textContent = "Clouds cropped on " + name;
+      };
+      im.onerror = function () { img.src = src; if (note) note.textContent = "Cloud image did not crop. Showing the sector."; };
+      im.src = src;
+    }
+
     function paintIssSky(img, homeLatN, homeLonN, note) {
       function project(latP, lonP, clat, clon) {
         var la = latP * Math.PI / 180, lo = lonP * Math.PI / 180;
@@ -6663,14 +6697,7 @@ Cart shop:</textarea>
       var lat = homeLat(), lon = homeLon();
       var views = {
         sky: { label: "Night sky", note: "Live sky from the home pin", kind: "iframe", url: typeof homeSkyEmbed === "function" ? homeSkyEmbed() : "" },
-        clouds: { label: "Clouds", note: "GOES-19 visible, sector for this pin", kind: "img", url: (function () {
-          var path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg";
-          if (lat >= 24 && lat <= 36 && lon >= -100 && lon <= -75) path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/cgl/GEOCOLOR/1200x1200.jpg";
-          else if (lat >= 24 && lat < 40 && lon > -92) path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/se/GEOCOLOR/1200x1200.jpg";
-          else if (lat >= 37 && lon > -90) path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ne/GEOCOLOR/1200x1200.jpg";
-          else if (lat < 24) path = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg";
-          return path + "?" + Date.now();
-        })() },
+        clouds: { label: "Clouds", note: "GOES-19 visible, cropped on the home pin", kind: "clouds", url: "" },
         aurora: { label: "Aurora", note: "NOAA OVATION northern oval", kind: "img", url: "https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg?" + Date.now() },
         iss: { label: "ISS", note: "Live station position. Home pin is marked.", kind: "iss", url: "" },
         sun: { label: "Sun", note: "SDO AIA 193 — flares and holes", kind: "img", url: "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg?" + Date.now() }
@@ -6690,7 +6717,11 @@ Cart shop:</textarea>
       document.querySelectorAll("#sky-map-pills button").forEach(function (b) {
         b.className = b.getAttribute("data-sky-map") === id ? "on" : "";
       });
-      if (v.kind === "iss") {
+      if (v.kind === "clouds") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "Clouds"; }
+        paintCloudPin(img, lat, lon, note);
+      } else if (v.kind === "iss") {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "ISS"; }
         paintIssSky(img, lat, lon, note);
