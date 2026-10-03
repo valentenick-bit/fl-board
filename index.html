@@ -3306,7 +3306,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1050</span>
+      <span class="hdr-ver" id="hdr-ver">v1051</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5200,7 +5200,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1050;
+    window.BOARD_VER = 1051;
 
     
     function communityShort() {
@@ -5617,7 +5617,26 @@ Cart shop:</textarea>
       ["Why did the cookie go to the doctor?", "It felt crumby."],
       ["How does a penguin build a house?", "Igloos it together."],
       ["What do you call a sleeping bull?", "A bulldozer."],
-      ["Why did the tomato turn red?", "It saw the salad dressing."]
+      ["Why did the tomato turn red?", "It saw the salad dressing."],
+      ["Why did the coffee file a police report?", "It got mugged."],
+      ["What do you call a fish with no eyes?", "A fsh."],
+      ["Why don't scientists trust atoms?", "They make up everything."],
+      ["What did one wall say to the other?", "I'll meet you at the corner."],
+      ["Why did the math book look sad?", "It had too many problems."],
+      ["How do you catch a unique rabbit?", "Unique up on it."],
+      ["Why did the golfer bring an extra ball to the beach?", "In case of a water hazard."],
+      ["What do you call a boomerang that doesn't come back?", "A stick."],
+      ["Why are pirates called pirates?", "They just arrr."],
+      ["What did the tide say to the sandbar?", "Long time, no sea."],
+      ["Why did the pelican get kicked off the boat?", "It kept dropping the line."],
+      ["How does the ocean say hello?", "It waves."],
+      ["Why was the broom late?", "It overswept."],
+      ["What do you call a group of musical whales?", "An orca-stra."],
+      ["Why did the palm tree go to the doctor?", "It was a little frond."],
+      ["What did the hurricane name itself?", "It didn't. The list already did."],
+      ["Why don't oysters share secrets?", "They clam up."],
+      ["What do you call a snowman in Florida?", "A puddle."],
+      ["Why did the fisherman bring a ladder?", "He heard the fish were off the charts."]
     ];
     function commonsDayKey() {
       try { return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }); }
@@ -5629,6 +5648,32 @@ Cart shop:</textarea>
       for (var i = 0; i < key.length; i++) h = ((h * 33) + key.charCodeAt(i)) >>> 0;
       return list[h % list.length];
     }
+    function pickDailyFresh(list, salt) {
+      var day = commonsDayKey();
+      var store = "bw-daily-" + salt;
+      var rec = {};
+      try { rec = JSON.parse(localStorage.getItem(store) || "{}") || {}; } catch (e) { rec = {}; }
+      if (rec.day === day && rec.idx != null && list[rec.idx]) return list[rec.idx];
+      var used = Array.isArray(rec.used) ? rec.used : [];
+      var cut = "";
+      try {
+        var d = new Date(day + "T12:00:00");
+        d.setDate(d.getDate() - 21);
+        cut = d.toISOString().slice(0, 10);
+      } catch (e2) { cut = ""; }
+      used = used.filter(function (u) { return u && u.day && (!cut || u.day >= cut); });
+      var banned = {};
+      used.forEach(function (u) { banned[u.idx] = 1; });
+      var key = day + ":" + salt;
+      var h = 0;
+      for (var i = 0; i < key.length; i++) h = ((h * 33) + key.charCodeAt(i)) >>> 0;
+      var idx = h % list.length;
+      var guard = 0;
+      while (banned[idx] && guard < list.length) { idx = (idx + 1) % list.length; guard++; }
+      used.push({ day: day, idx: idx });
+      try { localStorage.setItem(store, JSON.stringify({ day: day, idx: idx, used: used.slice(-40) })); } catch (e3) {}
+      return list[idx];
+    }
     function paintDailyBits() {
       var s = typeof getSet === "function" ? getSet() : {};
       var jokeCard = document.getElementById("today-joke");
@@ -5637,7 +5682,7 @@ Cart shop:</textarea>
         var on = s.jokeDay !== "0";
         jokeCard.hidden = !on;
         if (on && jokeBody) {
-          var j = pickDaily(DAY_JOKES, "joke");
+          var j = pickDailyFresh(DAY_JOKES, "joke");
           jokeBody.innerHTML = j[0] + "<br><strong>" + j[1] + "</strong>";
         }
       }
