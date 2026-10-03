@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1054</span>
+      <span class="hdr-ver" id="hdr-ver">v1055</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5301,7 +5301,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1054;
+    window.BOARD_VER = 1055;
 
     
     function communityShort() {
@@ -18463,6 +18463,37 @@ function paint() {
             : "Official notices from the association to residents.";
         }
         if (!on) return;
+        function commDay(v) { var m = String(v || "").match(/\d{4}-\d{2}-\d{2}/); return m ? m[0] : ""; }
+        var today = (typeof commonsDayKey === "function") ? commonsDayKey() : new Date().toISOString().slice(0, 10);
+        var cutD = new Date(today + "T12:00:00"); cutD.setDate(cutD.getDate() - 7);
+        var cut = cutD.toISOString().slice(0, 10);
+        var notices = (j.notices || []).slice();
+        var newestDigest = "";
+        notices.forEach(function (r) {
+          if (/friday weekly|weekly community update/i.test(r.title || "") && commDay(r.posted) > newestDigest) newestDigest = commDay(r.posted);
+        });
+        notices = notices.filter(function (r) {
+          if (!/friday weekly|weekly community update/i.test(r.title || "")) return true;
+          return !newestDigest || commDay(r.posted) === newestDigest;
+        });
+        var upcoming = [];
+        var justPast = [];
+        (j.announce || []).forEach(function (r) {
+          var w = commDay(r.when);
+          if (w && w < today) { if (w >= cut) justPast.push(r); }
+          else upcoming.push(r);
+        });
+        var news = (j.newsletters || []).filter(function (r) {
+          var posted = commDay(r.posted);
+          if (/beach talk|beachtalk/i.test(r.title || "")) return posted >= today.slice(0, 7) + "-01" || posted >= cut;
+          if (/weekly community update|friday weekly/i.test(r.title || "")) return !newestDigest || posted === newestDigest || posted >= cut;
+          return !posted || posted >= cut;
+        });
+        var arch = (j.archive || []).filter(function (r) {
+          var w = commDay(r.when) || commDay(r.posted);
+          return !w || w >= cut;
+        }).concat(justPast);
+        j = Object.assign({}, j, { notices: notices, announce: upcoming, newsletters: news, archive: arch });
         var need = j.need || [];
         var surveys = j.surveys || [];
         var needCard = document.getElementById("comm-need-card");
