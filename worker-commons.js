@@ -214,6 +214,17 @@ export default {
     if (url.pathname === "/pin" || url.pathname === "/pins") {
       return handlePins(request, env);
     }
+
+    if (url.pathname === "/faa-status") {
+      const hdr = { "content-type": "text/xml; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
+      try {
+        const r = await fetch("https://nasstatus.faa.gov/api/airport-status-information", { headers: { "User-Agent": "CommonsBoard/1.0" }, cf: { cacheTtl: 120 } });
+        const txt = await r.text();
+        if (r.ok && txt.indexOf("AIRPORT_STATUS") >= 0) return new Response(txt, { status: 200, headers: hdr });
+      } catch (e) {}
+      return new Response("<AIRPORT_STATUS_INFORMATION></AIRPORT_STATUS_INFORMATION>", { status: 200, headers: hdr });
+    }
     if (url.pathname === "/atcf") {
       const hdr = { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
