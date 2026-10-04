@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1077</span>
+      <span class="hdr-ver" id="hdr-ver">v1078</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5334,7 +5334,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1077;
+    window.BOARD_VER = 1078;
 
     
     function communityShort() {
@@ -17090,8 +17090,8 @@ function currentRotation() {
       var nextEl = document.getElementById("cal-flight");
       var flyEl = document.getElementById("cal-fly");
       var rows = ((window.__flightData || {}).flights) || [];
-      var soon = typeof flightsSoon === "function" ? flightsSoon(14 * 24, 6) : [];
-      var list = (soon.length ? soon : rows).slice(0, 4);
+      var soon = typeof flightsSoon === "function" ? flightsSoon(120 * 24, 6) : [];
+      var list = (soon.length ? soon : rows).slice(0, 6);
       function line(f) {
         return typeof paintOneFlight === "function" ? paintOneFlight(f) : (f.flight || "Flight");
       }
@@ -20373,7 +20373,7 @@ function mustEatsFL() {
     (function loadFlights() {
       var el = document.getElementById("live-flights");
       if (typeof noteFeed === "function") noteFeed("flights", true, "loading scan");
-      var urls = gitFileUrls("flights.json");
+      var urls = gitFileUrls("flights.json").concat(gitFileUrls("flights-keep.json"));
       function paint(d) {
         window.__flightData = d || { flights: [] };
         var rows = (d && d.flights) || [];
@@ -20412,7 +20412,8 @@ function mustEatsFL() {
             try { d = JSON.parse(d.contents); } catch (e2) { d = null; }
           }
           if (d && d.error && i + 1 < urls.length) return next(i + 1);
-          if (d && Array.isArray(d.flights) && (d.flights.length || d.updated)) paint(d);
+          if (d && Array.isArray(d.flights) && d.flights.length) paint(d);
+          else if (d && Array.isArray(d.flights) && !d.flights.length) return next(i + 1);
           else next(i + 1);
         }).catch(function () { next(i + 1); });
       }
