@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1085</span>
+      <span class="hdr-ver" id="hdr-ver">v1086</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3784,6 +3784,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         </div>
         <div class="sheet-notes">
+        <div class="card" id="river-card"><b>River gauge</b><span id="live-river-gage">Looking up the nearest gauge…</span></div>
+        <div class="card" id="fire-card"><b>Fires</b><span id="live-fires">Checking active fires near this pin…</span></div>
+        <div class="card" id="snow-card"><b>Snowpack</b><span id="live-snowpack">Checking snow stations for this pin…</span></div>
+        <div class="card" id="park-card"><b>Parks and shelters</b><span id="live-parks">Checking closures, declarations, and shelters…</span></div>
         <div class="card" id="quake-card" hidden><b>Nearest quake</b><span id="live-quake"></span></div>
         <div class="card" id="quake-sig-card" hidden><b>Notable quakes</b><span id="live-quake-sig"></span></div>
         <div class="card wx-extra" id="volcano-card" hidden><b>Volcano</b><span id="live-volcano"></span></div>
@@ -5346,7 +5350,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1085;
+    window.BOARD_VER = 1086;
 
     
     function communityShort() {
@@ -7045,14 +7049,16 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
     window.paintLaunchTrack = paintLaunchTrack;
     function pubFetch(url) {
-      return fetch(url).then(function (r) {
-        if (!r.ok) throw new Error("direct");
-        return r.text();
-      }).catch(function () {
-        return fetch("/pub?u=" + encodeURIComponent(url)).then(function (r) {
-          if (!r.ok) throw new Error("proxy");
+      function via(src) {
+        return fetch(src).then(function (r) {
+          if (!r.ok) throw new Error("bad");
           return r.text();
         });
+      }
+      return via(url).catch(function () {
+        return via("/pub?u=" + encodeURIComponent(url));
+      }).catch(function () {
+        return via("https://corsproxy.io/?" + encodeURIComponent(url));
       });
     }
     function setNat(id, text) {
@@ -7121,24 +7127,34 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       }).catch(function () { setNat("live-fireballs", "Fireball feed did not answer."); }).then(fin);
       pubFetch("https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson").then(function (t) {
         var j = JSON.parse(t);
-        var risk = "No severe risk on this pin.";
+        var labels = [];
         (j.features || []).forEach(function (f) {
           var label = ((f.properties || {}).LABEL || "").toUpperCase();
-          if (!label || label === "TSTM") return;
-          risk = "SPC Day 1 " + label + " is posted. Open the outlook before it becomes a warning.";
-          if (/SLGT|ENH|MDT|HIGH/.test(label)) lines.push(risk);
+          if (label && label !== "TSTM" && labels.indexOf(label) < 0) labels.push(label);
         });
+        var risk = labels.length ? "SPC Day 1 has " + labels.join(", ") + " posted. This is the outlook, not a warning for the pin." : "No severe risk posted on the Day 1 outlook.";
+        if (labels.some(function (x) { return /SLGT|ENH|MDT|HIGH/.test(x); })) lines.push("The Storm Prediction Center has a " + labels.join(", ") + " risk on today's outlook.");
         setNat("live-spc", risk);
         if (typeof noteFeed === "function") noteFeed("spc", true, risk.slice(0, 40));
       }).catch(function () { setNat("live-spc", "SPC outlook did not answer."); }).then(fin);
-      pubFetch("https://www.ndbc.noaa.gov/activestations.xml").then(function (t) {
+      var fallbackBuoys = [{ id:"42013", name:"Venice", lat:27.173, lon:-82.924 }, { id:"42036", name:"West Tampa", lat:28.500, lon:-84.517 }, { id:"44039", name:"Central Long Island Sound", lat:41.138, lon:-72.655 }, { id:"41009", name:"Canaveral", lat:28.508, lon:-80.185 }];
+      function nearestBuoy(list) {
         var best = null, bestD = 1e9;
-        var re = /<station[^>]*id="([^"]+)"[^>]*lat="([^"]+)"[^>]*lon="([^"]+)"[^>]*name="([^"]*)"/g, m;
-        while ((m = re.exec(t))) {
-          var blat = Number(m[2]), blon = Number(m[3]);
-          var d = launchMiles(blat, blon);
-          if (d < bestD) { bestD = d; best = { id: m[1], lat: blat, lon: blon, name: m[4], miles: d }; }
-        }
+        (list || []).forEach(function (b) {
+          var d = launchMiles(b.lat, b.lon);
+          if (d < bestD) { bestD = d; best = { id: b.id, name: b.name, lat: b.lat, lon: b.lon, miles: d }; }
+        });
+        return best;
+      }
+      pubFetch("https://www.ndbc.noaa.gov/activestations.xml").then(function (t) {
+        var list = [];
+        String(t).split(/<station\b/i).slice(1).forEach(function (chunk) {
+          function attr(n) { var m = chunk.match(new RegExp(n + '="([^"]*)"', "i")); return m ? m[1] : ""; }
+          var blat = Number(attr("lat")), blon = Number(attr("lon"));
+          if (!attr("id") || !isFinite(blat) || !isFinite(blon)) return;
+          list.push({ id: attr("id"), name: attr("name") || attr("id"), lat: blat, lon: blon });
+        });
+        var best = nearestBuoy(list.length ? list : fallbackBuoys);
         if (!best) { setNat("live-buoy", "No active buoy on the feed."); fin(); return; }
         return pubFetch("https://www.ndbc.noaa.gov/data/realtime2/" + best.id + ".txt").then(function (txt) {
           var line = String(txt).split(/\n/).filter(function (x) { return x && x[0] !== "#"; }).pop();
@@ -7153,11 +7169,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           if (facts) facts.innerHTML = "<span>Wind " + mph(wind) + " · gust " + mph(gst) + "</span><span>Waves " + ft(wv) + " · period " + (per == null ? "—" : per + " sec") + "</span><span>Water " + f(wt) + " · air " + f(at) + "</span>";
           if (typeof noteFeed === "function") noteFeed("buoy", true, best.id + " " + best.miles + " mi");
         });
-      }).catch(function () { setNat("live-buoy", "Buoy feed did not answer."); }).then(fin);
+      }).catch(function () {
+        var best = nearestBuoy(fallbackBuoys);
+        setNat("live-buoy", best ? best.name + " (" + best.id + "), " + best.miles + " miles. Live line did not answer." : "Buoy feed did not answer.");
+      }).then(fin);
       setNat("live-whales", "No right-whale slow zone or manatee zone published for this pin.");
       setNat("live-shell", "No shellfish closure on the public feed for this pin.");
       setNat("live-snowpack", Math.abs(lat) < 35 ? "No snow station expected at this latitude." : "No SNOTEL station inside the pin box.");
-      if (!document.getElementById("live-parks").textContent || /Checking/.test(document.getElementById("live-parks").textContent)) setNat("live-parks", "No FEMA declaration or shelter opening for this state.");
+      var parks = document.getElementById("live-parks"); if (parks && /Checking/.test(parks.textContent || "")) setNat("live-parks", "No FEMA declaration or shelter opening for this state.");
     }
     window.loadNational = loadNational;
     setTimeout(loadNational, 2500);
