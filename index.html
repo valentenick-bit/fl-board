@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1083</span>
+      <span class="hdr-ver" id="hdr-ver">v1084</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3879,6 +3879,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-sky-map="planes">Planes</button>
             <button type="button" data-sky-map="lights">Lights</button>
             <button type="button" data-sky-map="sun">Sun</button>
+            <button type="button" data-sky-map="launch">Launch</button>
           </div>
           <p class="wx-map-cap"><b id="sky-map-kind">Night sky</b><span id="sky-map-note">Pinned on home</span></p>
         </div>
@@ -3930,6 +3931,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div class="tile" id="chip-space"><label>Space weather</label><strong id="live-space">Quiet</strong></div>
         </div>
         <div class="card"><b id="iss-title">ISS</b><span id="live-iss">Looking up the next pass</span></div>
+        <div class="card" id="launch-card">
+          <b>Launches</b>
+          <span id="launch-lead">Next rockets, the pad, and how far that pad is from this pin.</span>
+          <div id="launch-list" class="boat-alerts"></div>
+        </div>
         <div id="horo-box"></div>
         <p class="pill-key" id="sky-refs">Sky times follow the home address.</p>
       </section>
@@ -5334,7 +5340,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1083;
+    window.BOARD_VER = 1084;
 
     
     function communityShort() {
@@ -6872,7 +6878,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         })() },
         planes: { label: "Planes", note: "Live flights near the home pin", kind: "planes", url: "" },
         lights: { label: "Lights", note: "Night lights around the home pin", kind: "lights", url: "" },
-        sun: { label: "Sun", note: "SDO AIA 193 — flares and holes", kind: "img", url: "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg?" + Date.now() }
+        sun: { label: "Sun", note: "SDO AIA 193 — flares and holes", kind: "img", url: "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg?" + Date.now() },
+        launch: { label: "Launch", note: "Pad and a typical ground track. Not the official path.", kind: "launch", url: "" }
       };
       var kpNow = window.__kp != null ? Number(window.__kp) : 0;
       document.querySelectorAll("#sky-map-pills [data-sky-map=\"aurora\"]").forEach(function (b) { b.hidden = !(kpNow >= 4); });
@@ -6903,6 +6910,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "ISS"; }
         paintIssSky(img, lat, lon, note);
+      } else if (v.kind === "launch") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (img) { img.hidden = true; img.classList.remove("on"); img.style.display = "none"; }
+        if (typeof paintLaunchTrack === "function") paintLaunchTrack();
       } else if (v.kind === "img") {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) {
@@ -6924,6 +6935,110 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (typeof noteFeed === "function") noteFeed("sky-map", true, id);
     }
     window.showSkyMap = showSkyMap;
+    var LAUNCH_PADS = [
+      ["vandenberg", 34.742, -120.572, 185],
+      ["cape canaveral", 28.488, -80.577, 90],
+      ["kennedy", 28.608, -80.604, 90],
+      ["boca chica", 25.997, -97.155, 90],
+      ["starbase", 25.997, -97.155, 90],
+      ["wallops", 37.940, -75.466, 100],
+      ["naro", 34.432, 127.535, 170],
+      ["baikonur", 45.965, 63.305, 60],
+      ["kourou", 5.236, -52.775, 50],
+      ["tanegashima", 30.401, 130.975, 100],
+      ["jiuquan", 40.958, 100.291, 90],
+      ["xichang", 28.246, 102.027, 97],
+      ["wenchang", 19.614, 110.951, 110],
+      ["mahia", -39.261, 177.865, 90],
+      ["satish", 13.720, 80.230, 102],
+      ["sriharikota", 13.720, 80.230, 102]
+    ];
+    function launchPad(name) {
+      var n = String(name || "").toLowerCase();
+      for (var i = 0; i < LAUNCH_PADS.length; i++) if (n.indexOf(LAUNCH_PADS[i][0]) >= 0) return LAUNCH_PADS[i];
+      return null;
+    }
+    function launchMiles(lat, lon) {
+      var hlat = typeof homeLat === "function" ? Number(homeLat()) : 0;
+      var hlon = typeof homeLon === "function" ? Number(homeLon()) : 0;
+      var r = Math.PI / 180, dlat = (lat - hlat) * r, dlon = (lon - hlon) * r;
+      var a = Math.sin(dlat / 2) * Math.sin(dlat / 2) + Math.cos(hlat * r) * Math.cos(lat * r) * Math.sin(dlon / 2) * Math.sin(dlon / 2);
+      return Math.round(3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+    function paintLaunches() {
+      var box = document.getElementById("launch-list");
+      var lead = document.getElementById("launch-lead");
+      if (!box) return;
+      var cached = null;
+      try { cached = JSON.parse(localStorage.getItem("bw-launches") || "null"); } catch (e) {}
+      function draw(rows) {
+        window.__launches = rows || [];
+        if (!rows.length) {
+          box.innerHTML = "<span>No upcoming launch on the feed.</span>";
+          return;
+        }
+        box.innerHTML = rows.slice(0, 4).map(function (row, i) {
+          var when = row.t0 ? new Date(row.t0).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : (row.date_str || "TBD");
+          var where = ((row.pad && row.pad.name) || "Pad") + (row.pad && row.pad.location ? ", " + row.pad.location.name : "");
+          var pad = launchPad(where);
+          var dist = pad ? launchMiles(pad[1], pad[2]) + " mi from this pin" : "pad not mapped";
+          var wx = row.weather_condition ? row.weather_condition + (row.weather_temp ? ", " + Math.round(Number(row.weather_temp)) + "°" : "") : "";
+          return '<span data-launch="' + i + '"><b>' + (row.vehicle && row.vehicle.name ? row.vehicle.name + " · " : "") + row.name + '</b> ' + when + " · " + where + " · " + dist + (wx ? " · " + wx : "") + "</span>";
+        }).join("");
+        if (lead) lead.textContent = "Next up: " + rows[0].name + ". Tap Launch on the map for the pad and a typical track.";
+        if (typeof noteFeed === "function") noteFeed("launches", true, rows.length + " upcoming");
+      }
+      if (cached && cached.rows && Date.now() - cached.at < 2 * 60 * 60 * 1000) { draw(cached.rows); return; }
+      box.innerHTML = "<span>Looking up the next launches…</span>";
+      fetch("https://fdo.rocketlaunch.live/json/launches/next/5").then(function (r) { return r.json(); }).then(function (j) {
+        var rows = (j && j.result) || [];
+        try { localStorage.setItem("bw-launches", JSON.stringify({ at: Date.now(), rows: rows })); } catch (e) {}
+        draw(rows);
+      }).catch(function () {
+        if (cached && cached.rows) draw(cached.rows);
+        else box.innerHTML = "<span>Launch feed did not answer.</span>";
+        if (typeof noteFeed === "function") noteFeed("launches", false, "feed down");
+      });
+    }
+    window.paintLaunches = paintLaunches;
+    function paintLaunchTrack() {
+      var stage = document.getElementById("sky-map-stage");
+      if (!stage) return;
+      var host = document.getElementById("sky-launch-map");
+      if (!host) {
+        host = document.createElement("div");
+        host.id = "sky-launch-map";
+        host.style.cssText = "position:absolute;inset:0;z-index:3;background:#102033";
+        stage.appendChild(host);
+      }
+      host.hidden = false;
+      host.style.display = "block";
+      var rows = window.__launches || [];
+      var row = rows[0];
+      if (!row) { host.innerHTML = "<p style='color:#efe4c8;padding:16px'>No launch to map yet.</p>"; return; }
+      var where = ((row.pad && row.pad.name) || "") + " " + (row.pad && row.pad.location ? row.pad.location.name : "");
+      var pad = launchPad(where) || [where, 28.5, -80.6, 90];
+      var lat = pad[1], lon = pad[2], az = pad[3] * Math.PI / 180;
+      var endLat = lat + Math.cos(az) * 6;
+      var endLon = lon + Math.sin(az) * 6 / Math.max(0.3, Math.cos(lat * Math.PI / 180));
+      if (!window.L) { host.innerHTML = "<p style='color:#efe4c8;padding:16px'>" + row.name + " · " + where + "</p>"; return; }
+      if (host._leaflet_id && window.__launchMap) {
+        window.__launchMap.remove();
+        host._leaflet_id = null;
+      }
+      host.innerHTML = "";
+      var map = L.map(host, { zoomControl: false, attributionControl: true }).setView([lat, lon], 5);
+      window.__launchMap = map;
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 12, attribution: "© OSM" }).addTo(map);
+      L.marker([lat, lon]).addTo(map).bindTooltip((row.vehicle && row.vehicle.name ? row.vehicle.name + " · " : "") + row.name, { permanent: true });
+      L.polyline([[lat, lon], [endLat, endLon]], { color: "#e07a5f", weight: 3, dashArray: "6 6" }).addTo(map);
+      if (typeof homeLat === "function") L.circleMarker([homeLat(), homeLon()], { radius: 5, color: "#2a9d8f" }).addTo(map).bindTooltip("Home");
+      setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 80);
+      var note = document.getElementById("sky-map-note");
+      if (note) note.textContent = "Dashed line is a typical track from the pad, not the official trajectory.";
+    }
+    window.paintLaunchTrack = paintLaunchTrack;
+
     function skyAlertKind(ev, headline, desc) {
       var t = [ev, headline, desc].join(" ").toLowerCase();
       if (/tornado|severe thunderstorm|hurricane|tropical storm|blizzard|ice storm/.test(t)) return "hard";
@@ -9003,6 +9118,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         { id:"sunmoon", page:"Sky", stat:"Sun and moon", primary:"Open-Meteo daily rise/set at the pin", backup:"sunrise-sunset.org", feeds:["sun-path","moon-path","live-sun-label","live-moon-label","live-twilight"] },
         { id:"planets", page:"Sky", stat:"Planets / stars", primary:"visibleplanets.dev at the home coordinates", backup:"Seasonal fallback list", feeds:["planets","live-planet1","live-planet2","live-planet3","live-planet4"] },
         { id:"iss", page:"Sky", stat:"ISS", primary:"wheretheiss.at satellite 25544", backup:"None", feeds:["iss"] },
+        { id:"launches", page:"Sky", stat:"Rocket launches", primary:"RocketLaunch.Live next five", backup:"Pad map with a typical ground track", feeds:["launches"] },
         { id:"spacewx", page:"Sky", stat:"Space weather / aurora", primary:"NOAA SWPC (Kp, flares, F10.7, spots)", backup:"None", feeds:["live-kp","live-aurora","live-flare","live-f107","live-spots","live-space","live-swind"] },
         { id:"horo", page:"Sky", stat:"Horoscope", primary:"Ohmanda-style sign APIs for Settings signs", backup:"None", feeds:["horoscope","live-horo-gemini","live-horo-aquarius"] },
         { id:"storms", page:"Storms", stat:"Named tropical systems", primary:"NHC CurrentStorms.json + public advisory / discussion text", backup:"ATCF b-deck via proxy for history charts", feeds:["storms","storm-adv","storm-hist","hurr-adv","nhc-disc","live-cane"] },
@@ -10454,6 +10570,7 @@ function currentRotation() {
       if (id === "land" && typeof showLandMap === "function") showLandMap(window.__landMapView || "traffic");
       if (id === "sky" && typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky");
       if (id === "sky" && typeof paintSkyCall === "function") paintSkyCall();
+      if (id === "sky" && typeof paintLaunches === "function") paintLaunches();
       if (id === "marine" && typeof showSeaMap === "function") {
         showSeaMap(window.__seaMapView || "waves");
         if (typeof startSeaMapRotate === "function") startSeaMapRotate();
