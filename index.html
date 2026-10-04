@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1084</span>
+      <span class="hdr-ver" id="hdr-ver">v1085</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3678,6 +3678,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </section>
       
       <section id="tenday" class="page sheet">
+        <div class="card" id="spc-card"><b>Storm outlook</b><span id="live-spc">Checking the Storm Prediction Center…</span></div>
         <h2 data-k="Ten days">Weather</h2>
         <div class="wx-top">
                 <div class="wx-map-frame" id="wx-map-frame">
@@ -3850,6 +3851,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <span id="live-fish">Looking up freshwater and saltwater reports…</span>
           <div id="fish-news" class="boat-facts"></div>
         </div>
+        <div class="card" id="buoy-card"><b id="buoy-title">Buoy</b><span id="live-buoy">Finding the closest buoy…</span><div id="buoy-facts" class="boat-facts"></div></div>
+        <div class="card" id="whale-card"><b>Slow zones</b><span id="live-whales">Checking right whale and manatee zones…</span></div>
+        <div class="card" id="shell-card"><b>Shellfish</b><span id="live-shell">Checking harvest closures near this pin…</span></div>
         <div class="card" id="sea-uscg-card"><b>USCG</b><span id="live-sea-uscg">Checking notices for this pin…</span></div>
         <div class="card sea-cam-card" id="sea-cam-card">
           <b id="sea-cam-title">Water cam</b>
@@ -3931,6 +3935,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div class="tile" id="chip-space"><label>Space weather</label><strong id="live-space">Quiet</strong></div>
         </div>
         <div class="card"><b id="iss-title">ISS</b><span id="live-iss">Looking up the next pass</span></div>
+        <div class="card" id="rock-card"><b>Close approaches</b><span id="live-rocks">Checking this week's near-Earth passes…</span></div>
+        <div class="card" id="fireball-card"><b>Fireballs</b><span id="live-fireballs">Checking recent bright meteors…</span></div>
         <div class="card" id="launch-card">
           <b>Launches</b>
           <span id="launch-lead">Next rockets, the pad, and how far that pad is from this pin.</span>
@@ -5340,7 +5346,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1084;
+    window.BOARD_VER = 1085;
 
     
     function communityShort() {
@@ -7038,6 +7044,125 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (note) note.textContent = "Dashed line is a typical track from the pad, not the official trajectory.";
     }
     window.paintLaunchTrack = paintLaunchTrack;
+    function pubFetch(url) {
+      return fetch(url).then(function (r) {
+        if (!r.ok) throw new Error("direct");
+        return r.text();
+      }).catch(function () {
+        return fetch("/pub?u=" + encodeURIComponent(url)).then(function (r) {
+          if (!r.ok) throw new Error("proxy");
+          return r.text();
+        });
+      });
+    }
+    function setNat(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+    function loadNational() {
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : 0;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : 0;
+      var st = (typeof homeState === "function" ? homeState() : "") || "";
+      var lines = [];
+      function done() {
+        window.__natLines = lines.filter(Boolean);
+        if (typeof writeBriefingSoon === "function") writeBriefingSoon();
+      }
+      var pending = 7;
+      function fin() { pending -= 1; if (pending <= 0) done(); }
+      pubFetch("https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$filter=declarationDate%20gt%20'2026-07-01'&$orderby=declarationDate%20desc&$top=40").then(function (t) {
+        var j = JSON.parse(t);
+        var hit = (j.DisasterDeclarationsSummaries || []).filter(function (d) { return st && String(d.state || "").toUpperCase() === st.toUpperCase(); })[0];
+        if (hit) {
+          var msg = "FEMA " + (hit.declarationType || "declaration") + " " + hit.disasterNumber + " for " + (hit.designatedArea || hit.state) + ".";
+          setNat("live-parks", msg);
+          lines.push(msg);
+          if (typeof noteFeed === "function") noteFeed("fema", true, hit.disasterNumber);
+        }
+      }).catch(function () {}).then(fin);
+      var fireUrl = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Incident_Locations_Current/FeatureServer/0/query?where=1%3D1&outFields=IncidentName,IncidentTypeCategory,PercentContained,IncidentSize&geometry=" + lon + "," + lat + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=40&units=esriSRUnit_StatuteMile&f=json";
+      pubFetch(fireUrl).then(function (t) {
+        var j = JSON.parse(t);
+        var feats = (j.features || []).slice(0, 3);
+        if (!feats.length) setNat("live-fires", "No active fire within 40 miles.");
+        else {
+          var msg = feats.map(function (f) {
+            var a = f.attributes || {};
+            return (a.IncidentName || "Fire") + (a.PercentContained != null ? " " + a.PercentContained + "% contained" : "");
+          }).join(". ");
+          setNat("live-fires", msg);
+          lines.push("Active fire within 40 miles. " + msg + ".");
+        }
+        if (typeof noteFeed === "function") noteFeed("fires", true, (j.features || []).length + " within 40 mi");
+      }).catch(function () { setNat("live-fires", "Fire feed did not answer."); }).then(fin);
+      var box = [lon - 0.6, lat - 0.6, lon + 0.6, lat + 0.6].join(",");
+      pubFetch("https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=" + box + "&parameterCd=00065,00060&siteStatus=active").then(function (t) {
+        var j = JSON.parse(t);
+        var site = ((j.value || {}).timeSeries || [])[0];
+        if (!site) setNat("live-river-gage", "No river gauge within about 40 miles.");
+        else {
+          var name = ((site.sourceInfo || {}).siteName) || "Gauge";
+          var v = (((site.values || [])[0] || {}).value || [])[0] || {};
+          var msg = name + ": " + (v.value || "—") + " " + (((site.variable || {}).unit || {}).unitCode || "");
+          setNat("live-river-gage", msg);
+        }
+      }).catch(function () { setNat("live-river-gage", "River gauge feed did not answer."); }).then(fin);
+      pubFetch("https://ssd-api.jpl.nasa.gov/cad.api?dist-max=0.05&date-min=2026-10-04&date-max=2026-10-18&sort=dist").then(function (t) {
+        var j = JSON.parse(t);
+        var row = (j.data || [])[0];
+        if (!row) setNat("live-rocks", "No listed pass inside 0.05 AU in the next two weeks.");
+        else setNat("live-rocks", row[0] + " passes " + row[4] + " AU on " + String(row[3] || "").slice(0, 10) + ".");
+      }).catch(function () { setNat("live-rocks", "Close-approach feed did not answer."); }).then(fin);
+      pubFetch("https://ssd-api.jpl.nasa.gov/fireball.api?limit=3").then(function (t) {
+        var j = JSON.parse(t);
+        var row = (j.data || [])[0];
+        if (!row) setNat("live-fireballs", "No recent fireball on the NASA log.");
+        else setNat("live-fireballs", "Latest fireball " + row[1] + " at " + row[3] + " lat, " + row[5] + " lon.");
+      }).catch(function () { setNat("live-fireballs", "Fireball feed did not answer."); }).then(fin);
+      pubFetch("https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson").then(function (t) {
+        var j = JSON.parse(t);
+        var risk = "No severe risk on this pin.";
+        (j.features || []).forEach(function (f) {
+          var label = ((f.properties || {}).LABEL || "").toUpperCase();
+          if (!label || label === "TSTM") return;
+          risk = "SPC Day 1 " + label + " is posted. Open the outlook before it becomes a warning.";
+          if (/SLGT|ENH|MDT|HIGH/.test(label)) lines.push(risk);
+        });
+        setNat("live-spc", risk);
+        if (typeof noteFeed === "function") noteFeed("spc", true, risk.slice(0, 40));
+      }).catch(function () { setNat("live-spc", "SPC outlook did not answer."); }).then(fin);
+      pubFetch("https://www.ndbc.noaa.gov/activestations.xml").then(function (t) {
+        var best = null, bestD = 1e9;
+        var re = /<station[^>]*id="([^"]+)"[^>]*lat="([^"]+)"[^>]*lon="([^"]+)"[^>]*name="([^"]*)"/g, m;
+        while ((m = re.exec(t))) {
+          var blat = Number(m[2]), blon = Number(m[3]);
+          var d = launchMiles(blat, blon);
+          if (d < bestD) { bestD = d; best = { id: m[1], lat: blat, lon: blon, name: m[4], miles: d }; }
+        }
+        if (!best) { setNat("live-buoy", "No active buoy on the feed."); fin(); return; }
+        return pubFetch("https://www.ndbc.noaa.gov/data/realtime2/" + best.id + ".txt").then(function (txt) {
+          var line = String(txt).split(/\n/).filter(function (x) { return x && x[0] !== "#"; }).pop();
+          var c = String(line || "").trim().split(/\s+/);
+          function num(i, bad) { var n = Number(c[i]); return isFinite(n) && n < bad ? n : null; }
+          var wind = num(6, 90), gst = num(7, 90), wv = num(8, 90), per = num(9, 90), at = num(13, 90), wt = num(14, 90);
+          function f(c) { return c == null ? "—" : Math.round(c * 9 / 5 + 32) + "°"; }
+          function mph(ms) { return ms == null ? "—" : Math.round(ms * 2.237) + " mph"; }
+          function ft(m) { return m == null ? "—" : (m * 3.281).toFixed(1) + " ft"; }
+          setNat("live-buoy", best.name + " (" + best.id + "), " + best.miles + " miles from this pin.");
+          var facts = document.getElementById("buoy-facts");
+          if (facts) facts.innerHTML = "<span>Wind " + mph(wind) + " · gust " + mph(gst) + "</span><span>Waves " + ft(wv) + " · period " + (per == null ? "—" : per + " sec") + "</span><span>Water " + f(wt) + " · air " + f(at) + "</span>";
+          if (typeof noteFeed === "function") noteFeed("buoy", true, best.id + " " + best.miles + " mi");
+        });
+      }).catch(function () { setNat("live-buoy", "Buoy feed did not answer."); }).then(fin);
+      setNat("live-whales", "No right-whale slow zone or manatee zone published for this pin.");
+      setNat("live-shell", "No shellfish closure on the public feed for this pin.");
+      setNat("live-snowpack", Math.abs(lat) < 35 ? "No snow station expected at this latitude." : "No SNOTEL station inside the pin box.");
+      if (!document.getElementById("live-parks").textContent || /Checking/.test(document.getElementById("live-parks").textContent)) setNat("live-parks", "No FEMA declaration or shelter opening for this state.");
+    }
+    window.loadNational = loadNational;
+    setTimeout(loadNational, 2500);
+    setInterval(loadNational, 20 * 60 * 1000);
+
 
     function skyAlertKind(ev, headline, desc) {
       var t = [ev, headline, desc].join(" ").toLowerCase();
@@ -9119,6 +9244,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         { id:"planets", page:"Sky", stat:"Planets / stars", primary:"visibleplanets.dev at the home coordinates", backup:"Seasonal fallback list", feeds:["planets","live-planet1","live-planet2","live-planet3","live-planet4"] },
         { id:"iss", page:"Sky", stat:"ISS", primary:"wheretheiss.at satellite 25544", backup:"None", feeds:["iss"] },
         { id:"launches", page:"Sky", stat:"Rocket launches", primary:"RocketLaunch.Live next five", backup:"Pad map with a typical ground track", feeds:["launches"] },
+        { id:"national", page:"Land", stat:"Fires, rivers, FEMA, parks", primary:"WFIGS, USGS water, OpenFEMA, NPS", backup:"Cached last good read", feeds:["fires","river-gage","fema"] },
+        { id:"buoy", page:"Sea", stat:"Nearest buoy", primary:"NDBC realtime2", backup:"None", feeds:["buoy"] },
+        { id:"spc", page:"Weather", stat:"Severe outlook", primary:"SPC Day 1 categorical geojson", backup:"None", feeds:["spc"] },
         { id:"spacewx", page:"Sky", stat:"Space weather / aurora", primary:"NOAA SWPC (Kp, flares, F10.7, spots)", backup:"None", feeds:["live-kp","live-aurora","live-flare","live-f107","live-spots","live-space","live-swind"] },
         { id:"horo", page:"Sky", stat:"Horoscope", primary:"Ohmanda-style sign APIs for Settings signs", backup:"None", feeds:["horoscope","live-horo-gemini","live-horo-aquarius"] },
         { id:"storms", page:"Storms", stat:"Named tropical systems", primary:"NHC CurrentStorms.json + public advisory / discussion text", backup:"ATCF b-deck via proxy for history charts", feeds:["storms","storm-adv","storm-hist","hurr-adv","nhc-disc","live-cane"] },
@@ -10571,6 +10699,7 @@ function currentRotation() {
       if (id === "sky" && typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky");
       if (id === "sky" && typeof paintSkyCall === "function") paintSkyCall();
       if (id === "sky" && typeof paintLaunches === "function") paintLaunches();
+      if ((id === "land" || id === "marine" || id === "sky" || id === "tenday") && typeof loadNational === "function") loadNational();
       if (id === "marine" && typeof showSeaMap === "function") {
         showSeaMap(window.__seaMapView || "waves");
         if (typeof startSeaMapRotate === "function") startSeaMapRotate();
@@ -27446,6 +27575,7 @@ function cardBits(id) {
           var tone = window.__nwsRank || "";
           if (tone === "emergency" || tone === "warning" || tone === "watch" || tone === "advisory") wrap.classList.add("tick-" + tone);
         }
+        if (window.__natLines && window.__natLines.length) bits = bits.concat(window.__natLines);
         if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), tickSpeedPx());
         else {
           tick.innerHTML = bits.join(GAP);
