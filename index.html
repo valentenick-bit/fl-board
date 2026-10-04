@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1070</span>
+      <span class="hdr-ver" id="hdr-ver">v1071</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5319,7 +5319,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1070;
+    window.BOARD_VER = 1071;
 
     
     function communityShort() {
@@ -28039,6 +28039,42 @@ function homeCountyGuess() {
       });
       if (typeof pollBreaking === "function") pollBreaking();
     }
+
+    function noticeWithin25(items, done) {
+      var rows = (items || []).slice(0, 4);
+      var place = ((typeof homePlace === "function" && homePlace()) || "").toLowerCase();
+      var st = ((typeof homeState === "function" && homeState()) || "").toLowerCase();
+      var kept = [];
+      var i = 0;
+      function next() {
+        if (i >= rows.length) { done(kept); return; }
+        var item = rows[i++];
+        var blob = String((item.title || "") + " " + (item.desc || ""));
+        var low = blob.toLowerCase();
+        if (place && low.indexOf(place) >= 0) { kept.push(item); next(); return; }
+        var named = "";
+        var m = blob.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+County\b/);
+        if (m) named = m[1] + " County";
+        if (!named) {
+          var m2 = blob.match(/\bin\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)/);
+          if (m2) named = m2[1];
+        }
+        if (!named || named.toLowerCase() === st) { next(); return; }
+        var q = named + (st ? ", " + st : "") + ", USA";
+        fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q), { headers: { "Accept": "application/json", "User-Agent": "CommonsBoard/1.0" } })
+          .then(function (r) { return r.json(); })
+          .then(function (hits) {
+            var hit = hits && hits[0];
+            if (hit && typeof milesBetween === "function") {
+              var mi = milesBetween(homeLat(), homeLon(), Number(hit.lat), Number(hit.lon));
+              if (isFinite(mi) && mi <= 25) kept.push(item);
+            }
+            next();
+          })
+          .catch(function () { next(); });
+      }
+      next();
+    }
     function pollPublicDesk() {
       collectPublicSafetyFromNws();
       var place = (typeof homePlace === "function" && homePlace()) || "Englewood";
@@ -28058,10 +28094,12 @@ function homeCountyGuess() {
       }
 
       if (typeof fetchNewsQuery === "function") {
-        fetchNewsQuery('"boil water" OR "do not drink" OR "boil-water" ' + place + " OR " + st + " when:3d", function (items) {
+        fetchNewsQuery('"boil water" OR "do not drink" OR "boil-water" (' + place + " OR " + st + ") when:3d", function (items) {
           items = (items || []).filter(function (x) { return /boil|do not drink|water notice/i.test(x.title || ""); });
-          window.__boilTick = items.length ? speakAlert({ kind: "boil", title: "Boil-water notice", body: items[0].title }) : "";
-          newsToCard("boil-card", "live-boil", "boil", items, true);
+          noticeWithin25(items, function (near) {
+            window.__boilTick = near.length ? speakAlert({ kind: "boil", title: "Boil-water notice", body: near[0].title }) : "";
+            newsToCard("boil-card", "live-boil", "boil", near, true);
+          });
         });
         fetchNewsQuery("NTAS OR \"national terrorism advisory\" when:7d", function (items) {
           items = (items || []).filter(function (x) {
@@ -28091,7 +28129,8 @@ function homeCountyGuess() {
           }));
           newsToCard("han-card", "live-han", "han", tick, true);
         });
-        fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\" OR \"schools closed\" OR \"school closed\") (school OR district) (" + place + " OR " + st + ") when:2d", function (items) {
+        fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\" OR \"schools closed\" OR \"school closed\") (school OR district) (" + place + " OR " + st + ") when:2d", function (rawSchool) {
+          noticeWithin25(rawSchool, function (items) {
           items = (items || []).filter(function (x) {
             var t = String(x.title || "") + " " + String(x.desc || "");
             if (!/school|district|students/i.test(t)) return false;
@@ -28105,8 +28144,10 @@ function homeCountyGuess() {
           });
           window.__schoolAlerts = items.map(function (x) { return { kind: "school", title: "School emergency", body: x.title }; });
           newsToCard("school-card", "live-school", "school", items, true);
+          });
         });
-        fetchNewsQuery("(nixle OR \"community alert\" OR \"emergency management\") (" + place + " OR Charlotte OR Sarasota) when:2d", function (items) {
+        fetchNewsQuery("(nixle OR \"community alert\" OR \"emergency management\") (" + place + ") when:2d", function (rawNixle) {
+          noticeWithin25(rawNixle, function (items) {
           items = (items || []).filter(function (x) {
             var t = String(x.title || "") + " " + String(x.desc || "");
             if (/amendment|ballot|election|vote yes|vote no|school board race|candidate/i.test(t)) return false;
@@ -28114,8 +28155,10 @@ function homeCountyGuess() {
           });
           window.__nixleCivic = items.map(function (x) { return { kind: "nixle", title: "Local notice", body: x.title }; });
           newsToCard("nixle-card", "live-nixle", "nixle", items, true);
+          });
         });
-        fetchNewsQuery("\"temporary flight restriction\" OR TFR NOTAM FAA (" + place + " OR " + st + ") when:2d", function (items) {
+        fetchNewsQuery("\"temporary flight restriction\" OR TFR NOTAM FAA (" + place + " OR " + st + ") when:2d", function (rawTfr) {
+          noticeWithin25(rawTfr, function (items) {
           items = (items || []).filter(function (x) {
             var t = String(x.title || "") + " " + String(x.desc || "");
             if (/groundbreaking|breaks ground|fire station|ribbon|opens|festival/i.test(t)) return false;
@@ -28125,8 +28168,10 @@ function homeCountyGuess() {
             return { src: "TFR", title: speakAlert({ kind: "tfr", title: "Flight restriction", body: x.title }) };
           }));
           newsToCard("tfr-card", "live-tfr", "tfr", items, true);
+          });
         });
-        fetchNewsQuery("\"local notice to mariners\" OR LNM OR \"coast guard district 7\" (" + place + " OR Florida) when:7d", function (items) {
+        fetchNewsQuery("\"local notice to mariners\" OR LNM (" + place + ") when:7d", function (rawUscg) {
+          noticeWithin25(rawUscg, function (items) {
           items = (items || []).filter(function (x) {
             var blob = String((x.title || "") + " " + (x.desc || "")).toLowerCase();
             if (/dugong|manatee death|whale watch|dolphin|wildlife rescue/i.test(blob)) return false;
@@ -28137,6 +28182,7 @@ function homeCountyGuess() {
           }));
           newsToCard("uscg-card", "live-uscg", "uscg-ntm", items, true);
           if (typeof mergeDeskIntoTickers === "function") mergeDeskIntoTickers();
+          });
         });
       }
 
