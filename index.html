@@ -1851,6 +1851,22 @@
     .wx-map-frame .wx-map-pane { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:#0b1220; object-fit:contain; object-position:center; }
     .wx-map-frame .wx-map-pane.on { display:block; }
     .wx-map-frame iframe.wx-map-pane { width:100%; height:100%; }
+
+    .airport-row { display:flex; gap:8px; overflow-x:auto; margin-top:10px; padding-bottom:2px; }
+    .airport-pill { flex:1 0 132px; min-height:108px; border-radius:28px; background:rgba(255,255,255,.55); border:2px solid transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:10px 8px; }
+    .airport-pill b { font-size:22px; letter-spacing:.04em; }
+    .airport-pill .ap-name { font-weight:700; font-size:13px; margin-top:2px; }
+    .airport-pill .ap-mi { opacity:.75; font-size:12px; }
+    .airport-pill .ap-state { margin-top:6px; font-weight:800; font-size:13px; }
+    .airport-pill.ok .ap-state { color:#1f7a4d; }
+    .airport-pill.delay { background:rgba(242,193,78,.45); }
+    .airport-pill.delay .ap-state { color:#8a5a00; }
+    .airport-pill.stop, .airport-pill.closed { background:rgba(196,74,62,.18); border-color:rgba(196,74,62,.45); }
+    .airport-pill.stop .ap-state, .airport-pill.closed .ap-state { color:#9c2f24; }
+    html.dark .airport-pill { background:rgba(255,255,255,.08); }
+    html.dark .airport-pill.ok .ap-state { color:#8fd9b0; }
+    html.dark .airport-pill.delay .ap-state { color:#f2c14e; }
+    html.dark .airport-pill.stop .ap-state, html.dark .airport-pill.closed .ap-state { color:#ffb4a8; }
     .sea-map-pills { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 0; }
     .sea-map-pills button { appearance:none; border:0; background:rgba(8,16,28,.08); color:inherit; border-radius:999px; padding:4px 10px; font:inherit; font-size:12px; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; }
     .sea-map-pills button.on { background:var(--navy); color:#f7f1e6; }
@@ -3407,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1074</span>
+      <span class="hdr-ver" id="hdr-ver">v1075</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3486,7 +3502,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     <div class="ptr" id="ptr">Pull to refresh</div>
     <main>
       <section id="now" class="page on">
-        <div class="card" id="airport-delay-card" hidden><b>Airport delay</b><span id="airport-delay"></span></div>
         <h2 data-k="At this pin">Today</h2>
         <p class="today-stamp" id="today-stamp" hidden></p>
         <div class="today-shell" id="today-shell">
@@ -3509,6 +3524,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <span id="greet-next"></span>
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for today&rsquo;s details</small>
+        </div>
+        <div class="card airport-card" id="airport-card">
+          <b>Airports</b>
+          <span class="hint" id="airport-lead">Four closest airline airports from this pin.</span>
+          <div class="airport-row" id="airport-status"></div>
         </div>
         <div class="card" id="wx-records">
           <b>This date</b>
@@ -3977,7 +3997,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="house" class="page">
         <h2 data-k="This house">House</h2>
         <div class="card"><b>Flights</b><div id="live-flights">Loading the flight scan…</div></div>
-        <div class="card" id="airport-card"><b>Closest airports</b><span id="airport-status">Checking the four closest airline airports…</span></div>
         <div class="card" id="house-maint-card">
           <b>Maintenance</b>
           <span id="house-maint-lead">Due dates follow this home pin. Set the last-done date on each job.</span>
@@ -5321,7 +5340,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1074;
+    window.BOARD_VER = 1075;
 
     
     function communityShort() {
@@ -10461,7 +10480,7 @@ function currentRotation() {
       if (id === "guide" && typeof paintGuide === "function") paintGuide();
       if (id === "sources" && typeof paintSources === "function") paintSources();
       if (id === "house" && typeof paintHouseFlights === "function") paintHouseFlights();
-      if (id === "house" && typeof paintAirportStatus === "function") paintAirportStatus();
+      if ((id === "house" || id === "now") && typeof paintAirportStatus === "function") paintAirportStatus();
       if ((id === "settings" || id === "account") && typeof window.paintSettings === "function") window.paintSettings();
       if (id === "settings") { if (typeof paintSportsPage === "function") paintSportsPage(); if (typeof bindSportsPage === "function") bindSportsPage(); }
       if (id === "radar") {
@@ -17012,53 +17031,48 @@ function currentRotation() {
     ];
     function paintAirportStatus() {
       var box = document.getElementById("airport-status");
-      var today = document.getElementById("airport-delay-card");
-      var todayBody = document.getElementById("airport-delay");
+      var lead = document.getElementById("airport-lead");
       if (!box || typeof homeLat !== "function") return;
       var lat = homeLat(), lon = homeLon();
       var near = AIRPORTS.map(function (a) {
         return { code: a[0], name: a[1], lat: a[2], lon: a[3], mi: milesBetween(lat, lon, a[2], a[3]) };
       }).sort(function (a, b) { return a.mi - b.mi; }).slice(0, 4);
-      box.innerHTML = near.map(function (a) { return "<div>" + a.name + " (" + a.code + ") · " + Math.round(a.mi) + " mi · checking</div>"; }).join("");
-      var urls = ["/faa-status"];
-      function read(i) {
-        if (i >= urls.length) { box.innerHTML = near.map(function (a) { return "<div>" + a.name + " (" + a.code + ") · " + Math.round(a.mi) + " mi · status not in yet</div>"; }).join(""); return; }
-        fetch(urls[i], { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("http"); return r.text(); }).then(function (xml) {
-          if (xml.indexOf("AIRPORT_STATUS") < 0) throw new Error("html");
-          var doc = new DOMParser().parseFromString(xml, "text/xml");
-          var bad = {};
-          function take(tag, status) {
-            Array.prototype.forEach.call(doc.getElementsByTagName(tag), function (node) {
-              var code = (node.getElementsByTagName("ARPT")[0] || {}).textContent || "";
-              var reason = (node.getElementsByTagName("Reason")[0] || {}).textContent || "";
-              if (/GA ACFT|TRANSIENT|NON SKED/i.test(reason)) return;
-              var avg = (node.getElementsByTagName("Avg")[0] || node.getElementsByTagName("Min")[0] || {}).textContent || "";
-              bad[code] = { status: status, reason: reason, avg: avg };
-            });
-          }
-          take("Ground_Stop", "Ground stop");
-          take("Ground_Delay", "Delays");
-          take("Delay", "Delays");
-          take("Airport", "Closed");
-          var lines = near.map(function (a) {
-            var hit = bad[a.code];
-            var state = hit ? hit.status : "Normal";
-            var extra = hit ? (". " + (hit.avg ? hit.avg + ". " : "") + hit.reason) : "";
-            return a.name + " (" + a.code + ") · " + Math.round(a.mi) + " mi · " + state + extra;
-          });
-          box.innerHTML = lines.map(function (line) { return "<div>" + line + "</div>"; }).join("");
-          var trouble = near.filter(function (a) { return bad[a.code]; });
-          if (today && todayBody) {
-            if (trouble.length) {
-              today.hidden = false;
-              todayBody.textContent = trouble.map(function (a) { return a.name + " is " + bad[a.code].status.toLowerCase() + (bad[a.code].reason ? " because of " + bad[a.code].reason : "") + "."; }).join(" ");
-            } else today.hidden = true;
-          }
-          if (typeof noteFeed === "function") noteFeed("airports", true, trouble.length ? trouble.length + " delayed" : "normal");
-        }).catch(function () { read(i + 1); });
+      function draw(bad) {
+        box.innerHTML = near.map(function (a) {
+          var hit = bad && bad[a.code];
+          var state = hit ? hit.status : (bad ? "Normal" : "Checking");
+          var cls = hit ? (hit.status === "Closed" ? "closed" : (hit.status === "Ground stop" ? "stop" : "delay")) : (bad ? "ok" : "");
+          var why = hit ? ((hit.avg ? hit.avg + " · " : "") + hit.reason) : "";
+          return '<div class="airport-pill ' + cls + '"><b>' + a.code + '</b><div class="ap-name">' + a.name + '</div><div class="ap-mi">' + Math.round(a.mi) + ' mi</div><div class="ap-state">' + state + '</div>' + (why ? '<div class="ap-mi">' + why + '</div>' : '') + '</div>';
+        }).join("");
+        if (lead) {
+          var trouble = bad ? near.filter(function (a) { return bad[a.code]; }) : [];
+          lead.textContent = trouble.length ? trouble.map(function (a) { return a.name + " is " + bad[a.code].status.toLowerCase() + "."; }).join(" ") : "Four closest airline airports from this pin.";
+        }
       }
-      read(0);
+      draw(null);
+      fetch("/faa-status", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("http"); return r.text(); }).then(function (xml) {
+        if (xml.indexOf("AIRPORT_STATUS") < 0) throw new Error("html");
+        var doc = new DOMParser().parseFromString(xml, "text/xml");
+        var bad = {};
+        function take(tag, status) {
+          Array.prototype.forEach.call(doc.getElementsByTagName(tag), function (node) {
+            var code = (node.getElementsByTagName("ARPT")[0] || {}).textContent || "";
+            var reason = (node.getElementsByTagName("Reason")[0] || {}).textContent || "";
+            if (/GA ACFT|TRANSIENT|NON SKED/i.test(reason)) return;
+            var avg = (node.getElementsByTagName("Avg")[0] || node.getElementsByTagName("Min")[0] || {}).textContent || "";
+            bad[code] = { status: status, reason: reason, avg: avg };
+          });
+        }
+        take("Ground_Stop", "Ground stop");
+        take("Ground_Delay", "Delays");
+        take("Delay", "Delays");
+        take("Airport", "Closed");
+        draw(bad);
+        if (typeof noteFeed === "function") noteFeed("airports", true, near.filter(function (a) { return bad[a.code]; }).length + " delayed");
+      }).catch(function () { draw({}); if (lead) lead.textContent = "Four closest airports. FAA status did not answer."; });
     }
+    window.paintAirportStatus = paintAirportStatus;
     window.paintAirportStatus = paintAirportStatus;
     function paintHouseFlights() {
       var el = document.getElementById("live-flights");
