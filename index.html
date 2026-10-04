@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1082</span>
+      <span class="hdr-ver" id="hdr-ver">v1083</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5132,7 +5132,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </div>
       <div class="set-card">
         <h3>Daily rotation</h3>
-        <p class="hint">Check the pages you want on the loop. Use Up and Down to set the order. Settings, Menu, Account, and the developer pages stay off the loop.</p>
+        <p class="hint">Check the pages you want on the loop. Use Up and Down to set the order. A check stays off until you turn it back on.</p>
         <div id="set-rot-daily"></div>
       </div>
       <div class="set-card">
@@ -5334,7 +5334,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1082;
+    window.BOARD_VER = 1083;
 
     
     function communityShort() {
@@ -13711,8 +13711,8 @@ function currentRotation() {
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
     function loadRots() {
-      var dailyPool = window.ROT_DAILY_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house","storms","contacts","prep","villa","power","welcome","guide","ideas","sources","business","kioskpage","health"];
-      var stormPool = window.ROT_STORM_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house","storms","contacts","prep","villa","power","welcome","guide","ideas","sources","business","kioskpage","health"];
+      var dailyPool = window.ROT_DAILY_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
+      var stormPool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts","prep","house"];
       var def = window.ROT_DEFAULTS || { normal: dailyPool.slice(0, 8), storm: stormPool.slice() };
       var alias = {
         power: "contacts", fpl: "contacts", leave: "contacts",
@@ -13733,14 +13733,8 @@ function currentRotation() {
       var s = null;
       try { s = JSON.parse(localStorage.getItem("bw-rots") || "null"); } catch (e) { s = null; }
       function mergeMissing(saved, defaults, pool) {
-        var out = clean(saved, pool, defaults);
-        (defaults || []).forEach(function (id, idx) {
-          if (!id || out.indexOf(id) >= 0 || pool.indexOf(id) < 0) return;
-          var prev = defaults[idx - 1];
-          var at = prev && out.indexOf(prev) >= 0 ? out.indexOf(prev) + 1 : Math.min(idx, out.length);
-          out.splice(at, 0, id);
-        });
-        return out;
+        if (!saved || !saved.length) return clean(defaults, pool, defaults);
+        return clean(saved, pool, defaults);
       }
       var out = {
         normal: mergeMissing(s && s.normal, def.normal, dailyPool),
@@ -13764,7 +13758,7 @@ function currentRotation() {
       return true;
     }
     function warnList() {
-      var pool = window.ROT_STORM_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house","storms","contacts","prep","villa","power","welcome","guide","ideas","sources","business","kioskpage","health"];
+      var pool = window.ROT_STORM_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
       var seen = {};
       return loadRots().storm.filter(function (id) {
         if (!id || seen[id] || pool.indexOf(id) < 0 || !rotVisible(id)) return false;
@@ -20586,8 +20580,8 @@ function mustEatsFL() {
       if (n) n.innerHTML = rowHtml("normal", r.normal);
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
-    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house","storms","contacts","prep","villa","power","welcome","guide","ideas","sources","business","kioskpage","health"];
-    var ROT_STORM_POOL = ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house","storms","contacts","prep","villa","power","welcome","guide","ideas","sources","business","kioskpage","health"];
+    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
+    var ROT_STORM_POOL = ["tenday","storms","marine","contacts","prep","house"];
     window.ROT_DAILY_POOL = ROT_DAILY_POOL;
     window.ROT_STORM_POOL = ROT_STORM_POOL;
     function paintRotSet() {
@@ -20751,8 +20745,7 @@ function mustEatsFL() {
           if (arr.indexOf(id) < 0) arr.push(id);
         } else {
           arr = arr.filter(function (x) { return x !== id; });
-          if (kind === "normal" && arr.indexOf("now") < 0) arr.unshift("now");
-          if (!arr.length) arr = kind === "storm" ? (window.ROT_STORM_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house","storms","contacts","prep","villa","power","welcome","guide","ideas","sources","business","kioskpage","health"]).slice() : ["now"];
+          if (!arr.length) arr = ["now"];
         }
         r[kind] = arr;
         saveRots(r);
