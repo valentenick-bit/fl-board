@@ -275,6 +275,19 @@ export default {
       return new Response(JSON.stringify({ type: "FeatureCollection", features: [], via: "empty" }), { status: 200, headers: hdr });
     }
 
+    if (url.pathname === "/pub") {
+      const hdr = { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=300", "access-control-allow-origin": "*" };
+      const target = String(url.searchParams.get("u") || "");
+      const ok = /^https:\/\/(www\.fema\.gov|services3\.arcgis\.com|waterservices\.usgs\.gov|ssd-api\.jpl\.nasa\.gov|www\.spc\.noaa\.gov|www\.ndbc\.noaa\.gov|services\.swpc\.noaa\.gov)\//.test(target);
+      if (!ok) return new Response("host not allowed", { status: 400, headers: hdr });
+      try {
+        const r = await fetch(target, { headers: { "User-Agent": "CommonsBoard/1.0" }, cf: { cacheTtl: 300 } });
+        return new Response(await r.text(), { status: r.ok ? 200 : r.status, headers: hdr });
+      } catch (e) {
+        return new Response(String(e && e.message || e), { status: 502, headers: hdr });
+      }
+    }
+
     if (url.pathname === "/nws-proxy") {
       const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
       let target = String(url.searchParams.get("u") || "").trim();
