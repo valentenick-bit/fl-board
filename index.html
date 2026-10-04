@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1065</span>
+      <span class="hdr-ver" id="hdr-ver">v1066</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3667,11 +3667,15 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <div id="radar-home-pin" class="radar-home-pin" title="Home"></div>
             <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
             <iframe class="wx-map-pane" id="wx-sat-view" title="Satellite" src="about:blank" allowfullscreen hidden></iframe>
+            <iframe class="wx-map-pane" id="wx-ir-view" title="Infrared" src="about:blank" allowfullscreen hidden></iframe>
+            <iframe class="wx-map-pane" id="wx-temp-view" title="Temperature" src="about:blank" allowfullscreen hidden></iframe>
             <iframe class="wx-map-pane" id="wx-now-view" title="Nowcast" src="about:blank" allowfullscreen hidden></iframe>
           </div>
           <div class="sea-map-pills" id="wx-map-pills">
             <button type="button" data-wx-map="radar" class="on">Radar</button>
             <button type="button" data-wx-map="sat">Satellite</button>
+            <button type="button" data-wx-map="ir">Infrared</button>
+            <button type="button" data-wx-map="temp">Temp</button>
             <button type="button" data-wx-map="now">Nowcast</button>
             <button type="button" data-wx-map="bolt">Lightning</button>
           </div>
@@ -3726,6 +3730,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-land-map="sat">Satellite</button>
             <button type="button" data-land-map="air">Air</button>
             <button type="button" data-land-map="rain">Rain</button>
+            <button type="button" data-land-map="smoke">Smoke</button>
             <button type="button" data-land-map="drought">Drought</button>
             <button type="button" data-land-map="rivers" id="land-rivers-pill" hidden>Rivers</button>
           </div>
@@ -3778,6 +3783,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-sea-map="currents">Current</button>
             <button type="button" data-sea-map="sst">Sea temp</button>
             <button type="button" data-sea-map="wind">Wind</button>
+            <button type="button" data-sea-map="chart">Chart</button>
+            <button type="button" data-sea-map="clarity">Clarity</button>
             <button type="button" data-sea-map="ais">Traffic</button>
           </div>
           <p class="wx-map-cap"><b id="sea-map-kind">Wind</b><span id="sea-map-note">Pinned on home</span></p>
@@ -3848,6 +3855,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-sky-map="aurora">Aurora</button>
             <button type="button" data-sky-map="iss">ISS</button>
             <button type="button" data-sky-map="moon">Moon</button>
+            <button type="button" data-sky-map="planes">Planes</button>
+            <button type="button" data-sky-map="lights">Lights</button>
             <button type="button" data-sky-map="sun">Sun</button>
           </div>
           <p class="wx-map-cap"><b id="sky-map-kind">Night sky</b><span id="sky-map-note">Pinned on home</span></p>
@@ -5310,7 +5319,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1065;
+    window.BOARD_VER = 1066;
 
     
     function communityShort() {
@@ -6330,7 +6339,8 @@ Cart shop:</textarea>
       var views = {
         traffic: { label: "Traffic", kind: "traffic" },
         sat: { label: "Satellite", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("satellite") : "" },
-        air: { label: "Air", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("airquality") : "" },
+        air: { label: "Air", kind: "iframe", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/chem/surface/level/overlay=pm2p5") : "" },
+        smoke: { label: "Smoke", kind: "smoke", url: "" },
         rain: { label: "Rain", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("rain") : "" },
         drought: { label: "Drought", kind: "iframe", url: "https://droughtmonitor.unl.edu/data/png/current/current_usdm.png" },
         rivers: { label: "Rivers", kind: "iframe", url: "https://water.weather.gov/ahps/" }
@@ -6354,6 +6364,7 @@ Cart shop:</textarea>
         else { hide(g); show(traf); if (typeof applyLocalMaps === "function") applyLocalMaps(); }
       } else {
         hide(g); hide(traf); show(extra);
+        if (id === "smoke" && extra && typeof paintSmokeMap === "function") { paintSmokeMap(extra, homeLat(), homeLon()); return; }
         if (extra && v.url && extra.getAttribute("data-src") !== v.url) {
           extra.src = v.url;
           extra.setAttribute("data-src", v.url);
@@ -6526,6 +6537,8 @@ Cart shop:</textarea>
         currents: { label: "Current", note: "Ocean current speed and direction at the home pin", url: homeMarineOverlay("currents"), chart: false },
         sst: { label: "Sea temp", note: "Sea-surface temperature, pinned on home", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/ocean/primary/waves/overlay=sea_surface_temp") : "", chart: false },
         wind: { label: "Wind", note: "Surface wind speed and direction at the home pin", url: homeMarineOverlay("wind"), chart: false },
+        chart: { label: "Chart", note: "Depth marks and channels pinned on home", url: "", chart: true },
+        clarity: { label: "Clarity", note: "Ocean color near the pin", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/ocean/primary/waves/overlay=chlorophyll") : "", chart: false },
         ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false }
       };
       if (id === "chart") id = "wind";
@@ -6542,6 +6555,14 @@ Cart shop:</textarea>
         b.className = b.getAttribute("data-sea-map") === id ? "on" : "";
       });
       var aisBox = document.getElementById("sea-ais");
+      if (id === "chart") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; }
+        if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
+        paintNavChart(chart, homeLat(), homeLon(), note);
+        if (typeof noteFeed === "function") noteFeed("sea-map", true, "chart");
+        return;
+      }
       if (v.chart) {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); frame.removeAttribute("data-src"); }
         if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; aisBox.innerHTML = ""; }
@@ -6579,14 +6600,99 @@ Cart shop:</textarea>
 
 
 
-    function paintCloudPin(img, latN, lonN, note) {
+
+    function paintNavChart(el, latN, lonN, note) {
+      paintLayerTiles(el, latN, lonN, note, 11, function (z, x, y) {
+        return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png";
+      }, function (z, x, y) {
+        return "https://tiles.openseamap.org/seamark/" + z + "/" + x + "/" + y + ".png";
+      }, "Chart pinned on " + ((typeof homePlace === "function" && homePlace()) || "home"));
+    }
+    function paintLightMap(el, latN, lonN, note) {
+      paintLayerTiles(el, latN, lonN, note, 8, function (z, x, y) {
+        return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png";
+      }, null, "Night-light base pinned on " + ((typeof homePlace === "function" && homePlace()) || "home"));
+    }
+    function paintPlaneMap(el, latN, lonN, note) {
+      paintLayerTiles(el, latN, lonN, note, 8, function (z, x, y) {
+        return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png";
+      }, null, "Looking up flights…", function (g, fx, fy, left, top) {
+        fetch("https://api.adsb.lol/v2/lat/" + latN + "/lon/" + lonN + "/dist/60").then(function (r) { return r.json(); }).then(function (d) {
+          var rows = (d && d.ac) || [];
+          rows.slice(0, 40).forEach(function (ac) {
+            if (ac.lat == null || ac.lon == null) return;
+            var n = 256;
+            var x = ((Number(ac.lon) + 180) / 360 * 256 - left);
+            var sl = Math.sin(Number(ac.lat) * Math.PI / 180);
+            var y = ((1 - Math.log((1 + sl) / (1 - sl)) / (2 * Math.PI)) / 2 * 256 - top);
+            g.save();
+            g.translate(x, y);
+            g.rotate((Number(ac.track) || 0) * Math.PI / 180);
+            g.fillStyle = "#f2c14e";
+            g.beginPath(); g.moveTo(0, -8); g.lineTo(5, 7); g.lineTo(0, 3); g.lineTo(-5, 7); g.closePath(); g.fill();
+            g.restore();
+          });
+          if (el && el.tagName === "CANVAS") {}
+          if (el) el.src = g.canvas.toDataURL("image/jpeg", 0.84);
+          if (note) note.textContent = rows.length + " flights within 60 miles";
+        }).catch(function () { if (note) note.textContent = "Flight feed did not answer."; });
+      });
+    }
+    function paintSmokeMap(el, latN, lonN) {
+      paintCloudPin(el, latN, lonN, document.getElementById("land-map-kind"), "vis");
+      fetch("https://eonet.gsfc.nasa.gov/api/v3/events?category=wildfires&status=open&limit=30").then(function (r) { return r.json(); }).catch(function () { return {}; });
+    }
+    function paintLayerTiles(el, latN, lonN, note, z, urlFor, overlayFor, caption, after) {
+      var n = Math.pow(2, z);
+      var fx = (Number(lonN) + 180) / 360 * n;
+      var s = Math.sin(Number(latN) * Math.PI / 180);
+      var fy = (1 - Math.log((1 + s) / (1 - s)) / (2 * Math.PI)) / 2 * n;
+      var c = document.createElement("canvas");
+      c.width = 768; c.height = 768;
+      var g = c.getContext("2d");
+      g.fillStyle = "#0c3a55";
+      g.fillRect(0, 0, 768, 768);
+      var left = Math.floor(fx) - 1, top = Math.floor(fy) - 1;
+      var jobs = [];
+      for (var dy = 0; dy < 3; dy++) for (var dx = 0; dx < 3; dx++) jobs.push([dx, dy, false]);
+      if (overlayFor) for (var dy2 = 0; dy2 < 3; dy2++) for (var dx2 = 0; dx2 < 3; dx2++) jobs.push([dx2, dy2, true]);
+      var pending = jobs.length;
+      function finish() {
+        if (--pending) return;
+        var px = (fx - left) * 256, py = (fy - top) * 256;
+        g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(px, py, 7, 0, 6.3); g.fill();
+        g.fillStyle = "#f4efe6"; g.font = "700 20px Source Sans 3, sans-serif";
+        g.fillText((typeof homePlace === "function" && homePlace()) || "Home", Math.min(px + 12, 600), Math.max(py - 12, 28));
+        if (after) after(g, fx, fy, left, top);
+        if (el) el.src = c.toDataURL("image/jpeg", 0.84);
+        if (note) note.textContent = caption;
+      }
+      jobs.forEach(function (job) {
+        var dx = job[0], dy = job[1], over = job[2];
+        var tx = left + dx, ty = top + dy;
+        if (ty < 0 || ty >= n) { finish(); return; }
+        var im = new Image();
+        im.crossOrigin = "anonymous";
+        im.onload = function () { g.drawImage(im, dx * 256, dy * 256); finish(); };
+        im.onerror = function () { finish(); };
+        im.src = over ? overlayFor(z, ((tx % n) + n) % n, ty) : urlFor(z, ((tx % n) + n) % n, ty);
+      });
+    }
+
+    function paintCloudPin(img, latN, lonN, note, mode) {
       var z = 6;
       var n = Math.pow(2, z);
       var fx = (Number(lonN) + 180) / 360 * n;
       var s = Math.sin(Number(latN) * Math.PI / 180);
       var fy = (1 - Math.log((1 + s) / (1 - s)) / (2 * Math.PI)) / 2 * n;
       var layer = Number(lonN) < -114 ? "GOES-West_ABI_GeoColor" : "GOES-East_ABI_GeoColor";
+      if (mode === "ir") layer = Number(lonN) < -114 ? "GOES-West_ABI_GeoColor" : "GOES-East_ABI_GeoColor";
       var day = new Date().toISOString().slice(0, 10);
+      if (mode === "ir" && img) {
+        img.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/13/1250x750.jpg?" + Date.now();
+        if (note) note.textContent = "Infrared cloud tops. Visible satellite stays pinned on home.";
+        return;
+      }
       function tileUrl(tx, ty) {
         return "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/" + layer + "/default/" + day + "/GoogleMapsCompatible_Level7/" + z + "/" + ty + "/" + tx + ".jpg";
       }
@@ -6726,6 +6832,8 @@ Cart shop:</textarea>
           if (frame > 8760) frame = 8760;
           return "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon." + frame + ".jpg";
         })() },
+        planes: { label: "Planes", note: "Live flights near the home pin", kind: "planes", url: "" },
+        lights: { label: "Lights", note: "Night lights around the home pin", kind: "lights", url: "" },
         sun: { label: "Sun", note: "SDO AIA 193 — flares and holes", kind: "img", url: "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg?" + Date.now() }
       };
       var kpNow = window.__kp != null ? Number(window.__kp) : 0;
@@ -6743,7 +6851,15 @@ Cart shop:</textarea>
       document.querySelectorAll("#sky-map-pills button").forEach(function (b) {
         b.className = b.getAttribute("data-sky-map") === id ? "on" : "";
       });
-      if (v.kind === "clouds") {
+      if (v.kind === "planes") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "Planes"; }
+        paintPlaneMap(img, lat, lon, note);
+      } else if (v.kind === "lights") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "Lights"; }
+        paintLightMap(img, lat, lon, note);
+      } else if (v.kind === "clouds") {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "Clouds"; }
         paintCloudPin(img, lat, lon, note);
@@ -9499,7 +9615,7 @@ function gatorRange() {
       var sat = document.getElementById("wx-sat-view");
       var nowc = document.getElementById("wx-now-view");
       var bolt = document.getElementById("wx-bolt-view");
-      [sat, nowc, bolt].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
+      [sat, nowc, bolt, document.getElementById("wx-ir-view"), document.getElementById("wx-temp-view")].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
       var map = document.getElementById("wx-radar-map");
       if (live) { live.style.display = "none"; try { live.src = "about:blank"; } catch (e0) {} }
       if (map) map.style.display = "none";
@@ -14726,14 +14842,14 @@ function currentRotation() {
       var live = document.getElementById("wx-radar-live");
       var sat = document.getElementById("wx-sat-view");
       var nowc = document.getElementById("wx-now-view");
-      [sat, nowc, bolt].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
+      [sat, nowc, bolt, document.getElementById("wx-ir-view"), document.getElementById("wx-temp-view")].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
       if (stage) stage.classList.toggle("wx-show-bolt", which === "bolt");
       if (bolt) {
         bolt.classList.toggle("on", which === "bolt");
         bolt.style.display = which === "bolt" ? "block" : "none";
         bolt.style.zIndex = which === "bolt" ? "12" : "0";
       }
-      var extra = which === "sat" ? sat : (which === "now" ? nowc : (which === "bolt" ? bolt : null));
+      var ir = document.getElementById("wx-ir-view"); var temp = document.getElementById("wx-temp-view"); var extra = which === "sat" ? sat : (which === "ir" ? ir : (which === "temp" ? temp : (which === "now" ? nowc : (which === "bolt" ? bolt : null))));
       if (extra) {
         extra.hidden = false;
         extra.style.display = "block";
@@ -14795,10 +14911,13 @@ function currentRotation() {
             bolt.setAttribute("data-src", url);
           }
         }
-        if (which === "sat") {
-          var sat = document.getElementById("wx-sat-view");
+        if (which === "sat" || which === "ir" || which === "temp") {
           var note = document.getElementById("wx-map-note");
-          if (sat && typeof paintCloudPin === "function") paintCloudPin(sat, lat, lon, note);
+          var pane = document.getElementById(which === "ir" ? "wx-ir-view" : (which === "temp" ? "wx-temp-view" : "wx-sat-view"));
+          if (which === "temp" && pane && typeof nullschoolPin === "function") {
+            var tu = nullschoolPin(lat, lon, "current/wind/surface/level/overlay=temp");
+            if (pane.getAttribute("data-src") !== tu) { pane.src = tu; pane.setAttribute("data-src", tu); }
+          } else if (pane && typeof paintCloudPin === "function") paintCloudPin(pane, lat, lon, note, which === "ir" ? "ir" : "vis");
         }
         if (which === "now") {
           var nowc = document.getElementById("wx-now-view");
