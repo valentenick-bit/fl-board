@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1071</span>
+      <span class="hdr-ver" id="hdr-ver">v1072</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3486,6 +3486,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     <div class="ptr" id="ptr">Pull to refresh</div>
     <main>
       <section id="now" class="page on">
+        <div class="card" id="airport-delay-card" hidden><b>Airport delay</b><span id="airport-delay"></span></div>
         <h2 data-k="At this pin">Today</h2>
         <p class="today-stamp" id="today-stamp" hidden></p>
         <div class="today-shell" id="today-shell">
@@ -3976,6 +3977,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="house" class="page">
         <h2 data-k="This house">House</h2>
         <div class="card"><b>Flights</b><div id="live-flights">Loading the flight scan…</div></div>
+        <div class="card" id="airport-card"><b>Closest airports</b><span id="airport-status">Checking the three closest airline airports…</span></div>
         <div class="card" id="house-maint-card">
           <b>Maintenance</b>
           <span id="house-maint-lead">Due dates follow this home pin. Set the last-done date on each job.</span>
@@ -5319,7 +5321,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1071;
+    window.BOARD_VER = 1072;
 
     
     function communityShort() {
@@ -10459,6 +10461,7 @@ function currentRotation() {
       if (id === "guide" && typeof paintGuide === "function") paintGuide();
       if (id === "sources" && typeof paintSources === "function") paintSources();
       if (id === "house" && typeof paintHouseFlights === "function") paintHouseFlights();
+      if (id === "house" && typeof paintAirportStatus === "function") paintAirportStatus();
       if ((id === "settings" || id === "account") && typeof window.paintSettings === "function") window.paintSettings();
       if (id === "settings") { if (typeof paintSportsPage === "function") paintSportsPage(); if (typeof bindSportsPage === "function") bindSportsPage(); }
       if (id === "radar") {
@@ -16988,6 +16991,76 @@ function currentRotation() {
         }, 30 * 1000);
       }
     }
+
+    var AIRPORTS = [
+      ["BDL","Bradley",41.94,-72.68],["BOS","Boston Logan",42.36,-71.01],["JFK","New York JFK",40.64,-73.78],["EWR","Newark",40.69,-74.17],["LGA","LaGuardia",40.77,-73.87],
+      ["PVD","Providence",41.72,-71.43],["HPN","Westchester",41.07,-73.71],["ALB","Albany",42.75,-73.80],["MHT","Manchester",42.93,-71.44],
+      ["RSW","Fort Myers",26.54,-81.76],["SRQ","Sarasota",27.40,-82.55],["TPA","Tampa",27.98,-82.53],["MCO","Orlando",28.43,-81.31],["PBI","Palm Beach",26.68,-80.10],
+      ["FLL","Fort Lauderdale",26.07,-80.15],["MIA","Miami",25.80,-80.29],["PIE","St. Pete",27.91,-82.69],
+      ["ATL","Atlanta",33.64,-84.43],["CLT","Charlotte",35.21,-80.94],["DCA","Washington National",38.85,-77.04],["IAD","Dulles",38.94,-77.46],["BWI","Baltimore",39.18,-76.67],
+      ["PHL","Philadelphia",39.87,-75.24],["PIT","Pittsburgh",40.49,-80.23],["DTW","Detroit",42.21,-83.35],["ORD","Chicago O'Hare",41.97,-87.91],["MDW","Chicago Midway",41.79,-87.75],
+      ["MSP","Minneapolis",44.88,-93.22],["DEN","Denver",39.86,-104.67],["DFW","Dallas Fort Worth",32.90,-97.04],["DAL","Dallas Love",32.85,-96.85],["IAH","Houston",29.98,-95.34],
+      ["AUS","Austin",30.19,-97.67],["SAT","San Antonio",29.53,-98.47],["MSY","New Orleans",29.99,-90.26],["MEM","Memphis",35.04,-89.98],["BNA","Nashville",36.12,-86.68],
+      ["RDU","Raleigh",35.88,-78.79],["JAX","Jacksonville",30.49,-81.69],["MCI","Kansas City",39.30,-94.71],["STL","St. Louis",38.75,-90.37],["CLE","Cleveland",41.41,-81.85],
+      ["CMH","Columbus",40.00,-82.89],["IND","Indianapolis",39.72,-86.29],["CVG","Cincinnati",39.05,-84.67],["SDF","Louisville",38.17,-85.74],["BUF","Buffalo",42.94,-78.73],
+      ["ROC","Rochester",43.12,-77.67],["SYR","Syracuse",43.11,-76.11],["PWM","Portland",43.65,-70.31],["BTV","Burlington",44.47,-73.15],["ORF","Norfolk",36.89,-76.20],
+      ["RIC","Richmond",37.51,-77.32],["CHS","Charleston",32.90,-80.04],["SAV","Savannah",32.13,-81.20],["TYS","Knoxville",35.81,-83.99],["GSP","Greenville",34.90,-82.22],
+      ["SEA","Seattle",47.45,-122.31],["PDX","Portland",45.59,-122.60],["SFO","San Francisco",37.62,-122.38],["OAK","Oakland",37.71,-122.22],["SJC","San Jose",37.36,-121.93],
+      ["LAX","Los Angeles",33.94,-118.41],["SAN","San Diego",32.73,-117.19],["SNA","Orange County",33.68,-117.87],["LAS","Las Vegas",36.08,-115.15],["PHX","Phoenix",33.43,-112.01],
+      ["SLC","Salt Lake City",40.79,-111.98],["ABQ","Albuquerque",35.04,-106.61],["TUS","Tucson",32.12,-110.94],["ELP","El Paso",31.81,-106.38],["OKC","Oklahoma City",35.39,-97.60],
+      ["TUL","Tulsa",36.20,-95.89],["OMA","Omaha",41.30,-95.89],["DSM","Des Moines",41.53,-93.66],["MKE","Milwaukee",42.95,-87.90],["GRR","Grand Rapids",42.88,-85.52]
+    ];
+    function paintAirportStatus() {
+      var box = document.getElementById("airport-status");
+      var today = document.getElementById("airport-delay-card");
+      var todayBody = document.getElementById("airport-delay");
+      if (!box || typeof homeLat !== "function") return;
+      var lat = homeLat(), lon = homeLon();
+      var near = AIRPORTS.map(function (a) {
+        return { code: a[0], name: a[1], lat: a[2], lon: a[3], mi: milesBetween(lat, lon, a[2], a[3]) };
+      }).sort(function (a, b) { return a.mi - b.mi; }).slice(0, 3);
+      var urls = [
+        "https://nasstatus.faa.gov/api/airport-status-information",
+        "https://corsproxy.io/?https%3A%2F%2Fnasstatus.faa.gov%2Fapi%2Fairport-status-information"
+      ];
+      function read(i) {
+        if (i >= urls.length) { box.textContent = "FAA status did not answer."; return; }
+        fetch(urls[i], { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("http"); return r.text(); }).then(function (xml) {
+          var doc = new DOMParser().parseFromString(xml, "text/xml");
+          var bad = {};
+          function take(tag, status) {
+            Array.prototype.forEach.call(doc.getElementsByTagName(tag), function (node) {
+              var code = (node.getElementsByTagName("ARPT")[0] || {}).textContent || "";
+              var reason = (node.getElementsByTagName("Reason")[0] || {}).textContent || "";
+              if (/GA ACFT|TRANSIENT|NON SKED/i.test(reason)) return;
+              var avg = (node.getElementsByTagName("Avg")[0] || node.getElementsByTagName("Min")[0] || {}).textContent || "";
+              bad[code] = { status: status, reason: reason, avg: avg };
+            });
+          }
+          take("Ground_Stop", "Ground stop");
+          take("Ground_Delay", "Delays");
+          take("Delay", "Delays");
+          take("Airport", "Closed");
+          var lines = near.map(function (a) {
+            var hit = bad[a.code];
+            var state = hit ? hit.status : "Normal";
+            var extra = hit ? (". " + (hit.avg ? hit.avg + ". " : "") + hit.reason) : "";
+            return a.name + " (" + a.code + ") · " + Math.round(a.mi) + " mi · " + state + extra;
+          });
+          box.innerHTML = lines.map(function (line) { return "<div>" + line + "</div>"; }).join("");
+          var trouble = near.filter(function (a) { return bad[a.code]; });
+          if (today && todayBody) {
+            if (trouble.length) {
+              today.hidden = false;
+              todayBody.textContent = trouble.map(function (a) { return a.name + " is " + bad[a.code].status.toLowerCase() + (bad[a.code].reason ? " because of " + bad[a.code].reason : "") + "."; }).join(" ");
+            } else today.hidden = true;
+          }
+          if (typeof noteFeed === "function") noteFeed("airports", true, trouble.length ? trouble.length + " delayed" : "normal");
+        }).catch(function () { read(i + 1); });
+      }
+      read(0);
+    }
+    window.paintAirportStatus = paintAirportStatus;
     function paintHouseFlights() {
       var el = document.getElementById("live-flights");
       var nextEl = document.getElementById("cal-flight");
@@ -20282,6 +20355,7 @@ function mustEatsFL() {
         var rows = (d && d.flights) || [];
         if (typeof paintTodayFly === "function") try { paintTodayFly(); } catch (eF) {}
         if (typeof paintHouseFlights === "function") try { paintHouseFlights(); } catch (eH) {}
+        if (typeof paintAirportStatus === "function") try { paintAirportStatus(); } catch (eA) {}
         if (typeof writeGreetingCard === "function") try { writeGreetingCard(); } catch (e) {}
         if (!rows.length) {
           if (typeof touchFeed === "function") touchFeed("flights", true, "none upcoming · " + ((d && d.updated) || "scan empty"));
