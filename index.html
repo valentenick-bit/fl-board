@@ -3407,7 +3407,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1066</span>
+      <span class="hdr-ver" id="hdr-ver">v1067</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5319,7 +5319,7 @@ Cart shop:</textarea>
   </div>
   <script>
 
-    window.BOARD_VER = 1066;
+    window.BOARD_VER = 1067;
 
     
     function communityShort() {
@@ -6342,7 +6342,7 @@ Cart shop:</textarea>
         air: { label: "Air", kind: "iframe", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/chem/surface/level/overlay=pm2p5") : "" },
         smoke: { label: "Smoke", kind: "smoke", url: "" },
         rain: { label: "Rain", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("rain") : "" },
-        drought: { label: "Drought", kind: "iframe", url: "https://droughtmonitor.unl.edu/data/png/current/current_usdm.png" },
+        drought: { label: "Drought", kind: "iframe", url: "https://droughtmonitor.unl.edu/data/png/current/current_usdm.png?" + "t" },
         rivers: { label: "Rivers", kind: "iframe", url: "https://water.weather.gov/ahps/" }
       };
       if (!views[id]) id = "traffic";
@@ -6365,6 +6365,7 @@ Cart shop:</textarea>
       } else {
         hide(g); hide(traf); show(extra);
         if (id === "smoke" && extra && typeof paintSmokeMap === "function") { paintSmokeMap(extra, homeLat(), homeLon()); return; }
+        if (id === "drought" && extra) { extra.src = "https://droughtmonitor.unl.edu/data/png/current/current_usdm.png?t=" + Date.now(); extra.setAttribute("data-src", extra.src); return; }
         if (extra && v.url && extra.getAttribute("data-src") !== v.url) {
           extra.src = v.url;
           extra.setAttribute("data-src", v.url);
@@ -6601,82 +6602,86 @@ Cart shop:</textarea>
 
 
 
-    function paintNavChart(el, latN, lonN, note) {
-      paintLayerTiles(el, latN, lonN, note, 11, function (z, x, y) {
-        return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png";
-      }, function (z, x, y) {
-        return "https://tiles.openseamap.org/seamark/" + z + "/" + x + "/" + y + ".png";
-      }, "Chart pinned on " + ((typeof homePlace === "function" && homePlace()) || "home"));
-    }
-    function paintLightMap(el, latN, lonN, note) {
-      paintLayerTiles(el, latN, lonN, note, 8, function (z, x, y) {
-        return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png";
-      }, null, "Night-light base pinned on " + ((typeof homePlace === "function" && homePlace()) || "home"));
-    }
-    function paintPlaneMap(el, latN, lonN, note) {
-      paintLayerTiles(el, latN, lonN, note, 8, function (z, x, y) {
-        return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png";
-      }, null, "Looking up flights…", function (g, fx, fy, left, top) {
-        fetch("https://api.adsb.lol/v2/lat/" + latN + "/lon/" + lonN + "/dist/60").then(function (r) { return r.json(); }).then(function (d) {
-          var rows = (d && d.ac) || [];
-          rows.slice(0, 40).forEach(function (ac) {
-            if (ac.lat == null || ac.lon == null) return;
-            var n = 256;
-            var x = ((Number(ac.lon) + 180) / 360 * 256 - left);
-            var sl = Math.sin(Number(ac.lat) * Math.PI / 180);
-            var y = ((1 - Math.log((1 + sl) / (1 - sl)) / (2 * Math.PI)) / 2 * 256 - top);
-            g.save();
-            g.translate(x, y);
-            g.rotate((Number(ac.track) || 0) * Math.PI / 180);
-            g.fillStyle = "#f2c14e";
-            g.beginPath(); g.moveTo(0, -8); g.lineTo(5, 7); g.lineTo(0, 3); g.lineTo(-5, 7); g.closePath(); g.fill();
-            g.restore();
-          });
-          if (el && el.tagName === "CANVAS") {}
-          if (el) el.src = g.canvas.toDataURL("image/jpeg", 0.84);
-          if (note) note.textContent = rows.length + " flights within 60 miles";
-        }).catch(function () { if (note) note.textContent = "Flight feed did not answer."; });
-      });
-    }
-    function paintSmokeMap(el, latN, lonN) {
-      paintCloudPin(el, latN, lonN, document.getElementById("land-map-kind"), "vis");
-      fetch("https://eonet.gsfc.nasa.gov/api/v3/events?category=wildfires&status=open&limit=30").then(function (r) { return r.json(); }).catch(function () { return {}; });
-    }
-    function paintLayerTiles(el, latN, lonN, note, z, urlFor, overlayFor, caption, after) {
+    function mountTileGrid(el, latN, lonN, z, layers, caption) {
+      var host = el;
+      if (!host) return;
+      if (el.tagName === "IMG") {
+        el.style.display = "none";
+        host = el.parentElement;
+      }
+      if (!host) return;
+      var old = host.querySelector(".tile-grid");
+      if (old) old.remove();
+      host.style.position = host.style.position || "relative";
+      host.style.overflow = "hidden";
       var n = Math.pow(2, z);
       var fx = (Number(lonN) + 180) / 360 * n;
-      var s = Math.sin(Number(latN) * Math.PI / 180);
-      var fy = (1 - Math.log((1 + s) / (1 - s)) / (2 * Math.PI)) / 2 * n;
-      var c = document.createElement("canvas");
-      c.width = 768; c.height = 768;
-      var g = c.getContext("2d");
-      g.fillStyle = "#0c3a55";
-      g.fillRect(0, 0, 768, 768);
+      var sl = Math.sin(Number(latN) * Math.PI / 180);
+      var fy = (1 - Math.log((1 + sl) / (1 - sl)) / (2 * Math.PI)) / 2 * n;
       var left = Math.floor(fx) - 1, top = Math.floor(fy) - 1;
-      var jobs = [];
-      for (var dy = 0; dy < 3; dy++) for (var dx = 0; dx < 3; dx++) jobs.push([dx, dy, false]);
-      if (overlayFor) for (var dy2 = 0; dy2 < 3; dy2++) for (var dx2 = 0; dx2 < 3; dx2++) jobs.push([dx2, dy2, true]);
-      var pending = jobs.length;
-      function finish() {
-        if (--pending) return;
-        var px = (fx - left) * 256, py = (fy - top) * 256;
-        g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(px, py, 7, 0, 6.3); g.fill();
-        g.fillStyle = "#f4efe6"; g.font = "700 20px Source Sans 3, sans-serif";
-        g.fillText((typeof homePlace === "function" && homePlace()) || "Home", Math.min(px + 12, 600), Math.max(py - 12, 28));
-        if (after) after(g, fx, fy, left, top);
-        if (el) el.src = c.toDataURL("image/jpeg", 0.84);
-        if (note) note.textContent = caption;
-      }
-      jobs.forEach(function (job) {
-        var dx = job[0], dy = job[1], over = job[2];
-        var tx = left + dx, ty = top + dy;
-        if (ty < 0 || ty >= n) { finish(); return; }
-        var im = new Image();
-        im.crossOrigin = "anonymous";
-        im.onload = function () { g.drawImage(im, dx * 256, dy * 256); finish(); };
-        im.onerror = function () { finish(); };
-        im.src = over ? overlayFor(z, ((tx % n) + n) % n, ty) : urlFor(z, ((tx % n) + n) % n, ty);
+      var box = document.createElement("div");
+      box.className = "tile-grid";
+      box.style.cssText = "position:absolute;inset:0;background:#0c3a55;z-index:4;";
+      layers.forEach(function (urlFor) {
+        for (var dy = 0; dy < 3; dy++) for (var dx = 0; dx < 3; dx++) {
+          var ty = top + dy;
+          if (ty < 0 || ty >= n) continue;
+          var tx = ((left + dx) % n + n) % n;
+          var im = document.createElement("img");
+          im.alt = "";
+          im.referrerPolicy = "no-referrer";
+          im.style.cssText = "position:absolute;width:33.34%;height:33.34%;left:" + (dx * 33.34) + "%;top:" + (dy * 33.34) + "%;object-fit:fill;";
+          im.src = urlFor(z, tx, ty);
+          box.appendChild(im);
+        }
       });
+      var pin = document.createElement("div");
+      pin.style.cssText = "position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#f2c14e;border:2px solid #06101c;z-index:3;";
+      box.appendChild(pin);
+      host.appendChild(box);
+      host.__tile = { z: z, left: left, top: top, box: box };
+      return host;
+    }
+    function paintNavChart(el, latN, lonN, note) {
+      mountTileGrid(el, latN, lonN, 11, [
+        function (z, x, y) { return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png"; },
+        function (z, x, y) { return "https://tiles.openseamap.org/seamark/" + z + "/" + x + "/" + y + ".png"; }
+      ]);
+      if (note) note.textContent = "Chart pinned on " + ((typeof homePlace === "function" && homePlace()) || "home");
+    }
+    function paintLightMap(el, latN, lonN, note) {
+      mountTileGrid(el, latN, lonN, 8, [
+        function (z, x, y) { return "https://basemaps.cartocdn.com/dark_all/" + z + "/" + x + "/" + y + ".png"; }
+      ]);
+      if (note) note.textContent = "Night map pinned on " + ((typeof homePlace === "function" && homePlace()) || "home");
+    }
+    function paintPlaneMap(el, latN, lonN, note) {
+      var host = mountTileGrid(el, latN, lonN, 8, [
+        function (z, x, y) { return "https://basemaps.cartocdn.com/dark_all/" + z + "/" + x + "/" + y + ".png"; }
+      ]);
+      fetch("https://api.adsb.lol/v2/lat/" + Number(latN).toFixed(3) + "/lon/" + Number(lonN).toFixed(3) + "/dist/60")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var rows = (d && d.ac) || [];
+          var box = host && host.__tile && host.__tile.box;
+          if (!box) return;
+          var z = 8, left = host.__tile.left, top = host.__tile.top, n = 256;
+          rows.slice(0, 40).forEach(function (ac) {
+            if (ac.lat == null || ac.lon == null) return;
+            var fx = (Number(ac.lon) + 180) / 360 * n;
+            var sl = Math.sin(Number(ac.lat) * Math.PI / 180);
+            var fy = (1 - Math.log((1 + sl) / (1 - sl)) / (2 * Math.PI)) / 2 * n;
+            var mark = document.createElement("div");
+            mark.title = (ac.flight || ac.hex || "plane") + " " + (ac.alt_baro || "") + " ft";
+            mark.style.cssText = "position:absolute;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:14px solid #f2c14e;z-index:4;transform:translate(-6px,-10px) rotate(" + (Number(ac.track) || 0) + "deg);left:" + ((fx - left) / 3 * 100) + "%;top:" + ((fy - top) / 3 * 100) + "%;";
+            box.appendChild(mark);
+          });
+          if (note) note.textContent = rows.length + " flights within 60 miles of " + ((typeof homePlace === "function" && homePlace()) || "home");
+        })
+        .catch(function () { if (note) note.textContent = "Flight feed did not answer."; });
+    }
+    function paintSmokeMap(el, latN, lonN) {
+      if (el) el.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg?" + Date.now();
     }
 
     function paintCloudPin(img, latN, lonN, note, mode) {
@@ -14849,7 +14854,7 @@ function currentRotation() {
         bolt.style.display = which === "bolt" ? "block" : "none";
         bolt.style.zIndex = which === "bolt" ? "12" : "0";
       }
-      var ir = document.getElementById("wx-ir-view"); var temp = document.getElementById("wx-temp-view"); var extra = which === "sat" ? sat : (which === "ir" ? ir : (which === "temp" ? temp : (which === "now" ? nowc : (which === "bolt" ? bolt : null))));
+      var ir = document.getElementById("wx-ir-view"); var temp = document.getElementById("wx-temp-view"); var extra = which === "ir" ? null : (which === "sat" ? sat : (which === "temp" ? temp : (which === "now" ? nowc : (which === "bolt" ? bolt : null))));
       if (extra) {
         extra.hidden = false;
         extra.style.display = "block";
@@ -14917,7 +14922,11 @@ function currentRotation() {
           if (which === "temp" && pane && typeof nullschoolPin === "function") {
             var tu = nullschoolPin(lat, lon, "current/wind/surface/level/overlay=temp");
             if (pane.getAttribute("data-src") !== tu) { pane.src = tu; pane.setAttribute("data-src", tu); }
-          } else if (pane && typeof paintCloudPin === "function") paintCloudPin(pane, lat, lon, note, which === "ir" ? "ir" : "vis");
+          } else if (which === "ir") {
+            var rad = document.getElementById("wx-radar-view");
+            if (rad) rad.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/13/1250x750.jpg?" + Date.now();
+            if (note) note.textContent = "Infrared cloud tops, continental view";
+          } else if (pane && typeof paintCloudPin === "function") paintCloudPin(pane, lat, lon, note, "vis");
         }
         if (which === "now") {
           var nowc = document.getElementById("wx-now-view");
