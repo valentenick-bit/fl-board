@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1086</span>
+      <span class="hdr-ver" id="hdr-ver">v1087</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5350,7 +5350,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1086;
+    window.BOARD_VER = 1087;
 
     
     function communityShort() {
@@ -5479,7 +5479,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|deals(?:-\d{5})?\.json|coupons(?:-\d{5})?\.json|ticketmaster\.com|espn\.com|api\.fda\.gov|overpass|\/nws-alerts|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|deals(?:-\d{5})?\.json|coupons(?:-\d{5})?\.json|ticketmaster\.com|espn\.com|api\.fda\.gov|overpass|\/nws-alerts|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov|ssd-api\.jpl\.nasa\.gov|ndbc\.noaa\.gov|spc\.noaa\.gov|fema\.gov|arcgis\.com|/pub\?/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 400) {
             if (!optional) {
@@ -7049,15 +7049,21 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
     window.paintLaunchTrack = paintLaunchTrack;
     function pubFetch(url) {
+      var blocked = /jpl\.nasa\.gov|ndbc\.noaa\.gov|spc\.noaa\.gov|fema\.gov/.test(url);
       function via(src) {
-        return fetch(src).then(function (r) {
+        var ctrl = typeof AbortController === "function" ? new AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 7000) : null;
+        return fetch(src, ctrl ? { signal: ctrl.signal } : undefined).then(function (r) {
+          if (timer) clearTimeout(timer);
           if (!r.ok) throw new Error("bad");
           return r.text();
+        }, function (err) {
+          if (timer) clearTimeout(timer);
+          throw err;
         });
       }
-      return via(url).catch(function () {
-        return via("/pub?u=" + encodeURIComponent(url));
-      }).catch(function () {
+      var first = blocked ? via("/pub?u=" + encodeURIComponent(url)) : via(url);
+      return first.catch(function () {
         return via("https://corsproxy.io/?" + encodeURIComponent(url));
       });
     }
@@ -7066,6 +7072,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (el) el.textContent = text;
     }
     function loadNational() {
+      var fb = [{ id:"42013", name:"Venice", lat:27.173, lon:-82.924 }, { id:"42036", name:"West Tampa", lat:28.500, lon:-84.517 }, { id:"44039", name:"Central Long Island Sound", lat:41.138, lon:-72.655 }, { id:"41009", name:"Canaveral", lat:28.508, lon:-80.185 }];
+      var near = fb.slice().sort(function (a, b) { return launchMiles(a.lat, a.lon) - launchMiles(b.lat, b.lon); })[0];
+      if (near) setNat("live-buoy", near.name + " (" + near.id + "), " + launchMiles(near.lat, near.lon) + " miles from this pin. Reading the buoy…");
+      var riverNow = document.getElementById("live-flood");
+      if (riverNow && riverNow.textContent && riverNow.textContent !== "—") setNat("live-river-gage", riverNow.textContent);
+
       var lat = typeof homeLat === "function" ? Number(homeLat()) : 0;
       var lon = typeof homeLon === "function" ? Number(homeLon()) : 0;
       var st = (typeof homeState === "function" ? homeState() : "") || "";
