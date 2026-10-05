@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1096</span>
+      <span class="hdr-ver" id="hdr-ver">v1097</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4114,6 +4114,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="card" id="air-action-card" hidden><b>Air quality action</b><span id="live-air-action"></span></div>
         <div class="card" id="boil-card" hidden><b>Drinking water</b><span id="live-boil"></span></div>
         <div class="card" id="ntas-card" hidden><b>National threat level</b><span id="live-ntas"></span></div>
+        <div class="card" id="alerts-card" hidden><b>Alerts</b><span id="live-alerts">Checking IPAWS and the nearest plant…</span></div>
         <div class="card" id="recall-card" hidden><b>FDA Class I recalls</b><span id="live-recall"></span></div>
         <div class="card" id="han-card" hidden><b>Health alert</b><span id="live-han"></span></div>
         <div class="card" id="school-card" hidden><b>School emergency</b><span id="live-school"></span></div>
@@ -5349,7 +5350,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1096;
+    window.BOARD_VER = 1097;
 
     
     function communityShort() {
@@ -7074,6 +7075,77 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       var el = document.getElementById(id);
       if (el) el.hidden = !on;
     }
+
+    function loadPinAlerts(lat, lon, st, lines, fin) {
+      var plants = [
+        { name: "Millstone", match: /millstone/i, lat: 41.31, lon: -72.17 },
+        { name: "Saint Lucie", match: /saint lucie/i, lat: 27.35, lon: -80.25 },
+        { name: "Turkey Point", match: /turkey point/i, lat: 25.43, lon: -80.33 }
+      ];
+      var plant = plants.slice().sort(function (a, b) {
+        var da = Math.pow(a.lat - lat, 2) + Math.pow(a.lon - lon, 2);
+        var db = Math.pow(b.lat - lat, 2) + Math.pow(b.lon - lon, 2);
+        return da - db;
+      })[0];
+      var fips = st === "CT" ? "09" : (st === "FL" ? "12" : "");
+      var bits = [];
+      var left = 2;
+      function finish() {
+        left -= 1;
+        if (left > 0) return;
+        var card = document.getElementById("alerts-card");
+        var el = document.getElementById("live-alerts");
+        if (bits.length) {
+          if (el) el.textContent = bits.join(" ");
+          if (card) card.hidden = false;
+          bits.forEach(function (b) { lines.push(b); });
+          if (typeof noteFeed === "function") noteFeed("alerts", true, plant.name);
+        } else {
+          if (el) el.textContent = "None for this pin.";
+          if (card) card.hidden = true;
+          if (typeof noteFeed === "function") noteFeed("alerts", true, "none");
+        }
+        if (fin) fin();
+      }
+      var since = new Date(Date.now() - 36 * 3600 * 1000).toISOString().slice(0, 10);
+      var ipaws = "https://www.fema.gov/api/open/v1/IpawsArchivedAlerts?$top=30&$orderby=sent desc&$filter=sent gt '" + since + "'";
+      pubFetch(ipaws).then(function (t) {
+        var j = JSON.parse(t);
+        var rows = j.IpawsArchivedAlerts || j.ipawsArchivedAlerts || [];
+        var keep = { CAE: 1, CEV: 1, CDW: 1, CEM: 1, EQW: 1, EVAC: 1, NUW: 1, LAE: 1, LEW: 1, VOW: 1 };
+        var hit = null;
+        rows.forEach(function (row) {
+          if (hit) return;
+          var infos = row.infos || row.Infos || [];
+          var info = infos[0] || {};
+          var codes = info.eventCode || info.EventCode || [];
+          var code = "";
+          codes.forEach(function (c) { if ((c.valueName || c.ValueName) === "SAME") code = c.value || c.Value || code; });
+          if (!keep[code]) return;
+          var areas = info.areas || info.Areas || [];
+          var geo = "";
+          areas.forEach(function (a) { (a.geocode || a.Geocode || []).forEach(function (g) { geo += " " + (g.value || g.Value || ""); }); });
+          if (fips && geo.indexOf(fips) < 0) return;
+          var headline = info.headline || info.Headline || info.event || info.Event || code;
+          hit = "IPAWS " + headline + ", sent " + String(row.sent || row.Sent || "").slice(0, 16).replace("T", " ") + ".";
+        });
+        if (hit) bits.push(hit);
+      }).catch(function () {}).then(finish);
+      var powerUrl = "https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/power-reactor-status-reports/PowerReactorStatusForLast365Days.txt";
+      pubFetch(powerUrl).then(function (t) {
+        var latest = {};
+        String(t || "").split(/\n/).forEach(function (line) {
+          var p = line.split("|");
+          if (p.length < 3 || !plant.match.test(p[1] || "")) return;
+          latest[p[1].trim()] = parseInt(p[2], 10);
+        });
+        var down = [];
+        Object.keys(latest).forEach(function (unit) {
+          if (isFinite(latest[unit]) && latest[unit] < 80) down.push(unit + " at " + latest[unit] + "%");
+        });
+        if (down.length) bits.push(plant.name + " " + down.join(", ") + ". NRC reactor status.");
+      }).catch(function () {}).then(finish);
+    }
     function loadNational() {
       var lat = typeof homeLat === "function" ? Number(homeLat()) : 0;
       var lon = typeof homeLon === "function" ? Number(homeLon()) : 0;
@@ -7105,8 +7177,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         window.__natLines = lines.filter(Boolean);
         if (typeof writeBriefingSoon === "function") writeBriefingSoon();
       }
-      var pending = 7;
+      var pending = 8;
       function fin() { pending -= 1; if (pending <= 0) done(); }
+      loadPinAlerts(lat, lon, st, lines, fin);
       pubFetch("https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$filter=declarationDate%20gt%20'2026-07-01'&$orderby=declarationDate%20desc&$top=40").then(function (t) {
         var j = JSON.parse(t);
         var hit = (j.DisasterDeclarationsSummaries || []).filter(function (d) { return st && String(d.state || "").toUpperCase() === st.toUpperCase(); })[0];
@@ -9320,7 +9393,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         { id:"flights", page:"Home", stat:"Flights", primary:"flights.json from the Fly calendar automation", backup:"FlightAware-style live pill", feeds:["flights","fly-live"] },
         { id:"radio", page:"Home", stat:"Radio / NOAA / scanners", primary:"Market presets + radio-browser near the pin; NWR by WFO", backup:"Broadcastify scanner pack for the home state", feeds:["radio"] },
         { id:"prep", page:"Prep", stat:"Kit and contacts", primary:"Prep cards on the board + emergency numbers for the pin place", backup:"None", feeds:["prep","emergency"] },
-        { id:"civic", page:"Today", stat:"Civic / school / safety", primary:"NWS + local scanners (Nixle, TFR, HAN, boil, NTAS)", backup:"None", feeds:["civic","school","nixle","tfr","han","boil","ntas","public-safety"] }
+        { id:"civic", page:"Today", stat:"Civic / school / safety", primary:"NWS + local scanners (Nixle, TFR, HAN, boil, NTAS)", backup:"None", feeds:["civic","school","nixle","tfr","han","boil","ntas","public-safety"] },
+        { id:"alerts", page:"Emergency", stat:"IPAWS and nearest plant", primary:"OpenFEMA IPAWS archive, non-weather only", backup:"NRC reactor status and event notices", feeds:["live-alerts"] }
       ];
       return rows;
     }
