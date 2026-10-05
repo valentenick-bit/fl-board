@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1093</span>
+      <span class="hdr-ver" id="hdr-ver">v1094</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5349,7 +5349,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1093;
+    window.BOARD_VER = 1094;
 
     
     function communityShort() {
@@ -7080,8 +7080,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) + Math.abs(lon) < 1) return;
       var fb = [{ id:"42013", name:"Venice", lat:27.173, lon:-82.924 }, { id:"42036", name:"West Tampa", lat:28.500, lon:-84.517 }, { id:"44039", name:"Central Long Island Sound", lat:41.138, lon:-72.655 }, { id:"41009", name:"Canaveral", lat:28.508, lon:-80.185 }, { id:"44017", name:"Montauk", lat:40.694, lon:-72.045 }];
       var near = fb.slice().sort(function (a, b) { return launchMiles(a.lat, a.lon) - launchMiles(b.lat, b.lon); })[0];
-      var riverNow = document.getElementById("live-flood");
-      if (riverNow && riverNow.textContent && riverNow.textContent !== "—" && !/checking/i.test(riverNow.textContent)) setNat("live-river-gage", riverNow.textContent);
+      var riverKnown = document.getElementById("live-sea-river");
+      if (riverKnown && riverKnown.textContent && !/^(—|none|checking)/i.test(riverKnown.textContent.trim())) setNat("live-river-gage", riverKnown.textContent);
       showCard("snow-card", false);
       showCard("whale-card", false);
       showCard("shell-card", false);
@@ -7144,7 +7144,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           var msg = name + ": " + (v.value || "—") + " " + (((site.variable || {}).unit || {}).unitCode || "");
           setNat("live-river-gage", msg);
         }
-      }).catch(function () { setNat("live-river-gage", "River gauge feed did not answer."); }).then(fin);
+      }).catch(function () {
+        var known = document.getElementById("live-sea-river");
+        var txt = known ? String(known.textContent || "").trim() : "";
+        if (txt && !/^(—|none|checking)/i.test(txt)) setNat("live-river-gage", txt);
+        else setNat("live-river-gage", "No river gauge within about 40 miles.");
+      }).then(fin);
       pubFetch("https://ssd-api.jpl.nasa.gov/cad.api?dist-max=0.05&date-min=2026-10-04&date-max=2026-10-18&sort=dist").then(function (t) {
         var j = JSON.parse(t);
         var row = (j.data || [])[0];
