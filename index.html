@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1098</span>
+      <span class="hdr-ver" id="hdr-ver">v1099</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5354,7 +5354,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1098;
+    window.BOARD_VER = 1099;
 
     
     function communityShort() {
@@ -12484,7 +12484,7 @@ function currentRotation() {
       if (quakeBox) quakeBox.hidden = !quakeOn;
       if (quakeOn && quakeBody && typeof stampTodayArt === "function") {
         quakeBody.innerHTML = stampTodayArt(
-          '<div class="card hot"><span class="warn-tag">Felt</span><span class="kind-tag warn-tag">Quake</span><b>' + quake.title + '</b><span>' + quake.detail + '</span></div>',
+          '<div class="card hot"><span class="warn-tag">' + (quake.pill || "Nearby") + '</span><span class="kind-tag warn-tag">Quake</span><b>' + quake.title + '</b><span>' + quake.detail + '</span></div>',
           "quake"
         );
       } else if (quakeBody) quakeBody.innerHTML = "";
@@ -13009,12 +13009,13 @@ function currentRotation() {
             var depth = coords.length >= 3 ? Math.round(coords[2] * 0.621371) : null;
             var reports = felt.felt || 0;
             var cdi = felt.cdi;
-            var close = mi !== "" && ((mag >= 2.5 && mi <= 30) || (mag >= 3.5 && mi <= 80) || (mag >= 4.5 && mi <= 200));
-            var feltHere = close && (reports > 0 || (cdi && cdi >= 2) || mag >= 3.5);
-            window.__quakeFelt = feltHere ? {
+            var close = mi !== "" && ((mag >= 2.5 && mi <= 60) || (mag >= 3 && mi <= 120) || (mag >= 4 && mi <= 220));
+            var felt = reports > 0 || (cdi && cdi >= 2);
+            window.__quakeFelt = close ? {
               on: true,
-              title: "M" + mag + " felt near the house.",
-              detail: (place || "USGS") + (mi !== "" ? " · " + mi + " mi" : "") + (depth != null ? " · " + depth + " mi deep" : "") + (reports ? " · " + reports + " felt reports" : "") + (cdi ? " · intensity " + cdi : "") + "."
+              title: "M" + mag + (felt ? " felt near the house." : " near the house."),
+              pill: felt ? "Felt" : "Nearby",
+              detail: (place || "USGS") + (mi !== "" ? " · " + mi + " mi" : "") + (depth != null ? " · " + depth + " mi deep" : "") + (reports ? " · " + reports + " felt reports" : " · no felt reports") + (cdi ? " · intensity " + cdi : "") + "."
             } : { on: false };
             if (typeof writeTodayChips === "function") writeTodayChips();
           }
