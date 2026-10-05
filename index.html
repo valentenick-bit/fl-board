@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1089</span>
+      <span class="hdr-ver" id="hdr-ver">v1090</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3785,8 +3785,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="sheet-notes">
         <div class="card" id="river-card"><b>River gauge</b><span id="live-river-gage">Looking up the nearest gauge…</span></div>
         <div class="card" id="fire-card"><b>Fires</b><span id="live-fires">Checking active fires near this pin…</span></div>
-        <div class="card" id="snow-card"><b>Snowpack</b><span id="live-snowpack">Checking snow stations for this pin…</span></div>
-        <div class="card" id="park-card"><b>Parks and shelters</b><span id="live-parks">Checking closures, declarations, and shelters…</span></div>
+        <div class="card" id="snow-card" hidden><b>Snowpack</b><span id="live-snowpack">Checking snow stations for this pin…</span></div>
+        <div class="card" id="park-card" hidden><b>Parks and shelters</b><span id="live-parks">Checking closures, declarations, and shelters…</span></div>
         <div class="card" id="quake-card" hidden><b>Nearest quake</b><span id="live-quake"></span></div>
         <div class="card" id="quake-sig-card" hidden><b>Notable quakes</b><span id="live-quake-sig"></span></div>
         <div class="card wx-extra" id="volcano-card" hidden><b>Volcano</b><span id="live-volcano"></span></div>
@@ -3855,8 +3855,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div id="fish-news" class="boat-facts"></div>
         </div>
         <div class="card" id="buoy-card"><b id="buoy-title">Buoy</b><span id="live-buoy">Finding the closest buoy…</span><div id="buoy-facts" class="boat-facts"></div></div>
-        <div class="card" id="whale-card"><b>Slow zones</b><span id="live-whales">Checking right whale and manatee zones…</span></div>
-        <div class="card" id="shell-card"><b>Shellfish</b><span id="live-shell">Checking harvest closures near this pin…</span></div>
+        <div class="card" id="whale-card" hidden><b>Slow zones</b><span id="live-whales">Checking right whale and manatee zones…</span></div>
+        <div class="card" id="shell-card" hidden><b>Shellfish</b><span id="live-shell">Checking harvest closures near this pin…</span></div>
         <div class="card" id="sea-uscg-card"><b>USCG</b><span id="live-sea-uscg">Checking notices for this pin…</span></div>
         <div class="card sea-cam-card" id="sea-cam-card">
           <b id="sea-cam-title">Water cam</b>
@@ -3938,8 +3938,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div class="tile" id="chip-space"><label>Space weather</label><strong id="live-space">Quiet</strong></div>
         </div>
         <div class="card"><b id="iss-title">ISS</b><span id="live-iss">Looking up the next pass</span></div>
-        <div class="card" id="rock-card"><b>Close approaches</b><span id="live-rocks">Checking this week's near-Earth passes…</span></div>
-        <div class="card" id="fireball-card"><b>Fireballs</b><span id="live-fireballs">Checking recent bright meteors…</span></div>
+        <div class="card" id="rock-card" hidden><b>Close approaches</b><span id="live-rocks">Checking this week's near-Earth passes…</span></div>
+        <div class="card" id="fireball-card" hidden><b>Fireballs</b><span id="live-fireballs">Checking recent bright meteors…</span></div>
         <div class="card" id="launch-card">
           <b>Launches</b>
           <span id="launch-lead">Next rockets, the pad, and how far that pad is from this pin.</span>
@@ -5349,7 +5349,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1089;
+    window.BOARD_VER = 1090;
 
     
     function communityShort() {
@@ -7070,12 +7070,32 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       var el = document.getElementById(id);
       if (el) el.textContent = text;
     }
+    function showCard(id, on) {
+      var el = document.getElementById(id);
+      if (el) el.hidden = !on;
+    }
     function loadNational() {
-      var fb = [{ id:"42013", name:"Venice", lat:27.173, lon:-82.924 }, { id:"42036", name:"West Tampa", lat:28.500, lon:-84.517 }, { id:"44039", name:"Central Long Island Sound", lat:41.138, lon:-72.655 }, { id:"41009", name:"Canaveral", lat:28.508, lon:-80.185 }];
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : 0;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : 0;
+      if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) + Math.abs(lon) < 1) return;
+      var fb = [{ id:"42013", name:"Venice", lat:27.173, lon:-82.924 }, { id:"42036", name:"West Tampa", lat:28.500, lon:-84.517 }, { id:"44039", name:"Central Long Island Sound", lat:41.138, lon:-72.655 }, { id:"41009", name:"Canaveral", lat:28.508, lon:-80.185 }, { id:"44017", name:"Montauk", lat:40.694, lon:-72.045 }];
       var near = fb.slice().sort(function (a, b) { return launchMiles(a.lat, a.lon) - launchMiles(b.lat, b.lon); })[0];
-      if (near) setNat("live-buoy", near.name + " (" + near.id + "), " + launchMiles(near.lat, near.lon) + " miles from this pin. Reading the buoy…");
       var riverNow = document.getElementById("live-flood");
-      if (riverNow && riverNow.textContent && riverNow.textContent !== "—") setNat("live-river-gage", riverNow.textContent);
+      if (riverNow && riverNow.textContent && riverNow.textContent !== "—" && !/checking/i.test(riverNow.textContent)) setNat("live-river-gage", riverNow.textContent);
+      showCard("snow-card", false);
+      showCard("whale-card", false);
+      showCard("shell-card", false);
+      if (near) {
+        setNat("live-buoy", near.name + " (" + near.id + "), " + launchMiles(near.lat, near.lon) + " miles from this pin.");
+        var facts = document.getElementById("buoy-facts");
+        fetch("https://api.open-meteo.com/v1/forecast?latitude=" + near.lat + "&longitude=" + near.lon + "&current=temperature_2m,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph").then(function (r) { return r.json(); }).then(function (air) {
+          return fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + near.lat + "&longitude=" + near.lon + "&current=wave_height,wave_period,sea_surface_temperature&temperature_unit=fahrenheit&length_unit=imperial").then(function (r) { return r.json(); }).then(function (sea) {
+            var a = air.current || {}, w = sea.current || {};
+            if (facts) facts.innerHTML = "<span>Wind " + Math.round(a.wind_speed_10m || 0) + " mph · gust " + Math.round(a.wind_gusts_10m || 0) + "</span><span>Waves " + (w.wave_height != null ? Number(w.wave_height).toFixed(1) + " ft" : "—") + " · period " + (w.wave_period != null ? Math.round(w.wave_period) + " sec" : "—") + "</span><span>Water " + (w.sea_surface_temperature != null ? Math.round(w.sea_surface_temperature) + "°" : "—") + " · air " + (a.temperature_2m != null ? Math.round(a.temperature_2m) + "°" : "—") + "</span>";
+            if (typeof noteFeed === "function") noteFeed("buoy", true, near.id + " modeled");
+          });
+        }).catch(function () { if (facts) facts.innerHTML = "<span>Station is mapped. The live line did not answer.</span>"; });
+      }
 
       var lat = typeof homeLat === "function" ? Number(homeLat()) : 0;
       var lon = typeof homeLon === "function" ? Number(homeLon()) : 0;
@@ -7093,10 +7113,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (hit) {
           var msg = "FEMA " + (hit.declarationType || "declaration") + " " + hit.disasterNumber + " for " + (hit.designatedArea || hit.state) + ".";
           setNat("live-parks", msg);
+          showCard("park-card", true);
           lines.push(msg);
           if (typeof noteFeed === "function") noteFeed("fema", true, hit.disasterNumber);
-        }
-      }).catch(function () {}).then(fin);
+        } else showCard("park-card", false);
+      }).catch(function () { showCard("park-card", false); }).then(fin);
       var fireUrl = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Incident_Locations_Current/FeatureServer/0/query?where=1%3D1&outFields=IncidentName,IncidentTypeCategory,PercentContained,IncidentSize&geometry=" + lon + "," + lat + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=40&units=esriSRUnit_StatuteMile&f=json";
       pubFetch(fireUrl).then(function (t) {
         var j = JSON.parse(t);
@@ -7128,14 +7149,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         var j = JSON.parse(t);
         var row = (j.data || [])[0];
         if (!row) setNat("live-rocks", "No listed pass inside 0.05 AU in the next two weeks.");
-        else setNat("live-rocks", row[0] + " passes " + row[4] + " AU on " + String(row[3] || "").slice(0, 10) + ".");
-      }).catch(function () { setNat("live-rocks", "Close-approach feed did not answer."); }).then(fin);
+        else { setNat("live-rocks", row[0] + " passes " + row[4] + " AU on " + String(row[3] || "").slice(0, 10) + "."); showCard("rock-card", true); }
+      }).catch(function () { showCard("rock-card", false); }).then(fin);
       pubFetch("https://ssd-api.jpl.nasa.gov/fireball.api?limit=3").then(function (t) {
         var j = JSON.parse(t);
         var row = (j.data || [])[0];
         if (!row) setNat("live-fireballs", "No recent fireball on the NASA log.");
-        else setNat("live-fireballs", "Latest fireball " + row[1] + " at " + row[3] + " lat, " + row[5] + " lon.");
-      }).catch(function () { setNat("live-fireballs", "Fireball feed did not answer."); }).then(fin);
+        else { setNat("live-fireballs", "Latest fireball " + row[1] + " at " + row[3] + " lat, " + row[5] + " lon."); showCard("fireball-card", true); }
+      }).catch(function () { showCard("fireball-card", false); }).then(fin);
       pubFetch("https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson").then(function (t) {
         var j = JSON.parse(t);
         var labels = [];
@@ -7147,7 +7168,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (labels.some(function (x) { return /SLGT|ENH|MDT|HIGH/.test(x); })) lines.push("The Storm Prediction Center has a " + labels.join(", ") + " risk on today's outlook.");
         setNat("live-spc", risk);
         if (typeof noteFeed === "function") noteFeed("spc", true, risk.slice(0, 40));
-      }).catch(function () { setNat("live-spc", "SPC outlook did not answer."); }).then(fin);
+      }).catch(function () { showCard("spc-card", false); }).then(fin);
       var fallbackBuoys = [{ id:"42013", name:"Venice", lat:27.173, lon:-82.924 }, { id:"42036", name:"West Tampa", lat:28.500, lon:-84.517 }, { id:"44039", name:"Central Long Island Sound", lat:41.138, lon:-72.655 }, { id:"41009", name:"Canaveral", lat:28.508, lon:-80.185 }];
       function nearestBuoy(list) {
         var best = null, bestD = 1e9;
@@ -7184,10 +7205,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         var best = nearestBuoy(fallbackBuoys);
         setNat("live-buoy", best ? best.name + " (" + best.id + "), " + best.miles + " miles. Live line did not answer." : "Buoy feed did not answer.");
       }).then(fin);
-      setNat("live-whales", "No right-whale slow zone or manatee zone published for this pin.");
-      setNat("live-shell", "No shellfish closure on the public feed for this pin.");
-      setNat("live-snowpack", Math.abs(lat) < 35 ? "No snow station expected at this latitude." : "No SNOTEL station inside the pin box.");
-      var parks = document.getElementById("live-parks"); if (parks && /Checking/.test(parks.textContent || "")) setNat("live-parks", "No FEMA declaration or shelter opening for this state.");
+      showCard("whale-card", false);
+      showCard("shell-card", false);
+      showCard("snow-card", false);
     }
     window.loadNational = loadNational;
     setTimeout(loadNational, 2500);
