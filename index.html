@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1090</span>
+      <span class="hdr-ver" id="hdr-ver">v1091</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5349,7 +5349,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1090;
+    window.BOARD_VER = 1091;
 
     
     function communityShort() {
@@ -22030,7 +22030,10 @@ function mustEatsFL() {
       var grace = Date.now() - window.__boardReadyAt < 180000;
       function txt(id) {
         var el = document.getElementById(id);
-        return el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : "";
+        if (!el) return "";
+        var card = el.closest ? el.closest(".card") : null;
+        if (card && card.hidden) return "hidden";
+        return String(el.textContent || "").replace(/\s+/g, " ").trim();
       }
       function chartOk(id) {
         var el = document.getElementById(id);
@@ -22049,13 +22052,16 @@ function mustEatsFL() {
         s = String(s || "").replace(/\s+/g, " ").trim();
         if (/none upcoming|no upcoming flights|none on calendar|none current|scan empty/i.test(s)) return "ok";
         if (/Maps toggle off|embed only · toggle off|Places allowed/i.test(s)) return "ok";
-        if (/did not load|timed out|not wired|video unavailable|no data was found|no live report|drive file blocked|gmail scan|no Maps key|traffic layer off|embed only — no traffic layer|no headline|none in range/i.test(s)) return "failed";
+        if (/^hidden$/i.test(s)) return "ok";
+        if (/did not load|did not answer|feed did not|no live line|timed out|not wired|video unavailable|no data was found|no live report|drive file blocked|gmail scan|no Maps key|traffic layer off|embed only — no traffic layer|no headline|none in range/i.test(s)) return "failed";
+        if (/finding the closest|reading the buoy|published for this pin|public feed for this pin|expected at this latitude|not a real check/i.test(s)) return "failed";
+        if (/wind —|waves —/i.test(s)) return "failed";
         if (/NHC list is quiet|no named|outlook maps below still update/i.test(s)) return "ok";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
         if (/\bG0\b|space weather|flare [A-Z]\d/i.test(s)) return "ok";
         if (/Quiet · Kp|Unlikely · Kp|^Quiet\b|^Unlikely\b|Predicted tide only|water level quiet/i.test(s)) return "ok";
         if (s.length < 90 && /quiet|not in yet|see marine|see gulf sst|see gulf|see tide|see coastal|checking range|updating|gaps filled|catching up|pick signs/i.test(s) && !/NHC list is quiet|\bG0\b|flare |Quiet · Kp|Unlikely · Kp|Predicted tide|water level quiet/i.test(s)) return "failed";
-        if (/^(loading|checking|updating|waiting|pulling|looking up)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc|waiting on the home|checking gulf|checking noaa|checking air|pulling the nws|looking up the next|· updating/i.test(s))
+        if (/^(loading|checking|updating|waiting|pulling|looking up|finding)\b/i.test(s) || /loading tides|checking nhc|loading passes|loading…|checking fwc|waiting on the home|checking gulf|checking noaa|checking air|pulling the nws|looking up the next|· updating/i.test(s))
           return grace ? "placeholder" : "failed";
         if (!s || /^(—|–|…|\.{1,3}|n\/a|See |None)$/i.test(s)) return "ok";
         if (/\b1 days\b/.test(s)) return "failed";
