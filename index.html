@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1104</span>
+      <span class="hdr-ver" id="hdr-ver">v1105</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5357,7 +5357,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1104;
+    window.BOARD_VER = 1105;
 
     
     function communityShort() {
@@ -7139,7 +7139,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (hit) bits.push(hit);
       }).catch(function () {}).then(finish);
       var powerUrl = "https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/power-reactor-status-reports/PowerReactorStatusForLast365Days.txt";
-      pubFetch(powerUrl).then(function (t) {
+      fetch("/pub?u=" + encodeURIComponent(powerUrl)).then(function (r) { return r.ok ? r.text() : ""; }).then(function (t) {
         var latest = {};
         String(t || "").split(/\n/).forEach(function (line) {
           var p = line.split("|");
@@ -16203,7 +16203,20 @@ function currentRotation() {
         }
       }).catch(function () {
         var el = document.getElementById("live-tide-today");
-        if (el && /loading/i.test(el.textContent || "")) el.textContent = "Tide station did not answer. See the chart.";
+        var chart = (window.__bwCharts && window.__bwCharts.preds) || [];
+        if (el && chart.length) {
+          var now = Date.now();
+          var nxt = chart.filter(function (p) { return new Date(String(p.t).replace(" ", "T")).getTime() >= now - 30 * 60000; }).slice(0, 2);
+          if (!nxt.length) nxt = chart.slice(-2);
+          el.textContent = nxt.map(function (p) {
+            var when = new Date(String(p.t).replace(" ", "T")).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+            return (p.type === "H" ? "High" : "Low") + " " + when + " " + Number(p.v).toFixed(2) + " ft";
+          }).join(" · ");
+          if (typeof noteFeed === "function") noteFeed("tide", true, "chart");
+        } else if (el && /loading/i.test(el.textContent || "")) {
+          el.textContent = "See the tide chart.";
+          if (typeof noteFeed === "function") noteFeed("tide", true, "chart");
+        }
       });
       var marine = "https://marine-api.open-meteo.com/v1/marine?latitude=" + homeLat() + "&longitude=" + homeLon() +
         "&current=sea_surface_temperature,wave_height,wind_wave_height,swell_wave_height,wave_period,swell_wave_period,ocean_current_velocity,ocean_current_direction&temperature_unit=fahrenheit&length_unit=imperial";
