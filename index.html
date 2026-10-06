@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1105</span>
+      <span class="hdr-ver" id="hdr-ver">v1106</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4116,7 +4116,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <h2 data-k="If it goes bad">Emergency</h2>
         <p class="pill-key">When it is happening: leave or stay, zone, shelter, and who to call.</p>
         <div class="card" id="rightnow-card"><b>Right now</b><span id="live-prep">Checking watches for this address…</span></div>
-        <div class="card" id="civic-card"><b>AMBER / Silver / other alerts</b><span id="live-civic">Checking missing-person and civic alerts for this address…</span></div>
+        <div class="card" id="civic-card" hidden><b>AMBER / Silver / other alerts</b><span id="live-civic">Checking missing-person and civic alerts for this address…</span></div>
         <div class="card" id="psafety-card" hidden><b>Public safety</b><span id="live-psafety">No civil emergency, evacuation, 911 outage, dam, or hazmat alert for this pin.</span></div>
         <div class="card" id="air-action-card" hidden><b>Air quality action</b><span id="live-air-action"></span></div>
         <div class="card" id="boil-card" hidden><b>Drinking water</b><span id="live-boil"></span></div>
@@ -5357,7 +5357,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1105;
+    window.BOARD_VER = 1106;
 
     
     function communityShort() {
@@ -28204,10 +28204,12 @@ function homeCountyGuess() {
       var lab = document.getElementById("civiclab");
       var card = document.getElementById("live-civic");
       window.__civicAlerts = items || [];
+      var civicCard = document.getElementById("civic-card");
+      if (civicCard) civicCard.hidden = !items.length;
       if (card) {
         card.textContent = items.length
           ? items.map(function (x) { return speakAlert({ kind: x.kind || "civic", title: x.title, body: x.body }); }).join(" ")
-          : "No AMBER, Silver, Purple, Blue, or other civic alert for " + (typeof homePlace === "function" ? homePlace() : "this address") + ".";
+          : "";
       }
       if (!bar || !txt) return;
       if (!items.length) {
@@ -28362,8 +28364,15 @@ function homeCountyGuess() {
         if (prep) {
           var ev = keep.map(function (f) { return ((f.properties || {}).event || "").toLowerCase(); }).join(" ");
           var here = homePlace();
+          var county = String((getSet() && getSet().county) || "").replace(/\s*county$/i, "");
+          var where = here + (county ? ", " + county + " County" : "");
           var key = String(getSet().zip || "") === "34223";
-          var tip = "No NWS watch or warning is up for " + here + ". Keep 3 days of water and meds, cash, paper maps, and a full tank.";
+          var boltTxt = ((document.getElementById("live-bolt") || {}).textContent || "");
+          var skyTxt = ((document.getElementById("live-sky") || {}).textContent || "");
+          var checked = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+          var tip = "No NWS watch, warning, or advisory is posted for " + where + ". "
+            + (/warning|watch/i.test(boltTxt) ? ("Thunderstorm " + boltTxt.toLowerCase() + " is the weather flag. ") : (/thunder/i.test(skyTxt) ? "Thunder is in the forecast. Nothing is overhead. " : "No thunderstorm product is posted. "))
+            + "No evacuation order and no boil-water notice on this pin. Checked " + checked + ".";
           if (/hurricane|tropical storm|storm surge/.test(ev)) tip = key
             ? "Tropical system. Check your zone on scgov.net. Fuel the truck and cart, ice and water, meds, cash. Bring in chairs and the grill. Leave if they call your zone — don’t wait on the last bridge."
             : "Tropical system near " + here + ". Check your county evacuation zone. Fuel up, ice and water, meds, cash. Leave if they call your zone.";
@@ -28380,9 +28389,13 @@ function homeCountyGuess() {
               var p = f.properties || {};
               var until = p.expires ? new Date(p.expires).toLocaleString("en-US", { weekday:"short", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "";
               var head = (p.headline || p.event || "Alert").replace(/\s+/g, " ").trim();
+              var area = String(p.areaDesc || "").split(";")[0].trim();
+              var sev = p.severity && p.severity !== "Unknown" ? p.severity : "";
               var inst = String(p.instruction || p.description || "").replace(/\s+/g, " ").trim();
-              if (inst.length > 280) inst = inst.slice(0, 277).replace(/\s+\S*$/, "") + "…";
-              return "<b>" + head + (until ? " · until " + until : "") + "</b> " + tip + (inst ? " NWS: " + inst : "");
+              if (inst.length > 420) inst = inst.slice(0, 417).replace(/\s+\S*$/, "") + "…";
+              return "<b>" + (p.event || "Alert") + (sev ? " · " + sev : "") + (until ? " · until " + until : "") + "</b> "
+                + (area ? "Covers " + area + ". " : "")
+                + tip + (inst ? " NWS says: " + inst : "");
             }).join("<br><br>");
           }
         }
