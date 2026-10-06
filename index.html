@@ -3436,7 +3436,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1118</span>
+      <span class="hdr-ver" id="hdr-ver">v1119</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4220,6 +4220,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <b>Clothes in the kit</b>
           <span id="prep-clothes-lead">Packed for this pin and this season — not a catalog from another climate.</span>
           <ul class="check-list" id="prep-clothes-list"></ul>
+        </div>
+        <div class="card" id="prep-car-card">
+          <b>Vehicle bag</b>
+          <span id="prep-car-lead">In the truck or the car, not in the house kit. Clothes, tools, and what this pin needs in the season.</span>
+          <ul class="check-list" id="prep-car-list"></ul>
         </div>
         <div class="card">
           <b>Shelter-in-place list</b>
@@ -5374,7 +5379,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1118;
+    window.BOARD_VER = 1119;
 
     
     function communityShort() {
@@ -6187,6 +6192,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (typeof paintHouseMaint === "function") paintHouseMaint();
       if (typeof paintPrepGear === "function") paintPrepGear();
       if (typeof paintPrepStock === "function") paintPrepStock();
+      if (typeof paintCarBag === "function") paintCarBag();
       if (typeof loadNeighborAsks === "function") loadNeighborAsks();
       paintHomeChrome();
       var st = document.getElementById("addr-pin-status");
@@ -22896,6 +22902,27 @@ function mustEatsFL() {
     }
     function paintPrepGear() {
       drawMaintRows("prep-gear", "prep-gear-lead", prepGearTasks(), "bw-prep-gear", "Gear dates follow");
+    }
+    function paintCarBag() {
+      var list = document.getElementById("prep-car-list");
+      var lead = document.getElementById("prep-car-lead");
+      if (!list) return;
+      var c = typeof homeClimate === "function" ? homeClimate() : { season: "summer" };
+      var st = typeof homeState === "function" ? homeState() : "";
+      var place = typeof homePlace === "function" ? homePlace() : "this pin";
+      var items = [
+        "Change of clothes and a rain jacket",
+        "Work gloves, flashlight, and spare batteries",
+        "Phone charger and a charged battery bank",
+        "Jumper pack or cables, tire gauge, and a lug wrench",
+        "Multi-tool, pliers, and a roll of duct tape",
+        "Water, a snack, and a small first-aid pouch",
+        "Cash, a paper map, and a copy of insurance"
+      ];
+      if (st === "FL" || c.season === "summer") items.push("Extra water and a sun shade. Tow strap if the truck is the one you take.");
+      if (c.season === "winter" || /CT|MA|NY|VT|NH|ME|PA|MI|WI|MN/.test(st)) items.push("Warm layer, hat, gloves, ice scraper, and a small shovel. Cat litter or sand for traction.");
+      if (lead) lead.textContent = "Packed for " + place + ". Keep it in the vehicle, not with the house kit.";
+      list.innerHTML = items.map(function (t) { return "<li>" + t + "</li>"; }).join("");
     }
     function paintPrepStock() {
       var list = document.getElementById("prep-stock-list");
