@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1108</span>
+      <span class="hdr-ver" id="hdr-ver">v1109</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5355,7 +5355,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1108;
+    window.BOARD_VER = 1109;
 
     
     function communityShort() {
@@ -6430,9 +6430,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       return "https://www.openstreetmap.org/export/embed.html?bbox=" + encodeURIComponent(pinBBox(lat, lon, span || 0.16)) +
         "&layer=mapnik&marker=" + lat.toFixed(5) + "%2C" + lon.toFixed(5);
     }
-    function rainviewerPin(lat, lon, zoom) {
+    function rainviewerPin(lat, lon, zoom, dark) {
       return "https://www.rainviewer.com/map.html?loc=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + "," + (zoom || 6) +
-        "&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&c=3&o=83&lm=0&th=0&sm=0&sn=1";
+        "&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&c=3&o=83&lm=0&th=" + (dark ? 1 : 0) + "&sm=0&sn=1";
     }
     function zoomEarthPin(lat, lon, z) {
       return "https://zoom.earth/maps/satellite/#view=" + Number(lat).toFixed(4) + "," + Number(lon).toFixed(4) + "," + (z || 10) + "z";
@@ -10037,6 +10037,20 @@ function gatorRange() {
       if (live) { live.style.display = "none"; try { live.src = "about:blank"; } catch (e0) {} }
       if (map) map.style.display = "none";
       var code = pickRadarCode(lat, lon, st);
+      var dark = document.documentElement.classList.contains("dark");
+      var note = document.getElementById("wx-map-note");
+      if (dark && live && typeof rainviewerPin === "function") {
+        if (img) { img.classList.remove("on"); img.style.display = "none"; }
+        live.hidden = false;
+        live.classList.add("on");
+        live.style.display = "block";
+        live.style.zIndex = "12";
+        live.src = rainviewerPin(lat, lon, 6, true);
+        if (note) note.textContent = "RainViewer dark · pinned";
+        if (typeof noteFeed === "function") noteFeed("radar", true, "dark");
+        return;
+      }
+      if (live) { live.classList.remove("on"); live.style.display = "none"; try { live.src = "about:blank"; } catch (e1) {} }
       var url = "https://radar.weather.gov/ridge/standard/K" + code + "_loop.gif?t=" + Date.now();
       if (img) {
         img.classList.add("on");
@@ -10045,7 +10059,6 @@ function gatorRange() {
         img.style.opacity = "1";
         img.src = url;
       }
-      var note = document.getElementById("wx-map-note");
       if (note) note.textContent = "NWS K" + code + " loop";
       if (typeof noteFeed === "function") noteFeed("radar", true, "NWS K" + code + " loop");
     }
@@ -21382,6 +21395,7 @@ function mustEatsFL() {
         if (kbtn) { kbtn.classList.toggle("on", s.kiosk === "1"); kbtn.textContent = s.kiosk === "1" ? "Kiosk on" : "Kiosk"; }
         if (typeof applyHdrWx === "function") applyHdrWx();
         if (typeof applySunDark === "function") applySunDark();
+        if (typeof applyRadar === "function") applyRadar();
         if (typeof applyLocalMaps === "function") applyLocalMaps();
         if (typeof writeTodayChips === "function") writeTodayChips();
         if (typeof pagesFromDock === "function") pagesFromDock();
