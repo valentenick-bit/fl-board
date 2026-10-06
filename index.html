@@ -3445,7 +3445,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1133</span>
+      <span class="hdr-ver" id="hdr-ver">v1134</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5437,7 +5437,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1133;
+    window.BOARD_VER = 1134;
 
     
     function communityShort() {
@@ -10204,11 +10204,40 @@ function gatorRange() {
       if (issTitle) issTitle.textContent = "ISS over " + place;
       if (typeof fillZipRadio === "function") fillZipRadio();
     }
+
+    var NWR_SITES = [
+      ["WXJ41", "NOAA Hartford", 41.56, -72.80],
+      ["WXJ42", "NOAA Boston", 42.21, -71.11],
+      ["KHB35", "NOAA Worcester", 42.31, -71.93],
+      ["KWO35", "NOAA New York", 40.75, -73.99],
+      ["WXL32", "NOAA Albany", 42.65, -73.75],
+      ["KHB36", "NOAA Washington", 38.90, -77.04],
+      ["KHB38", "NOAA Philadelphia", 39.95, -75.16],
+      ["KHB32", "NOAA Tampa", 27.50, -82.40],
+      ["KHB34", "NOAA Miami", 25.79, -80.29],
+      ["KHB39", "NOAA Jacksonville", 30.33, -81.66],
+      ["WXJ70", "NOAA Melbourne", 28.08, -80.61],
+      ["KXI49", "NOAA Chicago", 41.88, -87.63],
+      ["KXI75", "NOAA Atlanta", 33.75, -84.39],
+      ["KHB40", "NOAA Houston", 29.76, -95.37],
+      ["KHB43", "NOAA New Orleans", 29.95, -90.07]
+    ];
+    function nearestNwr() {
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      if (!isFinite(lat) || !isFinite(lon)) return null;
+      var best = null, bestD = 1e9;
+      NWR_SITES.forEach(function (row) {
+        var d = Math.hypot(lat - row[2], lon - row[3]);
+        if (d < bestD) { bestD = d; best = row; }
+      });
+      return best;
+    }
     var NWR_BY_WFO = {
       TBW: ["KHB32", "NOAA Tampa", "KHB34"], MFL: ["KHB34", "NOAA Miami", "KHB32"], KEY: ["KHB34", "NOAA Key West", "KHB32"],
       JAX: ["KHB39", "NOAA Jacksonville", "WXJ70"], MLB: ["WXJ70", "NOAA Melbourne", "KHB39"], TAE: ["WWF70", "NOAA Tallahassee", "KHB40"],
       MOB: ["KHB40", "NOAA Mobile", "KHB43"], LIX: ["KHB43", "NOAA New Orleans", "KHB40"], HGX: ["KHB40", "NOAA Houston", "KHB43"],
-      BOX: ["WXJ42", "NOAA Hartford", "WXJ41", "KHB35"], OKX: ["KWO35", "NOAA New York", "KHB35"], LWX: ["KHB36", "NOAA Washington", "KHB35"],
+      BOX: ["WXJ41", "NOAA Hartford", "WXJ42", "KHB35"], OKX: ["KWO35", "NOAA New York", "WXJ41"], LWX: ["KHB36", "NOAA Washington", "KHB35"],
       ILN: ["WXM50", "NOAA Cincinnati", "KHB36"], IND: ["WXM94", "NOAA Indianapolis", "WXM50"], LOT: ["KXI49", "NOAA Chicago", "WXM94"],
       FFC: ["KXI75", "NOAA Atlanta", "KHB39"], GSP: ["WXL70", "NOAA Greenville", "WXJ22"], CAE: ["WXJ22", "NOAA Columbia", "WXL70"],
       CHS: ["WXJ20", "NOAA Charleston", "WXJ22"], ILM: ["WXK92", "NOAA Wilmington", "WXJ20"],
@@ -10713,7 +10742,9 @@ function gatorRange() {
           var office = String(p.forecastOffice || "");
           var wfo = (office.match(/offices\/([A-Z]{3})/) || [])[1] || "";
           window.__nwsWfo = wfo;
-          var nwr = NWR_BY_WFO[wfo] || [];
+          var near = typeof nearestNwr === "function" ? nearestNwr() : null;
+          var nwr = (NWR_BY_WFO[wfo] || []).slice();
+          if (near) nwr = [near[0], near[1]].concat(nwr.filter(function (x) { return x && x !== near[0] && x !== near[1]; }));
           var countyUrl = p.county || "";
           var cty = (countyUrl.match(/counties\/([A-Z]{2})C(\d+)/) || []);
           var same = "";
@@ -11396,8 +11427,20 @@ function currentRotation() {
       fetch(url, { headers: { "User-Agent": "CommonsBoard/1.0" } }).then(function (r) { return r.json(); }).then(function (rows) {
         if (gen !== window.__radioGen) return;
         var out = [], seen = {};
+        var buckets = { News: [], Talk: [], Public: [], Country: [], Rock: [], Pop: [], Jazz: [], Sports: [], Other: [] };
+        function genreOf(row) {
+          var blob = (String(row.tags || "") + " " + String(row.name || "")).toLowerCase();
+          if (/news|npr news/.test(blob)) return "News";
+          if (/sport/.test(blob)) return "Sports";
+          if (/public|npr|bbc/.test(blob)) return "Public";
+          if (/talk/.test(blob)) return "Talk";
+          if (/country/.test(blob)) return "Country";
+          if (/jazz|classical|blues/.test(blob)) return "Jazz";
+          if (/rock|alternative|metal/.test(blob)) return "Rock";
+          if (/pop|top 40|hits|dance|adult/.test(blob)) return "Pop";
+          return "Other";
+        }
         (rows || []).forEach(function (row) {
-          if (out.length >= 8) return;
           var stream = row.url_resolved || row.url || "";
           var name = String(row.name || "").replace(/\s+/g, " ").trim();
           if (!/^https:\/\//i.test(stream)) return;
@@ -11406,9 +11449,19 @@ function currentRotation() {
           var key = name.toLowerCase().slice(0, 24);
           if (seen[key]) return;
           seen[key] = true;
-          out.push([name.slice(0, 22), stream]);
+          buckets[genreOf(row)].push([name.slice(0, 22), stream]);
         });
-        applyList(pad(out));
+        ["News", "Talk", "Public", "Country", "Rock", "Pop", "Jazz", "Sports"].forEach(function (g) {
+          if (buckets[g].length) out.push(buckets[g][0]);
+        });
+        ["Other", "Pop", "Rock", "News", "Talk", "Country", "Public", "Jazz", "Sports"].forEach(function (g) {
+          buckets[g].forEach(function (row) {
+            if (out.length >= 8) return;
+            if (out.some(function (have) { return have[1] === row[1]; })) return;
+            out.push(row);
+          });
+        });
+        applyList(pad(out).slice(0, 8));
       }).catch(function () {
         if (gen !== window.__radioGen) return;
         applyList(pad(preset.length ? preset : RADIO_PRESETS.CT));
