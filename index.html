@@ -605,10 +605,8 @@
     .hdr-city .skyline { fill:rgba(86,96,108,.72); }
     header.sky-night .hdr-city .skyline { fill:rgba(8,12,20,.88); }
     .hdr-city .win { fill:transparent; opacity:0; }
-    header.sky-night .hdr-city .win { fill:#f3e2b0; opacity:.35; animation:winblink 5.5s ease-in-out infinite; }
-    header.sky-night .hdr-city .win:nth-child(3n) { animation-delay:-1.4s; }
-    header.sky-night .hdr-city .win:nth-child(4n) { animation-delay:-3s; opacity:.15; }
-    @keyframes winblink { 0%,100% { opacity:.2; } 50% { opacity:.85; } }
+    header.sky-night .hdr-city .win { fill:#f3e2b0; opacity:.12; transition:opacity .6s ease; }
+    header.sky-night .hdr-city .win.on { opacity:.9; }
 
     .flash { position:absolute; inset:0; pointer-events:none; background:#fff; opacity:0; z-index:8; }
     .flash.on { animation:boltflash .45s ease-out; }
@@ -3436,7 +3434,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1114</span>
+      <span class="hdr-ver" id="hdr-ver">v1115</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3456,7 +3454,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="hdr-city" aria-hidden="true">
           <svg viewBox="0 0 1200 32" preserveAspectRatio="none">
             <path class="skyline" d="M0 32 V22 H40 V14 H70 V22 H110 V8 H150 V22 H190 V16 H230 V22 H280 V6 H330 V22 H380 V12 H420 V22 H470 V18 H520 V22 H560 V4 H610 V22 H660 V10 H710 V22 H760 V15 H810 V22 H860 V9 H910 V22 H960 V17 H1010 V22 H1060 V11 H1110 V22 H1200 V32 Z"/>
-            <rect class="win" x="48" y="16" width="4" height="3"/><rect class="win" x="118" y="12" width="4" height="3"/><rect class="win" x="292" y="10" width="4" height="3"/><rect class="win" x="572" y="8" width="4" height="3"/><rect class="win" x="676" y="14" width="4" height="3"/><rect class="win" x="872" y="13" width="4" height="3"/><rect class="win" x="1072" y="15" width="4" height="3"/>
+            <rect class="win" x="48" y="16" width="3" height="2"/><rect class="win" x="56" y="16" width="3" height="2"/><rect class="win" x="118" y="11" width="3" height="2"/><rect class="win" x="126" y="11" width="3" height="2"/><rect class="win" x="292" y="9" width="3" height="2"/><rect class="win" x="300" y="9" width="3" height="2"/><rect class="win" x="572" y="7" width="3" height="2"/><rect class="win" x="580" y="7" width="3" height="2"/><rect class="win" x="676" y="13" width="3" height="2"/><rect class="win" x="872" y="12" width="3" height="2"/><rect class="win" x="880" y="12" width="3" height="2"/><rect class="win" x="1072" y="14" width="3" height="2"/>
           </svg>
         </div>
       </div>
@@ -5374,7 +5372,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1114;
+    window.BOARD_VER = 1115;
 
     
     function communityShort() {
@@ -12146,6 +12144,14 @@ function currentRotation() {
         var el = document.getElementById(id);
         if (el) el.setAttribute("d", d);
       });
+      if (!window.__cityLights) {
+        window.__cityLights = setInterval(function () {
+          if (!document.documentElement.classList.contains("dark") && !document.querySelector("header.sky-night")) return;
+          document.querySelectorAll(".hdr-city .win").forEach(function (w) {
+            if (Math.random() < 0.35) w.classList.toggle("on");
+          });
+        }, 900);
+      }
     }
     function paintSkyHeader() {
       var head = document.querySelector("header");
