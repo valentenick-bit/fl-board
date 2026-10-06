@@ -597,6 +597,16 @@
     .wavebar { height:0; }
     .hdr-sea .wavebar { height:14px; }
     @keyframes wave { from { transform:translate3d(0,0,0); } to { transform:translate3d(-50%,0,0); } }
+    header.ground-hills .wavetrack, header.ground-mountains .wavetrack, header.ground-city:not(.sky-night) .wavetrack { animation:none; }
+    header.ground-city.sky-night .wavetrack { display:none; }
+    .hdr-city { display:none; position:absolute; left:0; right:0; bottom:0; height:32px; overflow:hidden; }
+    header.ground-city.sky-night .hdr-city { display:block; }
+    .hdr-city svg { width:100%; height:32px; display:block; }
+    .hdr-city .win { fill:#f3e2b0; opacity:.35; animation:winblink 5.5s ease-in-out infinite; }
+    .hdr-city .win:nth-child(3n) { animation-delay:-1.4s; }
+    .hdr-city .win:nth-child(4n) { animation-delay:-3s; opacity:.15; }
+    @keyframes winblink { 0%,100% { opacity:.2; } 50% { opacity:.85; } }
+
     .flash { position:absolute; inset:0; pointer-events:none; background:#fff; opacity:0; z-index:8; }
     .flash.on { animation:boltflash .45s ease-out; }
     @keyframes boltflash { 0% { opacity:0; } 12% { opacity:.55; } 28% { opacity:.08; } 40% { opacity:.35; } 100% { opacity:0; } }
@@ -3423,7 +3433,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1112</span>
+      <span class="hdr-ver" id="hdr-ver">v1113</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3436,9 +3446,15 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <div class="hdr-sea" aria-hidden="true">
         <div class="wavebar">
           <div class="wavetrack">
-            <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 10 Q60 4 120 10 T240 10 T360 10 T480 10 T600 10 T720 10 T840 10 T960 10 T1080 10 T1200 10 V24 H0 Z"/></svg>
-            <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path d="M0 10 Q60 4 120 10 T240 10 T360 10 T480 10 T600 10 T720 10 T840 10 T960 10 T1080 10 T1200 10 V24 H0 Z"/></svg>
+            <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path id="hdr-ground-a" d="M0 10 Q60 4 120 10 T240 10 T360 10 T480 10 T600 10 T720 10 T840 10 T960 10 T1080 10 T1200 10 V24 H0 Z"/></svg>
+            <svg viewBox="0 0 1200 24" preserveAspectRatio="none"><path id="hdr-ground-b" d="M0 10 Q60 4 120 10 T240 10 T360 10 T480 10 T600 10 T720 10 T840 10 T960 10 T1080 10 T1200 10 V24 H0 Z"/></svg>
           </div>
+        </div>
+        <div class="hdr-city" aria-hidden="true">
+          <svg viewBox="0 0 1200 32" preserveAspectRatio="none">
+            <path fill="rgba(8,12,20,.82)" d="M0 32 V22 H40 V14 H70 V22 H110 V8 H150 V22 H190 V16 H230 V22 H280 V6 H330 V22 H380 V12 H420 V22 H470 V18 H520 V22 H560 V4 H610 V22 H660 V10 H710 V22 H760 V15 H810 V22 H860 V9 H910 V22 H960 V17 H1010 V22 H1060 V11 H1110 V22 H1200 V32 Z"/>
+            <rect class="win" x="48" y="16" width="4" height="3"/><rect class="win" x="118" y="12" width="4" height="3"/><rect class="win" x="292" y="10" width="4" height="3"/><rect class="win" x="572" y="8" width="4" height="3"/><rect class="win" x="676" y="14" width="4" height="3"/><rect class="win" x="872" y="13" width="4" height="3"/><rect class="win" x="1072" y="15" width="4" height="3"/>
+          </svg>
         </div>
       </div>
       <div class="sandshelf" aria-hidden="true"></div>
@@ -5355,7 +5371,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1112;
+    window.BOARD_VER = 1113;
 
     
     function communityShort() {
@@ -12098,10 +12114,41 @@ function currentRotation() {
       el.className = "hdr-chip hdr-alert on " + (isWarn ? "warn" : "watch");
       el.textContent = isWarn ? "Warning" : "Watch";
     }
+
+    function headerGround() {
+      var st = typeof homeState === "function" ? homeState() : "";
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : 0;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : 0;
+      var place = String(typeof homePlace === "function" ? homePlace() : "").toLowerCase();
+      var mountain = /^(CO|WY|MT|ID|UT|NM|NV|WV|VT|NH)$/.test(st) || (st === "CA" && lon < -118) || (st === "NC" && lat > 35.5) || (st === "TN" && lon < -83.5);
+      if (mountain) return "mountains";
+      var lake = /chicago|milwaukee|cleveland|buffalo|detroit|duluth|erie|gary|rochester/.test(place);
+      var coast = /^(FL|HI)$/.test(st) || /beach|key|gulf|ocean|shore/.test(place) || lake;
+      if (coast) return "waves";
+      var city = /new york|brooklyn|chicago|los angeles|houston|phoenix|philadelphia|san diego|dallas|austin|san francisco|seattle|denver|boston|nashville|detroit|portland|las vegas|miami|atlanta|minneapolis|tampa|orlando|hartford|baltimore|st louis|pittsburgh/.test(place);
+      if (city) return "city";
+      return "hills";
+    }
+    function paintHeaderGround() {
+      var head = document.querySelector("header");
+      if (!head) return;
+      var g = headerGround();
+      head.classList.remove("ground-waves", "ground-hills", "ground-mountains", "ground-city");
+      head.classList.add("ground-" + g);
+      var waves = "M0 10 Q60 4 120 10 T240 10 T360 10 T480 10 T600 10 T720 10 T840 10 T960 10 T1080 10 T1200 10 V24 H0 Z";
+      var hills = "M0 16 Q80 8 160 16 T320 16 T480 14 T640 16 T800 12 T960 16 T1120 15 T1200 16 V24 H0 Z";
+      var mountains = "M0 18 L80 18 L140 6 L190 18 L280 4 L340 18 L430 8 L500 18 L600 2 L680 18 L780 7 L860 18 L960 5 L1040 18 L1200 16 V24 H0 Z";
+      var d = g === "mountains" ? mountains : (g === "waves" ? waves : hills);
+      ["hdr-ground-a", "hdr-ground-b"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.setAttribute("d", d);
+      });
+    }
     function paintSkyHeader() {
       var head = document.querySelector("header");
       if (!head) return;
       if (typeof seedStars === "function") seedStars();
+      if (typeof paintHeaderGround === "function") paintHeaderGround();
       var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
       var nextSlot = (typeof skySlotNow === "function") ? skySlotNow() : ((hr >= 20 || hr < 6) ? "night" : "day");
