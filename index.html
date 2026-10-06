@@ -3436,7 +3436,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1120</span>
+      <span class="hdr-ver" id="hdr-ver">v1121</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3689,15 +3689,17 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <header class="letter-head">
             <div>
               <p class="letter-mark">COMMONS</p>
-              <p class="letter-sub">BeachWalk by Manasota Key</p>
+              <p class="letter-sub" id="welcome-sub">Your address</p>
             </div>
-            <p class="letter-date">September 4, 2026</p>
+            <p class="letter-date" id="welcome-date"></p>
           </header>
-          <p class="letter-salute">Dear neighbor,</p>
-          <p>Commons is the companion for this house and the common board for this community. One compact wall. One communication. Come home to it, or carry it on a phone — it is the same Commons.</p>
-          <p>At home it is the daily compass: weather, tides, radar, deliveries, and what is happening inside and outside the gates. In the clubhouse it is the community board — notices, minutes, events, meetings. What the desk publishes appears everywhere, without a second posting.</p>
-          <p>When a watch or warning is issued for this address, Commons takes command. Plain language. Radar and track. Whether to leave. The numbers that matter. NOAA radio stays on until the warning ends. When it is over, the board says so.</p>
-          <p class="letter-close">Common ground. Complete picture. Commons.</p>
+          <p class="letter-salute" id="welcome-salute">Welcome.</p>
+          <p id="welcome-lead">Commons is the board for the address on this device. Weather, the ground, the water, the sky, and the town around that pin. A phone and a wall can each keep their own address.</p>
+          <p>Today opens with the conditions, then the things that should interrupt you: lightning, a quake, a school closing, trash night, a flight, a package. Weather holds the radar loop, the hour, and the ten-day. Land, Sea, and Sky follow the pin, so a coast gets tides and a boat report, and an inland town does not pretend to have a beach.</p>
+          <p>Storms, Emergency, and Prepare are the serious pages. A watch or warning for this address is said in plain language, with the same end time on the ticker and the card. Prepare is the kit, the clothes, and the bag in the vehicle. Home is the house itself: flights, deliveries, and the jobs that come due.</p>
+          <p id="welcome-town">Events, restaurants, and golf are searched from the pin. If this device names a community, that board and its events stay with the community name, even when the pin is somewhere else.</p>
+          <p>The header follows the place. Trees, hills, waves, or a city skyline. The briefing reads the board back as a short account of the day. When it is quiet, the board says so.</p>
+          <p class="letter-close">One address. The picture around it. Commons.</p>
           <p class="letter-sign">Sincerely,<br>Commons</p>
         </article>
       </section>
@@ -5367,7 +5369,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1120;
+    window.BOARD_VER = 1121;
 
     
     function communityShort() {
@@ -12145,11 +12147,27 @@ function currentRotation() {
         }, 900);
       }
     }
+
+    function paintWelcome() {
+      var place = typeof homePlace === "function" ? homePlace() : "this address";
+      var comm = typeof communityName === "function" ? communityName() : "";
+      var sub = document.getElementById("welcome-sub");
+      var date = document.getElementById("welcome-date");
+      var salute = document.getElementById("welcome-salute");
+      var town = document.getElementById("welcome-town");
+      if (sub) sub.textContent = place;
+      if (date) date.textContent = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+      if (salute) salute.textContent = "Welcome to Commons for " + place + ".";
+      if (town) town.textContent = comm
+        ? ("Events, restaurants, and golf are searched from the pin. " + comm + " keeps its own board and its own events, even when this device is pinned somewhere else.")
+        : "Events, restaurants, and golf are searched from the pin. Name a community on Account and that board stays with the community, even when the pin is somewhere else.";
+    }
     function paintSkyHeader() {
       var head = document.querySelector("header");
       if (!head) return;
       if (typeof seedStars === "function") seedStars();
       if (typeof paintHeaderGround === "function") paintHeaderGround();
+      if (typeof paintWelcome === "function") paintWelcome();
       var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
       var nextSlot = (typeof skySlotNow === "function") ? skySlotNow() : ((hr >= 20 || hr < 6) ? "night" : "day");
