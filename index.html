@@ -3436,7 +3436,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1119</span>
+      <span class="hdr-ver" id="hdr-ver">v1120</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5280,17 +5280,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     </div>
 
     
-    <div class="ask-sheet" id="ask-sheet" hidden>
-      <b>Ask Commons</b>
-      <textarea id="ask-q" placeholder="Tide, beach window, tonight’s table, packages…"></textarea>
-      <div class="ask-row">
-        <button type="button" class="ghost" id="ask-close">Close</button>
-        <button type="button" id="ask-go">Ask</button>
-      </div>
-      <div class="ask-out" id="ask-out"></div>
-    </div>
-
-    
     <div class="track-back" id="track-back" hidden></div>
     <div class="track-pop" id="track-pop" hidden>
       <b id="track-title">Tracking</b>
@@ -5312,7 +5301,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </div>
       <nav class="drawer-list">
         <p class="drawer-lab">Daily</p>
-        <button type="button" id="ask-open">Ask Commons</button>
         <button type="button" data-p="now">Today</button>
         <button type="button" data-p="tenday">Weather</button>
         <button type="button" data-p="land">Land</button>
@@ -5379,7 +5367,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1119;
+    window.BOARD_VER = 1120;
 
     
     function communityShort() {
@@ -13275,40 +13263,6 @@ function currentRotation() {
       }).catch(function () {});
       return local;
     }
-    function openAsk() {
-      var sheet = document.getElementById("ask-sheet");
-      if (!sheet) return;
-      sheet.hidden = false;
-      sheet.classList.add("on");
-      var q = document.getElementById("ask-q");
-      if (q) setTimeout(function () { q.focus(); }, 50);
-    }
-    function closeAsk() {
-      var sheet = document.getElementById("ask-sheet");
-      if (!sheet) return;
-      sheet.classList.remove("on");
-      sheet.hidden = true;
-    }
-    function runAsk() {
-      var qel = document.getElementById("ask-q");
-      var out = document.getElementById("ask-out");
-      var q = qel ? qel.value : "";
-      if (!String(q).trim()) return;
-      var ans = commonsAskLocal(q);
-      if (out) out.textContent = ans;
-      fetch("/brief", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ask: q, snap: commonsSnap() })
-      }).then(function (r) { return r.json(); }).then(function (d) {
-        if (d && (d.answer || d.brief) && out) out.textContent = d.answer || d.brief;
-      }).catch(function () {});
-    }
-    document.addEventListener("click", function (e) {
-      if (e.target && e.target.id === "ask-open") { e.preventDefault(); e.stopPropagation(); if (typeof closeDrawer === "function") closeDrawer(); openAsk(); }
-      if (e.target && e.target.id === "ask-close") closeAsk();
-      if (e.target && e.target.id === "ask-go") runAsk();
-    }, true);
     setInterval(function () {
       if (typeof refreshCommonsBrief === "function") refreshCommonsBrief();
     }, 15 * 60 * 1000);
