@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1110</span>
+      <span class="hdr-ver" id="hdr-ver">v1111</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5355,7 +5355,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1110;
+    window.BOARD_VER = 1111;
 
     
     function communityShort() {
@@ -8975,7 +8975,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           homeC.hidden = false;
           homeT.textContent = nwsHits.map(function (f) {
             var p = f.properties || {};
-            return (p.event || "Alert") + (p.ends || p.expires ? (" until " + new Date(p.ends || p.expires).toLocaleString()) : "");
+            return (p.event || "Alert") + (alertUntil(p) ? (" until " + alertUntil(p)) : "");
           }).join(". ");
         } else {
           homeC.hidden = false;
@@ -27453,7 +27453,7 @@ function wxSvg(kind, box) {
           var ev = String(p.event || "Advisory").replace(/\s+/g, " ").trim();
           var until = "";
           try {
-            if (p.expires) until = new Date(p.expires).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+            until = alertUntil(p);
           } catch (eU) {}
           var inst = String(p.instruction || "").replace(/\s+/g, " ").trim();
           if (inst.length > 140) inst = inst.slice(0, 137).replace(/\s+\S*$/, "") + "…";
@@ -27958,12 +27958,22 @@ function cardBits(id) {
       }
     }
 
+    function alertUntil(p) {
+      var raw = (p && (p.ends || p.expires)) || "";
+      if (!raw) return "";
+      try {
+        return new Date(raw).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+      } catch (e) { return ""; }
+    }
     function nwsLine(f) {
       var p = (f && f.properties) || {};
+      var until = alertUntil(p);
+      var body = String(p.headline || p.description || "").replace(/\s+/g, " ");
+      body = body.replace(/\buntil\s+\d{1,2}(?::\d{2})?\s*(?:AM|PM)(?:\s+[A-Z]{2,4})?/ig, until ? ("until " + until) : "until");
       return speakAlert({
         kind: "wx",
         title: p.event || "Weather alert",
-        body: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 180)
+        body: body.slice(0, 180)
       });
     }
     function alarmedIds() {
@@ -28036,7 +28046,7 @@ function cardBits(id) {
         var ev = String(p.event || "Emergency").replace(/\s+/g, " ").trim();
         var head = String(p.headline || "").replace(/\s+/g, " ").trim();
         var inst = String(p.instruction || p.description || "").replace(/\s+/g, " ").trim();
-        var until = p.expires ? new Date(p.expires).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) : "";
+        var until = alertUntil(p);
         var line = ev + ".";
         if (head && head.toLowerCase().indexOf(ev.toLowerCase()) < 0) line += " " + head;
         else if (head) line = head;
@@ -28399,7 +28409,7 @@ function homeCountyGuess() {
           } else {
             prep.innerHTML = keep.map(function (f) {
               var p = f.properties || {};
-              var until = p.expires ? new Date(p.expires).toLocaleString("en-US", { weekday:"short", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : "";
+              var until = alertUntil(p);
               var head = (p.headline || p.event || "Alert").replace(/\s+/g, " ").trim();
               var area = String(p.areaDesc || "").split(";")[0].trim();
               var sev = p.severity && p.severity !== "Unknown" ? p.severity : "";
