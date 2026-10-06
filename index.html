@@ -3445,7 +3445,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1134</span>
+      <span class="hdr-ver" id="hdr-ver">v1135</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5437,7 +5437,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1134;
+    window.BOARD_VER = 1135;
 
     
     function communityShort() {
@@ -12116,21 +12116,18 @@ function currentRotation() {
       if (!dest) return;
       var wx = window.__nowWx || {};
       var omc = window.__omCurrent || (window.__om && window.__om.current) || {};
-      var dir = String(wx.dir || "").trim().toUpperCase();
+      var live = ((document.getElementById("live-wind") || {}).textContent || "");
+      var liveDir = (live.match(/\b(N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)\b/i) || [])[1];
+      var dir = liveDir ? liveDir.toUpperCase() : String(wx.dir || "").trim().toUpperCase();
       if (!dir && wx.deg != null && typeof compassFromDeg === "function") dir = compassFromDeg(wx.deg);
       if (!dir && omc.wind_direction_10m != null && typeof compassFromDeg === "function") dir = compassFromDeg(omc.wind_direction_10m);
       var mph = wx.wind;
       if (mph == null || !isFinite(Number(mph))) {
         if (omc.wind_speed_10m != null) mph = Number(omc.wind_speed_10m);
       }
-      var live = ((document.getElementById("live-wind") || {}).textContent || "");
       if (mph == null || !isFinite(Number(mph))) {
         var m = live.match(/(-?\d+(?:\.\d+)?)/);
         if (m) mph = Number(m[1]);
-      }
-      if (!dir) {
-        var d = live.match(/\b(N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)\b/i);
-        if (d) dir = d[1].toUpperCase();
       }
       if (mph == null || !isFinite(Number(mph))) { dest.textContent = dir || ""; return; }
       dest.textContent = (dir ? dir + " " : "") + Math.round(Number(mph)) + " mph";
@@ -15164,6 +15161,8 @@ function currentRotation() {
         if (g == null || isNaN(g)) return;
         if (!best || g > best.g) best = { g: g, ms: ms, speed: speed };
       }
+      var gustNow = wxMphNum((document.getElementById("live-gusts") || {}).textContent);
+      if (gustNow != null && (!best || gustNow > best.g)) best = { g: gustNow, ms: Date.now(), speed: gustNow };
       (window.__hours || []).forEach(function (h) {
         if (!h || !h.startTime) return;
         consider(new Date(h.startTime).getTime(), wxMphNum(h.windGust), wxMphNum(h.windSpeed));
