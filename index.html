@@ -3436,7 +3436,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1122</span>
+      <span class="hdr-ver" id="hdr-ver">v1123</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5369,7 +5369,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1122;
+    window.BOARD_VER = 1123;
 
     
     function communityShort() {
@@ -24477,7 +24477,7 @@ function drawSurgeChart(points) {
       if (!homePoint()) return;
       fetchNwsAlerts()
         .then(function (d) {
-          var feats = (d && d.features) || [];
+          var feats = (typeof liveAlerts === "function" ? liveAlerts((d && d.features) || []) : ((d && d.features) || []));
           window.__nwsAlerts = feats;
           if (typeof scanNorEaster === "function") scanNorEaster();
           if (typeof paintNorEaster === "function") paintNorEaster();
@@ -28015,6 +28015,16 @@ function cardBits(id) {
       }
     }
 
+    function alertStillOn(p) {
+      var raw = (p && (p.ends || p.expires)) || "";
+      if (!raw) return true;
+      var t = new Date(raw).getTime();
+      if (!isFinite(t)) return true;
+      return t > Date.now() + 60000;
+    }
+    function liveAlerts(list) {
+      return (list || []).filter(function (f) { return alertStillOn((f && f.properties) || {}); });
+    }
     function alertUntil(p) {
       var raw = (p && (p.ends || p.expires)) || "";
       if (!raw) return "";
@@ -28407,7 +28417,7 @@ function homeCountyGuess() {
       var txt = document.getElementById("alerttext");
       var frame = document.querySelector(".frame");
       fetchNwsAlerts().then(function (data) {
-        var feats = (data && data.features) || [];
+        var feats = liveAlerts((data && data.features) || []);
         window.__nwsAlerts = feats;
         if (typeof paintBoatReport === "function") paintBoatReport();
       if (typeof paintSeaChrome === "function") paintSeaChrome();
