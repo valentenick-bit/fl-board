@@ -3445,7 +3445,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1130</span>
+      <span class="hdr-ver" id="hdr-ver">v1131</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5437,7 +5437,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1130;
+    window.BOARD_VER = 1131;
 
     
     function communityShort() {
@@ -8687,7 +8687,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           window.__btkPts = pts;
           mergeStormHistPoints(s, pts);
         }
-        if (typeof noteFeed === "function") noteFeed("storm-hist", !!pts.length, (s && s.name || file || "storm") + " · " + pts.length + " official fixes");
+        if (typeof noteFeed === "function") noteFeed("storm-hist", true, (s && s.name || file || "storm") + " · " + (pts.length ? pts.length + " official fixes" : "no fixes yet"));
         if (done) done(pts);
       }
       if (window.__btkAt && window.__btkFile === file && window.__btkPts && window.__btkPts.length && Date.now() - window.__btkAt < 20 * 60 * 1000) {
@@ -8788,7 +8788,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           ? ((s.name || "Storm") + " · " + rows.length + " official NHC fixes. Wind, pressure, and distance from the home pin.")
           : ("No official fixes downloaded for " + (s.name || "this storm") + ". The chart stays blank rather than reuse another storm.");
       }
-      if (typeof noteFeed === "function") noteFeed("storm-hist", rows.length > 0, (s.name || "storm") + " · " + rows.length + " official fixes");
+      if (typeof noteFeed === "function") noteFeed("storm-hist", true, (s.name || "storm") + " · " + (rows.length ? rows.length + " official fixes" : "no fixes yet"));
       function series(field) {
         return rows.filter(function (p) { return p[field] != null && isFinite(p[field]); })
           .map(function (p) { return { t: p.t, v: p[field], adv: p.adv }; });
@@ -20554,7 +20554,7 @@ function mustEatsFL() {
           if (!r || !r.name) return false;
           if (!isGolfName(r.name, null, r.types) && !r.ogId) return false;
           if (r.miles == null && r.lat != null) r.miles = milesOf(r.lat, r.lon);
-          return r.miles == null || r.miles <= cap;
+          return r.miles != null && r.miles <= cap;
         }).sort(function (a, b) {
           var ra = Number(a.rating) || 0, rb = Number(b.rating) || 0;
           if (rb !== ra) return rb - ra;
@@ -20889,7 +20889,8 @@ function mustEatsFL() {
         fromOpenGolf(function (og) {
           fromPlaces(function (places) {
             rateOpenGolfGaps(og, places, function (richGoogle) {
-              var paired = pairPlacesOg(richGoogle, (og || []).concat(mustGolfs()));
+              var localMust = mustGolfs().filter(function (r) { return r.miles != null && r.miles <= golfMiles(); });
+              var paired = pairPlacesOg(richGoogle, (og || []).concat(localMust));
               window.__golfPool = paired;
               draw(paired);
               attachSlope(paired, function (rich) { window.__golfPool = rich; draw(rich); });
