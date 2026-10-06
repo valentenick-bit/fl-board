@@ -3445,7 +3445,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1129</span>
+      <span class="hdr-ver" id="hdr-ver">v1130</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5437,7 +5437,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1129;
+    window.BOARD_VER = 1130;
 
     
     function communityShort() {
@@ -12691,6 +12691,8 @@ function currentRotation() {
           if (typeof stormIsInvest === "function" && stormIsInvest(s)) return false;
           if (/invest|^one$|^two$|^three$|^four$|^five$/i.test(name)) return false;
           if ((s.classification || "") === "DB") return false;
+          var mi = typeof stormMiles === "function" ? stormMiles(s) : NaN;
+          if (isFinite(mi) && mi > 600) return false;
           return true;
         });
         var ne = typeof scanNorEaster === "function" ? scanNorEaster() : (window.__norEaster || {});
@@ -19151,7 +19153,7 @@ function paint() {
         var note = document.getElementById("ent-count");
         var nBw = merged.filter(function (e) { return typeof isBeachWalkEvent === "function" && isBeachWalkEvent(e); }).length;
         var nTick = merged.filter(function (e) { return /ticket|ticketmaster|axs|live nation/i.test(String(e.src || "") + " " + String(e.sum || "")); }).length;
-        if (note) note.textContent = merged.length + " near this pin" + (nBw ? (" · " + nBw + " in community") : "") + (nTick ? (" · " + nTick + " ticketed") : "");
+        if (note) note.textContent = Math.max(0, merged.length - nBw) + " near this pin" + (nBw ? (" · " + nBw + " in community") : "") + (nTick ? (" · " + nTick + " ticketed") : "");
         if (typeof noteFeed === "function") noteFeed("events", true, merged.length + " near pin");
         var mc = merged.filter(function (e) { return /mccurdy/i.test(String(e.sum || "") + " " + String(e.loc || "")); }).length;
         if (typeof noteFeed === "function") noteFeed("comedy", true, mc ? (mc + " on calendar") : "none tonight");
@@ -19333,7 +19335,7 @@ function paint() {
         var gotZip = false;
         function next(i) {
           if (i >= urls.length) {
-            if (typeof noteFeed === "function") noteFeed("local-events", !!(bag.local && bag.local.length), (bag.local && bag.local.length ? bag.local.length + " researched" : "no events.json"));
+            if (typeof noteFeed === "function") noteFeed("local-events", true, (bag.local && bag.local.length ? bag.local.length + " researched" : "no events file yet"));
             if (done) done();
             return;
           }
@@ -27049,10 +27051,10 @@ function wxSvg(kind, box) {
       var on = mapsPaidOn();
       var hasKey = !!(typeof mapsKeyStored === "function" ? mapsKeyStored() : (typeof getSet === "function" && String((getSet().gmapsKey || "")).trim()));
       if (!hasKey) {
-        noteFeed("gmaps", false, "no Maps key");
-        noteFeed("places", false, "no Maps key");
-        noteFeed("eat-drive", false, "no Maps key");
-        noteFeed("event-drive", false, "no Maps key");
+        noteFeed("gmaps", true, "off · no Maps key");
+        noteFeed("places", true, "off · no Maps key");
+        noteFeed("eat-drive", true, "off · no Maps key");
+        noteFeed("event-drive", true, "off · no Maps key");
         return;
       }
       if (!on) {
