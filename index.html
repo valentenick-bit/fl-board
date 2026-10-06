@@ -3423,7 +3423,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1102</span>
+      <span class="hdr-ver" id="hdr-ver">v1103</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3542,6 +3542,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         <div id="today-trash" hidden>
           <div id="today-trash-body"></div>
+        </div>
+        <div id="today-school" hidden>
+          <div id="today-school-body"></div>
         </div>
         <div class="pulse-grid" id="today-pulse" hidden>
           <article class="pulse today-chip bolt" id="chip-bolt" hidden></article>
@@ -5354,7 +5357,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1102;
+    window.BOARD_VER = 1103;
 
     
     function communityShort() {
@@ -12323,6 +12326,31 @@ function currentRotation() {
       }
       return row;
     }
+    function usHolidayName(d) {
+      var y = d.getFullYear(), m = d.getMonth(), day = d.getDate(), dow = d.getDay();
+      function nth(month, weekday, n) {
+        var dt = new Date(y, month, 1);
+        dt.setDate(1 + ((weekday - dt.getDay() + 7) % 7) + (n - 1) * 7);
+        return dt.getDate();
+      }
+      function lastMon(month) {
+        var dt = new Date(y, month + 1, 0);
+        dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+        return dt.getDate();
+      }
+      if (m === 0 && day === 1) return "New Year's Day";
+      if (m === 0 && day === nth(0, 1, 3)) return "MLK Day";
+      if (m === 1 && day === nth(1, 1, 3)) return "Presidents Day";
+      if (m === 4 && day === lastMon(4)) return "Memorial Day";
+      if (m === 5 && day === 19) return "Juneteenth";
+      if (m === 6 && (day === 4 || (day === 3 && dow === 5) || (day === 5 && dow === 1))) return "Independence Day";
+      if (m === 8 && day === nth(8, 1, 1)) return "Labor Day";
+      if (m === 9 && day === nth(9, 1, 2)) return "Columbus Day";
+      if (m === 10 && day === 11) return "Veterans Day";
+      if (m === 10 && day === nth(10, 4, 4)) return "Thanksgiving";
+      if (m === 11 && day === 25) return "Christmas";
+      return "";
+    }
     function trashDay() {
       var n = Number((trashRowFor() || {}).day);
       return isNaN(n) ? 4 : n;
@@ -12545,21 +12573,38 @@ function currentRotation() {
         if (trashBox) trashBox.hidden = !show;
         if (show && trashBody && typeof stampTodayArt === "function") {
           var recOn = recycleThisWeek(now);
+          var pickup = new Date(now);
+          pickup.setDate(now.getDate() + add);
+          var hol = usHolidayName(pickup);
+          if (hol) { pickup.setDate(pickup.getDate() + 1); add = Math.round((pickup.setHours(12) - now) / 86400000); }
+          var dayName = names[pickup.getDay()];
           var recLine = recycleEvery() === "bi"
-            ? (recOn ? "Garbage and recycle." : "Garbage only. Recycle next " + names[want] + ".")
+            ? (recOn ? "Garbage and recycle." : "Garbage only. Recycle next " + dayName + ".")
             : "Garbage and recycle.";
-          var line = add === 0
-            ? recLine + " Curb by 6 a.m."
-            : add === 1
-              ? "Tomorrow is " + names[want] + ". Set it out tonight. " + recLine
-              : "Next pickup is " + names[want] + ". " + recLine;
-          var whenTag = add === 0 ? "Today" : add === 1 ? "Tonight" : names[want];
+          var line = hol
+            ? ("Delayed. " + hol + " moves pickup to " + dayName + ". " + recLine)
+            : add === 0
+              ? recLine + " Curb by 6 a.m."
+              : add === 1
+                ? "Tomorrow is " + dayName + ". Set it out tonight. " + recLine
+                : "Next pickup is " + dayName + ". " + recLine;
+          var whenTag = hol ? "Delayed" : (add === 0 ? "Today" : add === 1 ? "Tonight" : dayName);
           trashBody.innerHTML = stampTodayArt(
-            '<div class="card"><span class="place-tag place-out">' + whenTag + '</span><span class="kind-tag">Pickup</span><b>' + line + "</b><span>Set the cans at the curb before 6 a.m.</span></div>",
+            '<div class="card"><span class="place-tag place-out">' + whenTag + '</span><span class="kind-tag">Pickup</span><b>' + line + "</b><span>" + (hol ? "Do not put the cans out on the holiday." : "Set the cans at the curb before 6 a.m.") + "</span></div>",
             "trash"
           );
         } else if (trashBody) trashBody.innerHTML = "";
       }
+      var school = window.__schoolChip;
+      var schoolBox = document.getElementById("today-school");
+      var schoolBody = document.getElementById("today-school-body");
+      if (schoolBox) schoolBox.hidden = !(school && school.on);
+      if (school && school.on && schoolBody && typeof stampTodayArt === "function") {
+        schoolBody.innerHTML = stampTodayArt(
+          '<div class="card hot"><span class="warn-tag">' + school.pill + '</span><span class="kind-tag warn-tag">School</span><b>' + school.title + '</b><span>' + school.detail + '</span></div>',
+          "school"
+        );
+      } else if (schoolBody) schoolBody.innerHTML = "";
     }
     writeTodayChips();
     try { paintMeteorChip(); loadSpaceWeather(); loadKingTides(); loadIssPasses(); } catch (eBootSky) {}
@@ -28635,7 +28680,7 @@ function homeCountyGuess() {
           }));
           newsToCard("han-card", "live-han", "han", tick, true);
         });
-        fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\" OR \"schools closed\" OR \"school closed\") (school OR district) (" + place + " OR " + st + ") when:2d", function (rawSchool) {
+        fetchNewsQuery("(lockdown OR lockout OR \"shelter in place\" OR \"schools closed\" OR \"school closed\" OR \"school delay\" OR \"delayed opening\" OR \"two-hour delay\" OR \"2-hour delay\" OR \"early dismissal\" OR \"early release\") (school OR district) (" + place + " OR " + st + ") when:2d", function (rawSchool) {
           noticeWithin25(rawSchool, function (items) {
           items = (items || []).filter(function (x) {
             var t = String(x.title || "") + " " + String(x.desc || "");
@@ -28646,9 +28691,14 @@ function homeCountyGuess() {
             var local = /englewood|venice|north port|sarasota|charlotte|port charlotte|south windsor|hartford|manchester|wethersfield/i.test(t) || (place && new RegExp(String(place).split(/[\s,]/)[0], "i").test(t));
             if (!local && st && st.length === 2 && new RegExp("\\b" + st + "\\b", "i").test(t) && !new RegExp(place, "i").test(t)) return false;
             if (!local && !new RegExp(String(place || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(t)) return false;
-            return /lockdown|lockout|shelter in place|schools closed|school closed|early dismissal|students evacuated/i.test(t);
+            return /lockdown|lockout|shelter in place|schools closed|school closed|early dismissal|early release|delayed opening|two-hour delay|2-hour delay|school delay/i.test(t);
           });
           window.__schoolAlerts = items.map(function (x) { return { kind: "school", title: "School emergency", body: x.title }; });
+          var hit = (items || [])[0];
+          var blob = hit ? String(hit.title || "") + " " + String(hit.desc || "") : "";
+          var pill = /early dismissal|early release|dismissed early/i.test(blob) ? "Early out" : /delay|two-hour|2-hour|delayed opening/i.test(blob) ? "Delay" : /closed|closing|no school/i.test(blob) ? "Closed" : "";
+          window.__schoolChip = pill ? { on: true, pill: pill, title: String(hit.title || "School notice").replace(/</g, ""), detail: "For this pin. Check the district before you leave." } : { on: false };
+          if (typeof writeTodayChips === "function") writeTodayChips();
           newsToCard("school-card", "live-school", "school", items, true);
           });
         });
