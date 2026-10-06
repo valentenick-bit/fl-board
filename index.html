@@ -3436,7 +3436,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1116</span>
+      <span class="hdr-ver" id="hdr-ver">v1117</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5374,7 +5374,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1116;
+    window.BOARD_VER = 1117;
 
     
     function communityShort() {
@@ -7631,7 +7631,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         var n = document.getElementById("bw-county-body");
         if (n) n.textContent = "County EM / 311: 941-861-5000. Red Cross Sarasota 941-379-9300. Animal Services 941-861-9500. Medical Needs evac registration 311. FEMA 800-621-3362. Poison Control 800-222-1222. Florida 511 for roads. Coast Guard marine Channel 16.";
       }
-      if (typeof noteFeed === "function") noteFeed("bw-prep", on, on ? "BeachWalk guide cards on" : "hidden · other community");
+      if (typeof noteFeed === "function") noteFeed("bw-prep", true, on ? "BeachWalk guide cards on" : "hidden · other pin");
     }
     function paintCommunity() {
       var name = communityName();
@@ -13487,10 +13487,13 @@ function currentRotation() {
         if (!isFinite(t) && wx.temp != null) t = Number(wx.temp);
         var night = hrNow >= 20 || hrNow < 6;
         var outfit, sun = "", rain = "", extra = "";
+        var gulf = (typeof homeState === "function" ? homeState() : "") === "FL";
         if (night) {
-          if (isFinite(t) && t >= 82) outfit = "It's still sticky after dark. Sleep in the lightest cotton or linen you have, and skip a heavy robe on the lanai.";
-          else if (isFinite(t) && t <= 72) outfit = "Cooler than a typical Key night. A light layer on the lanai is enough; you will not need a jacket in the house.";
-          else outfit = "Evening clothes can stay light — shorts or a sundress, bare feet on the tile.";
+          if (!gulf && isFinite(t) && t <= 50) outfit = "Cold night. Jacket if you step out. The house can stay as it is.";
+          else if (!gulf && isFinite(t) && t <= 65) outfit = "Cool night. A layer if you are out. You will not need it inside.";
+          else if (isFinite(t) && t >= 82) outfit = gulf ? "It's still sticky after dark. Sleep in the lightest cotton or linen you have, and skip a heavy robe on the lanai." : "Still warm after dark. Light clothes are enough.";
+          else if (isFinite(t) && t <= 72) outfit = gulf ? "Cooler than a typical Key night. A light layer on the lanai is enough; you will not need a jacket in the house." : "Cooler tonight. A light layer if you go out.";
+          else outfit = gulf ? "Evening clothes can stay light — shorts or a sundress, bare feet on the tile." : "Evening clothes can stay light.";
         } else if (isFinite(t) && t >= 96) outfit = "Heat index is up. Linen or the thinnest short-sleeve you own, light color. Dark shirts will feel worse by noon.";
         else if (isFinite(t) && t >= 90) outfit = "Shorts and a light shirt. If you are walking Dearborn or the beach, pack a cover-up — shade is thin after 11.";
         else if (isFinite(t) && t >= 78) outfit = "Straight shorts weather. A breathable shirt is plenty until the sun drops.";
@@ -24909,7 +24912,8 @@ function drawSurgeChart(points) {
       (function pollFpl() {
         function set(id, txt) { var n = document.getElementById(id); if (n) n.textContent = txt; }
         if (typeof homeState === "function" && homeState() !== "FL") {
-          set("live-fpl", "Not an FPL market. Check your local utility.");
+          var util = (typeof homePowerPack === "function" && homePowerPack().power) ? homePowerPack().power[0] : "Local utility";
+          set("live-fpl", util + " covers this pin. FPL outage counts are for Florida only.");
           if (typeof noteFeed === "function") noteFeed("power", true, "not FPL");
           return;
         }
