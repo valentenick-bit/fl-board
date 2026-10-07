@@ -1877,6 +1877,16 @@
     .wx-map-frame .wx-map-pane.on { display:block; }
     .wx-map-frame iframe.wx-map-pane { width:100%; height:100%; }
 
+
+    .game-card { border:1px solid var(--hair); border-radius:16px; padding:10px 12px; margin:0 0 8px; background:var(--card, #fff); }
+    html.dark .game-card { background:#1b2430; }
+    .game-top { display:flex; justify-content:space-between; gap:8px; font-size:12px; opacity:.8; margin-bottom:6px; }
+    .game-top b { letter-spacing:.08em; }
+    .game-side { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:2px 0; }
+    .game-side strong { font-size:22px; font-variant-numeric:tabular-nums; }
+    .game-side em { font-style:normal; opacity:.65; font-size:12px; margin-left:6px; }
+    .game-note { margin:6px 0 0; font-size:13px; }
+    .game-meta { display:block; margin-top:4px; font-size:12px; opacity:.7; }
     .airport-row { display:flex; gap:4px; overflow-x:hidden; margin-top:8px; padding-bottom:0; }
     .airport-pill { flex:1 1 0; min-width:0; min-height:64px; border-radius:14px; background:rgba(255,255,255,.55); border:2px solid transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:4px 2px; }
     .airport-pill b { font-size:16px; letter-spacing:.04em; }
@@ -3448,7 +3458,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1141</span>
+      <span class="hdr-ver" id="hdr-ver">v1142</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3678,6 +3688,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <article class="pulse today-chip quake" id="chip-quake" hidden></article>
           <article class="pulse today-chip cane" id="chip-cane" hidden></article>
           <article class="pulse today-chip trash" id="chip-trash" hidden></article>
+        </div>
+        <div class="card" id="today-sports" hidden>
+          <b>Games</b>
+          <div id="today-sports-body"></div>
         </div>
         <div class="card airport-card" id="airport-card">
           <b>Airports</b>
@@ -5282,7 +5296,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </div>
       <div class="set-card" id="set-sports">
         <h3>Teams</h3>
-        <p class="hint">Pick teams for the briefing ticker. Nearby teams for this address start checked.</p>
+        <p class="hint">Closest teams within 150 miles start checked. A change sticks for this address.</p>
         <div id="sports-box" class="set-sports-box"></div>
       </div>
       <div class="set-card">
@@ -5477,7 +5491,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1141;
+    window.BOARD_VER = 1142;
 
     
     function communityShort() {
@@ -27494,19 +27508,30 @@ function wxSvg(kind, box) {
       var miles = Number((typeof getSet === "function" && getSet().sportMiles) || 150) || 150;
       return SPORT_TEAMS.filter(function(tm){ return milesApart(lat,lon,tm.lat,tm.lon) <= miles; });
     }
+    function sportsPinKey(){
+      var zip = String((typeof getSet === "function" && getSet().zip) || "");
+      if (/^\d{5}$/.test(zip)) return zip;
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      if (isFinite(lat) && isFinite(lon)) return lat.toFixed(2) + "," + lon.toFixed(2);
+      return "pin";
+    }
     function selectedTeams(){
-      var raw = String((getSet().sportsOn != null ? getSet().sportsOn : ""));
-      var ids;
-      if (!raw) {
-        ids = nearbyTeams().map(teamId);
-        try { putSet({ sportsOn: ids.join(",") }); } catch (e) {}
-      } else {
-        ids = raw.split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+      var s = getSet();
+      var key = sportsPinKey();
+      var map = s.sportsByPin || {};
+      if (typeof map === "string") { try { map = JSON.parse(map); } catch (eM) { map = {}; } }
+      var raw = Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
+      if (raw == null) {
+        var ids0 = nearbyTeams().map(teamId);
+        map[key] = ids0.join(",");
+        try { putSet({ sportsByPin: map, sportsOn: map[key] }); } catch (e0) {}
+        raw = map[key];
       }
+      var ids = String(raw || "").split(",").map(function(x){ return x.trim(); }).filter(Boolean);
       var want = {};
       ids.forEach(function(id){ want[id] = 1; });
-      var picked = SPORT_TEAMS.filter(function(tm){ return want[teamId(tm)]; });
-      return picked.length ? picked : nearbyTeams();
+      return SPORT_TEAMS.filter(function(tm){ return want[teamId(tm)]; });
     }
     function paintSportsPage(){
       var on = {};
@@ -27575,12 +27600,31 @@ function wxSvg(kind, box) {
           if (tgin.checked && cur.indexOf(id) < 0) cur.push(id);
           if (!tgin.checked) cur = cur.filter(function(x){ return x !== id; });
         }
-        putSet({ sportsOn: cur.join(","), sportsPrev: prev });
+        var map = s.sportsByPin || {};
+        if (typeof map === "string") { try { map = JSON.parse(map); } catch (eM) { map = {}; } }
+        map[sportsPinKey()] = cur.join(",");
+        putSet({ sportsOn: cur.join(","), sportsByPin: map, sportsPrev: prev });
         paintSportsPage();
         if (typeof loadSportsScores === "function") loadSportsScores(typeof writeBriefing === "function" ? writeBriefing : null);
       });
       }
       attach(document.getElementById("sports-box"));
+    }
+
+    function paintTodaySports(cards) {
+      var box = document.getElementById("today-sports");
+      var body = document.getElementById("today-sports-body");
+      if (!box || !body) return;
+      cards = cards || [];
+      if (!cards.length) { box.hidden = true; body.innerHTML = ""; return; }
+      box.hidden = false;
+      body.innerHTML = cards.map(function (g) {
+        return '<article class="game-card"><div class="game-top"><b>' + g.league + '</b><span>' + g.detail + '</span></div>' +
+          '<div class="game-side"><span>' + g.a + (g.ar ? '<em>' + g.ar + '</em>' : '') + '</span><strong>' + (g.as || "—") + '</strong></div>' +
+          '<div class="game-side"><span>' + g.b + (g.br ? '<em>' + g.br + '</em>' : '') + '</span><strong>' + (g.bs || "—") + '</strong></div>' +
+          (g.note ? '<p class="game-note">' + g.note + '</p>' : '') +
+          (g.venue ? '<small class="game-meta">' + g.venue + '</small>' : '') + '</article>';
+      }).join("");
     }
     function loadSportsScores(done){
       function finish(lines) {
@@ -27604,6 +27648,7 @@ function wxSvg(kind, box) {
           var names = { nfl: "NFL", mlb: "MLB", nba: "NBA", nhl: "NHL" };
           var blocks = [];
           var lines = [];
+          var cards = [];
           (packs || []).forEach(function (pack) {
             var events = ((pack.d || {}).events) || [];
             var want = bySport[pack.sp] || [];
@@ -27618,10 +27663,34 @@ function wxSvg(kind, box) {
               var bn = (b.team && (b.team.shortDisplayName || b.team.abbreviation)) || "Team";
               var st = ((ev.status || {}).type) || {};
               var state = st.state || "";
+              var start = new Date(ev.date || "").getTime();
+              var now = Date.now();
+              window.__sportsFinalAt = window.__sportsFinalAt || {};
+              if (state === "post") {
+                if (!window.__sportsFinalAt[ev.id]) window.__sportsFinalAt[ev.id] = now;
+                if (now - window.__sportsFinalAt[ev.id] > 3600000) return;
+              } else if (state === "pre") {
+                if (!isFinite(start) || start - now > 3600000 || start < now - 600000) return;
+              } else if (state !== "in") return;
+              var comp = (ev.competitions || [])[0] || {};
+              var sit = comp.situation || {};
+              var detail = st.shortDetail || st.detail || (state === "in" ? "Live" : "Soon");
+              var note = "";
+              if (pack.sp === "mlb" && state === "in") note = (sit.outs != null ? sit.outs + " out" : "") + (sit.balls != null ? " · " + sit.balls + "-" + (sit.strikes || 0) : "");
+              if (pack.sp === "nfl" && state === "in") note = sit.shortDownDistanceText || sit.possessionText || "";
+              if ((pack.sp === "nba" || pack.sp === "nhl") && state === "in") note = (st.displayClock ? st.displayClock + " left" : "");
+              var venue = (comp.venue && comp.venue.fullName) || "";
               var line = state === "pre"
-                ? an + " at " + bn + " " + (st.shortDetail || st.detail || "later") + "."
-                : an + " " + (a.score || "0") + ", " + bn + " " + (b.score || "0") + (state === "in" ? " in progress." : ".");
+                ? an + " at " + bn + " " + detail + "."
+                : an + " " + (a.score || "0") + ", " + bn + " " + (b.score || "0") + ", " + detail + ".";
               chunk.push(line);
+              cards.push({
+                league: names[pack.sp] || pack.sp.toUpperCase(),
+                detail: detail,
+                a: an, as: a.score || (state === "pre" ? "" : "0"), ar: ((a.records || [])[0] || {}).summary || "",
+                b: bn, bs: b.score || (state === "pre" ? "" : "0"), br: ((b.records || [])[0] || {}).summary || "",
+                note: note, venue: venue
+              });
             });
             if (chunk.length) {
               blocks.push({ title: names[pack.sp] || pack.sp.toUpperCase(), lines: chunk });
@@ -27629,6 +27698,8 @@ function wxSvg(kind, box) {
             }
           });
           window.__sportsBlocks = blocks;
+          window.__sportsCards = cards;
+          if (typeof paintTodaySports === "function") paintTodaySports(cards);
           finish(lines);
         }).catch(function () { finish([]); });
       } catch (e) { finish([]); }
