@@ -3458,7 +3458,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1142</span>
+      <span class="hdr-ver" id="hdr-ver">v1143</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4117,6 +4117,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <h2 data-k="Near this pin">Golf</h2>
         <p class="pill-key" id="golf-count">Courses near home…</p>
         <div class="split-list" id="golf-list"></div>
+      </section>
+
+      <section id="sports" class="page">
+        <h2 data-k="Your teams">Sports</h2>
+        <p class="pill-key" id="sports-note">Teams you follow for this address.</p>
+        <div id="sports-body"><p class="pill-key">Loading…</p></div>
       </section>
       <section id="comm" class="page">
         <h2 id="comm-title">Community</h2>
@@ -4893,6 +4899,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <button type="button" data-p="ent">Events</button>
         <button type="button" data-p="eats">Restaurants</button>
         <button type="button" data-p="golf">Golf</button>
+        <button type="button" data-p="sports">Sports</button>
           </div>
         </div>
         <div class="menu-block">
@@ -5434,6 +5441,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <button type="button" data-p="ent">Events</button>
         <button type="button" data-p="eats">Restaurants</button>
         <button type="button" data-p="golf">Golf</button>
+        <button type="button" data-p="sports">Sports</button>
         <p class="drawer-lab">Out</p>
         <button type="button" data-p="wink">News</button>
         <p class="drawer-lab">Storms</p>
@@ -5491,7 +5499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1142;
+    window.BOARD_VER = 1143;
 
     
     function communityShort() {
@@ -10968,7 +10976,7 @@ function currentRotation() {
       if (!id || id === "settings" || id === "account" || pageOnRotation(id)) return;
       var page = document.getElementById(id);
       if (!page) return;
-      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Events", eats:"Restaurants", golf:"Golf", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prepare", power:"Power", cam:"Views", radio:"Radio", house:"Home", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
+      var names = { now:"Today", welcome:"Welcome", tenday:"Weather", land:"Land", radar:"Radar", marine:"Sea", sky:"Sky", traffic:"Traffic", ent:"Events", eats:"Restaurants", golf:"Golf", sports:"Sports", deliver:"Delivery", bolt:"Lightning", cane:"Tropical", hurr:"Hurricane", storms:"Storms", contacts:"Emergency", gulfsat:"Gulf", tropics:"Tropics", prep:"Prepare", power:"Power", cam:"Views", radio:"Radio", house:"Home", villa:"Open / close", health:"Status", guide:"How it works", ideas:"Ideas", sources:"Sources", triggers:"Triggers", kioskpage:"Kiosk", account:"Account", business:"Business", wink:"News", menu:"Menu" };
       var subs = { health:"What is live, stale, or down", guide:"How Commons works", ideas:"Queued work", sources:"Where the numbers come from", triggers:"Test rotations and alerts", kioskpage:"Wall setup", villa:"Open and close the house", contacts:"Numbers and what to do", prep:"Kit and steps for this warning", power:"Outages near the house", business:"Clubhouse and HOA", wink:"Local headlines", menu:"All pages", welcome:"Start here" };
       var head = document.createElement("div");
       head.className = "settings-head page-off-head";
@@ -10982,8 +10990,8 @@ function currentRotation() {
       if (cur && cur.id && pageOnRotation(cur.id)) window.__fromPage = cur.id;
       var jump = "";
       if (id === "power") id = "contacts";
-      if (id === "sports" || id === "radio") {
-        jump = id === "sports" ? "set-sports" : "set-radio";
+      if (id === "radio") {
+        jump = "set-radio";
         id = "settings";
       }
       if (cur && cur.id === id) return;
@@ -10993,6 +11001,7 @@ function currentRotation() {
         p.style.opacity = "";
       });
       if (id === "storms" && typeof paintStormPage === "function") paintStormPage();
+      if (id === "sports" && typeof paintSportsBoard === "function") paintSportsBoard();
       if (id !== "marine") {
         if (typeof stopSeaMapRotate === "function") stopSeaMapRotate();
         var seaF = document.getElementById("sea-map");
@@ -14422,7 +14431,7 @@ function currentRotation() {
     var pages = (ROT_DEFAULTS.normal || []).slice(), i = 0, rot, idle;
     var ROT_COND = { bolt:1, cane:1, hurr:1, gulfsat:1, tropics:1 };
     function loadRots() {
-      var dailyPool = window.ROT_DAILY_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
+      var dailyPool = window.ROT_DAILY_POOL || ["now","tenday","land","marine","sky","comm","ent","eats","golf","sports","wink","house"];
       var stormPool = window.ROT_STORM_POOL || ["tenday","storms","marine","contacts","prep","house"];
       var def = window.ROT_DEFAULTS || { normal: dailyPool.slice(0, 8), storm: stormPool.slice() };
       var alias = {
@@ -14458,7 +14467,7 @@ function currentRotation() {
       try { localStorage.setItem("bw-rots", JSON.stringify(r)); } catch (e) {}
     }
     function rotVisible(id) {
-      if (id === "welcome" || id === "markets" || id === "business" || id === "ideas" || id === "sources" || id === "guide" || id === "health" || id === "settings" || id === "account" || id === "kioskpage" || id === "triggers" || id === "sports" || id === "radio" || id === "wink" || id === "c2brief" || id === "c2weather" || id === "c2club") return false;
+      if (id === "welcome" || id === "markets" || id === "business" || id === "ideas" || id === "sources" || id === "guide" || id === "health" || id === "settings" || id === "account" || id === "kioskpage" || id === "triggers" || id === "radio" || id === "wink" || id === "c2brief" || id === "c2weather" || id === "c2club") return false;
       if (!id || !document.getElementById(id)) return false;
       if (id === "cam" && typeof camOffHours === "function" && camOffHours()) return false;
       var ev = (window.__wxRisk && window.__wxRisk.warnTypes) || "";
@@ -21307,7 +21316,7 @@ function mustEatsFL() {
       if (n) n.innerHTML = rowHtml("normal", r.normal);
       if (s) s.innerHTML = rowHtml("storm", r.storm);
     }
-    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","comm","ent","eats","golf","wink","house"];
+    var ROT_DAILY_POOL = ["now","tenday","land","marine","sky","comm","ent","eats","golf","sports","wink","house"];
     var ROT_STORM_POOL = ["tenday","storms","marine","contacts","prep","house"];
     window.ROT_DAILY_POOL = ROT_DAILY_POOL;
     window.ROT_STORM_POOL = ROT_STORM_POOL;
@@ -27625,6 +27634,88 @@ function wxSvg(kind, box) {
           (g.note ? '<p class="game-note">' + g.note + '</p>' : '') +
           (g.venue ? '<small class="game-meta">' + g.venue + '</small>' : '') + '</article>';
       }).join("");
+    }
+
+    function paintSportsBoard() {
+      var body = document.getElementById("sports-body");
+      var note = document.getElementById("sports-note");
+      if (!body) return;
+      var teams = typeof selectedTeams === "function" ? selectedTeams() : [];
+      if (note) note.textContent = teams.length ? (teams.length + " teams for this address") : "No teams checked for this address.";
+      if (!teams.length) {
+        body.innerHTML = '<div class="card"><b>No teams yet</b><span>Settings starts with clubs within 150 miles. A change sticks for this address.</span></div>';
+        return;
+      }
+      body.innerHTML = '<p class="pill-key">Checking the leagues…</p>';
+      var urls = {
+        nfl: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
+        mlb: "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard",
+        nba: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+        nhl: "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard"
+      };
+      var stand = {
+        nfl: "https://site.api.espn.com/apis/v2/sports/football/nfl/standings",
+        mlb: "https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings",
+        nba: "https://site.api.espn.com/apis/v2/sports/basketball/nba/standings",
+        nhl: "https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings"
+      };
+      var path = { nfl: "football/nfl", mlb: "baseball/mlb", nba: "basketball/nba", nhl: "hockey/nhl" };
+      var names = { nfl: "NFL", mlb: "MLB", nba: "NBA", nhl: "NHL" };
+      var sports = {};
+      teams.forEach(function (t) { (sports[t.sport] = sports[t.sport] || []).push(t); });
+      function esc(v) { return String(v || "").replace(/[&<>]/g, function (c) { return { "&":"&", "<":"<", ">":">" }[c]; }); }
+      Promise.all(Object.keys(sports).map(function (sp) {
+        return Promise.all([
+          fetch(urls[sp]).then(function (r) { return r.json(); }).catch(function () { return {}; }),
+          fetch(stand[sp]).then(function (r) { return r.json(); }).catch(function () { return {}; }),
+          Promise.all(sports[sp].slice(0, 6).map(function (t) {
+            return fetch("https://site.api.espn.com/apis/site/v2/sports/" + path[sp] + "/teams/" + String(t.abbr).toLowerCase() + "/schedule")
+              .then(function (r) { return r.json(); }).then(function (d) { return { t: t, d: d }; }).catch(function () { return { t: t, d: null }; });
+          }))
+        ]).then(function (pack) { return { sp: sp, board: pack[0], stand: pack[1], sched: pack[2] }; });
+      })).then(function (packs) {
+        var tonight = "", week = "", table = "", around = "";
+        packs.forEach(function (pack) {
+          var want = {};
+          (sports[pack.sp] || []).forEach(function (t) { want[String(t.abbr).toUpperCase()] = t; });
+          var events = ((pack.board || {}).events) || [];
+          events.forEach(function (ev) {
+            var comps = ((((ev.competitions || [])[0] || {}).competitors) || []);
+            var hit = comps.some(function (c) { return want[String(((c.team || {}).abbreviation) || "").toUpperCase()]; });
+            var st = ((ev.status || {}).type) || {};
+            var line = comps.map(function (c) { return ((c.team || {}).abbreviation || "") + " " + (c.score || ""); }).join(" · ");
+            var bit = '<div class="game-side"><span>' + esc(line || ev.name) + '</span><em>' + esc(st.shortDetail || "") + '</em></div>';
+            if (hit && (st.state === "in" || st.state === "pre" || st.state === "post")) tonight += bit;
+            else if (st.state === "in" || st.state === "post") around += bit;
+          });
+          (pack.sched || []).forEach(function (row) {
+            var evs = ((row.d || {}).events) || [];
+            var next = evs.filter(function (ev) { return new Date(ev.date).getTime() >= Date.now() - 3600000; })[0];
+            if (!next) return;
+            var when = new Date(next.date);
+            week += '<div class="game-side"><span>' + esc(row.t.name) + '</span><em>' + esc(when.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) + '</em></div>';
+          });
+          var kids = ((pack.stand || {}).children) || [];
+          kids.forEach(function (div) {
+            var entries = ((div.standings || {}).entries) || [];
+            var mine = entries.filter(function (en) { return want[String(((en.team || {}).abbreviation) || "").toUpperCase()]; });
+            if (!mine.length) return;
+            table += '<p class="game-note"><b>' + esc(names[pack.sp] + " " + (div.name || div.abbreviation || "")) + '</b></p>';
+            entries.slice(0, 5).forEach(function (en) {
+              var stats = {};
+              (en.stats || []).forEach(function (st) { stats[st.name] = st.displayValue; });
+              table += '<div class="game-side"><span>' + esc((en.team || {}).abbreviation || (en.team || {}).shortDisplayName) + '</span><em>' + esc(stats.wins || stats.points || "") + "-" + esc(stats.losses || "") + '</em></div>';
+            });
+          });
+        });
+        body.innerHTML =
+          '<div class="card"><b>Tonight</b>' + (tonight || '<span>Nothing live or just finished.</span>') + '</div>' +
+          '<div class="card"><b>This week</b>' + (week || '<span>No upcoming game on the league schedule.</span>') + '</div>' +
+          '<div class="card"><b>Division</b>' + (table || '<span>Standings did not answer.</span>') + '</div>' +
+          '<div class="card"><b>Around the league</b>' + (around || '<span>No other games on the board today.</span>') + '</div>';
+      }).catch(function () {
+        body.innerHTML = '<div class="card"><b>Scores did not answer</b><span>ESPN was quiet. Try again in a minute.</span></div>';
+      });
     }
     function loadSportsScores(done){
       function finish(lines) {
