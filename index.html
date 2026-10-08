@@ -2985,7 +2985,7 @@
     #wx-radar-windy { display:none !important; }
     #wx-radar-view { display:block !important; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:8 !important; background:#0b1220; }
     #wx-radar-stage.wx-show-other #wx-radar-view { display:none !important; }
-    #wx-radar-stage.wx-show-other .wx-map-pane.on { display:block !important; z-index:14; }
+    #wx-radar-stage.wx-show-other .wx-map-pane.on { display:block !important; z-index:14; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; border:0; background:#0b1220; }
     #wx-bolt-view { position:absolute; inset:0; width:100%; height:100%; border:0; z-index:6; background:#0b1220; display:none; }
     #wx-radar-stage.wx-show-bolt #wx-radar-live,
     #wx-radar-stage.wx-show-bolt #wx-radar-view,
@@ -3472,7 +3472,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1145</span>
+      <span class="hdr-ver" id="hdr-ver">v1146</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3852,8 +3852,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <div id="wx-radar-stamp" class="wx-radar-stamp"></div>
             <div id="radar-home-pin" class="radar-home-pin" title="Home"></div>
             <iframe class="wx-map-pane" id="wx-bolt-view" title="Lightning" src="about:blank" allowfullscreen></iframe>
-            <iframe class="wx-map-pane" id="wx-sat-view" title="Satellite" src="about:blank" allowfullscreen hidden></iframe>
-            <iframe class="wx-map-pane" id="wx-ir-view" title="Infrared" src="about:blank" allowfullscreen hidden></iframe>
+            <img class="wx-map-pane" id="wx-sat-view" alt="Satellite at home" hidden />
+            <img class="wx-map-pane" id="wx-ir-view" alt="Infrared at home" hidden />
             <iframe class="wx-map-pane" id="wx-temp-view" title="Temperature" src="about:blank" allowfullscreen hidden></iframe>
             <iframe class="wx-map-pane" id="wx-now-view" title="Nowcast" src="about:blank" allowfullscreen hidden></iframe>
           </div>
@@ -5528,7 +5528,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1145;
+    window.BOARD_VER = 1146;
 
     
     function communityShort() {
@@ -15755,8 +15755,7 @@ function currentRotation() {
       }
       if (bolt && (!bolt.src || bolt.src === "about:blank" || bolt.src.indexOf("blitzortung") < 0)) bolt.src = boltUrl();
       /* radar frames are owned by startHomeRadarLoop */
-      if (window.__wxMapPick === "bolt") wxMapShow("bolt");
-      else wxMapShow("radar");
+      wxMapShow(window.__wxMapPick || "radar");
       if (typeof noteFeed === "function") noteFeed("wx-map-frame", true, "radar + lightning");
     }
 
@@ -15777,22 +15776,31 @@ function currentRotation() {
             bolt.setAttribute("data-src", url);
           }
         }
-        if (which === "sat" || which === "ir" || which === "temp") {
-          var note = document.getElementById("wx-map-note");
-          var pane = document.getElementById(which === "ir" ? "wx-ir-view" : (which === "temp" ? "wx-temp-view" : "wx-sat-view"));
-          if (which === "temp" && pane && typeof nullschoolPin === "function") {
-            var tu = nullschoolPin(lat, lon, "current/wind/surface/level/overlay=temp");
-            if (pane.getAttribute("data-src") !== tu) { pane.src = tu; pane.setAttribute("data-src", tu); }
-          } else if (which === "ir") {
-            var rad = document.getElementById("wx-radar-view");
-            if (rad) rad.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/13/1250x750.jpg?" + Date.now();
-            if (note) note.textContent = "Infrared cloud tops, continental view";
-          } else if (pane && typeof paintCloudPin === "function") paintCloudPin(pane, lat, lon, note, "vis");
+        var note = document.getElementById("wx-map-note");
+        if (which === "sat") {
+          var sat = document.getElementById("wx-sat-view");
+          if (sat && typeof paintCloudPin === "function") paintCloudPin(sat, lat, lon, note, "vis");
+        }
+        if (which === "ir") {
+          var ir = document.getElementById("wx-ir-view");
+          if (ir && typeof paintCloudPin === "function") paintCloudPin(ir, lat, lon, note, "ir");
+        }
+        if (which === "temp") {
+          var temp = document.getElementById("wx-temp-view");
+          var tu = typeof nullschoolPin === "function" ? nullschoolPin(lat, lon, "current/wind/surface/level/overlay=temp") : "";
+          if (temp && tu && temp.getAttribute("data-src") !== tu) { temp.src = tu; temp.setAttribute("data-src", tu); }
+          if (note) note.textContent = "Temperature pinned on home";
         }
         if (which === "now") {
           var nowc = document.getElementById("wx-now-view");
           var nu = typeof rainviewerPin === "function" ? rainviewerPin(lat, lon, 7) + "&oF=1" : "";
           if (nowc && nu && nowc.getAttribute("data-src") !== nu) { nowc.src = nu; nowc.setAttribute("data-src", nu); }
+          if (note) note.textContent = "Next hour of rain at the pin";
+        }
+        if (which === "bolt") {
+          var bolt = document.getElementById("wx-bolt-view");
+          var bu = typeof boltUrl === "function" ? boltUrl() : "";
+          if (bolt && bu && bolt.getAttribute("data-src") !== bu) { bolt.src = bu; bolt.setAttribute("data-src", bu); }
         }
         if (typeof wxMapShow === "function") wxMapShow(which);
       });
