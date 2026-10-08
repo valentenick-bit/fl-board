@@ -3499,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1184</span>
+      <span class="hdr-ver" id="hdr-ver">v1185</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5578,7 +5578,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1184;
+    window.BOARD_VER = 1185;
 
     
     function communityShort() {
@@ -9367,13 +9367,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           var pad = ("00" + adv).slice(-3);
           var page = "https://www.nhc.noaa.gov/archive/" + year + "/" + basin + num + "/" + basin + num + year + ".public." + pad + ".shtml";
           var urls = [
-            (typeof location !== "undefined" && location.origin ? location.origin + "/nws-proxy?u=" + encodeURIComponent(page) : ""),
+            "https://api.allorigins.win/get?url=" + encodeURIComponent(page),
             "https://corsproxy.io/?" + encodeURIComponent(page),
             "https://api.allorigins.win/raw?url=" + encodeURIComponent(page)
-          ].filter(Boolean);
+          ];
           function tryU(i) {
             if (i >= urls.length) { if (--left <= 0) finish(); return; }
-            fetchQuick(urls[i], 4500).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+            fetchQuick(urls[i], 6000).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+              if (txt && txt.charAt(0) === "{") { try { var w = JSON.parse(txt); if (w && w.contents) txt = w.contents; } catch (eJ) {} }
               var row = typeof parseNhcPublicAdv === "function" ? parseNhcPublicAdv(txt) : null;
               if (row && row.t) rows.push({ t: row.t, wind: row.wind, kt: row.wind != null ? row.wind / 1.15078 : null, pres: row.pres, lat: row.lat, lon: row.lon, adv: row.adv });
               if (--left <= 0) finish();
@@ -9403,18 +9404,22 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       }
       var raw = "https://ftp.nhc.noaa.gov/atcf/btk/" + file;
       var urls = [];
+      urls.push("https://raw.githubusercontent.com/valentenick-bit/fl-board/main/atcf/" + file);
       try {
         if (location && location.origin) urls.push(location.origin + "/atcf?file=" + encodeURIComponent(file));
       } catch (e0) {}
       urls.push("https://commons.valente-nick.workers.dev/atcf?file=" + encodeURIComponent(file));
+      urls.push("https://api.allorigins.win/get?url=" + encodeURIComponent(raw));
       urls.push("https://corsproxy.io/?" + encodeURIComponent(raw));
-      urls.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(raw));
       function next(i) {
         if (!file || i >= urls.length) {
           loadArchiveFixes(s, function (rows) { usePts(rows, "archive"); });
           return;
         }
-        fetchQuick(urls[i], 6000).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+        fetchQuick(urls[i], 7000).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(function (txt) {
+          if (txt && txt.charAt(0) === "{") {
+            try { var wrapped = JSON.parse(txt); if (wrapped && wrapped.contents) txt = wrapped.contents; } catch (eJ) {}
+          }
           if (!txt || txt.length < 40 || /<html/i.test(txt)) return next(i + 1);
           var pts = parseAtcfBtk(txt);
           if (!pts || !pts.length) return next(i + 1);
