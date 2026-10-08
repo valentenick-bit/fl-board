@@ -3499,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1183</span>
+      <span class="hdr-ver" id="hdr-ver">v1184</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5578,7 +5578,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1183;
+    window.BOARD_VER = 1184;
 
     
     function communityShort() {
@@ -7032,6 +7032,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (kind === "swell") { overlay = "swell1"; product = "ecmwfWaves"; }
       else if (kind === "currents") { overlay = "currents"; product = "cmems"; }
       else if (kind === "wind") { overlay = "wind"; product = "ecmwf"; }
+      else if (kind === "sst") { overlay = "sst"; product = "cmems"; }
       return "https://embed.windy.com/embed.html?type=map&location=coordinates" +
         "&lat=" + lat + "&lon=" + lon +
         "&zoom=9&overlay=" + overlay + "&product=" + product + "&level=surface" +
@@ -7158,11 +7159,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         waves: { label: "Waves", note: "Combined sea height (swell + wind waves) at the home pin", url: homeMarineOverlay("waves"), chart: false },
         swell: { label: "Swell", note: "Primary swell height and direction at the home pin", url: homeMarineOverlay("swell"), chart: false },
         currents: { label: "Current", note: "Ocean current speed and direction at the home pin", url: homeMarineOverlay("currents"), chart: false },
-        sst: { label: "Sea temp", note: "Sea-surface temperature, pinned on home", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/ocean/primary/waves/overlay=sea_surface_temp", 3000) : "", chart: false },
+        sst: { label: "Sea temp", note: "Sea-surface temperature, pinned on home", url: homeMarineOverlay("sst"), chart: false },
         wind: { label: "Wind", note: "Surface wind speed and direction at the home pin", url: homeMarineOverlay("wind"), chart: false },
         chart: { label: "Chart", note: "Depth marks and channels pinned on home", url: "", chart: true },
         rip: { label: "Rip", note: "NWS 48-hour beach risk pinned on home", url: "", chart: false },
-        clarity: { label: "Clarity", note: "Ocean color near the pin", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/ocean/primary/waves/overlay=chlorophyll", 3000) : "", chart: false },
+        clarity: { label: "Clarity", note: "Ocean color near the pin", url: "", chart: false },
         ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false }
       };
             if (!views[id]) id = "waves";
@@ -7171,6 +7172,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         window.__ripMap = null;
         var ripHost = document.getElementById("sea-chart");
         if (ripHost) ripHost.innerHTML = "";
+      }
+      if (id !== "clarity" && window.__clarityMap && window.__clarityMap.map) {
+        try { window.__clarityMap.map.remove(); } catch (eC) {}
+        window.__clarityMap = null;
+        var clrHost = document.getElementById("sea-chart");
+        if (clrHost) clrHost.innerHTML = "";
       }
       window.__seaMapView = id;
       var v = views[id];
@@ -7190,6 +7197,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
         paintRipMap(chart, homeLat(), homeLon(), note);
         if (typeof noteFeed === "function") noteFeed("sea-map", true, "rip");
+        return;
+      }
+      if (id === "clarity") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); frame.removeAttribute("data-src"); }
+        if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; }
+        if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
+        paintClarityMap(chart, homeLat(), homeLon(), note);
+        if (typeof noteFeed === "function") noteFeed("sea-map", true, "clarity");
         return;
       }
       if (id === "chart") {
@@ -7237,6 +7252,33 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
 
 
 
+
+
+    function paintClarityMap(el, latN, lonN, note) {
+      if (!el || typeof L === "undefined") return;
+      var lat = Number(latN), lon = Number(lonN);
+      if (!isFinite(lat) || !isFinite(lon)) return;
+      var day = new Date(Date.now() - 2 * 86400000);
+      var stamp = day.getUTCFullYear() + "-" + String(day.getUTCMonth() + 1).padStart(2, "0") + "-" + String(day.getUTCDate()).padStart(2, "0");
+      var tiles = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Aqua_L2_Chlorophyll_A/default/" + stamp + "/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png";
+      if (window.__clarityMap && window.__clarityMap.map) {
+        window.__clarityMap.map.setView([lat, lon], 9);
+        if (window.__clarityMap.marker) window.__clarityMap.marker.setLatLng([lat, lon]);
+        setTimeout(function () { try { window.__clarityMap.map.invalidateSize(); } catch (e) {} }, 80);
+      } else {
+        el.innerHTML = "";
+        var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 9);
+        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
+          maxZoom: 16, attribution: "Esri Ocean"
+        }).addTo(map);
+        L.tileLayer(tiles, { maxNativeZoom: 7, maxZoom: 9, opacity: 0.8, attribution: "NASA Aqua chlorophyll" }).addTo(map);
+        var marker = L.circleMarker([lat, lon], { radius: 7, color: "#c45c26", fillColor: "#f2b05e", fillOpacity: 1, weight: 2 }).addTo(map);
+        marker.bindTooltip("Home pin", { permanent: false });
+        window.__clarityMap = { map: map, marker: marker };
+        [80, 300].forEach(function (ms) { setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, ms); });
+      }
+      if (note) note.textContent = "NASA Aqua chlorophyll · " + stamp + " · " + (homePlace() || "home");
+    }
 
     function mountTileGrid(el, latN, lonN, z, layers, caption) {
       var host = el;
