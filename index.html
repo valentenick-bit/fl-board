@@ -3493,7 +3493,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1165</span>
+      <span class="hdr-ver" id="hdr-ver">v1166</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5571,7 +5571,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1165;
+    window.BOARD_VER = 1166;
 
     
     function communityShort() {
@@ -7278,11 +7278,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       return "<!doctype html><html><body style='margin:0;background:#071422'><div style='position:relative;width:100vw;height:100vh;overflow:hidden'>" + tiles + marks + "</div></body></html>";
     }
     function showSkyDoc(frame, img, doc) {
-      if (img) { img.hidden = true; img.style.display = "none"; }
+      if (img) { img.hidden = true; img.classList.remove("on"); img.style.display = "none"; }
+      var host = document.getElementById("sky-launch-map");
+      if (host) { host.hidden = true; host.style.display = "none"; }
       if (!frame) return;
       frame.classList.add("on");
       frame.hidden = false;
       frame.style.display = "block";
+      try { frame.removeAttribute("src"); } catch (e) {}
       frame.srcdoc = doc;
     }
     function paintTileMosaic(el, latN, lonN, z, base, drawMarks) {
@@ -7322,39 +7325,24 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       }
     }
     function paintLightMap(el, latN, lonN, note) {
-      paintTileMosaic(el, latN, lonN, 9, "https://basemaps.cartocdn.com/dark_all/", function (g, fx, fy, left, top) {
-        var px = (fx - left) * 256, py = (fy - top) * 256;
-        g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(px, py, 8, 0, 6.3); g.fill();
-        g.fillStyle = "#f4efe6"; g.font = "700 20px Source Sans 3, sans-serif";
-        g.fillText((typeof homePlace === "function" && homePlace()) || "Home", Math.min(px + 12, 600), Math.max(py - 12, 28));
-      });
+      var frame = document.getElementById("sky-map");
+      showSkyDoc(frame, el, skyTileDoc(latN, lonN, 9, "light"));
       if (note) note.textContent = "Night lights pinned on " + ((typeof homePlace === "function" && homePlace()) || "home");
     }
     function paintPlaneMap(el, latN, lonN, note) {
-      function draw(rows) {
-        paintTileMosaic(el, latN, lonN, 8, "https://tile.openstreetmap.org/", function (g, fx, fy, left) {
-          var px = (fx - left) * 256, py = (fy - (Math.floor(fy) - 1)) * 256;
-          g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(px, py, 7, 0, 6.3); g.fill();
-          (rows || []).slice(0, 40).forEach(function (ac) {
-            if (ac.lat == null || ac.lon == null) return;
-            var n = 256;
-            var ax = ((Number(ac.lon) + 180) / 360 * n - left) * 256;
-            var as = Math.sin(Number(ac.lat) * Math.PI / 180);
-            var ay = ((1 - Math.log((1 + as) / (1 - as)) / (2 * Math.PI)) / 2 * 256 - (Math.floor(fy) - 1)) * 256;
-            g.save();
-            g.translate(ax, ay);
-            g.rotate((Number(ac.track) || 0) * Math.PI / 180);
-            g.fillStyle = "#1d4e89";
-            g.beginPath(); g.moveTo(0, -10); g.lineTo(6, 8); g.lineTo(-6, 8); g.closePath(); g.fill();
-            g.restore();
-          });
-        });
-        if (note) note.textContent = (rows && rows.length ? rows.length : "No") + " flights within 60 miles of the pin";
-      }
+      if (window.__planeBusy) return;
+      window.__planeBusy = true;
+      var frame = document.getElementById("sky-map");
+      showSkyDoc(frame, el, skyTileDoc(latN, lonN, 8, "day"));
       fetch("https://api.adsb.lol/v2/lat/" + Number(latN).toFixed(3) + "/lon/" + Number(lonN).toFixed(3) + "/dist/60")
         .then(function (r) { return r.json(); })
-        .then(function (d) { draw((d && d.ac) || []); })
-        .catch(function () { draw([]); if (note) note.textContent = "Flight feed did not answer. Home pin is marked."; });
+        .then(function (d) {
+          var rows = (d && d.ac) || [];
+          showSkyDoc(frame, el, skyTileDoc(latN, lonN, 8, "day", rows));
+          if (note) note.textContent = rows.length + " flights within 60 miles of the pin";
+        })
+        .catch(function () { if (note) note.textContent = "Flight feed did not answer. Home pin is marked."; })
+        .then(function () { window.__planeBusy = false; });
     }
 
     function paintSmokeMap(el, latN, lonN) {
@@ -7500,6 +7488,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
 
     function showSkyMap(id) {
+      var nowMs = Date.now();
+      if (window.__skyMapView === id && nowMs - (window.__skyMapAt || 0) < 20000 && id !== "planes") return;
+      window.__skyMapAt = nowMs;
       var lat = homeLat(), lon = homeLon();
       var views = {
         sky: { label: "Night sky", note: "Live sky from the home pin", kind: "iframe", url: typeof homeSkyEmbed === "function" ? homeSkyEmbed() : "" },
@@ -28714,7 +28705,6 @@ function cardBits(id) {
           if (shop) {
             story.push("Errands can wait, but if you are already out, " + shop.title + " is the shop card" + (shop.why ? " because " + shop.why.replace(/[.]+$/, "") : "") + ".");
           }
-          if (typeof paintNationalDays === "function") paintNationalDays();
           var dayLine = ((document.getElementById("day-card-body") || {}).textContent || "").replace(/\s+/g, " ").trim();
           if (dayLine && !/no named national day|checking the national/i.test(dayLine)) {
             story.push("On the calendar, " + dayLine.charAt(0).toLowerCase() + dayLine.slice(1));
