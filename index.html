@@ -2984,6 +2984,8 @@
     #wx-radar-live { display:none !important; position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px; z-index:9; background:#d7e6ef; }
     #wx-radar-windy { display:none !important; }
     #wx-radar-view { display:block !important; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:8 !important; background:#0b1220; }
+    #wx-radar-stage.wx-show-other #wx-radar-view { display:none !important; }
+    #wx-radar-stage.wx-show-other .wx-map-pane.on { display:block !important; z-index:14; }
     #wx-bolt-view { position:absolute; inset:0; width:100%; height:100%; border:0; z-index:6; background:#0b1220; display:none; }
     #wx-radar-stage.wx-show-bolt #wx-radar-live,
     #wx-radar-stage.wx-show-bolt #wx-radar-view,
@@ -3470,7 +3472,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1144</span>
+      <span class="hdr-ver" id="hdr-ver">v1145</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5526,7 +5528,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1144;
+    window.BOARD_VER = 1145;
 
     
     function communityShort() {
@@ -15705,33 +15707,35 @@ function currentRotation() {
       var sat = document.getElementById("wx-sat-view");
       var nowc = document.getElementById("wx-now-view");
       [sat, nowc, bolt, document.getElementById("wx-ir-view"), document.getElementById("wx-temp-view")].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
-      if (stage) stage.classList.toggle("wx-show-bolt", which === "bolt");
-      if (bolt) {
-        bolt.classList.toggle("on", which === "bolt");
-        bolt.style.display = which === "bolt" ? "block" : "none";
-        bolt.style.zIndex = which === "bolt" ? "12" : "0";
+      var panes = { sat: sat, ir: document.getElementById("wx-ir-view"), temp: document.getElementById("wx-temp-view"), now: nowc, bolt: bolt };
+      var names = { radar: "Radar", sat: "Satellite", ir: "Infrared", temp: "Temp", now: "Nowcast", bolt: "Lightning" };
+      var notes = { radar: "Nearest NWS site, pinned on home", sat: "Visible satellite pinned on home", ir: "Infrared cloud tops", temp: "Temperature at the pin", now: "About the next hour of rain", bolt: "Lightning near the pin" };
+      if (stage) {
+        stage.classList.toggle("wx-show-bolt", which === "bolt");
+        stage.classList.toggle("wx-show-other", which !== "radar");
       }
-      var ir = document.getElementById("wx-ir-view"); var temp = document.getElementById("wx-temp-view"); var extra = which === "ir" ? null : (which === "sat" ? sat : (which === "temp" ? temp : (which === "now" ? nowc : (which === "bolt" ? bolt : null))));
-      if (extra) {
-        extra.hidden = false;
-        extra.style.display = "block";
-        extra.style.zIndex = "12";
-        if (live) { live.style.display = "none"; live.style.zIndex = "0"; }
-        if (map) map.style.display = "none";
-        if (rad) { rad.classList.remove("on"); rad.style.display = "none"; }
-        if (pin) pin.style.display = "none";
-        if (stamp) stamp.style.display = "none";
-        if (lab) lab.textContent = which === "sat" ? "Satellite" : (which === "now" ? "Nowcast" : "Lightning");
-        if (note) note.textContent = which === "sat" ? "Visible satellite pinned on home" : (which === "now" ? "About the next hour of rain" : "Lightning near the pin");
-      } else {
-        if (live) { live.style.display = "none"; live.style.zIndex = "0"; }
-        if (map) map.style.display = "none";
+      Object.keys(panes).forEach(function (k) {
+        var el = panes[k];
+        if (!el) return;
+        var on = k === which;
+        el.classList.toggle("on", on);
+        el.hidden = !on;
+        el.style.display = on ? "block" : "none";
+        el.style.zIndex = on ? "14" : "0";
+      });
+      if (which === "radar") {
         if (rad) { rad.classList.add("on"); rad.style.display = "block"; }
-        if (pin) pin.style.display = "none";
         if (stamp) stamp.style.display = "";
+      } else if (rad) {
+        rad.classList.remove("on");
+        rad.style.display = "none";
+        if (stamp) stamp.style.display = "none";
       }
-      if (lab) lab.textContent = which === "bolt" ? "Lightning" : "Radar";
-      if (note) note.textContent = which === "bolt" ? "Blitzortung strikes on the home pin" : "Looping last 2 hours at home";
+      if (live) live.style.display = "none";
+      if (map) map.style.display = "none";
+      if (pin) pin.style.display = "none";
+      if (lab) lab.textContent = names[which] || "Radar";
+      if (note) note.textContent = notes[which] || "";
       document.querySelectorAll("#wx-map-pills button").forEach(function (b) {
         b.className = (b.getAttribute("data-wx-map") === which) ? "on" : "";
       });
@@ -15791,6 +15795,15 @@ function currentRotation() {
           if (nowc && nu && nowc.getAttribute("data-src") !== nu) { nowc.src = nu; nowc.setAttribute("data-src", nu); }
         }
         if (typeof wxMapShow === "function") wxMapShow(which);
+      });
+      document.addEventListener("click", function (e) {
+        var f = e.target && e.target.closest && e.target.closest("#wx-filters [data-wx-filter]");
+        if (!f) return;
+        document.querySelectorAll("#wx-filters button").forEach(function (b) { b.className = b === f ? "on" : ""; });
+        var note = document.getElementById("wx-map-note");
+        if (note) note.textContent = "Radar · " + f.textContent + " alerts at the pin";
+        window.__wxMapPick = "radar";
+        if (typeof wxMapShow === "function") wxMapShow("radar");
       });
     }
     function boltWanted() {
