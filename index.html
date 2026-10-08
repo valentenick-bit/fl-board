@@ -3493,7 +3493,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1156</span>
+      <span class="hdr-ver" id="hdr-ver">v1157</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3877,6 +3877,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <img class="wx-map-pane" id="wx-ir-view" alt="Infrared at home" hidden />
             <iframe class="wx-map-pane" id="wx-temp-view" title="Temperature" src="about:blank" allowfullscreen hidden></iframe>
             <iframe class="wx-map-pane" id="wx-now-view" title="Nowcast" src="about:blank" allowfullscreen hidden></iframe>
+            <img class="wx-map-pane" id="chart-view" alt="Chart at home" hidden style="width:100%;height:100%;object-fit:contain;background:#0b1220" />
           </div>
           <div class="sea-map-pills" id="wx-map-pills">
             <button type="button" data-wx-map="radar" class="on">Radar</button>
@@ -3885,6 +3886,16 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-wx-map="temp">Temp</button>
             <button type="button" data-wx-map="now">Nowcast</button>
             <button type="button" data-wx-map="bolt">Lightning</button>
+            <button type="button" data-wx-map="skew">Skew-T</button>
+            <button type="button" data-wx-map="met">Meteogram</button>
+            <button type="button" data-wx-map="sfc">Surface</button>
+            <button type="button" data-wx-map="wv">Vapor</button>
+            <button type="button" data-wx-map="geo">GeoColor</button>
+            <button type="button" data-wx-map="glm">GLM</button>
+            <button type="button" data-wx-map="qpf">Rain</button>
+            <button type="button" data-wx-map="heat">Heat</button>
+            <button type="button" data-wx-map="atl" id="chart-atl">Atlantic</button>
+            <button type="button" data-wx-map="dry">Drought</button>
           </div>
           <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">2-hour loop · pulled back from the pin</span></p>
           <div class="wx-filters" id="wx-filters">
@@ -3902,23 +3913,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         <div class="wx-top-left">
 
-        <div class="wx-map-frame" id="chart-frame">
-          <div class="radar-crop radar-stage"><img id="chart-view" alt="Chart at home" style="width:100%;height:100%;object-fit:contain;background:#0b1220" /></div>
-          <div class="sea-map-pills" id="chart-pills">
-            <button type="button" data-chart="skew" class="on">Skew-T</button>
-            <button type="button" data-chart="met" >Meteogram</button>
-            <button type="button" data-chart="sfc">Surface</button>
-            <button type="button" data-chart="wv">Vapor</button>
-            <button type="button" data-chart="geo">GeoColor</button>
-            <button type="button" data-chart="ir">Infrared</button>
-            <button type="button" data-chart="glm">Lightning</button>
-            <button type="button" data-chart="qpf">Rain</button>
-            <button type="button" data-chart="heat">Heat</button>
-            <button type="button" data-chart="atl" id="chart-atl">Atlantic</button>
-            <button type="button" data-chart="dry">Drought</button>
-          </div>
-          <p class="wx-map-cap"><b id="chart-label">Skew-T</b><span id="chart-note">Nearest sounding to the pin</span></p>
-        </div>
         <p class="wx-nowline" id="wx-nowline">Updating…</p>
         <p class="sheet-kicker">Hourly forecast</p>
         <div class="card" id="cloud-card"><b>Clouds</b><span id="cloud-note">By height, next hours, for this pin.</span><div class="cloud-grid" id="cloud-grid"></div></div>
@@ -5572,7 +5566,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1156;
+    window.BOARD_VER = 1157;
 
     
     function communityShort() {
@@ -6534,14 +6528,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
     function showChart(which) {
       var img = document.getElementById("chart-view");
-      var note = document.getElementById("chart-note");
-      var lab = document.getElementById("chart-label");
+      var note = document.getElementById("wx-map-note");
+      var lab = document.getElementById("wx-map-label");
       var lat = typeof homeLat === "function" ? Number(homeLat()) : 27;
       var lon = typeof homeLon === "function" ? Number(homeLon()) : -82;
       var site = nearestSounding(lat, lon);
       var names = { skew: "Skew-T", met: "Meteogram", sfc: "Surface", wv: "Water vapor", geo: "GeoColor", ir: "Infrared", glm: "Lightning", qpf: "Rain", heat: "Heat", atl: "Atlantic", dry: "Drought" };
       if (lab) lab.textContent = names[which] || "Chart";
-      document.querySelectorAll("#chart-pills button").forEach(function (b) { b.className = b.getAttribute("data-chart") === which ? "on" : ""; });
+      if (typeof wxMapShow === "function") wxMapShow(which);
       function skewUrl(hoursBack) {
         var t = new Date(Date.now() - hoursBack * 3600000);
         var yy = String(t.getUTCFullYear()).slice(2);
@@ -6622,16 +6616,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
       var atl = document.getElementById("chart-atl");
       if (atl) atl.hidden = isFinite(lon) && lon < -105;
-      showChart(window.__chartPick || "skew");
-    }
-    if (!window.__chartPillsBound) {
-      window.__chartPillsBound = true;
-      document.addEventListener("click", function (e) {
-        var b = e.target && e.target.closest && e.target.closest("#chart-pills [data-chart]");
-        if (!b) return;
-        window.__chartPick = b.getAttribute("data-chart");
-        showChart(window.__chartPick);
-      });
+      if (window.__wxMapPick && window.__wxMapPick !== "radar") showChart(window.__wxMapPick);
     }
     function applyHomeFeeds() {
       if (typeof paintChartsPass === "function") paintChartsPass();
@@ -10508,7 +10493,7 @@ function gatorRange() {
       var sat = document.getElementById("wx-sat-view");
       var nowc = document.getElementById("wx-now-view");
       var bolt = document.getElementById("wx-bolt-view");
-      [sat, nowc, bolt, document.getElementById("wx-ir-view"), document.getElementById("wx-temp-view")].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
+      [sat, nowc, bolt, document.getElementById("wx-ir-view"), document.getElementById("wx-temp-view"), document.getElementById("chart-view")].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
       var map = document.getElementById("wx-radar-map");
       if (live) { live.style.display = "none"; try { live.src = "about:blank"; } catch (e0) {} }
       if (map) map.style.display = "none";
@@ -15951,7 +15936,7 @@ function currentRotation() {
       var nowc = document.getElementById("wx-now-view");
       [sat, nowc, bolt, document.getElementById("wx-ir-view"), document.getElementById("wx-temp-view")].forEach(function (el) { if (!el) return; el.hidden = true; el.style.display = "none"; });
       var panes = { sat: sat, ir: document.getElementById("wx-ir-view"), temp: document.getElementById("wx-temp-view"), now: nowc, bolt: bolt };
-      var names = { radar: "Radar", sat: "Satellite", ir: "Infrared", temp: "Temp", now: "Nowcast", bolt: "Lightning" };
+      var names = { radar: "Radar", sat: "Satellite", ir: "Infrared", temp: "Temp", now: "Nowcast", bolt: "Lightning", skew: "Skew-T", met: "Meteogram", sfc: "Surface", wv: "Water vapor", geo: "GeoColor", glm: "GLM", qpf: "Rain", heat: "Heat", atl: "Atlantic", dry: "Drought" };
       var notes = { radar: "Nearest NWS site, pinned on home", sat: "Visible satellite pinned on home", ir: "Infrared cloud tops", temp: "Temperature at the pin", now: "About the next hour of rain", bolt: "Lightning near the pin" };
       if (stage) {
         stage.classList.toggle("wx-show-bolt", which === "bolt");
@@ -15966,6 +15951,10 @@ function currentRotation() {
         el.style.display = on ? "block" : "none";
         el.style.zIndex = on ? "14" : "0";
       });
+      var chart = document.getElementById("chart-view");
+      if (chart && /skew|met|sfc|wv|geo|glm|qpf|heat|atl|dry/.test(which)) {
+        chart.hidden = false; chart.style.display = "block"; chart.style.zIndex = "16";
+      }
       if (which === "radar") {
         if (rad) { rad.classList.add("on"); rad.style.display = "block"; }
         if (stamp) stamp.style.display = "";
@@ -16009,6 +15998,7 @@ function currentRotation() {
         if (!b) return;
         var which = b.getAttribute("data-wx-map");
         window.__wxMapPick = which;
+        if (/skew|met|sfc|wv|geo|glm|qpf|heat|atl|dry/.test(which) && typeof showChart === "function") { showChart(which); return; }
         var bolt = document.getElementById("wx-bolt-view");
         var lat = typeof homeLat === "function" ? homeLat() : 0;
         var lon = typeof homeLon === "function" ? homeLon() : 0;
