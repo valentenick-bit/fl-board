@@ -1890,6 +1890,18 @@
     .wx-map-frame iframe.wx-map-pane { width:100%; height:100%; }
 
 
+
+    .mlb-card { border:1px solid var(--hair); border-radius:16px; padding:10px 12px; margin:0 0 8px; background:#fff; }
+    html.dark .mlb-card { background:#1b2430; }
+    .mlb-status { display:flex; justify-content:space-between; font-size:12px; letter-spacing:.04em; text-transform:uppercase; opacity:.75; }
+    .mlb-status b { color:#c45c26; }
+    .mlb-rhe, .mlb-team { display:grid; grid-template-columns:1fr 28px 28px 28px; gap:4px; align-items:center; }
+    .mlb-rhe { font-size:11px; opacity:.55; margin-top:6px; }
+    .mlb-team { padding:3px 0; }
+    .mlb-team b { font-size:16px; }
+    .mlb-team em { font-style:normal; opacity:.6; font-size:12px; margin-left:6px; }
+    .mlb-team span, .mlb-rhe span { text-align:right; font-variant-numeric:tabular-nums; }
+    .mlb-sit, .mlb-pitch { margin:4px 0 0; font-size:13px; }
     .game-card { border:1px solid var(--hair); border-radius:16px; padding:10px 12px; margin:0 0 8px; background:var(--card, #fff); }
     html.dark .game-card { background:#1b2430; }
     .game-top { display:flex; justify-content:space-between; gap:8px; font-size:12px; opacity:.8; margin-bottom:6px; }
@@ -3472,7 +3484,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1146</span>
+      <span class="hdr-ver" id="hdr-ver">v1147</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5528,7 +5540,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1146;
+    window.BOARD_VER = 1147;
 
     
     function communityShort() {
@@ -27736,6 +27748,19 @@ function wxSvg(kind, box) {
       if (!cards.length) { box.hidden = true; body.innerHTML = ""; return; }
       box.hidden = false;
       body.innerHTML = cards.map(function (g) {
+        if (g.league === "MLB") {
+          var live = g.state === "in" || g.state === "post";
+          var head = '<div class="mlb-status"><span>' + (g.series || "MLB") + '</span><b>' + g.detail + '</b></div>';
+          var rows = live
+            ? '<div class="mlb-rhe"><span></span><span>R</span><span>H</span><span>E</span></div>' +
+              '<div class="mlb-team"><b>' + g.a + '</b><em>' + (g.ar || "") + '</em><span>' + (g.as || "0") + '</span><span>' + (g.ah || "—") + '</span><span>' + (g.ae || "—") + '</span></div>' +
+              '<div class="mlb-team"><b>' + g.b + '</b><em>' + (g.br || "") + '</em><span>' + (g.bs || "0") + '</span><span>' + (g.bh || "—") + '</span><span>' + (g.be || "—") + '</span></div>'
+            : '<div class="mlb-team"><b>' + g.a + '</b><em>' + (g.ar || "") + '</em></div><div class="mlb-team"><b>' + g.b + '</b><em>' + (g.br || "") + '</em></div>';
+          return '<article class="mlb-card">' + head + rows +
+            (g.note ? '<p class="mlb-sit">' + g.note + '</p>' : '') +
+            (g.pitch ? '<p class="mlb-pitch">' + g.pitch + '</p>' : '') +
+            (g.watch ? '<p class="mlb-sit">' + g.watch + '</p>' : '') + '</article>';
+        }
         return '<article class="game-card"><div class="game-top"><b>' + g.league + '</b><span>' + g.detail + '</span></div>' +
           '<div class="game-side"><span>' + g.a + (g.ar ? '<em>' + g.ar + '</em>' : '') + '</span><strong>' + (g.as || "—") + '</strong></div>' +
           '<div class="game-side"><span>' + g.b + (g.br ? '<em>' + g.br + '</em>' : '') + '</span><strong>' + (g.bs || "—") + '</strong></div>' +
@@ -27875,20 +27900,42 @@ function wxSvg(kind, box) {
               var sit = comp.situation || {};
               var detail = st.shortDetail || st.detail || (state === "in" ? "Live" : "Soon");
               var note = "";
-              if (pack.sp === "mlb" && state === "in") note = (sit.outs != null ? sit.outs + " out" : "") + (sit.balls != null ? " · " + sit.balls + "-" + (sit.strikes || 0) : "");
+              var pitch = "";
+              var watch = "";
+              function stat(side, name) {
+                var rows = side.statistics || [];
+                var hit = rows.filter(function (r) { return String(r.name || r.abbreviation || "").toLowerCase().indexOf(name) >= 0; })[0];
+                return hit ? hit.displayValue : "";
+              }
+              if (pack.sp === "mlb" && state === "in") {
+                note = (sit.outs != null ? sit.outs + " out" : "") + (sit.balls != null ? " · " + sit.balls + "-" + (sit.strikes || 0) : "");
+                var bat = sit.batter && sit.batter.athlete && sit.batter.athlete.shortName;
+                var pit = sit.pitcher && sit.pitcher.athlete && sit.pitcher.athlete.shortName;
+                if (bat) note += " · " + bat + " at bat";
+                if (pit) pitch = "Pitching " + pit;
+              }
+              if (pack.sp === "mlb" && state === "pre") {
+                var probs = comp.probables || [];
+                pitch = probs.map(function (p) { return ((p.athlete || {}).shortName || "") + " " + (p.record || ""); }).filter(Boolean).join(" · ");
+              }
               if (pack.sp === "nfl" && state === "in") note = sit.shortDownDistanceText || sit.possessionText || "";
               if ((pack.sp === "nba" || pack.sp === "nhl") && state === "in") note = (st.displayClock ? st.displayClock + " left" : "");
               var venue = (comp.venue && comp.venue.fullName) || "";
+              var broad = ((comp.broadcasts || [])[0] || {}).names || [];
+              if (broad.length) watch = "Watch on " + broad[0];
+              var series = ((ev.notes || [])[0] || {}).headline || (ev.season && ev.season.slug) || "MLB";
               var line = state === "pre"
                 ? an + " at " + bn + " " + detail + "."
                 : an + " " + (a.score || "0") + ", " + bn + " " + (b.score || "0") + ", " + detail + ".";
               chunk.push(line);
               cards.push({
                 league: names[pack.sp] || pack.sp.toUpperCase(),
+                state: state,
                 detail: detail,
-                a: an, as: a.score || (state === "pre" ? "" : "0"), ar: ((a.records || [])[0] || {}).summary || "",
-                b: bn, bs: b.score || (state === "pre" ? "" : "0"), br: ((b.records || [])[0] || {}).summary || "",
-                note: note, venue: venue
+                series: series,
+                a: an, as: a.score || (state === "pre" ? "" : "0"), ar: ((a.records || [])[0] || {}).summary || "", ah: stat(a, "hit"), ae: stat(a, "error"),
+                b: bn, bs: b.score || (state === "pre" ? "" : "0"), br: ((b.records || [])[0] || {}).summary || "", bh: stat(b, "hit"), be: stat(b, "error"),
+                note: note, pitch: pitch, watch: watch, venue: venue
               });
             });
             if (chunk.length) {
