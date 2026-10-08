@@ -3493,7 +3493,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1154</span>
+      <span class="hdr-ver" id="hdr-ver">v1155</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3901,6 +3901,24 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           </div>
         </div>
         <div class="wx-top-left">
+
+        <div class="wx-map-frame" id="chart-frame">
+          <div class="radar-crop radar-stage"><img id="chart-view" alt="Chart at home" style="width:100%;height:100%;object-fit:contain;background:#0b1220" /></div>
+          <div class="sea-map-pills" id="chart-pills">
+            <button type="button" data-chart="skew" class="on">Skew-T</button>
+            <button type="button" data-chart="met" >Meteogram</button>
+            <button type="button" data-chart="sfc">Surface</button>
+            <button type="button" data-chart="wv">Vapor</button>
+            <button type="button" data-chart="geo">GeoColor</button>
+            <button type="button" data-chart="ir">Infrared</button>
+            <button type="button" data-chart="glm">Lightning</button>
+            <button type="button" data-chart="qpf">Rain</button>
+            <button type="button" data-chart="heat">Heat</button>
+            <button type="button" data-chart="atl" id="chart-atl">Atlantic</button>
+            <button type="button" data-chart="dry">Drought</button>
+          </div>
+          <p class="wx-map-cap"><b id="chart-label">Skew-T</b><span id="chart-note">Nearest sounding to the pin</span></p>
+        </div>
         <p class="wx-nowline" id="wx-nowline">Updating…</p>
         <p class="sheet-kicker">Hourly forecast</p>
         <div class="card" id="cloud-card"><b>Clouds</b><span id="cloud-note">By height, next hours, for this pin.</span><div class="cloud-grid" id="cloud-grid"></div></div>
@@ -5554,7 +5572,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1154;
+    window.BOARD_VER = 1155;
 
     
     function communityShort() {
@@ -6496,7 +6514,95 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           if (el && same()) el.textContent = "Reports did not answer for this pin.";
         });
     }
+
+    function nearestSounding(lat, lon) {
+      var sites = [
+        { id: "TBW", lat: 27.7, lon: -82.4 }, { id: "MFL", lat: 25.75, lon: -80.38 },
+        { id: "JAX", lat: 30.48, lon: -81.7 }, { id: "OKX", lat: 40.87, lon: -72.86 },
+        { id: "CHH", lat: 41.67, lon: -69.96 }, { id: "ALB", lat: 42.69, lon: -73.83 },
+        { id: "GYX", lat: 43.89, lon: -70.25 }, { id: "IAD", lat: 38.98, lon: -77.47 },
+        { id: "ILN", lat: 39.42, lon: -83.82 }, { id: "DTX", lat: 42.7, lon: -83.47 },
+        { id: "OAX", lat: 41.32, lon: -96.37 }, { id: "DNR", lat: 39.77, lon: -104.88 },
+        { id: "LCH", lat: 30.12, lon: -93.22 }, { id: "BRO", lat: 25.92, lon: -97.42 }
+      ];
+      var best = sites[0], d = 1e9;
+      sites.forEach(function (row) {
+        var n = Math.hypot(lat - row.lat, lon - row.lon);
+        if (n < d) { d = n; best = row; }
+      });
+      return best;
+    }
+    function showChart(which) {
+      var img = document.getElementById("chart-view");
+      var note = document.getElementById("chart-note");
+      var lab = document.getElementById("chart-label");
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : 27;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : -82;
+      var site = nearestSounding(lat, lon);
+      var names = { skew: "Skew-T", met: "Meteogram", sfc: "Surface", wv: "Water vapor", geo: "GeoColor", ir: "Infrared", glm: "Lightning", qpf: "Rain", heat: "Heat", atl: "Atlantic", dry: "Drought" };
+      if (lab) lab.textContent = names[which] || "Chart";
+      document.querySelectorAll("#chart-pills button").forEach(function (b) { b.className = b.getAttribute("data-chart") === which ? "on" : ""; });
+      var src = {
+        skew: "https://mesonet.agron.iastate.edu/plotting/auto/?q=60&station=" + site.id + "&network=RAOB&fmt=png&_=" + Date.now(),
+        sfc: "https://www.wpc.ncep.noaa.gov/sfc/namussfcwbg.gif",
+        wv: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/08/1250x750.jpg",
+        geo: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg",
+        ir: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/13/1250x750.jpg",
+        glm: "https://cdn.star.nesdis.noaa.gov/GOES19/GLM/CONUS/EXTENT3/1250x750.jpg",
+        qpf: "https://www.wpc.ncep.noaa.gov/qpf/94ewbg.gif",
+        heat: "https://www.wpc.ncep.noaa.gov/heatrisk/png/day1.png",
+        atl: "https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png",
+        dry: "https://droughtmonitor.unl.edu/data/png/current/current_usdm.png"
+      };
+      if (which === "met") {
+        fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=temperature_2m,precipitation_probability&forecast_hours=24&temperature_unit=fahrenheit&timezone=auto")
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var h = (j && j.hourly) || {};
+            var c = document.createElement("canvas");
+            c.width = 640; c.height = 280;
+            var g = c.getContext("2d");
+            g.fillStyle = "#0b1220"; g.fillRect(0, 0, 640, 280);
+            var temps = h.temperature_2m || [];
+            var pops = h.precipitation_probability || [];
+            if (!temps.length) return;
+            var min = Math.min.apply(null, temps), max = Math.max.apply(null, temps);
+            if (max === min) max = min + 1;
+            g.strokeStyle = "#f2c14e"; g.beginPath();
+            temps.forEach(function (t, i) {
+              var x = 20 + i * (600 / temps.length);
+              var y = 240 - ((t - min) / (max - min)) * 180;
+              if (i) g.lineTo(x, y); else g.moveTo(x, y);
+            });
+            g.stroke();
+            g.fillStyle = "#f4efe6"; g.font = "14px Source Sans 3, sans-serif";
+            g.fillText(Math.round(max) + "° / " + Math.round(min) + "° at the pin", 16, 24);
+            if (img) img.src = c.toDataURL("image/png");
+            if (note) note.textContent = "Next 24 hours at the pin";
+          }).catch(function () {});
+        return;
+      }
+      if (img && src[which]) img.src = src[which];
+      if (note) note.textContent = which === "skew" ? ("Sounding " + site.id + " nearest the pin") : "National chart. The pin is " + (typeof homePlace === "function" ? homePlace() : "home") + ".";
+    }
+    function paintChartsPass() {
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      var atl = document.getElementById("chart-atl");
+      if (atl) atl.hidden = isFinite(lon) && lon < -105;
+      showChart(window.__chartPick || "skew");
+    }
+    if (!window.__chartPillsBound) {
+      window.__chartPillsBound = true;
+      document.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest && e.target.closest("#chart-pills [data-chart]");
+        if (!b) return;
+        window.__chartPick = b.getAttribute("data-chart");
+        showChart(window.__chartPick);
+      });
+    }
     function applyHomeFeeds() {
+      if (typeof paintChartsPass === "function") paintChartsPass();
       if (typeof paintWatchPass === "function") paintWatchPass();
       if (typeof paintNowPass === "function") paintNowPass();
       if (typeof publishHomePin === "function") publishHomePin();
