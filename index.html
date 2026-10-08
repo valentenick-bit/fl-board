@@ -3493,7 +3493,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1155</span>
+      <span class="hdr-ver" id="hdr-ver">v1156</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5572,7 +5572,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1155;
+    window.BOARD_VER = 1156;
 
     
     function communityShort() {
@@ -6542,18 +6542,49 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       var names = { skew: "Skew-T", met: "Meteogram", sfc: "Surface", wv: "Water vapor", geo: "GeoColor", ir: "Infrared", glm: "Lightning", qpf: "Rain", heat: "Heat", atl: "Atlantic", dry: "Drought" };
       if (lab) lab.textContent = names[which] || "Chart";
       document.querySelectorAll("#chart-pills button").forEach(function (b) { b.className = b.getAttribute("data-chart") === which ? "on" : ""; });
+      function skewUrl(hoursBack) {
+        var t = new Date(Date.now() - hoursBack * 3600000);
+        var yy = String(t.getUTCFullYear()).slice(2);
+        var mo = String(t.getUTCMonth() + 1).padStart(2, "0");
+        var da = String(t.getUTCDate()).padStart(2, "0");
+        var hh = t.getUTCHours() >= 12 ? "12" : "00";
+        return "https://www.spc.noaa.gov/exper/soundings/" + yy + mo + da + hh + "_OBS/" + site.id + ".gif";
+      }
       var src = {
-        skew: "https://mesonet.agron.iastate.edu/plotting/auto/?q=60&station=" + site.id + "&network=RAOB&fmt=png&_=" + Date.now(),
+        skew: skewUrl(6),
         sfc: "https://www.wpc.ncep.noaa.gov/sfc/namussfcwbg.gif",
         wv: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/08/1250x750.jpg",
         geo: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg",
         ir: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/13/1250x750.jpg",
         glm: "https://cdn.star.nesdis.noaa.gov/GOES19/GLM/CONUS/EXTENT3/1250x750.jpg",
         qpf: "https://www.wpc.ncep.noaa.gov/qpf/94ewbg.gif",
-        heat: "https://www.wpc.ncep.noaa.gov/heatrisk/png/day1.png",
+        heat: "",
         atl: "https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png",
         dry: "https://droughtmonitor.unl.edu/data/png/current/current_usdm.png"
       };
+      if (which === "heat") {
+        fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=apparent_temperature&forecast_hours=48&temperature_unit=fahrenheit&timezone=auto")
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var temps = ((j && j.hourly) || {}).apparent_temperature || [];
+            var c = document.createElement("canvas");
+            c.width = 640; c.height = 280;
+            var g = c.getContext("2d");
+            g.fillStyle = "#0b1220"; g.fillRect(0, 0, 640, 280);
+            if (!temps.length) return;
+            temps.forEach(function (t, i) {
+              var x = 20 + i * (600 / temps.length);
+              var color = t >= 105 ? "#c026d3" : t >= 100 ? "#dc2626" : t >= 90 ? "#ea580c" : t >= 80 ? "#eab308" : "#16a34a";
+              g.fillStyle = color;
+              g.fillRect(x, 250 - Math.max(8, (t - 60) * 3), Math.max(4, 580 / temps.length - 1), Math.max(8, (t - 60) * 3));
+            });
+            g.fillStyle = "#f4efe6"; g.font = "14px Source Sans 3, sans-serif";
+            g.fillText("Feels-like at the pin, next 48 hours", 16, 24);
+            if (img) img.src = c.toDataURL("image/png");
+            if (note) note.textContent = "Green under 80, yellow 80s, orange 90s, red 100, purple 105.";
+          }).catch(function () {});
+        return;
+      }
       if (which === "met") {
         fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=temperature_2m,precipitation_probability&forecast_hours=24&temperature_unit=fahrenheit&timezone=auto")
           .then(function (r) { return r.json(); })
@@ -6583,6 +6614,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         return;
       }
       if (img && src[which]) img.src = src[which];
+      if (img && which === "skew") img.onerror = function () { img.onerror = null; img.src = skewUrl(18); };
       if (note) note.textContent = which === "skew" ? ("Sounding " + site.id + " nearest the pin") : "National chart. The pin is " + (typeof homePlace === "function" ? homePlace() : "home") + ".";
     }
     function paintChartsPass() {
