@@ -3499,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1186</span>
+      <span class="hdr-ver" id="hdr-ver">v1187</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4291,9 +4291,37 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="card"><b id="storm-basin-label">Basin outlook</b><span id="live-cane">Checking the National Hurricane Center</span></div>
         <div class="wx-map-frame storm-sat-frame" id="storm-sat-frame">
           <div class="radar-crop radar-stage" id="storm-sat-stage">
-            <img class="wx-map-pane on" id="storm-sat-view" alt="Storm satellite" />
+            <img class="wx-map-pane on" id="storm-sat-view" alt="Storm tracker" />
           </div>
-          <p class="wx-map-cap"><b id="storm-sat-label">Satellite</b><span id="storm-sat-note">Selected storm</span></p>
+          <div class="sea-map-pills" id="storm-map-pills">
+            <button type="button" data-storm-map="cone" class="on">Cone</button>
+            <button type="button" data-storm-map="cone3">3-day</button>
+            <button type="button" data-storm-map="wind">Wind</button>
+            <button type="button" data-storm-map="history">History</button>
+            <button type="button" data-storm-map="odds34">39 mph</button>
+            <button type="button" data-storm-map="odds50">58 mph</button>
+            <button type="button" data-storm-map="odds64">74 mph</button>
+            <button type="button" data-storm-map="arrival">Arrival</button>
+            <button type="button" data-storm-map="surge">Surge</button>
+            <button type="button" data-storm-map="messages">Messages</button>
+            <button type="button" data-storm-map="gulf">Gulf</button>
+            <button type="button" data-storm-map="carib">Caribbean</button>
+            <button type="button" data-storm-map="ir">Infrared</button>
+            <button type="button" data-storm-map="sst">Sea temp</button>
+          </div>
+          <p class="wx-map-cap"><b id="storm-sat-label">Forecast cone</b><span id="storm-sat-note">Selected storm</span></p>
+        </div>
+        <div class="card" id="storm-track-card">
+          <b>Forecast track</b>
+          <span id="storm-track-body">Waiting on the advisory for positions.</span>
+        </div>
+        <div class="card" id="storm-radii-card">
+          <b>Wind radii</b>
+          <span id="storm-radii-body">Waiting on the advisory for wind extent.</span>
+        </div>
+        <div class="card" id="storm-hazard-card">
+          <b>Hazards</b>
+          <span id="storm-hazard-body">Watches, warnings, rain, and surge from the advisory.</span>
         </div>
         <div class="storm-frames" id="storm-frames">
           <div class="storm-frame storm-wide" id="storm-hero">
@@ -5578,7 +5606,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1186;
+    window.BOARD_VER = 1187;
 
     
     function communityShort() {
@@ -9748,6 +9776,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (typeof recordStormSample === "function") recordStormSample(s, mph, mi);
         function afterHist() {
           if (typeof paintStormCharts === "function") paintStormCharts(s);
+      if (typeof showStormMap === "function") showStormMap(window.__stormMapId || "cone");
+      if (typeof paintStormData === "function") paintStormData(s, window.__hurrAdvText);
           var note = document.getElementById("storm-hist-note");
           var rows = (typeof loadStormHist === "function" && typeof stormHistKey === "function") ? (loadStormHist()[stormHistKey(s)] || []) : [];
           var advs = rows.filter(function (p) { return p.src === "advisory" || p.adv; });
@@ -9892,6 +9922,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       });
       function showAdv(txt) {
         if (typeof applyTcpToStorm === "function") applyTcpToStorm(s, txt);
+        if (typeof paintStormData === "function") paintStormData(s, txt);
         var cut = txt;
         var sum = txt.search(/SUMMARY OF/i);
         if (sum >= 0) cut = txt.slice(sum);
@@ -15394,7 +15425,7 @@ function currentRotation() {
       }
       return changed;
     }
-    function nhcGraphic(s, kind) {
+    function stormGraphicBase(s) {
       var id = String((s && s.id) || "").toUpperCase();
       var bin = String((s && s.binNumber) || "").replace(/\s/g, "").toUpperCase();
       if (!bin && id) {
@@ -15402,11 +15433,26 @@ function currentRotation() {
         var pref = /^EP/.test(id) ? "EP" : /^CP/.test(id) ? "CP" : "AT";
         if (n) bin = pref + n;
       }
-      if (!id || !bin) return "";
-      var file = kind === "cone" ? id + "_5day_cone_with_line_and_wind+pngnow.png"
-        : kind === "ir" ? id + "_ir_clean+gifnow.gif"
-        : id + "_vis_clean+gifnow.gif";
-      return "https://www.nhc.noaa.gov/storm_graphics/" + bin + "/refresh/" + file;
+      return { id: id, bin: bin };
+    }
+    function nhcGraphic(s, kind) {
+      var base = stormGraphicBase(s);
+      if (!base.id || !base.bin) return "";
+      var files = {
+        cone: base.id + "_5day_cone.png",
+        cone3: base.id + "_3day_cone.png",
+        wind: base.id + "_current_wind.png",
+        history: base.id + "_wind_history.png",
+        odds34: base.id + "_wind_probs_34_F120.png",
+        odds50: base.id + "_wind_probs_50_F120.png",
+        odds64: base.id + "_wind_probs_64_F120.png",
+        arrival: base.id + "_most_likely_toa_34.png",
+        surge: base.id + "_peak_surge.png",
+        messages: base.id + "_key_messages.png"
+      };
+      var file = files[kind];
+      if (!file) return "";
+      return "https://www.nhc.noaa.gov/storm_graphics/" + base.bin + "/" + file;
     }
     function paintHurr(storms) {
       storms = storms || [];
@@ -15768,6 +15814,83 @@ function currentRotation() {
         setInterval(function () {
       if (typeof paintStormPage === "function") paintStormPage();
     }, 5 * 60 * 1000);
+    function stormMapCatalog(s) {
+      var gulf = /^EP|^CP/.test(String((s && s.id) || "").toUpperCase());
+      return [
+        { id: "cone", label: "Forecast cone", src: nhcGraphic(s, "cone"), note: "5-day track, cone, watches" },
+        { id: "cone3", label: "3-day cone", src: nhcGraphic(s, "cone3"), note: "Near-term track" },
+        { id: "wind", label: "Wind field", src: nhcGraphic(s, "wind"), note: "Current tropical-storm and hurricane winds" },
+        { id: "history", label: "Wind history", src: nhcGraphic(s, "history"), note: "Area already swept" },
+        { id: "odds34", label: "39 mph odds", src: nhcGraphic(s, "odds34"), note: "Chance of tropical-storm winds in 5 days" },
+        { id: "odds50", label: "58 mph odds", src: nhcGraphic(s, "odds50"), note: "Chance of 50-kt winds" },
+        { id: "odds64", label: "74 mph odds", src: nhcGraphic(s, "odds64"), note: "Chance of hurricane winds" },
+        { id: "arrival", label: "Arrival", src: nhcGraphic(s, "arrival"), note: "Most likely tropical-storm wind arrival" },
+        { id: "surge", label: "Peak surge", src: nhcGraphic(s, "surge"), note: "Coastal inundation forecast" },
+        { id: "messages", label: "Key messages", src: nhcGraphic(s, "messages"), note: "NHC hazard summary" },
+        { id: "gulf", label: "Gulf satellite", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg", note: "GOES GeoColor · Gulf" },
+        { id: "carib", label: "Caribbean", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg", note: "GOES GeoColor · Caribbean" },
+        { id: "ir", label: "Infrared", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/" + (gulf ? "ep" : "ga") + "/13/1000x1000.jpg", note: "GOES infrared" },
+        { id: "sst", label: "Sea temp", src: "https://www.ospo.noaa.gov/data/sst/contour/gulfmex.cf.gif", note: "Gulf sea surface temperature" }
+      ];
+    }
+    function showStormMap(id) {
+      var s = typeof selectedStorm === "function" ? selectedStorm() : null;
+      var list = stormMapCatalog(s);
+      var pick = list.filter(function (m) { return m.id === id; })[0] || list[0];
+      if (!pick) return;
+      window.__stormMapId = pick.id;
+      var img = document.getElementById("storm-sat-view");
+      var cap = document.getElementById("storm-sat-label");
+      var note = document.getElementById("storm-sat-note");
+      document.querySelectorAll("#storm-map-pills button").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-storm-map") === pick.id);
+      });
+      if (img && pick.src) {
+        img.src = pick.src + (pick.src.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+        img.alt = pick.label;
+      }
+      if (cap) cap.textContent = pick.label;
+      if (note) note.textContent = (s && s.name ? s.name + " · " : "") + pick.note;
+    }
+    function paintStormData(s, txt) {
+      var track = document.getElementById("storm-track-body");
+      var radii = document.getElementById("storm-radii-body");
+      var hazard = document.getElementById("storm-hazard-body");
+      if (!s) {
+        if (track) track.textContent = "No storm selected.";
+        if (radii) radii.textContent = "No storm selected.";
+        if (hazard) hazard.textContent = "No storm selected.";
+        return;
+      }
+      var raw = String(txt || window.__hurrAdvText || "");
+      if (track) {
+        var rows = [];
+        raw.replace(/(\d{2,3})\s*KT\s+\S+\s+(\d+(?:\.\d+)?)([NS])\s+(\d+(?:\.\d+)?)([EW])/gi, function (_, kt, la, ns, lo, ew) {
+          rows.push(Math.round(Number(kt) * 1.15078) + " mph at " + la + ns + " " + lo + ew);
+        });
+        track.textContent = rows.length ? rows.slice(0, 8).join(" · ") : "Forecast positions post with the next advisory.";
+      }
+      if (radii) {
+        var bits = [];
+        var r34 = raw.match(/34 KT[\s\S]{0,80}?(\d+)\s*NE[\s\S]{0,20}?(\d+)\s*SE[\s\S]{0,20}?(\d+)\s*SW[\s\S]{0,20}?(\d+)\s*NW/i);
+        var r50 = raw.match(/50 KT[\s\S]{0,80}?(\d+)\s*NE[\s\S]{0,20}?(\d+)\s*SE[\s\S]{0,20}?(\d+)\s*SW[\s\S]{0,20}?(\d+)\s*NW/i);
+        var r64 = raw.match(/64 KT[\s\S]{0,80}?(\d+)\s*NE[\s\S]{0,20}?(\d+)\s*SE[\s\S]{0,20}?(\d+)\s*SW[\s\S]{0,20}?(\d+)\s*NW/i);
+        if (r34) bits.push("39 mph out to " + Math.max.apply(null, r34.slice(1).map(Number)) + " nm");
+        if (r50) bits.push("58 mph out to " + Math.max.apply(null, r50.slice(1).map(Number)) + " nm");
+        if (r64) bits.push("74 mph out to " + Math.max.apply(null, r64.slice(1).map(Number)) + " nm");
+        radii.textContent = bits.length ? bits.join(" · ") : "Wind radii post with the forecast advisory.";
+      }
+      if (hazard) {
+        var rain = raw.match(/RAINFALL[\s\S]{0,240}/i);
+        var surge = raw.match(/STORM SURGE[\s\S]{0,240}/i);
+        var watch = raw.match(/(?:HURRICANE|TROPICAL STORM)\s+(?:WATCH|WARNING)[\s\S]{0,200}/i);
+        var parts = [];
+        if (watch) parts.push(watch[0].replace(/\s+/g, " ").slice(0, 160));
+        if (rain) parts.push(rain[0].replace(/\s+/g, " ").slice(0, 160));
+        if (surge) parts.push(surge[0].replace(/\s+/g, " ").slice(0, 160));
+        hazard.textContent = parts.length ? parts.join(" ") : "No watches, rain, or surge called out in the latest advisory.";
+      }
+    }
     function showHurrSlide(reset) {
       var slides = window.__hurrSlides || [];
       if (!slides.length) return;
@@ -30191,6 +30314,17 @@ function homeCountyGuess() {
       }
     };
     })();
-  </script>
+  
+    (function bindStormMaps() {
+      var box = document.getElementById("storm-map-pills");
+      if (!box || box.__bound) return;
+      box.__bound = true;
+      box.addEventListener("click", function (ev) {
+        var b = ev.target.closest("button[data-storm-map]");
+        if (!b) return;
+        if (typeof showStormMap === "function") showStormMap(b.getAttribute("data-storm-map"));
+      });
+    })();
+    </script>
 </body>
 </html>
