@@ -1795,6 +1795,18 @@
       #tenday .wx-map-frame .radar-crop { min-height:0; max-height:none; }
       #tenday .wx-top-left { grid-column:1; grid-row:1; }
     }
+
+    .wx-fresh { margin:0 0 8px; font-size:12px; opacity:.7; }
+    .cloud-grid { display:grid; grid-template-columns:52px repeat(8, 1fr); gap:2px; font-size:10px; }
+    .cloud-grid span { text-align:center; border-radius:4px; padding:3px 0; }
+    .cloud-grid .lab { text-align:left; opacity:.7; }
+    .bolt-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .bolt-table th, .bolt-table td { text-align:left; padding:4px 0; border-bottom:1px solid var(--hair); }
+    .dpop.hot { color:#e24b4a; }
+    .dpop.warm { color:#ef9f27; }
+    .wx-filters { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 0; }
+    .wx-filters button { border:0; border-radius:999px; padding:4px 10px; font:inherit; font-size:12px; background:rgba(8,16,28,.08); color:inherit; }
+    .wx-filters button.on { background:#e8e9ed; color:#1a1d23; }
     .wx-map-frame { margin:12px 0 16px; max-width:600px; }
     .wx-map-frame .radar-crop { width:100%; height:auto; aspect-ratio:600 / 550; max-height:none; }
     #tenday .wx-top,
@@ -3458,7 +3470,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1143</span>
+      <span class="hdr-ver" id="hdr-ver">v1144</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3829,6 +3841,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="tenday" class="page sheet">
         <div class="card" id="spc-card"><b>Storm outlook</b><span id="live-spc">Checking the Storm Prediction Center…</span></div>
         <h2 data-k="Ten days">Weather</h2>
+        <p class="wx-fresh" id="wx-fresh">Waiting on the pin…</p>
         <div class="wx-top">
                 <div class="wx-map-frame" id="wx-map-frame">
           <div class="radar-crop radar-stage" id="wx-radar-stage">
@@ -3851,10 +3864,24 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-wx-map="bolt">Lightning</button>
           </div>
           <p class="wx-map-cap"><b id="wx-map-label">Radar</b><span id="wx-map-note">2-hour loop · pulled back from the pin</span></p>
+          <div class="wx-filters" id="wx-filters">
+            <button type="button" class="on" data-wx-filter="all">All</button>
+            <button type="button" data-wx-filter="flood">Flood</button>
+            <button type="button" data-wx-filter="winter">Winter</button>
+            <button type="button" data-wx-filter="wind">Wind</button>
+            <button type="button" data-wx-filter="heat">Heat</button>
+          </div>
+          <div class="card" id="bolt-table-card" hidden>
+            <b>Lightning</b>
+            <span id="bolt-table-note"></span>
+            <table class="bolt-table"><thead><tr><th>Distance</th><th>Bearing</th><th>Age</th></tr></thead><tbody id="bolt-table-body"></tbody></table>
+          </div>
         </div>
         <div class="wx-top-left">
         <p class="wx-nowline" id="wx-nowline">Updating…</p>
         <p class="sheet-kicker">Hourly forecast</p>
+        <div class="card" id="cloud-card"><b>Clouds</b><span id="cloud-note">By height, next hours, for this pin.</span><div class="cloud-grid" id="cloud-grid"></div></div>
+        <div class="card" id="rain-windows"><b>Rain</b><span id="rain-windows-body">Checking the gauge…</span></div>
         <div class="fc-scroll" id="hourly-scroll"><div class="hourly">
           <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
           <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
@@ -5499,7 +5526,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1143;
+    window.BOARD_VER = 1144;
 
     
     function communityShort() {
@@ -6305,7 +6332,66 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (typeof noteFeed === "function") noteFeed("live-rainsoon", true, soon.textContent);
       }).catch(function () {});
     }
+
+    function paintNowPass() {
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      var page = document.getElementById("tenday");
+      if (!page || !isFinite(lat) || !isFinite(lon)) return;
+      var key = lat.toFixed(2) + "," + lon.toFixed(2);
+      page.setAttribute("data-pin", key);
+      var fresh = document.getElementById("wx-fresh");
+      if (fresh) fresh.textContent = (typeof homePlace === "function" ? homePlace() : "This pin") + " · updating";
+      fetch("https://api.weather.gov/points/" + lat.toFixed(4) + "," + lon.toFixed(4), { headers: { Accept: "application/geo+json" } })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (page.getAttribute("data-pin") !== key) return;
+          var p = (j && j.properties) || {};
+          var office = ((p.cwa) || "").toUpperCase();
+          var rel = (p.relativeLocation || {}).properties || {};
+          if (fresh) fresh.textContent = (rel.city ? rel.city + ", " + (rel.state || "") : homePlace()) + " · NWS " + office + " · updated " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          var nowline = document.getElementById("wx-nowline");
+          if (nowline && office) nowline.setAttribute("data-office", office);
+        }).catch(function () {});
+      var om = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=cloud_cover_low,cloud_cover_mid,cloud_cover_high,cloud_cover,precipitation&past_hours=24&forecast_hours=12&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=auto";
+      fetch(om).then(function (r) { return r.json(); }).then(function (j) {
+        if (page.getAttribute("data-pin") !== key) return;
+        var h = (j && j.hourly) || {};
+        var times = h.time || [];
+        var grid = document.getElementById("cloud-grid");
+        if (grid && times.length) {
+          var start = Math.max(0, times.length - 12);
+          var cols = times.slice(start, start + 8);
+          var html = '<span class="lab"></span>' + cols.map(function (t) { return '<span class="lab">' + new Date(t).toLocaleTimeString("en-US", { hour: "numeric" }).replace(" ", "") + "</span>"; }).join("");
+          [["High", h.cloud_cover_high], ["Mid", h.cloud_cover_mid], ["Low", h.cloud_cover_low], ["Total", h.cloud_cover]].forEach(function (row) {
+            html += '<span class="lab">' + row[0] + "</span>";
+            cols.forEach(function (_, i) {
+              var v = Math.round(Number((row[1] || [])[start + i] || 0));
+              var shade = Math.round(168 - v * 0.6);
+              html += '<span style="background:rgb(' + shade + ',' + (shade + 6) + ',' + (shade + 22) + ')">' + v + "</span>";
+            });
+          });
+          grid.innerHTML = html;
+        }
+        var rain = h.precipitation || [];
+        function sum(n) { var a = rain.slice(-n); return a.reduce(function (x, y) { return x + (Number(y) || 0); }, 0); }
+        var body = document.getElementById("rain-windows-body");
+        if (body) body.textContent = "1h " + sum(1).toFixed(2) + " in · 3h " + sum(3).toFixed(2) + " · 6h " + sum(6).toFixed(2) + " · 24h " + sum(24).toFixed(2) + " · Open-Meteo at the pin";
+      }).catch(function () {});
+      var bolt = typeof lightningNow === "function" ? lightningNow() : null;
+      var card = document.getElementById("bolt-table-card");
+      var tb = document.getElementById("bolt-table-body");
+      if (card && tb) {
+        if (bolt && bolt.on) {
+          card.hidden = false;
+          var note = document.getElementById("bolt-table-note");
+          if (note) note.textContent = (bolt.count || "Strikes") + " near the pin";
+          tb.innerHTML = "<tr><td>" + (bolt.miles != null ? bolt.miles + " mi" : "—") + "</td><td>" + (bolt.dir || "—") + "</td><td>" + (bolt.age || "now") + "</td></tr>";
+        } else card.hidden = true;
+      }
+    }
     function applyHomeFeeds() {
+      if (typeof paintNowPass === "function") paintNowPass();
       if (typeof publishHomePin === "function") publishHomePin();
       if (typeof window.reloadTown === "function") window.reloadTown();
       if (typeof nextTrash === "function") nextTrash();
@@ -26198,8 +26284,9 @@ function wxSvg(kind, box) {
               var popN = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value);
               if (popN == null) popN = 0;
               var bolt = typeof hourMentionsThunder === "function" && hourMentionsThunder(h);
+              var popCls = Number(popN) >= 80 ? " hot" : (Number(popN) >= 50 ? " warm" : "");
               var pop = (isFinite(Number(popN)) && Number(popN) >= 10) || bolt
-                ? '<span class="dpop">' + (bolt && !popN ? "⚡" : Math.round(Number(popN)) + "%") + "</span>"
+                ? '<span class="dpop' + popCls + '">' + (bolt && !popN ? "⚡" : Math.round(Number(popN)) + "%") + "</span>"
                 : '<span class="dpop"></span>';
               var label = hi === 0 ? "Now" : when;
               return '<div class="day' + (bolt ? " storm" : "") + '">' +
