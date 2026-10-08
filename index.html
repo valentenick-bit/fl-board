@@ -3493,7 +3493,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1153</span>
+      <span class="hdr-ver" id="hdr-ver">v1154</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4234,6 +4234,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <section id="storms" class="page sheet">
         <h2 data-k="Named storms">Storms</h2>
         <p class="pill-key" id="storm-lead">Named storms in this basin show here. The page only joins the rotation when one can reach the home pin.</p>
+        <div class="card" id="watch-alerts"><b>Alerts</b><span id="watch-alerts-body">Checking this pin…</span></div>
+        <div class="card" id="watch-near"><b>Nearby</b><span id="watch-near-body">Checking the next county…</span></div>
+        <div class="card" id="watch-spc"><b>Storm outlook</b><span id="watch-spc-body">Checking the Storm Prediction Center…</span></div>
+        <div class="card" id="watch-reports"><b>Reports</b><span id="watch-reports-body">Last 48 hours at the pin…</span></div>
+        <div class="card" id="watch-afd"><b>Discussion</b><span id="watch-afd-body">Waiting on the local office…</span></div>
         <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
         <div class="card" id="noreast-card" hidden>
           <b id="noreast-title">Nor'easter</b>
@@ -5549,7 +5554,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1153;
+    window.BOARD_VER = 1154;
 
     
     function communityShort() {
@@ -6413,7 +6418,86 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         } else card.hidden = true;
       }
     }
+
+    function paintWatchPass() {
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      var page = document.getElementById("storms");
+      if (!page || !isFinite(lat) || !isFinite(lon)) return;
+      var key = lat.toFixed(2) + "," + lon.toFixed(2);
+      page.setAttribute("data-watch", key);
+      function same() { return page.getAttribute("data-watch") === key; }
+      function line(f) {
+        var p = (f && f.properties) || {};
+        return (p.event || "Alert") + (p.ends ? " until " + new Date(p.ends).toLocaleString("en-US", { weekday: "short", hour: "numeric" }) : "");
+      }
+      fetch("https://api.weather.gov/alerts/active?point=" + lat.toFixed(4) + "," + lon.toFixed(4), { headers: { Accept: "application/geo+json" } })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!same()) return;
+          var feats = (j && j.features) || [];
+          var el = document.getElementById("watch-alerts-body");
+          if (el) el.textContent = feats.length ? feats.slice(0, 4).map(line).join(" · ") : "No alert on this pin.";
+          window.__watchIds = feats.map(function (f) { return f.id; });
+        }).catch(function () {});
+      var spots = [[0.45, 0], [-0.45, 0], [0, 0.55], [0, -0.55]];
+      Promise.all(spots.map(function (d) {
+        return fetch("https://api.weather.gov/alerts/active?point=" + (lat + d[0]).toFixed(4) + "," + (lon + d[1]).toFixed(4), { headers: { Accept: "application/geo+json" } })
+          .then(function (r) { return r.json(); }).catch(function () { return {}; });
+      })).then(function (packs) {
+        if (!same()) return;
+        var seen = {}, rows = [];
+        packs.forEach(function (j) {
+          ((j && j.features) || []).forEach(function (f) {
+            if (!f || seen[f.id] || (window.__watchIds || []).indexOf(f.id) >= 0) return;
+            seen[f.id] = 1;
+            rows.push(line(f));
+          });
+        });
+        var el = document.getElementById("watch-near-body");
+        if (el) el.textContent = rows.length ? rows.slice(0, 4).join(" · ") : "Nothing in the next county.";
+      });
+      fetch("https://api.weather.gov/points/" + lat.toFixed(4) + "," + lon.toFixed(4), { headers: { Accept: "application/geo+json" } })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!same()) return;
+          var office = ((((j || {}).properties || {}).cwa) || "").toUpperCase();
+          var spc = document.getElementById("watch-spc-body");
+          if (spc) spc.textContent = office ? ("Office " + office + ". Fire and severe words come from the alerts above.") : "No office for this pin.";
+          if (!office) return;
+          return fetch("https://api.weather.gov/products/types/AFD/locations/" + office, { headers: { Accept: "application/ld+json" } })
+            .then(function (r) { return r.json(); })
+            .then(function (list) {
+              var id = (list && list["@graph"] && list["@graph"][0] && list["@graph"][0].id) || "";
+              if (!id) return;
+              return fetch("https://api.weather.gov/products/" + id, { headers: { Accept: "application/geo+json" } }).then(function (r) { return r.json(); });
+            })
+            .then(function (prod) {
+              if (!same() || !prod) return;
+              var text = String(prod.productText || "").replace(/\s+/g, " ");
+              var cut = text.slice(0, 280);
+              var el = document.getElementById("watch-afd-body");
+              if (el) el.textContent = office + ": " + (cut || "No discussion yet.");
+            });
+        }).catch(function () {});
+      var start = new Date(Date.now() - 48 * 3600000).toISOString().slice(0, 19) + "Z";
+      fetch("https://mesonet.agron.iastate.edu/geojson/lsr.php?sts=" + start + "&bbox=" + (lon - 0.6) + "," + (lat - 0.5) + "," + (lon + 0.6) + "," + (lat + 0.5))
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!same()) return;
+          var rows = ((j && j.features) || []).slice(0, 4).map(function (f) {
+            var p = f.properties || {};
+            return (p.typetext || p.type || "Report") + (p.magnitude ? " " + p.magnitude : "") + (p.city ? " at " + p.city : "");
+          });
+          var el = document.getElementById("watch-reports-body");
+          if (el) el.textContent = rows.length ? rows.join(" · ") : "No storm reports in the last 48 hours.";
+        }).catch(function () {
+          var el = document.getElementById("watch-reports-body");
+          if (el && same()) el.textContent = "Reports did not answer for this pin.";
+        });
+    }
     function applyHomeFeeds() {
+      if (typeof paintWatchPass === "function") paintWatchPass();
       if (typeof paintNowPass === "function") paintNowPass();
       if (typeof publishHomePin === "function") publishHomePin();
       if (typeof window.reloadTown === "function") window.reloadTown();
