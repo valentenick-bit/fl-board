@@ -1891,7 +1891,13 @@
 
 
 
-    .uv-bar { height:8px; border-radius:99px; margin-top:6px; background:linear-gradient(90deg,#16a34a,#eab308,#ea580c,#dc2626); }\n    .mlb-card { border:1px solid #d7dbe3; border-radius:10px; padding:8px 10px; margin:0 0 8px; background:#fff; color:#122; max-width:420px; }
+    .uv-bar { height:8px; border-radius:99px; margin-top:6px; background:linear-gradient(90deg,#16a34a,#eab308,#ea580c,#dc2626); }\n    .day-pills { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 6px; }
+    .day-pill { flex:1 1 140px; min-width:0; border-radius:14px; padding:8px 10px; background:rgba(255,255,255,.55); }
+    .day-pill .day-kind { font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; opacity:.7; }
+    .day-pill b { display:block; font-size:15px; line-height:1.2; margin-top:2px; }
+    .day-pill span { display:block; font-size:13px; line-height:1.35; margin-top:4px; }
+    html.dark .day-pill { background:rgba(255,255,255,.08); }
+    .mlb-card { border:1px solid #d7dbe3; border-radius:10px; padding:8px 10px; margin:0 0 8px; background:#fff; color:#122; max-width:420px; }
     html.dark .mlb-card { background:#101820; color:#f4f1ea; border-color:#2a3442; }
     .mlb-status { display:flex; justify-content:space-between; gap:6px; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:#5c6570; }
     .mlb-status b { color:#c2410c; font-size:12px; }
@@ -3493,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1166</span>
+      <span class="hdr-ver" id="hdr-ver">v1167</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3697,7 +3703,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for today&rsquo;s details</small>
         </div>
-        <div class="card" id="day-card"><b>Today on the calendar</b><span id="day-card-body">Checking the national days…</span></div>
+        <div class="card" id="day-card"><b>Today on the calendar</b><div id="day-pills" class="day-pills"></div><span id="day-card-body">Checking the national days…</span></div>
         <div id="today-bolt" hidden>
           <div id="today-bolt-body"></div>
         </div>
@@ -5571,7 +5577,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1166;
+    window.BOARD_VER = 1167;
 
     
     function communityShort() {
@@ -6716,13 +6722,23 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         "12-04": ["National Cookie Day", "The December cookie day, ahead of the tins."],
         "12-31": ["New Year's Eve", "The last night of the year. The ball drops at midnight."]
       };
-      var lines = [];
-      weeks.forEach(function (w) { if (key >= w.a && key <= w.b) lines.push(w.name + ". " + w.why); });
-      if (days[key]) lines.push(days[key][0] + ". " + days[key][1]);
-      if (key === "10-08") lines.push("National Salmon Day. A food day for the fish, grilled, smoked, or raw.");
+      var items = [];
+      weeks.forEach(function (w) { if (key >= w.a && key <= w.b) items.push({ kind: "This week", name: w.name, why: w.why }); });
+      if (days[key]) items.push({ kind: "Today", name: days[key][0], why: days[key][1] });
+      if (key === "10-08") items.push({ kind: "Food", name: "National Salmon Day", why: "A food day for the fish, grilled, smoked, or raw." });
       var dow = now.getDay();
-      if (m === 10 && dow === 4 && d >= 8 && d <= 14) lines.push("World Sight Day. The second Thursday in October, for eye care and avoidable blindness.");
-      el.textContent = lines.length ? lines.join(" ") : "No named national day on the list for this date.";
+      if (m === 10 && dow === 4 && d >= 8 && d <= 14) items.push({ kind: "Today", name: "World Sight Day", why: "The second Thursday in October, for eye care and avoidable blindness." });
+      var pills = document.getElementById("day-pills");
+      if (!items.length) {
+        if (pills) pills.innerHTML = "";
+        el.textContent = "No named national day on the list for this date.";
+        return;
+      }
+      if (pills) pills.innerHTML = items.map(function (it) {
+        return "<div class='day-pill'><div class='day-kind'>" + it.kind + "</div><b>" + it.name + "</b><span>" + it.why + "</span></div>";
+      }).join("");
+      el.textContent = items.map(function (it) { return it.name + ". " + it.why; }).join(" ");
+      el.hidden = true;
     }
     function applyHomeFeeds() {
       if (typeof paintNationalDays === "function") paintNationalDays();
