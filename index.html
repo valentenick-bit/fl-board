@@ -403,6 +403,7 @@
     html.dim-motion .palm .frond,
     html.dim-motion header .cloud,
     html.dim-motion header .hdr-tree,
+    html.phone .ticker .tseg, html.phone .ticker { animation:none !important; }
     html.dim-motion .ticker .tseg {
       animation-play-state: paused !important;
     }
@@ -3499,7 +3500,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1172</span>
+      <span class="hdr-ver" id="hdr-ver">v1173</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5577,7 +5578,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1172;
+    window.BOARD_VER = 1173;
 
     
     function communityShort() {
@@ -7513,6 +7514,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
 
     function showSkyMap(id, force) {
+      var on = document.querySelector(".page.on");
+      if (document.documentElement.classList.contains("phone") && (!on || on.id !== "sky")) return;
       var nowMs = Date.now();
       if (!force && window.__skyMapView === id && nowMs - (window.__skyMapAt || 0) < 45000) return;
       window.__skyMapAt = nowMs;
@@ -10762,7 +10765,8 @@ function gatorRange() {
     function applyLocalMaps() {
       var lat = homeLat(), lon = homeLon(), place = homePlace();
       var bolt = document.getElementById("bolt-map");
-      if (bolt) bolt.src = homeBoltEmbed();
+      if (bolt && !document.documentElement.classList.contains("phone")) bolt.src = homeBoltEmbed();
+      else if (bolt) bolt.src = "about:blank";
       var boltNote = document.getElementById("bolt-note");
       if (boltNote) boltNote.textContent = "Strikes near " + place + ".";
       if (typeof noteFeed === "function") noteFeed("bolt-map", true, "blitzortung");
@@ -24497,7 +24501,7 @@ function drawSurgeChart(points) {
       var title = document.getElementById("sea-cam-title");
       var cam = seaCam();
       var kind = typeof seaKind === "function" ? seaKind() : "";
-      var live = cam && cam.src && /youtube|youtu\.be/i.test(cam.src);
+      var live = cam && cam.src && /youtube|youtu\.be/i.test(cam.src) && !document.documentElement.classList.contains("phone");
       if (card) card.hidden = !live;
       if (!live) {
         if (frame) { frame.removeAttribute("src"); frame.removeAttribute("data-src"); }
