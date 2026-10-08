@@ -3499,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1175</span>
+      <span class="hdr-ver" id="hdr-ver">v1176</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5577,7 +5577,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1175;
+    window.BOARD_VER = 1176;
 
     
     function communityShort() {
@@ -7822,6 +7822,54 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (down.length) bits.push(plant.name + " " + down.join(", ") + ". NRC reactor status.");
       }).catch(function () {}).then(finish);
     }
+
+    function buoyStations() {
+      return [
+        { id:"42013", name:"Venice", lat:27.173, lon:-82.924 },
+        { id:"42036", name:"West Tampa", lat:28.500, lon:-84.517 },
+        { id:"41009", name:"Canaveral", lat:28.508, lon:-80.185 },
+        { id:"44039", name:"Central Long Island Sound", lat:41.138, lon:-72.655 },
+        { id:"44017", name:"Montauk", lat:40.694, lon:-72.045 },
+        { id:"44065", name:"New York Harbor", lat:40.369, lon:-73.703 },
+        { id:"45007", name:"South Michigan", lat:42.674, lon:-87.026 },
+        { id:"46026", name:"San Francisco", lat:37.755, lon:-122.839 }
+      ];
+    }
+    function nearestBuoyStation() {
+      var list = buoyStations();
+      var best = null, bestD = 1e9;
+      list.forEach(function (b) {
+        var d = launchMiles(b.lat, b.lon);
+        if (d < bestD) { bestD = d; best = { id: b.id, name: b.name, miles: d }; }
+      });
+      return best;
+    }
+    function paintBuoyObs() {
+      var best = nearestBuoyStation();
+      var facts = document.getElementById("buoy-facts");
+      if (!best) return;
+      setNat("live-buoy", best.name + " (" + best.id + "), " + best.miles + " miles from this pin.");
+      pubFetch("https://www.ndbc.noaa.gov/data/realtime2/" + best.id + ".txt").then(function (txt) {
+        var rows = String(txt || "").split(/\n/).filter(function (x) { return x && x[0] !== "#"; });
+        var c = null;
+        for (var i = 0; i < rows.length && i < 12; i++) {
+          var bits = rows[i].trim().split(/\s+/);
+          if (bits.length > 14 && bits[6] !== "MM") { c = bits; break; }
+        }
+        if (!c) c = (rows[0] || "").trim().split(/\s+/);
+        function num(i, bad) { var n = Number(c[i]); return c[i] !== "MM" && isFinite(n) && n < bad ? n : null; }
+        var wind = num(6, 90), gst = num(7, 90), wv = num(8, 40), per = num(9, 40), pres = num(12, 1200), at = num(13, 60), wt = num(14, 50);
+        function f(v) { return v == null ? "not reporting" : Math.round(v * 9 / 5 + 32) + "°"; }
+        function mph(ms) { return ms == null ? "not reporting" : Math.round(ms * 2.237) + " mph"; }
+        function ft(m) { return m == null ? "not reporting" : (m * 3.281).toFixed(1) + " ft"; }
+        var when = c.length > 4 ? (c[1] + "/" + c[2] + " " + c[3] + ":" + c[4] + " GMT") : "latest";
+        if (facts) facts.innerHTML = "<span>Wind " + mph(wind) + " · gust " + mph(gst) + "</span><span>Waves " + ft(wv) + " · period " + (per == null ? "not reporting" : per + " sec") + "</span><span>Water " + f(wt) + " · air " + f(at) + "</span><span>Pressure " + (pres == null ? "not reporting" : (pres * 0.02953).toFixed(2) + " in") + " · " + when + "</span>";
+        if (typeof noteFeed === "function") noteFeed("buoy", true, best.id + " " + best.miles + " mi · obs");
+      }).catch(function () {
+        if (facts) facts.innerHTML = "<span>Station is mapped. The observation file did not answer.</span>";
+        if (typeof noteFeed === "function") noteFeed("buoy", false, best.id + " no obs");
+      });
+    }
     function loadNational() {
       var lat = typeof homeLat === "function" ? Number(homeLat()) : 0;
       var lon = typeof homeLon === "function" ? Number(homeLon()) : 0;
@@ -7833,17 +7881,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       showCard("snow-card", false);
       showCard("whale-card", false);
       showCard("shell-card", false);
-      if (near) {
-        setNat("live-buoy", near.name + " (" + near.id + "), " + launchMiles(near.lat, near.lon) + " miles from this pin.");
-        var facts = document.getElementById("buoy-facts");
-        fetch("https://api.open-meteo.com/v1/forecast?latitude=" + near.lat + "&longitude=" + near.lon + "&current=temperature_2m,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph").then(function (r) { return r.json(); }).then(function (air) {
-          return fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + near.lat + "&longitude=" + near.lon + "&current=wave_height,wave_period,sea_surface_temperature&temperature_unit=fahrenheit&length_unit=imperial").then(function (r) { return r.json(); }).then(function (sea) {
-            var a = air.current || {}, w = sea.current || {};
-            if (facts) facts.innerHTML = "<span>Wind " + Math.round(a.wind_speed_10m || 0) + " mph · gust " + Math.round(a.wind_gusts_10m || 0) + "</span><span>Waves " + (w.wave_height != null ? Number(w.wave_height).toFixed(1) + " ft" : "—") + " · period " + (w.wave_period != null ? Math.round(w.wave_period) + " sec" : "—") + "</span><span>Water " + (w.sea_surface_temperature != null ? Math.round(w.sea_surface_temperature) + "°" : "—") + " · air " + (a.temperature_2m != null ? Math.round(a.temperature_2m) + "°" : "—") + "</span>";
-            if (typeof noteFeed === "function") noteFeed("buoy", true, near.id + " modeled");
-          });
-        }).catch(function () { if (facts) facts.innerHTML = "<span>Station is mapped. The live line did not answer.</span>"; });
-      }
+      if (typeof paintBuoyObs === "function") paintBuoyObs();
 
       var lat = typeof homeLat === "function" ? Number(homeLat()) : 0;
       var lon = typeof homeLon === "function" ? Number(homeLon()) : 0;
@@ -7923,42 +7961,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         setNat("live-spc", risk);
         if (typeof noteFeed === "function") noteFeed("spc", true, risk.slice(0, 40));
       }).catch(function () { showCard("spc-card", false); }).then(fin);
-      var fallbackBuoys = [{ id:"42013", name:"Venice", lat:27.173, lon:-82.924 }, { id:"42036", name:"West Tampa", lat:28.500, lon:-84.517 }, { id:"44039", name:"Central Long Island Sound", lat:41.138, lon:-72.655 }, { id:"41009", name:"Canaveral", lat:28.508, lon:-80.185 }];
-      function nearestBuoy(list) {
-        var best = null, bestD = 1e9;
-        (list || []).forEach(function (b) {
-          var d = launchMiles(b.lat, b.lon);
-          if (d < bestD) { bestD = d; best = { id: b.id, name: b.name, lat: b.lat, lon: b.lon, miles: d }; }
-        });
-        return best;
-      }
-      pubFetch("https://www.ndbc.noaa.gov/activestations.xml").then(function (t) {
-        var list = [];
-        String(t).split(/<station\b/i).slice(1).forEach(function (chunk) {
-          function attr(n) { var m = chunk.match(new RegExp(n + '="([^"]*)"', "i")); return m ? m[1] : ""; }
-          var blat = Number(attr("lat")), blon = Number(attr("lon"));
-          if (!attr("id") || !isFinite(blat) || !isFinite(blon)) return;
-          list.push({ id: attr("id"), name: attr("name") || attr("id"), lat: blat, lon: blon });
-        });
-        var best = nearestBuoy(list.length ? list : fallbackBuoys);
-        if (!best) { setNat("live-buoy", "No active buoy on the feed."); fin(); return; }
-        return pubFetch("https://www.ndbc.noaa.gov/data/realtime2/" + best.id + ".txt").then(function (txt) {
-          var line = String(txt).split(/\n/).filter(function (x) { return x && x[0] !== "#"; }).pop();
-          var c = String(line || "").trim().split(/\s+/);
-          function num(i, bad) { var n = Number(c[i]); return isFinite(n) && n < bad ? n : null; }
-          var wind = num(6, 90), gst = num(7, 90), wv = num(8, 90), per = num(9, 90), at = num(13, 90), wt = num(14, 90);
-          function f(c) { return c == null ? "—" : Math.round(c * 9 / 5 + 32) + "°"; }
-          function mph(ms) { return ms == null ? "—" : Math.round(ms * 2.237) + " mph"; }
-          function ft(m) { return m == null ? "—" : (m * 3.281).toFixed(1) + " ft"; }
-          setNat("live-buoy", best.name + " (" + best.id + "), " + best.miles + " miles from this pin.");
-          var facts = document.getElementById("buoy-facts");
-          if (facts) facts.innerHTML = "<span>Wind " + mph(wind) + " · gust " + mph(gst) + "</span><span>Waves " + ft(wv) + " · period " + (per == null ? "—" : per + " sec") + "</span><span>Water " + f(wt) + " · air " + f(at) + "</span>";
-          if (typeof noteFeed === "function") noteFeed("buoy", true, best.id + " " + best.miles + " mi");
-        });
-      }).catch(function () {
-        var best = nearestBuoy(fallbackBuoys);
-        setNat("live-buoy", best ? best.name + " (" + best.id + "), " + best.miles + " miles. Live line did not answer." : "Buoy feed did not answer.");
-      }).then(fin);
+      if (typeof paintBuoyObs === "function") paintBuoyObs();
+      fin();
       showCard("whale-card", false);
       showCard("shell-card", false);
       showCard("snow-card", false);
