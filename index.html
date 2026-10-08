@@ -3499,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1179</span>
+      <span class="hdr-ver" id="hdr-ver">v1180</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4023,6 +4023,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           </div>
           <div class="sea-map-pills" id="sea-map-pills">
             <button type="button" data-sea-map="waves" class="on">Waves</button>
+            <button type="button" data-sea-map="rip">Rip</button>
             <button type="button" data-sea-map="swell">Swell</button>
             <button type="button" data-sea-map="currents">Current</button>
             <button type="button" data-sea-map="sst">Sea temp</button>
@@ -5577,7 +5578,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1179;
+    window.BOARD_VER = 1180;
 
     
     function communityShort() {
@@ -7160,10 +7161,17 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         sst: { label: "Sea temp", note: "Sea-surface temperature, pinned on home", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/ocean/primary/waves/overlay=sea_surface_temp") : "", chart: false },
         wind: { label: "Wind", note: "Surface wind speed and direction at the home pin", url: homeMarineOverlay("wind"), chart: false },
         chart: { label: "Chart", note: "Depth marks and channels pinned on home", url: "", chart: true },
+        rip: { label: "Rip", note: "NWS 48-hour beach risk pinned on home", url: "", chart: false },
         clarity: { label: "Clarity", note: "Ocean color near the pin", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/ocean/primary/waves/overlay=chlorophyll") : "", chart: false },
         ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false }
       };
             if (!views[id]) id = "waves";
+      if (id !== "rip" && window.__ripMap && window.__ripMap.map) {
+        try { window.__ripMap.map.remove(); } catch (eR) {}
+        window.__ripMap = null;
+        var ripHost = document.getElementById("sea-chart");
+        if (ripHost) ripHost.innerHTML = "";
+      }
       window.__seaMapView = id;
       var v = views[id];
       var frame = document.getElementById("sea-map");
@@ -7176,6 +7184,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         b.className = b.getAttribute("data-sea-map") === id ? "on" : "";
       });
       var aisBox = document.getElementById("sea-ais");
+      if (id === "rip") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; }
+        if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
+        paintRipMap(chart, homeLat(), homeLon(), note);
+        if (typeof noteFeed === "function") noteFeed("sea-map", true, "rip");
+        return;
+      }
       if (id === "chart") {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; }
@@ -7262,6 +7278,52 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       host.__tile = { z: z, left: left, top: top, box: box };
       return host;
     }
+
+    function paintRipMap(el, latN, lonN, note) {
+      if (!el || typeof L === "undefined") return;
+      var lat = Number(latN), lon = Number(lonN);
+      if (!isFinite(lat) || !isFinite(lon)) return;
+      var span = 1.15;
+      var bounds = [[lat - span, lon - span], [lat + span, lon + span]];
+      var src = "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/marine_beachforecast_summary/MapServer/export?bbox=" +
+        (lon - span) + "," + (lat - span) + "," + (lon + span) + "," + (lat + span) +
+        "&bboxSR=4326&imageSR=4326&size=900,520&format=png32&transparent=true&layers=show:2&f=image&t=" + Date.now();
+      if (window.__ripMap && window.__ripMap.map) {
+        window.__ripMap.map.setView([lat, lon], 8);
+        if (window.__ripMap.marker) window.__ripMap.marker.setLatLng([lat, lon]);
+        if (window.__ripMap.overlay) window.__ripMap.map.removeLayer(window.__ripMap.overlay);
+        window.__ripMap.overlay = L.imageOverlay(src, bounds, { opacity: 0.85 }).addTo(window.__ripMap.map);
+        setTimeout(function () { try { window.__ripMap.map.invalidateSize(); } catch (e) {} }, 80);
+      } else {
+        el.innerHTML = "";
+        var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 8);
+        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
+          maxZoom: 16, attribution: "Esri Ocean · NWS beach risk"
+        }).addTo(map);
+        var overlay = L.imageOverlay(src, bounds, { opacity: 0.85 }).addTo(map);
+        var marker = L.circleMarker([lat, lon], { radius: 7, color: "#c45c26", fillColor: "#f2b05e", fillOpacity: 1, weight: 2 }).addTo(map);
+        marker.bindTooltip("Home pin", { permanent: false });
+        window.__ripMap = { map: map, marker: marker, overlay: overlay };
+        [80, 300].forEach(function (ms) { setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, ms); });
+      }
+      var q = "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/marine_beachforecast_summary/MapServer/2/query?geometry=" +
+        lon + "," + lat + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=50&units=esriSRUnit_StatuteMile&outFields=beachname,rip,surf,period&returnGeometry=false&f=json";
+      fetch(q).then(function (r) { return r.json(); }).then(function (d) {
+        var feats = (d && d.features) || [];
+        if (!feats.length) {
+          if (note) note.textContent = "No NWS beach risk within 50 miles of " + (homePlace() || "this pin");
+          return;
+        }
+        var bits = feats.slice(0, 3).map(function (f) {
+          var a = f.attributes || {};
+          return (a.beachname || "Beach") + " " + (a.rip || "—") + (a.period ? " " + a.period : "");
+        });
+        if (note) note.textContent = "NWS 48-hour risk · " + bits.join(" · ");
+      }).catch(function () {
+        if (note) note.textContent = "NWS beach risk map at " + (homePlace() || "home");
+      });
+    }
+
     function paintNavChart(el, latN, lonN, note) {
       mountTileGrid(el, latN, lonN, 11, [
         function (z, x, y) { return "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png"; },
