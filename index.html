@@ -3493,7 +3493,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1160</span>
+      <span class="hdr-ver" id="hdr-ver">v1161</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3697,6 +3697,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for today&rsquo;s details</small>
         </div>
+        <div class="card" id="day-card"><b>Today on the calendar</b><span id="day-card-body">Checking the national days…</span></div>
         <div id="today-bolt" hidden>
           <div id="today-bolt-body"></div>
         </div>
@@ -5570,7 +5571,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1160;
+    window.BOARD_VER = 1161;
 
     
     function communityShort() {
@@ -6666,7 +6667,55 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (chip) chip.hidden = true;
       }
     }
+
+    function paintNationalDays() {
+      var el = document.getElementById("day-card-body");
+      if (!el) return;
+      var now = new Date();
+      var m = now.getMonth() + 1, d = now.getDate();
+      var key = (m < 10 ? "0" : "") + m + "-" + (d < 10 ? "0" : "") + d;
+      var weeks = [
+        { a: "10-04", b: "10-10", name: "World Space Week", why: "The UN week for space science, marked from the first satellite to the outer-space treaty." },
+        { a: "10-01", b: "10-07", name: "National Walk Your Dog Week", why: "A week to get the dog out for a real walk, not just the yard." },
+        { a: "05-06", b: "05-12", name: "National Nurses Week", why: "The week that ends on Florence Nightingale's birthday." },
+        { a: "04-22", b: "04-29", name: "National Parks Week", why: "Fee-free days and a push to get into a park." }
+      ];
+      var days = {
+        "01-01": ["National Bloody Mary Day", "The hair-of-the-dog brunch drink, claimed by the cocktail crowd as its own day."],
+        "01-21": ["National Hugging Day", "A made-up day that just asks you to hug someone."],
+        "02-02": ["Groundhog Day", "Punxsutawney Phil looks for a shadow. Six more weeks of winter if he sees one."],
+        "02-22": ["National Margarita Day", "The tequila, lime, and triple-sec day. Bars run specials."],
+        "03-14": ["Pi Day", "March 14, for 3.14. Pie is the usual excuse."],
+        "04-01": ["April Fools' Day", "The day of the bad joke and the planted story."],
+        "04-26": ["National Pretzel Day", "A nod to the twisted bread, soft or hard."],
+        "05-04": ["Star Wars Day", "May the 4th. A pun that stuck."],
+        "05-05": ["Cinco de Mayo", "Marks the Mexican army's win at Puebla in 1862, not independence."],
+        "06-01": ["National Donut Day", "Started as a Salvation Army fundraiser. The hole is the point."],
+        "06-08": ["World Oceans Day", "A UN day for the seas, from coral to the open water."],
+        "07-04": ["Independence Day", "The United States marks the 1776 Declaration."],
+        "07-20": ["National Moon Day", "The anniversary of Apollo 11 landing in 1969."],
+        "08-08": ["National Dollar Day", "The day the US mint started making dollar coins in 1794."],
+        "09-19": ["Talk Like a Pirate Day", "Arr, and that is the whole observance."],
+        "10-01": ["International Coffee Day", "A day for the cup, and for the people who grow the bean."],
+        "10-04": ["National Taco Day", "The unofficial taco holiday. Trucks and chains both run it."],
+        "10-08": ["World Octopus Day", "A day for the eight-armed animal, its brains, and the ink."],
+        "10-08b": ["National Salmon Day", "A food day for the fish, grilled, smoked, or raw."],
+        "10-16": ["National Boss's Day", "The office day for the person who signs the checks."],
+        "10-31": ["Halloween", "Costumes, candy, and the old harvest night."],
+        "11-26": ["National Cake Day", "A day that is exactly what it sounds like."],
+        "12-04": ["National Cookie Day", "The December cookie day, ahead of the tins."],
+        "12-31": ["New Year's Eve", "The last night of the year. The ball drops at midnight."]
+      };
+      var lines = [];
+      weeks.forEach(function (w) { if (key >= w.a && key <= w.b) lines.push(w.name + ". " + w.why); });
+      if (days[key]) lines.push(days[key][0] + ". " + days[key][1]);
+      if (key === "10-08") lines.push("National Salmon Day. A food day for the fish, grilled, smoked, or raw.");
+      var dow = now.getDay();
+      if (m === 10 && dow === 4 && d >= 8 && d <= 14) lines.push("World Sight Day. The second Thursday in October, for eye care and avoidable blindness.");
+      el.textContent = lines.length ? lines.join(" ") : "No named national day on the list for this date.";
+    }
     function applyHomeFeeds() {
+      if (typeof paintNationalDays === "function") paintNationalDays();
       if (typeof paintSkyWater === "function") paintSkyWater();
       if (typeof paintChartsPass === "function") paintChartsPass();
       if (typeof paintWatchPass === "function") paintWatchPass();
