@@ -16,6 +16,7 @@
         var phone = w <= 720 || (h <= 520 && w <= 980) || (coarse && Math.min(w, h) <= 520);
         if (phone) {
           document.documentElement.classList.add("phone");
+        document.documentElement.classList.add("dim-motion");
           setTimeout(function () { document.documentElement.classList.add("phone-still"); }, 10000);
         }
         if (phone && w > h) document.documentElement.classList.add("phone-land");
@@ -60,7 +61,7 @@
         try { if (window.__bzWs) window.__bzWs.close(); } catch (e0) {}
         window.__bzWs = null;
       } else {
-        document.documentElement.classList.remove("dim-motion");
+        if (!document.documentElement.classList.contains("phone")) document.documentElement.classList.remove("dim-motion");
         window.__bzOff = false;
         setTimeout(wakeBoard, 50);
         if (typeof connectBlitzWs === "function") setTimeout(connectBlitzWs, 400);
@@ -3499,7 +3500,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1169</span>
+      <span class="hdr-ver" id="hdr-ver">v1170</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5577,7 +5578,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1169;
+    window.BOARD_VER = 1170;
 
     
     function communityShort() {
@@ -7355,9 +7356,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
     function paintPlaneMap(el, latN, lonN, note) {
       if (window.__planeBusy) return;
+      var on = document.querySelector(".page.on");
+      if (on && on.id !== "sky") return;
       window.__planeBusy = true;
       var frame = document.getElementById("sky-map");
-      showSkyDoc(frame, el, skyTileDoc(latN, lonN, 8, "day"));
       fetch("https://api.adsb.lol/v2/lat/" + Number(latN).toFixed(3) + "/lon/" + Number(lonN).toFixed(3) + "/dist/100")
         .then(function (r) { return r.json(); })
         .then(function (d) {
@@ -11525,6 +11527,14 @@ function currentRotation() {
       });
       if (id === "storms" && typeof paintStormPage === "function") paintStormPage();
       if (id === "sports" && typeof paintSportsBoard === "function") paintSportsBoard();
+      if (id !== "sky") {
+        var skyF = document.getElementById("sky-map");
+        if (skyF && skyF.src && skyF.src.indexOf("about:blank") < 0) {
+          try { if (skyF.__blob) URL.revokeObjectURL(skyF.__blob); } catch (eB) {}
+          skyF.removeAttribute("srcdoc");
+          skyF.src = "about:blank";
+        }
+      }
       if (id !== "marine") {
         if (typeof stopSeaMapRotate === "function") stopSeaMapRotate();
         var seaF = document.getElementById("sea-map");
