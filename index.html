@@ -3499,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1187</span>
+      <span class="hdr-ver" id="hdr-ver">v1188</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5606,7 +5606,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1187;
+    window.BOARD_VER = 1188;
 
     
     function communityShort() {
@@ -5735,7 +5735,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (!orig || orig.__bw) return;
       var wrapped = function (url, opt) {
         var u = String(url || "");
-        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|deals(?:-\d{5})?\.json|coupons(?:-\d{5})?\.json|ticketmaster\.com|espn\.com|api\.fda\.gov|overpass|\/nws-alerts|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov|ssd-api\.jpl\.nasa\.gov|ndbc\.noaa\.gov|spc\.noaa\.gov|fema\.gov|arcgis\.com|\/pub\?/i.test(u);
+        var optional = /house\.json|\/house(\b|$)|\/adsb\?|\/busy\?|adsb\.lol|adsb\.fi|events-\d{5}\.json|deals(?:-\d{5})?\.json|coupons(?:-\d{5})?\.json|ticketmaster\.com|espn\.com|api\.fda\.gov|overpass|\/nws-alerts|jsdelivr\.net\/gh\/valentenick|opengolfapi\.org|corsproxy\.io|allorigins\.win|codetabs\.com|MIATCD|fplmaps|drive\.google\.com\/uc|drive\.usercontent\.google\.com|visibleplanets\.dev|nhc\.noaa\.gov|news\.google\.com|tidesandcurrents\.noaa\.gov|rss2json|wheretheiss|calendar\.google\.com|open-meteo\.com|mesonet\.agron|sunrise-sunset\.org|cosmyday\.com|api\.weather\.gov|swpc\.noaa.gov|waterservices\.usgs\.gov|ssd-api\.jpl\.nasa\.gov|ndbc\.noaa\.gov|spc\.noaa\.gov|fema\.gov|arcgis\.com|\/pub\?|radio-browser\.info/i.test(u);
         return orig.apply(this, arguments).then(function (r) {
           if (!r.ok && r.status >= 400) {
             if (!optional) {
@@ -10865,7 +10865,9 @@ function gatorRange() {
       var dark = document.documentElement.classList.contains("dark");
       var note = document.getElementById("wx-map-note");
       if (live) { live.classList.remove("on"); live.hidden = true; live.style.display = "none"; try { live.src = "about:blank"; } catch (e1) {} }
-      var url = "https://radar.weather.gov/ridge/standard/K" + code + "_loop.gif?t=" + Date.now();
+      var phone = document.documentElement.classList.contains("phone");
+      var base = "https://radar.weather.gov/ridge/standard/K" + code + (phone ? "_0.gif" : "_loop.gif");
+      var url = base + "?t=" + Date.now();
       if (img) {
         img.classList.add("on");
         img.hidden = false;
@@ -10875,13 +10877,13 @@ function gatorRange() {
         img.style.filter = dark ? "brightness(.62) contrast(1.2) saturate(1.15)" : "none";
         img.onerror = function () {
           img.style.filter = "none";
-          img.src = "https://radar.weather.gov/ridge/standard/CONUS_loop.gif?t=" + Date.now();
-          if (note) note.textContent = "National loop";
+          img.src = "https://radar.weather.gov/ridge/standard/CONUS_" + (phone ? "0" : "loop") + ".gif?t=" + Date.now();
+          if (note) note.textContent = phone ? "National still" : "National loop";
         };
         img.src = url;
       }
-      if (note) note.textContent = "NWS K" + code + " loop";
-      if (typeof noteFeed === "function") noteFeed("radar", true, "NWS K" + code + " loop");
+      if (note) note.textContent = phone ? ("NWS K" + code + " still") : ("NWS K" + code + " loop");
+      if (typeof noteFeed === "function") noteFeed("radar", true, phone ? ("NWS K" + code + " still") : ("NWS K" + code + " loop"));
     }
 
     function applyRadar() {
@@ -12184,8 +12186,17 @@ function currentRotation() {
         });
         return out;
       }
-      var url = "https://de1.api.radio-browser.info/json/stations/search?countrycode=US&geo_lat=" + homeLat() + "&geo_long=" + homeLon() + "&geo_distance=160000&hidebroken=true&order=clickcount&reverse=true&limit=40";
-      fetch(url, { headers: { "User-Agent": "CommonsBoard/1.0" } }).then(function (r) { return r.json(); }).then(function (rows) {
+      var q = "countrycode=US&geo_lat=" + homeLat() + "&geo_long=" + homeLon() + "&geo_distance=160000&hidebroken=true&order=clickcount&reverse=true&limit=40";
+      var mirrors = [
+        "https://de1.api.radio-browser.info/json/stations/search?" + q,
+        "https://de2.api.radio-browser.info/json/stations/search?" + q,
+        "https://nl1.api.radio-browser.info/json/stations/search?" + q
+      ];
+      function tryMirror(i) {
+        if (i >= mirrors.length) { applyList(pad(preset.length ? preset : RADIO_PRESETS.CT)); return; }
+        var ctrl = new AbortController();
+        var to = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 4500);
+        fetch(mirrors[i], { signal: ctrl.signal }).then(function (r) { clearTimeout(to); if (!r.ok) throw new Error("bad"); return r.json(); }).then(function (rows) {
         if (gen !== window.__radioGen) return;
         var out = [], seen = {};
         var buckets = { News: [], Talk: [], Public: [], Country: [], Rock: [], Pop: [], Jazz: [], Sports: [], Other: [] };
@@ -12225,8 +12236,10 @@ function currentRotation() {
         applyList(pad(out).slice(0, 8));
       }).catch(function () {
         if (gen !== window.__radioGen) return;
-        applyList(pad(preset.length ? preset : RADIO_PRESETS.CT));
+        tryMirror(i + 1);
       });
+      }
+      tryMirror(0);
     }
     window.__fillZipRadio = fillZipRadio;
     fillZipRadio();
