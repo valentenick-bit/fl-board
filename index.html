@@ -3499,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1174</span>
+      <span class="hdr-ver" id="hdr-ver">v1175</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5577,7 +5577,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1174;
+    window.BOARD_VER = 1175;
 
     
     function communityShort() {
@@ -16407,6 +16407,10 @@ function currentRotation() {
     }
     function connectBlitzWs() {
       if (document.hidden || window.__bzOff) return;
+      if (document.documentElement.classList.contains("phone")) {
+        var on = document.querySelector(".page.on");
+        if (!on || on.id !== "tenday") return;
+      }
       if (window.__bzWs && (window.__bzWs.readyState === 0 || window.__bzWs.readyState === 1)) return;
       var n = ((window.__bzWsN || 0) % 8) + 1;
       window.__bzWsN = n;
@@ -22865,8 +22869,12 @@ function mustEatsFL() {
     function touchFeed(key, ok, detail) {
       noteFeed(key, ok, detail);
       if (window.__paintingHealth) return;
+      var onHealth = document.getElementById("health");
+      if (!onHealth || !onHealth.classList.contains("on")) return;
+      var nowMs = Date.now();
+      if (nowMs - (window.__healthTouch || 0) < 10000) return;
+      window.__healthTouch = nowMs;
       if (typeof paintHealth === "function") paintHealth();
-      if (typeof paintStamps === "function") paintStamps();
     }
     function feedAge(key) {
       var f = window.__feeds[key];
