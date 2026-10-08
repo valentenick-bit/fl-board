@@ -1908,6 +1908,8 @@
     .mlb-split small { display:block; letter-spacing:.06em; text-transform:uppercase; font-size:9px; color:#8b93a0; }
     .mlb-split b { font-size:12px; }
     .mlb-watch { margin:3px 0 0; font-size:11px; color:#5c6570; }
+    .mlb-diamond { display:flex; align-items:center; gap:8px; margin-top:4px; }
+    .mlb-diamond svg { width:42px; height:42px; }
     .game-card { border:1px solid var(--hair); border-radius:16px; padding:10px 12px; margin:0 0 8px; background:var(--card, #fff); }
     html.dark .game-card { background:#1b2430; }
     .game-top { display:flex; justify-content:space-between; gap:8px; font-size:12px; opacity:.8; margin-bottom:6px; }
@@ -3490,7 +3492,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1149</span>
+      <span class="hdr-ver" id="hdr-ver">v1150</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5546,7 +5548,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1149;
+    window.BOARD_VER = 1150;
 
     
     function communityShort() {
@@ -27764,11 +27766,15 @@ function wxSvg(kind, box) {
           var rows = live
             ? '<div class="mlb-rhe"><span></span><span></span><span>R</span><span>H</span><span>E</span></div>' + row(g.a, g.ar, g.aa, g.as, g.ah, g.ae) + row(g.b, g.br, g.ba, g.bs, g.bh, g.be)
             : row(g.a, g.ar, g.aa, "", "", "") + row(g.b, g.br, g.ba, "", "", "");
+          function base(on) { return on ? "#c2410c" : "#d7dbe3"; }
+          var diamond = g.state === "in"
+            ? '<div class="mlb-diamond"><svg viewBox="0 0 40 40" aria-label="Bases"><polygon points="20,4 32,16 20,28 8,16" fill="' + base(g.b2) + '"/><polygon points="32,16 40,24 32,32 24,24" fill="' + base(g.b1) + '"/><polygon points="8,16 16,24 8,32 0,24" fill="' + base(g.b3) + '"/></svg><span>' + (g.note || "Nobody on") + '</span></div>'
+            : '';
           var split = (g.pitch || g.bat)
             ? '<div class="mlb-split"><div><small>Pitching</small><b>' + (g.pitch || "—") + '</b></div><div><small>At bat</small><b>' + (g.bat || "—") + '</b></div></div>'
             : '';
           return '<article class="mlb-card">' + head + (g.lead ? '<p class="mlb-lead">' + g.lead + '</p>' : '') + rows +
-            (g.note ? '<p class="mlb-watch">' + g.note + '</p>' : '') + split +
+            diamond + split +
             (g.watch ? '<p class="mlb-watch">' + g.watch + '</p>' : '') + '</article>';
         }
         return '<article class="game-card"><div class="game-top"><b>' + g.league + '</b><span>' + g.detail + '</span></div>' +
@@ -27946,7 +27952,9 @@ function wxSvg(kind, box) {
                 lead: ((ev.notes || [])[0] || {}).headline || "",
                 a: an, aa: (a.team || {}).abbreviation || "", as: a.score || (state === "pre" ? "" : "0"), ar: ((a.records || [])[0] || {}).summary || "", ah: stat(a, "hit"), ae: stat(a, "error"),
                 b: bn, ba: (b.team || {}).abbreviation || "", bs: b.score || (state === "pre" ? "" : "0"), br: ((b.records || [])[0] || {}).summary || "", bh: stat(b, "hit"), be: stat(b, "error"),
-                note: note, pitch: pitch, bat: (sit.batter && sit.batter.athlete && sit.batter.athlete.shortName) || "", watch: watch, venue: venue
+                note: note, pitch: pitch, bat: (sit.batter && sit.batter.athlete && sit.batter.athlete.shortName) || "",
+                b1: !!(sit.onFirst), b2: !!(sit.onSecond), b3: !!(sit.onThird),
+                watch: watch, venue: venue
               });
             });
             if (chunk.length) {
