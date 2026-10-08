@@ -1891,7 +1891,7 @@
 
 
 
-    .mlb-card { border:1px solid #d7dbe3; border-radius:10px; padding:8px 10px; margin:0 0 8px; background:#fff; color:#122; max-width:420px; }
+    .uv-bar { height:8px; border-radius:99px; margin-top:6px; background:linear-gradient(90deg,#16a34a,#eab308,#ea580c,#dc2626); }\n    .mlb-card { border:1px solid #d7dbe3; border-radius:10px; padding:8px 10px; margin:0 0 8px; background:#fff; color:#122; max-width:420px; }
     html.dark .mlb-card { background:#101820; color:#f4f1ea; border-color:#2a3442; }
     .mlb-status { display:flex; justify-content:space-between; gap:6px; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:#5c6570; }
     .mlb-status b { color:#c2410c; font-size:12px; }
@@ -3493,7 +3493,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1158</span>
+      <span class="hdr-ver" id="hdr-ver">v1159</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4028,6 +4028,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         <div class="sea-top-left">
         <p class="sheet-kicker">Boating</p>
+        <div class="card" id="beach-card"><b>Beach</b><span id="beach-line">Checking the shore…</span><div id="uv-bar" class="uv-bar" hidden></div></div>
         <div class="card boat-card" id="boat-card">
           <b id="coast-title">Boating report</b>
           <strong id="boat-go" class="boat-go">Checking the water…</strong>
@@ -4149,6 +4150,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div class="tile"><label>Sunspots</label><strong id="live-spots">—</strong></div>
           <div class="tile" id="chip-space"><label>Space weather</label><strong id="live-space">Quiet</strong></div>
         </div>
+        <div class="card" id="solar-scale-card"><b>Solar scale</b><span id="solar-scale">Sunrise and sunset quality for this pin…</span></div>
+        <div class="card" id="aurora-odds-card"><b>Aurora odds</b><span id="aurora-odds">Checking whether this pin can see it…</span></div>
+        <div class="card" id="conjunction-card"><b>Pairing</b><span id="conjunction-line">Checking the bright planets…</span></div>
         <div class="card"><b id="iss-title">ISS</b><span id="live-iss">Looking up the next pass</span></div>
         <div class="card" id="rock-card" hidden><b>Close approaches</b><span id="live-rocks">Checking this week's near-Earth passes…</span></div>
         <div class="card" id="fireball-card" hidden><b>Fireballs</b><span id="live-fireballs">Checking recent bright meteors…</span></div>
@@ -5566,7 +5570,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1158;
+    window.BOARD_VER = 1159;
 
     
     function communityShort() {
@@ -6618,7 +6622,52 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (atl) atl.hidden = isFinite(lon) && lon < -105;
       if (window.__wxMapPick && window.__wxMapPick !== "radar") showChart(window.__wxMapPick);
     }
+
+    function paintSkyWater() {
+      var lat = typeof homeLat === "function" ? Number(homeLat()) : NaN;
+      var lon = typeof homeLon === "function" ? Number(homeLon()) : NaN;
+      if (!isFinite(lat)) return;
+      var kind = typeof seaKind === "function" ? seaKind() : "";
+      var coastal = kind && kind !== "inland";
+      var beach = document.getElementById("beach-card");
+      var uv = document.getElementById("uv-bar");
+      if (beach) beach.hidden = !coastal;
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&daily=uv_index_max,sunrise,sunset&hourly=cloud_cover&forecast_days=1&timezone=auto")
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var d = (j && j.daily) || {};
+          var clouds = ((j && j.hourly) || {}).cloud_cover || [];
+          var uvMax = (d.uv_index_max || [])[0];
+          var cloud = clouds.length ? Math.round(clouds.reduce(function (a, b) { return a + b; }, 0) / clouds.length) : null;
+          var solar = document.getElementById("solar-scale");
+          if (solar) solar.textContent = (cloud == null ? "Sky" : (cloud < 30 ? "Clear" : cloud < 70 ? "Broken" : "Cloudy")) + " for sunrise and sunset" + (uvMax != null ? ". UV peaks at " + uvMax : "") + ".";
+          var beachLine = document.getElementById("beach-line");
+          if (beachLine && coastal) {
+            var go = (uvMax != null && uvMax >= 8) ? "Hot sun" : (cloud != null && cloud > 70) ? "Gray" : "Good";
+            beachLine.textContent = go + " at this shore. " + (uvMax != null ? "UV " + uvMax + "." : "");
+          }
+          if (uv && coastal && uvMax != null) { uv.hidden = false; uv.style.width = Math.min(100, uvMax * 10) + "%"; }
+        }).catch(function () {});
+      var kpText = ((document.getElementById("live-kp") || {}).textContent || "");
+      var kp = parseFloat(kpText.replace(/[^0-9.]/g, "")) || 0;
+      var odds = document.getElementById("aurora-odds");
+      var oddsCard = document.getElementById("aurora-odds-card");
+      var canSee = lat >= 40 || kp >= 6;
+      if (oddsCard) oddsCard.hidden = !canSee;
+      if (odds) odds.textContent = canSee ? ("Kp " + kp + " at this latitude. " + (kp >= 5 ? "A glow is possible low in the north." : "Quiet. Needs a stronger storm.")) : "Not visible from this pin tonight.";
+      var pair = document.getElementById("conjunction-line");
+      if (pair) {
+        var names = ["live-planet1", "live-planet2", "live-planet3"].map(function (id) { return ((document.getElementById(id) || {}).textContent || "").trim(); }).filter(Boolean);
+        pair.textContent = names.length >= 2 ? (names[0] + " and " + names[1] + " are the bright pair after dark at this pin.") : "No close pairing listed for tonight.";
+      }
+      var meteor = document.getElementById("live-meteor");
+      if (meteor && /none|—/.test(meteor.textContent || "")) {
+        var chip = document.getElementById("chip-meteor");
+        if (chip) chip.hidden = true;
+      }
+    }
     function applyHomeFeeds() {
+      if (typeof paintSkyWater === "function") paintSkyWater();
       if (typeof paintChartsPass === "function") paintChartsPass();
       if (typeof paintWatchPass === "function") paintWatchPass();
       if (typeof paintNowPass === "function") paintNowPass();
