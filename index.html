@@ -3499,7 +3499,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1168</span>
+      <span class="hdr-ver" id="hdr-ver">v1169</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5577,7 +5577,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1168;
+    window.BOARD_VER = 1169;
 
     
     function communityShort() {
@@ -7511,9 +7511,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         });
     }
 
-    function showSkyMap(id) {
+    function showSkyMap(id, force) {
       var nowMs = Date.now();
-      if (window.__skyMapView === id && nowMs - (window.__skyMapAt || 0) < 20000 && id !== "planes" && id !== "lights") return;
+      if (!force && window.__skyMapView === id && nowMs - (window.__skyMapAt || 0) < 45000) return;
       window.__skyMapAt = nowMs;
       var lat = homeLat(), lon = homeLon();
       var views = {
@@ -8135,7 +8135,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       box.addEventListener("click", function (e) {
         var b = e.target && e.target.closest ? e.target.closest("button[data-sky-map]") : null;
         if (!b) return;
-        if (typeof showSkyMap === "function") showSkyMap(b.getAttribute("data-sky-map"));
+        if (typeof showSkyMap === "function") showSkyMap(b.getAttribute("data-sky-map"), true);
       });
     })();
 
@@ -8158,7 +8158,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         el.setAttribute("data-src", url);
       }
       try { if (typeof showSeaMap === "function") showSeaMap(window.__seaMapView || "waves"); } catch (e1) {}
-      try { if (typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky"); else setFrame("sky-map", typeof homeSkyEmbed === "function" ? homeSkyEmbed() : ""); } catch (e2) {}
+      try { if (!(window.__skyMapAt && Date.now() - window.__skyMapAt < 60000)) { if (typeof showSkyMap === "function") showSkyMap(window.__skyMapView || "sky"); else setFrame("sky-map", typeof homeSkyEmbed === "function" ? homeSkyEmbed() : ""); } } catch (e2) {}
       var seaNote = document.getElementById("sea-map-note");
       if (seaNote && !window.__seaMapView) seaNote.textContent = "Waves · pin on " + (homePlace() || "home");
       var skyNote = document.getElementById("sky-map-note");
@@ -28436,6 +28436,9 @@ function wxSvg(kind, box) {
     }
     function writeBriefing() {
       try {
+        var nowMs = Date.now();
+        if (nowMs - (window.__briefAt || 0) < 12000) return;
+        window.__briefAt = nowMs;
         if (typeof syncBriefToWeatherTicker === "function") syncBriefToWeatherTicker();
         if (typeof startBriefWatch === "function") startBriefWatch();
         var tick = document.getElementById("ticktext");
