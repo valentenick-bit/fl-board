@@ -3492,7 +3492,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1150</span>
+      <span class="hdr-ver" id="hdr-ver">v1151</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5548,7 +5548,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1150;
+    window.BOARD_VER = 1151;
 
     
     function communityShort() {
@@ -27919,20 +27919,27 @@ function wxSvg(kind, box) {
               var pitch = "";
               var watch = "";
               function stat(side, name) {
+                if (name === "hit" && side.hits != null) return String(side.hits);
+                if (name === "error" && side.errors != null) return String(side.errors);
                 var rows = side.statistics || [];
                 var hit = rows.filter(function (r) { return String(r.name || r.abbreviation || "").toLowerCase().indexOf(name) >= 0; })[0];
                 return hit ? hit.displayValue : "";
               }
+              function who(node) {
+                return (node && node.athlete && (node.athlete.shortName || node.athlete.displayName)) || "";
+              }
+              var due = (sit.dueUp || [])[0] || {};
+              var batName = who(sit.batter) || who(due) || "";
+              var pitName = who(sit.pitcher) || who((sit.lastPlay || {}).pitcher) || "";
+              if (!pitName && sit.lastPlay && /pitches to/i.test(sit.lastPlay.text || "")) pitName = String(sit.lastPlay.text).split(" pitches to ")[0];
+              if (!batName && sit.lastPlay && /pitches to/i.test(sit.lastPlay.text || "")) batName = String(sit.lastPlay.text).split(" pitches to ")[1];
               if (pack.sp === "mlb" && state === "in") {
                 note = (sit.outs != null ? sit.outs + " out" : "") + (sit.balls != null ? " · " + sit.balls + "-" + (sit.strikes || 0) : "");
-                var bat = sit.batter && sit.batter.athlete && sit.batter.athlete.shortName;
-                var pit = sit.pitcher && sit.pitcher.athlete && sit.pitcher.athlete.shortName;
-                if (pit) pitch = pit;
-                if (bat) note = note;
+                pitch = pitName;
               }
               if (pack.sp === "mlb" && state === "pre") {
-                var probs = comp.probables || [];
-                pitch = probs.map(function (p) { return ((p.athlete || {}).shortName || "") + " " + (p.record || ""); }).filter(Boolean).join(" · ");
+                var probs = [].concat(a.probables || [], b.probables || []);
+                pitch = probs.map(function (pr) { return ((pr.athlete || {}).shortName || ""); }).filter(Boolean).join(" vs ");
               }
               if (pack.sp === "nfl" && state === "in") note = sit.shortDownDistanceText || sit.possessionText || "";
               if ((pack.sp === "nba" || pack.sp === "nhl") && state === "in") note = (st.displayClock ? st.displayClock + " left" : "");
@@ -27952,7 +27959,7 @@ function wxSvg(kind, box) {
                 lead: ((ev.notes || [])[0] || {}).headline || "",
                 a: an, aa: (a.team || {}).abbreviation || "", as: a.score || (state === "pre" ? "" : "0"), ar: ((a.records || [])[0] || {}).summary || "", ah: stat(a, "hit"), ae: stat(a, "error"),
                 b: bn, ba: (b.team || {}).abbreviation || "", bs: b.score || (state === "pre" ? "" : "0"), br: ((b.records || [])[0] || {}).summary || "", bh: stat(b, "hit"), be: stat(b, "error"),
-                note: note, pitch: pitch, bat: (sit.batter && sit.batter.athlete && sit.batter.athlete.shortName) || "",
+                note: note, pitch: pitch, bat: batName || "",
                 b1: !!(sit.onFirst), b2: !!(sit.onSecond), b3: !!(sit.onThird),
                 watch: watch, venue: venue
               });
