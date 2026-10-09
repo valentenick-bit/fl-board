@@ -3552,7 +3552,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1192</span>
+      <span class="hdr-ver" id="hdr-ver">v1193</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5667,7 +5667,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1192;
+    window.BOARD_VER = 1193;
 
     
     function communityShort() {
@@ -15891,7 +15891,16 @@ function currentRotation() {
       if (typeof paintStormPage === "function") paintStormPage();
     }, 5 * 60 * 1000);
     function stormMapCatalog(s) {
-      var gulf = /^EP|^CP/.test(String((s && s.id) || "").toUpperCase());
+      var pac = /^EP|^CP/.test(String((s && s.id) || "").toUpperCase());
+      var geo1 = pac
+        ? { id: "gulf", label: "East Pacific", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/eep/GEOCOLOR/1800x1080.jpg", note: "GOES GeoColor · East Pacific" }
+        : { id: "gulf", label: "Gulf satellite", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg", note: "GOES GeoColor · Gulf" };
+      var geo2 = pac
+        ? { id: "carib", label: "Pacific wide", src: "https://cdn.star.nesdis.noaa.gov/GOES18/ABI/SECTOR/tpw/GEOCOLOR/1800x1080.jpg", note: "GOES GeoColor · Tropical Pacific" }
+        : { id: "carib", label: "Caribbean", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg", note: "GOES GeoColor · Caribbean" };
+      var ir = pac
+        ? "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/eep/13/1800x1080.jpg"
+        : "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/13/1000x1000.jpg";
       return [
         { id: "cone", label: "Forecast cone", src: nhcGraphic(s, "cone"), note: "5-day track, cone, watches" },
         { id: "cone3", label: "3-day cone", src: nhcGraphic(s, "cone3"), note: "Near-term track" },
@@ -15903,10 +15912,10 @@ function currentRotation() {
         { id: "arrival", label: "Arrival", src: nhcGraphic(s, "arrival"), note: "Most likely tropical-storm wind arrival" },
         { id: "surge", label: "Peak surge", src: nhcGraphic(s, "surge"), note: "Coastal inundation forecast" },
         { id: "messages", label: "Key messages", src: nhcGraphic(s, "messages"), note: "NHC hazard summary" },
-        { id: "gulf", label: "Gulf satellite", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg", note: "GOES GeoColor · Gulf" },
-        { id: "carib", label: "Caribbean", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg", note: "GOES GeoColor · Caribbean" },
-        { id: "ir", label: "Infrared", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/" + (gulf ? "ep" : "ga") + "/13/1000x1000.jpg", note: "GOES infrared" },
-        { id: "sst", label: "Sea temp", src: "https://www.ospo.noaa.gov/data/sst/contour/gulfmex.cf.gif", note: "Gulf sea surface temperature" }
+        geo1,
+        geo2,
+        { id: "ir", label: "Infrared", src: ir, note: "GOES infrared" },
+        { id: "sst", label: "Sea temp", src: "https://www.ospo.noaa.gov/data/sst/contour/gulfmex.cf.gif", note: pac ? "Gulf SST (Pacific product not available)" : "Gulf sea surface temperature" }
       ];
     }
     function showStormMap(id) {
