@@ -645,7 +645,7 @@
       grid-column:1 / -1;
     }
     header { display:grid; grid-template-columns:1fr; }
-    .hdr-left { display:flex; align-items:center; gap:8px; min-width:0; justify-self:start; margin-top:-28px; }
+    .hdr-left { display:flex; align-items:center; gap:8px; min-width:0; justify-self:start; margin-top:-14px; }
     header .brand { justify-self:start; }
     header .clock { justify-self:end; text-align:right; }
     .clock-top { display:flex; align-items:center; justify-content:flex-end; gap:8px; }
@@ -855,7 +855,7 @@
       text-shadow:0 1px 2px rgba(0,0,0,.35);
       grid-column: unset; grid-row: unset;
     }
-    header > .hdr-citystate {
+    header > .hdr-place {
       position:absolute !important; top:6px; right:52px; z-index:50;
       font-size:10px; font-weight:700; letter-spacing:.1em;
       line-height:1; opacity:.8; pointer-events:none;
@@ -3564,8 +3564,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1203</span>
+      <span class="hdr-place" id="hdr-place"></span>
+      <span class="hdr-ver" id="hdr-ver">v1204</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5680,7 +5680,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1203;
+    window.BOARD_VER = 1204;
 
     
     function communityShort() {
@@ -11995,7 +11995,7 @@ function currentRotation() {
       if (typeof paintHdrRadio === "function") paintHdrRadio();
       if (!opts.keepSaved) saveRadio(url);
       var hasActiveWarn = !!(window.__wxRisk && window.__wxRisk.warn) || !!(window.__nwsAlerts && window.__nwsAlerts.some && window.__nwsAlerts.some(function(f){ return /warning/i.test((f.properties||{}).event||""); }));
-      if (inQuietHours() && !window.__forceRadio && !window.__nwrAlert && !hasActiveWarn) {
+      if (inQuietHours() && !opts.force && !window.__forceRadio && !window.__nwrAlert && !hasActiveWarn) {
         audio.pause();
         if (status) {
           var qs = getSet();
@@ -12200,7 +12200,9 @@ function currentRotation() {
 
       var warnOn = !!(window.__nwrAlert) || !!(window.__wxRisk && window.__wxRisk.warn);
       if (warnOn) {
-        if (typeof playStation === "function") playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
+        window.__forceRadio = true;
+        window.__radioMuted = false;
+        if (typeof playStation === "function") playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true, force: true });
         return;
       }
       if (window.__radioMuted) {
@@ -13151,7 +13153,7 @@ function currentRotation() {
         : "It also looks around " + place + " for dinner, a round of golf, and something to do tonight. If you belong to a community, those notices stay with the community, even when you are at the other house.";
     }
     function paintHdrPlace() {
-      var el = document.getElementById("hdr-citystate");
+      var el = document.getElementById("hdr-place");
       if (!el) return;
       var city = typeof homePlace === "function" ? homePlace() : "";
       var st = typeof homeState === "function" ? homeState() : "";
@@ -29945,8 +29947,9 @@ function homeCountyGuess() {
             if (!window.__nwrAlert || !(window.__nwrPrev && window.__nwrPrev.url && !isNoaaUrl(window.__nwrPrev.url))) rememberPrev();
             window.__nwrAlert = true;
             window.__forceRadio = true;
-            if (getSet().noaa !== "0" && !isNoaaUrl(playing)) {
-              playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
+            window.__radioMuted = false;
+            if (getSet().noaa !== "0") {
+              playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true, force: true });
             }
           } else if (window.__nwrAlert) {
             window.__nwrUserMuted = false;
