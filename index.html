@@ -1885,6 +1885,59 @@
       #marine .sea-top-left,
       #sky .sky-top-left { grid-column:1; grid-row:2; }
     }
+    #storms .storm-top {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(220px,38%);
+      gap:12px 16px;
+      align-items:start;
+    }
+    #storms .storm-map-frame {
+      grid-column:2;
+      grid-row:1;
+      margin:0;
+      max-width:100%;
+      width:100%;
+    }
+    #storms .storm-top-left {
+      grid-column:1;
+      grid-row:1;
+      min-width:0;
+    }
+    #storms .storm-map-frame .radar-crop {
+      position:relative;
+      width:100%;
+      height:auto;
+      aspect-ratio:4 / 3;
+      min-height:240px;
+      max-height:none;
+      overflow:hidden;
+      border-radius:16px;
+      background:#15202b;
+    }
+    #storms .storm-map-frame img {
+      position:absolute;
+      inset:0;
+      width:100% !important;
+      height:100% !important;
+      object-fit:contain;
+      background:#0b1220;
+    }
+    @media (orientation:portrait) {
+      #storms .storm-top { grid-template-columns:1fr; }
+      #storms .storm-map-frame { grid-column:1; grid-row:1; width:100%; margin:0 0 10px; }
+      #storms .storm-map-frame .radar-crop { max-height:34vh; min-height:0; }
+      #storms .storm-top-left { grid-column:1; grid-row:2; }
+    }
+    #storms .storm-tap { cursor:pointer; }
+    #storms .storm-tap:after { content:" ›"; opacity:.5; }
+    #storm-text-pop { display:none; position:fixed; inset:0; z-index:85; align-items:center; justify-content:center; background:rgba(12,28,36,.55); padding:18px; }
+    #storm-text-pop.on { display:flex; }
+    #storm-text-pop .pop-card { width:min(720px,100%); max-height:86vh; background:var(--sand,#f4efe4); color:var(--navy,#1b2a4a); border-radius:18px; overflow:auto; box-shadow:0 18px 50px rgba(0,0,0,.28); }
+    html.dark #storm-text-pop .pop-card { background:#1e3330; color:#efe4c8; }
+    #storm-text-pop .pop-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; font-weight:800; position:sticky; top:0; background:inherit; }
+    #storm-text-pop .pop-bar button { border:0; background:transparent; color:inherit; font:inherit; font-size:22px; cursor:pointer; }
+    #storm-text-pop .pop-body { padding:0 14px 16px; font-size:15px; line-height:1.45; white-space:pre-wrap; }
+    #storms .storm-frames { display:none !important; }
     .wx-map-frame .wx-map-pane { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:#0b1220; object-fit:contain; object-position:center; }
     .wx-map-frame .wx-map-pane.on { display:block; }
     .wx-map-frame iframe.wx-map-pane { width:100%; height:100%; }
@@ -3499,7 +3552,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1190</span>
+      <span class="hdr-ver" id="hdr-ver">v1191</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4257,73 +4310,73 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </section>
             <section id="storms" class="page sheet">
         <h2 data-k="Named storms">Storms</h2>
-        <p class="pill-key" id="storm-lead">Named storms in this basin show here. The page only joins the rotation when one can reach the home pin.</p>
-        <div class="card" id="watch-alerts"><b>Alerts</b><span id="watch-alerts-body">Checking this pin…</span></div>
-        <div class="card" id="watch-near"><b>Nearby</b><span id="watch-near-body">Checking the next county…</span></div>
-        <div class="card" id="watch-spc"><b>Storm outlook</b><span id="watch-spc-body">Checking the Storm Prediction Center…</span></div>
-        <div class="card" id="watch-reports"><b>Reports</b><span id="watch-reports-body">Last 48 hours at the pin…</span></div>
-        <div class="card" id="watch-afd"><b>Discussion</b><span id="watch-afd-body">Waiting on the local office…</span></div>
-        <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
-        <div class="card" id="noreast-card" hidden>
-          <b id="noreast-title">Nor'easter</b>
-          <span id="noreast-body">Checking coastal winter alerts for this pin…</span>
-        </div>
-        <div class="card" id="hurr-stats"><b>No named storm on this pin</b><span>Quiet until NHC lists a storm that can affect the address on Account.</span></div>
-        <div class="metric-table storm-metrics" id="storm-grid" hidden>
-          <div class="metric-row"><label>Winds</label><strong id="live-storm-wind">—</strong><div></div></div>
-          <div class="metric-row"><label>Pressure</label><strong id="live-storm-pres">—</strong><div></div></div>
-          <div class="metric-row"><label>From home</label><strong id="live-storm-mi">—</strong><div></div></div>
-          <div class="metric-row"><label>Movement</label><strong id="live-storm-move">—</strong><div></div></div>
-          <div class="metric-row"><label>Advisory</label><strong id="live-storm-adv">—</strong><div></div></div>
+        <p class="pill-key" id="storm-lead">Named storms in this basin show here.</p>
+        <div class="storm-top">
+          <div class="storm-map-frame sheet-map wx-map-frame storm-sat-frame" id="storm-sat-frame">
+            <div class="radar-crop radar-stage" id="storm-sat-stage">
+              <img class="wx-map-pane on" id="storm-sat-view" alt="Storm tracker" />
+            </div>
+            <div class="sea-map-pills" id="storm-map-pills">
+              <button type="button" data-storm-map="cone" class="on">Cone</button>
+              <button type="button" data-storm-map="cone3">3-day</button>
+              <button type="button" data-storm-map="wind">Wind</button>
+              <button type="button" data-storm-map="history">History</button>
+              <button type="button" data-storm-map="odds34">39 mph</button>
+              <button type="button" data-storm-map="odds50">58 mph</button>
+              <button type="button" data-storm-map="odds64">74 mph</button>
+              <button type="button" data-storm-map="arrival">Arrival</button>
+              <button type="button" data-storm-map="surge">Surge</button>
+              <button type="button" data-storm-map="messages">Messages</button>
+              <button type="button" data-storm-map="gulf">Gulf</button>
+              <button type="button" data-storm-map="carib">Caribbean</button>
+              <button type="button" data-storm-map="ir">Infrared</button>
+              <button type="button" data-storm-map="sst">Sea temp</button>
+            </div>
+            <p class="wx-map-cap"><b id="storm-sat-label">Forecast cone</b><span id="storm-sat-note">Selected storm</span></p>
+          </div>
+          <div class="storm-top-left">
+            <div id="storm-picks" class="rowbtns storm-picks" hidden></div>
+            <div class="card" id="noreast-card" hidden>
+              <b id="noreast-title">Nor'easter</b>
+              <span id="noreast-body">Checking coastal winter alerts for this pin…</span>
+            </div>
+            <div class="card" id="hurr-stats"><b>No named storm on this pin</b><span>Quiet until NHC lists a storm that can affect the address on Account.</span></div>
+            <div class="metric-table storm-metrics" id="storm-grid" hidden>
+              <div class="metric-row"><label>Winds</label><strong id="live-storm-wind">—</strong><div></div></div>
+              <div class="metric-row"><label>Pressure</label><strong id="live-storm-pres">—</strong><div></div></div>
+              <div class="metric-row"><label>From home</label><strong id="live-storm-mi">—</strong><div></div></div>
+              <div class="metric-row"><label>Movement</label><strong id="live-storm-move">—</strong><div></div></div>
+              <div class="metric-row"><label>Advisory</label><strong id="live-storm-adv">—</strong><div></div></div>
+            </div>
+            <div class="card" id="hurr-home" hidden><b>At the house</b><span id="live-storm-home"></span></div>
+            <div class="card"><b id="storm-basin-label">Basin outlook</b><span id="live-cane">Checking the National Hurricane Center</span></div>
+          </div>
         </div>
         <div class="card storm-hist-card" id="storm-hist-card">
           <b id="storm-hist-title">Advisory history</b>
-          <span class="hint" id="storm-hist-note">Each point is an NHC fix / public advisory. The lines grow as new advisories post.</span>
+          <span class="hint" id="storm-hist-note">Each point is an NHC fix. The lines grow as new advisories post.</span>
           <div class="storm-charts">
             <div class="storm-chart-col"><label>Winds</label><div class="metric-spark hist" id="storm-wind-chart"></div></div>
             <div class="storm-chart-col"><label>Pressure</label><div class="metric-spark hist" id="storm-pres-chart"></div></div>
             <div class="storm-chart-col"><label>From home</label><div class="metric-spark hist" id="storm-dist-chart"></div></div>
           </div>
         </div>
-        <div class="card" id="hurr-home" hidden><b>At the house</b><span id="live-storm-home"></span></div>
-        <div class="card" id="hurr-disc" hidden><b>NHC discussion</b><span></span></div>
-        <div class="card" id="hurr-adv" hidden><b>Public advisory</b><span></span></div>
-        <div class="card"><b id="storm-basin-label">Basin outlook</b><span id="live-cane">Checking the National Hurricane Center</span></div>
-        <div class="wx-map-frame storm-sat-frame" id="storm-sat-frame">
-          <div class="radar-crop radar-stage" id="storm-sat-stage">
-            <img class="wx-map-pane on" id="storm-sat-view" alt="Storm tracker" />
-          </div>
-          <div class="sea-map-pills" id="storm-map-pills">
-            <button type="button" data-storm-map="cone" class="on">Cone</button>
-            <button type="button" data-storm-map="cone3">3-day</button>
-            <button type="button" data-storm-map="wind">Wind</button>
-            <button type="button" data-storm-map="history">History</button>
-            <button type="button" data-storm-map="odds34">39 mph</button>
-            <button type="button" data-storm-map="odds50">58 mph</button>
-            <button type="button" data-storm-map="odds64">74 mph</button>
-            <button type="button" data-storm-map="arrival">Arrival</button>
-            <button type="button" data-storm-map="surge">Surge</button>
-            <button type="button" data-storm-map="messages">Messages</button>
-            <button type="button" data-storm-map="gulf">Gulf</button>
-            <button type="button" data-storm-map="carib">Caribbean</button>
-            <button type="button" data-storm-map="ir">Infrared</button>
-            <button type="button" data-storm-map="sst">Sea temp</button>
-          </div>
-          <p class="wx-map-cap"><b id="storm-sat-label">Forecast cone</b><span id="storm-sat-note">Selected storm</span></p>
+        <div class="storm-actions">
+          <div class="card storm-tap" id="storm-advisory-btn" data-storm-pop="advisory"><b>Advisory text</b><span>Discussion and public advisory</span></div>
+          <div class="card storm-tap" id="storm-details-btn" data-storm-pop="details"><b>Track and hazards</b><span>Forecast positions, wind radii, watches</span></div>
+          <div class="card storm-tap" id="storm-watch-btn" data-storm-pop="watch"><b>Local watch</b><span>Alerts, outlook, reports near the pin</span></div>
         </div>
-        <div class="card" id="storm-track-card">
-          <b>Forecast track</b>
-          <span id="storm-track-body">Waiting on the advisory for positions.</span>
-        </div>
-        <div class="card" id="storm-radii-card">
-          <b>Wind radii</b>
-          <span id="storm-radii-body">Waiting on the advisory for wind extent.</span>
-        </div>
-        <div class="card" id="storm-hazard-card">
-          <b>Hazards</b>
-          <span id="storm-hazard-body">Watches, warnings, rain, and surge from the advisory.</span>
-        </div>
-        <div class="storm-frames" id="storm-frames">
+        <div id="hurr-disc" hidden><b>NHC discussion</b><span></span></div>
+        <div id="hurr-adv" hidden><b>Public advisory</b><span></span></div>
+        <div id="storm-track-card" hidden><b>Forecast track</b><span id="storm-track-body">Waiting on the advisory for positions.</span></div>
+        <div id="storm-radii-card" hidden><b>Wind radii</b><span id="storm-radii-body">Waiting on the advisory for wind extent.</span></div>
+        <div id="storm-hazard-card" hidden><b>Hazards</b><span id="storm-hazard-body">Watches, warnings, rain, and surge from the advisory.</span></div>
+        <div id="watch-alerts" hidden><b>Alerts</b><span id="watch-alerts-body">Checking this pin…</span></div>
+        <div id="watch-near" hidden><b>Nearby</b><span id="watch-near-body">Checking the next county…</span></div>
+        <div id="watch-spc" hidden><b>Storm outlook</b><span id="watch-spc-body">Checking the Storm Prediction Center…</span></div>
+        <div id="watch-reports" hidden><b>Reports</b><span id="watch-reports-body">Last 48 hours at the pin…</span></div>
+        <div id="watch-afd" hidden><b>Discussion</b><span id="watch-afd-body">Waiting on the local office…</span></div>
+        <div class="storm-frames" id="storm-frames" hidden>
           <div class="storm-frame storm-wide" id="storm-hero">
             <img id="hurr-frame" alt="Hurricane view" src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"/>
             <b id="hurr-cap">5-day outlook</b>
@@ -4347,7 +4400,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         <p class="pill-key" id="cane-refs"><a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">National Hurricane Center</a></p>
       </section>
-      <section id="villa" class="page">
+      
+<section id="villa" class="page">
         <h2 data-k="Season">Open / close</h2>
         <div class="card"><b>Open villa</b>
           <div class="check">
@@ -5496,6 +5550,13 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </div>
     </div>
 
+    <div id="storm-text-pop" aria-hidden="true">
+      <div class="pop-card" role="dialog" aria-modal="true">
+        <div class="pop-bar"><span id="storm-pop-title">Details</span><button type="button" id="storm-pop-x" aria-label="Close">×</button></div>
+        <div class="pop-body" id="storm-pop-body"></div>
+      </div>
+    </div>
+
     <div class="board-foot">
     <div class="dock-wrap">
     <nav class="dock" id="dock">
@@ -5606,7 +5667,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1190;
+    window.BOARD_VER = 1191;
 
     
     function communityShort() {
@@ -30341,6 +30402,46 @@ function homeCountyGuess() {
         if (typeof showStormMap === "function") showStormMap(b.getAttribute("data-storm-map"));
       });
     })();
+    
+    (function bindStormPop() {
+      var pop = document.getElementById("storm-text-pop");
+      var title = document.getElementById("storm-pop-title");
+      var body = document.getElementById("storm-pop-body");
+      var x = document.getElementById("storm-pop-x");
+      function close() { if (pop) { pop.classList.remove("on"); pop.setAttribute("aria-hidden", "true"); } window.__popOpen = false; }
+      function open(t, html) {
+        if (!pop || !body) return;
+        if (title) title.textContent = t;
+        body.innerHTML = html || "Nothing posted yet.";
+        pop.classList.add("on");
+        pop.setAttribute("aria-hidden", "false");
+        window.__popOpen = true;
+      }
+      function gather(ids) {
+        return ids.map(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return "";
+          var b = el.querySelector("b");
+          var s = el.querySelector("span");
+          var head = b ? b.textContent : "";
+          var txt = s ? s.textContent : el.textContent;
+          txt = String(txt || "").replace(/\s+/g, " ").trim();
+          if (!txt || /checking|waiting|quiet/i.test(txt) && txt.length < 40) return "";
+          return (head ? "<b>" + head + "</b>\n" : "") + txt;
+        }).filter(Boolean).join("\n\n");
+      }
+      document.addEventListener("click", function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest("[data-storm-pop]") : null;
+        if (!btn) return;
+        var kind = btn.getAttribute("data-storm-pop");
+        if (kind === "advisory") open("Advisory text", gather(["hurr-disc", "hurr-adv"]));
+        else if (kind === "details") open("Track and hazards", gather(["storm-track-card", "storm-radii-card", "storm-hazard-card"]));
+        else if (kind === "watch") open("Local watch", gather(["watch-alerts", "watch-near", "watch-spc", "watch-reports", "watch-afd"]));
+      });
+      if (x) x.addEventListener("click", close);
+      if (pop) pop.addEventListener("click", function (e) { if (e.target === pop) close(); });
+    })();
+
     </script>
 </body>
 </html>
