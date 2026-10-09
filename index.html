@@ -1937,6 +1937,9 @@
     #storm-text-pop .pop-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; font-weight:800; position:sticky; top:0; background:inherit; }
     #storm-text-pop .pop-bar button { border:0; background:transparent; color:inherit; font:inherit; font-size:22px; cursor:pointer; }
     #storm-text-pop .pop-body { padding:0 14px 16px; font-size:15px; line-height:1.45; white-space:pre-wrap; }
+    #storms.on ~ #tenday #wx-radar-view,
+    body:has(#storms.on) #wx-radar-view { display:none !important; }
+    #storms .storm-sat-frame { position:relative; z-index:2; }
     #storms .storm-frames { display:none !important; }
     .wx-map-frame .wx-map-pane { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:#0b1220; object-fit:contain; object-position:center; }
     .wx-map-frame .wx-map-pane.on { display:block; }
@@ -3552,7 +3555,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1193</span>
+      <span class="hdr-ver" id="hdr-ver">v1194</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4330,7 +4333,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
               <button type="button" data-storm-map="gulf">Gulf</button>
               <button type="button" data-storm-map="carib">Caribbean</button>
               <button type="button" data-storm-map="ir">Infrared</button>
-              <button type="button" data-storm-map="sst">Sea temp</button>
             </div>
             <p class="wx-map-cap"><b id="storm-sat-label">Forecast cone</b><span id="storm-sat-note">Selected storm</span></p>
           </div>
@@ -5667,7 +5669,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1193;
+    window.BOARD_VER = 1194;
 
     
     function communityShort() {
@@ -11745,6 +11747,10 @@ function currentRotation() {
         p.style.opacity = "";
       });
       if (id === "storms" && typeof paintStormPage === "function") paintStormPage();
+      if (id === "storms") {
+        var rv = document.getElementById("wx-radar-view");
+        if (rv) rv.style.display = "none";
+      }
       if (id === "sports" && typeof paintSportsBoard === "function") paintSportsBoard();
       if (id !== "tenday") {
         var radarStill = document.getElementById("wx-radar-view");
@@ -15914,8 +15920,7 @@ function currentRotation() {
         { id: "messages", label: "Key messages", src: nhcGraphic(s, "messages"), note: "NHC hazard summary" },
         geo1,
         geo2,
-        { id: "ir", label: "Infrared", src: ir, note: "GOES infrared" },
-        { id: "sst", label: "Sea temp", src: "https://www.ospo.noaa.gov/data/sst/contour/gulfmex.cf.gif", note: pac ? "Gulf SST (Pacific product not available)" : "Gulf sea surface temperature" }
+        { id: "ir", label: "Infrared", src: ir, note: "GOES infrared" }
       ];
     }
     function showStormMap(id) {
