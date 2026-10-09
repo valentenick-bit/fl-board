@@ -3552,7 +3552,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1191</span>
+      <span class="hdr-ver" id="hdr-ver">v1192</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5667,7 +5667,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1191;
+    window.BOARD_VER = 1192;
 
     
     function communityShort() {
@@ -15501,11 +15501,13 @@ function currentRotation() {
     }
     function stormGraphicBase(s) {
       var id = String((s && s.id) || "").toUpperCase();
-      var bin = String((s && s.binNumber) || "").replace(/\s/g, "").toUpperCase();
-      if (!bin && id) {
-        var n = parseInt(id.replace(/\D/g, "").slice(-2), 10);
-        var pref = /^EP/.test(id) ? "EP" : /^CP/.test(id) ? "CP" : "AT";
-        if (n) bin = pref + n;
+      var bin = "";
+      var m = id.match(/^([A-Z]{2})(\d{2})\d{4}$/);
+      if (m) {
+        var pref = m[1] === "AL" ? "AT" : m[1];
+        bin = pref + m[2];
+      } else {
+        bin = String((s && s.binNumber) || "").replace(/\s/g, "").toUpperCase();
       }
       return { id: id, bin: bin };
     }
@@ -15921,6 +15923,9 @@ function currentRotation() {
       });
       var stormsOn = document.getElementById("storms") && document.getElementById("storms").classList.contains("on");
       if (img && pick.src && stormsOn) {
+        img.onerror = function () {
+          if (note) note.textContent = (pick.label || "Map") + " is not posted for this advisory yet.";
+        };
         img.src = pick.src + (pick.src.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
         img.alt = pick.label;
       } else if (img && !stormsOn) {
