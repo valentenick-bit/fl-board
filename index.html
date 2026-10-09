@@ -3557,7 +3557,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
-      <span class="hdr-ver" id="hdr-ver">v1196</span>
+      <span class="hdr-ver" id="hdr-ver">v1197</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5671,7 +5671,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1196;
+    window.BOARD_VER = 1197;
 
     
     function communityShort() {
@@ -12321,7 +12321,7 @@ function currentRotation() {
       if (!btn) return;
       if (getSet().kiosk !== "1") return;
       function start() {
-        if (window.__nwrAlert && !window.__radioMuted) {
+        if (window.__nwrAlert) {
           playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
           return;
         }
@@ -29259,6 +29259,10 @@ function cardBits(id) {
       if (/statement/.test(ev)) return "statement";
       return "other";
     }
+    function isTrueEmergency(ev) {
+      ev = String(ev || "").toLowerCase();
+      return /tornado|hurricane|flash flood|storm surge|extreme wind|tsunami/.test(ev) && /warning|emergency/.test(ev);
+    }
     
     function alertAction(kind, ev) {
       ev = String(ev || "").toLowerCase();
@@ -29852,6 +29856,9 @@ function homeCountyGuess() {
           var r = nwsRank((f.properties || {}).event);
           return r === "warning" || r === "emergency";
         });
+        var isTrueEmerg = keep.some(function (f) {
+          return typeof isTrueEmergency === "function" && isTrueEmergency((f.properties || {}).event);
+        });
         var isStormRot = keep.length > 0;
         window.__wxRisk.warn = !!isWarnEarly;
         window.__wxRisk.emergency = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; });
@@ -29861,6 +29868,7 @@ function homeCountyGuess() {
             if (typeof syncLightningUI === "function") syncLightningUI();
         ringStormDock();
         (function syncNoaa(hasWarn) {
+          hasWarn = !!isTrueEmerg;
           function isNoaaUrl(u) {
             return /weatherusa|\/NWR\/|KHB32|KEC38|nwr/i.test(String(u || ""));
           }
@@ -29913,14 +29921,14 @@ function homeCountyGuess() {
           }
           var audio = document.getElementById("radioPlayer");
           var playing = audio && (audio.getAttribute("src") || audio.src || "");
-          if (hasWarn && !window.__radioMuted) {
+          if (hasWarn) {
             if (!window.__nwrAlert || !(window.__nwrPrev && window.__nwrPrev.url && !isNoaaUrl(window.__nwrPrev.url))) rememberPrev();
             window.__nwrAlert = true;
             window.__forceRadio = true;
             if (getSet().noaa !== "0" && !isNoaaUrl(playing)) {
               playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
             }
-          } else if (window.__nwrAlert && !window.__radioMuted) {
+          } else if (window.__nwrAlert) {
             restorePrev();
           }
         })(!!isWarnEarly);
