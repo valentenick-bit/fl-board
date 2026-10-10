@@ -3568,7 +3568,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1212</span>
+      <span class="hdr-ver" id="hdr-ver">v1213</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5683,7 +5683,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1212;
+    window.BOARD_VER = 1213;
 
     
     function communityShort() {
@@ -20428,6 +20428,26 @@ function paint() {
         var gotZip = false;
         function next(i) {
           if (i >= urls.length) {
+            if (!bag.local || !bag.local.length) {
+              var place = typeof homePlace === "function" ? homePlace() : "";
+              var lat = typeof homeLat === "function" ? homeLat() : 0;
+              var lon = typeof homeLon === "function" ? homeLon() : 0;
+              if (place && lat) {
+                var live = location.origin + "/events-live?lat=" + lat + "&lon=" + lon + "&place=" + encodeURIComponent(place);
+                fetch(live).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+                  var rows = (d && d.events) || [];
+                  if (rows.length) {
+                    bag.local = rows.map(function (e) {
+                      var when = new Date(e.when);
+                      var end = e.end ? new Date(e.end) : new Date(when.getTime() + 3 * 3600 * 1000);
+                      return { sum: e.sum, loc: e.loc || place, desc: e.desc || "", when: when, end: end, allDay: false, inside: false, src: "live" };
+                    }).filter(function (e) { return e.sum && e.when && !isNaN(e.when.getTime()); });
+                    if (typeof noteFeed === "function") noteFeed("local-events", true, bag.local.length + " live");
+                    try { paint(); } catch (eP) {}
+                  }
+                }).catch(function () {});
+              }
+            }
             if (typeof noteFeed === "function") noteFeed("local-events", true, (bag.local && bag.local.length ? bag.local.length + " researched" : "no events file yet"));
             if (done) done();
             return;
