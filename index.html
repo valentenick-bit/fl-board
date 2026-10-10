@@ -13,7 +13,10 @@
         var w = window.innerWidth || 0, h = window.innerHeight || 0;
         var coarse = false;
         try { coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches; } catch (eP) {}
-        var phone = w <= 720 || (h <= 520 && w <= 980) || (coarse && Math.min(w, h) <= 520);
+        var touch = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
+        var ua = navigator.userAgent || "";
+        var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+        var phone = w <= 720 || (h <= 520 && w <= 980) || (coarse && Math.min(w, h) <= 900) || (touch && mobile && Math.min(w, h) <= 1400);
         if (phone) {
           document.documentElement.classList.add("phone");
         document.documentElement.classList.add("dim-motion");
@@ -3565,7 +3568,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1209</span>
+      <span class="hdr-ver" id="hdr-ver">v1210</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5680,7 +5683,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1209;
+    window.BOARD_VER = 1210;
 
     
     function communityShort() {
@@ -14901,9 +14904,13 @@ function currentRotation() {
       var w = window.innerWidth || 0, h = window.innerHeight || 0;
       var coarse = false;
       try { coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches; } catch (e) {}
+      var touch = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
+      var ua = navigator.userAgent || "";
+      var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
       if (w <= 720) return true;
       if (h <= 520 && w <= 980) return true;
-      if (coarse && Math.min(w, h) <= 520) return true;
+      if (coarse && Math.min(w, h) <= 900) return true;
+      if (touch && mobile && Math.min(w, h) <= 1400) return true;
       return false;
     }
     function syncPhoneClass() {
