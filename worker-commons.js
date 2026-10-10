@@ -351,6 +351,47 @@ export default {
         events: []
       });
     }
+    if (url.pathname === "/events-live") {
+      const lat = url.searchParams.get("lat") || "27.0";
+      const lon = url.searchParams.get("lon") || "-82.3";
+      const place = url.searchParams.get("place") || "Englewood FL";
+      const q = encodeURIComponent(place + ' (festival OR fair OR market OR "live music" OR concert OR trivia OR bingo OR comedy OR parade OR "farmers market" OR brewery OR tasting)');
+      const rss = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
+      try {
+        const r = await fetch(rss, { headers: { "user-agent": "Commons/1.0" } });
+        const xml = await r.text();
+        const items = [];
+        const re = /<item>([\s\S]*?)<\/item>/g;
+        let m;
+        while ((m = re.exec(xml)) && items.length < 20) {
+          const block = m[1];
+          const title = (block.match(/<title>([^<]*)<\/title>/) || [])[1] || "";
+          const link = (block.match(/<link>([^<]*)<\/link>/) || [])[1] || "";
+          const pub = (block.match(/<pubDate>([^<]*)<\/pubDate>/) || [])[1] || "";
+          const clean = title.replace(/ - .*$/, "").trim();
+          if (!clean) continue;
+          const when = new Date(pub || Date.now());
+          if (isNaN(when.getTime())) continue;
+          items.push({
+            sum: clean.slice(0, 140),
+            loc: place,
+            desc: "From local news",
+            when: when.toISOString(),
+            end: new Date(when.getTime() + 3 * 3600 * 1000).toISOString(),
+            allDay: false,
+            src: "live",
+            href: link
+          });
+        }
+        return new Response(JSON.stringify({
+          updated: new Date().toISOString(),
+          place: place,
+          events: items
+        }), { headers: { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=1800" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ updated: "", events: [], error: String(e) }), { status: 200, headers: { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" } });
+      }
+    }
     if (url.pathname === "/house.json" || url.pathname === "/house") {
       if (request.method === "POST") {
         return new Response(JSON.stringify({
