@@ -3568,7 +3568,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1228</span>
+      <span class="hdr-ver" id="hdr-ver">v1229</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5688,7 +5688,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1228;
+    window.BOARD_VER = 1229;
 
     
     function communityShort() {
@@ -7401,12 +7401,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (!isFinite(lat) || !isFinite(lon)) return;
       var stations = typeof buoyStations === "function" ? buoyStations() : [];
       if (window.__buoyMap && window.__buoyMap.map) {
-        window.__buoyMap.map.setView([lat, lon], 7);
+        window.__buoyMap.map.setView([lat, lon], 5);
         setTimeout(function () { try { window.__buoyMap.map.invalidateSize(); } catch (e) {} }, 80);
       } else {
         el.innerHTML = "";
         var phone = phoneThrottle();
-        var map = L.map(el, { zoomControl: !phone, attributionControl: !phone, scrollWheelZoom: !phone, dragging: !phone }).setView([lat, lon], 7);
+        var map = L.map(el, { zoomControl: !phone, attributionControl: !phone, scrollWheelZoom: !phone, dragging: !phone }).setView([lat, lon], 5);
         L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
           maxZoom: 16, attribution: "Esri Ocean"
         }).addTo(map);
@@ -7427,6 +7427,16 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             }).catch(function () { if (facts) facts.innerHTML = "<span>Could not load " + b.id + ".</span>"; });
           });
         });
+        var near = stations.slice().sort(function (a, b) {
+          var da = Math.pow(a.lat - lat, 2) + Math.pow(a.lon - lon, 2);
+          var db = Math.pow(b.lat - lat, 2) + Math.pow(b.lon - lon, 2);
+          return da - db;
+        }).slice(0, 3);
+        if (near.length) {
+          var pts = near.map(function (b) { return [b.lat, b.lon]; });
+          pts.push([lat, lon]);
+          try { map.fitBounds(pts, { padding: [20, 20], maxZoom: 6 }); } catch (e) {}
+        }
         window.__buoyMap = { map: map };
         [80, 300].forEach(function (ms) { setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, ms); });
       }
