@@ -3570,7 +3570,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1235</span>
+      <span class="hdr-ver" id="hdr-ver">v1236</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5691,7 +5691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1235;
+    window.BOARD_VER = 1236;
 
     
     function communityShort() {
@@ -8193,10 +8193,13 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (!best) { setNat("live-buoy", "No buoy near this pin."); return; }
       function setBuoyText() {
         var el = document.getElementById("live-buoy");
-        if (el) el.textContent = best.name + " (" + best.id + "), " + best.miles + " miles from this pin.";
+        var msg = best.name + " (" + best.id + "), " + best.miles + " miles from this pin.";
+        if (el) el.textContent = msg;
+        if (typeof setNat === "function") setNat("live-buoy", msg);
       }
       setBuoyText();
-      setTimeout(setBuoyText, 2000);
+      setTimeout(setBuoyText, 1000);
+      setTimeout(setBuoyText, 4000);
       if (typeof noteFeed === "function") noteFeed("live-buoy", true, best.id + " " + best.miles + " mi");
       if (!facts) return;
       function show(obs, extra) {
@@ -23630,7 +23633,8 @@ function mustEatsFL() {
         if (/Maps toggle off|embed only · toggle off|Places allowed/i.test(s)) return "ok";
         if (/^hidden$/i.test(s)) return "ok";
         if (/did not load|did not answer|feed did not|no live line|timed out|not wired|video unavailable|no data was found|no live report|drive file blocked|gmail scan|no Maps key|traffic layer off|embed only — no traffic layer|no headline|none in range/i.test(s)) return "failed";
-        if (/finding the closest|reading the buoy|published for this pin|public feed for this pin|expected at this latitude|not a real check/i.test(s)) return "failed";
+        if (/finding the closest|reading the buoy/i.test(s)) return "ok";
+        if (/published for this pin|public feed for this pin|expected at this latitude|not a real check/i.test(s)) return "failed";
         if (/wind —|waves —/i.test(s)) return "failed";
         if (/NHC list is quiet|no named|outlook maps below still update/i.test(s)) return "ok";
         if (/\bunavailable\b|\bfailed\b|\berror\b/i.test(s) && !/outlook maps|quiet sky|not issued|named-storm|NHC list is quiet/i.test(s)) return "failed";
