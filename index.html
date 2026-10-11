@@ -3568,7 +3568,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1220</span>
+      <span class="hdr-ver" id="hdr-ver">v1221</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5684,7 +5684,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1220;
+    window.BOARD_VER = 1221;
 
     
     function communityShort() {
@@ -7194,19 +7194,22 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         return;
       }
       el.innerHTML = "";
-      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 6);
+      var phone = phoneThrottle();
+      var map = L.map(el, { zoomControl: !phone, attributionControl: !phone, scrollWheelZoom: !phone, dragging: !phone }).setView([lat, lon], 6);
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
-        maxZoom: 16, attribution: "Esri Ocean"
+        maxZoom: phone ? 12 : 16, attribution: "Esri Ocean"
       }).addTo(map);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.35, attribution: "© OSM" }).addTo(map);
-      L.tileLayer("https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.88, attribution: "NOAA RNC" }).addTo(map);
-      L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "OpenSeaMap" }).addTo(map);
+      if (!phone) {
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.35, attribution: "© OSM" }).addTo(map);
+        L.tileLayer("https://tileservice.charts.noaa.gov/tiles/50000_1/{z}/{x}/{y}.png", { maxZoom: 18, opacity: 0.88, attribution: "NOAA RNC" }).addTo(map);
+        L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "OpenSeaMap" }).addTo(map);
+      }
       var marker = L.circleMarker([lat, lon], { radius: 7, color: "#c45c26", fillColor: "#f2b05e", fillOpacity: 1, weight: 2 }).addTo(map);
       marker.bindTooltip("Home pin", { permanent: false });
       window.__seaChart = { map: map, pin: pin, marker: marker };
-      [80, 250, 700].forEach(function (ms) {
+      if (!phone) [80, 250, 700].forEach(function (ms) {
         setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, ms);
-      });
+      }); else setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 200);
     }
 
     function applyInlandSeaCards() {
@@ -7381,7 +7384,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         setTimeout(function () { try { window.__clarityMap.map.invalidateSize(); } catch (e) {} }, 80);
       } else {
         el.innerHTML = "";
-        var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 9);
+        var phone = phoneThrottle();
+        var map = L.map(el, { zoomControl: !phone, attributionControl: !phone, scrollWheelZoom: !phone, dragging: !phone }).setView([lat, lon], 9);
         L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
           maxZoom: 16, attribution: "Esri Ocean"
         }).addTo(map);
@@ -7452,7 +7456,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         setTimeout(function () { try { window.__ripMap.map.invalidateSize(); } catch (e) {} }, 80);
       } else {
         el.innerHTML = "";
-        var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: true }).setView([lat, lon], 9);
+        var phone = phoneThrottle();
+        var map = L.map(el, { zoomControl: !phone, attributionControl: !phone, scrollWheelZoom: !phone, dragging: !phone }).setView([lat, lon], 9);
         L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
           maxZoom: 16, attribution: "Esri Ocean · NWS beach risk"
         }).addTo(map);
