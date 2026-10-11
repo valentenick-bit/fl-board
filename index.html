@@ -3568,7 +3568,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1227</span>
+      <span class="hdr-ver" id="hdr-ver">v1228</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4101,6 +4101,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-sea-map="chart">Chart</button>
             <button type="button" data-sea-map="clarity">Clarity</button>
             <button type="button" data-sea-map="ais">Traffic</button>
+            <button type="button" data-sea-map="buoys">Buoys</button>
           </div>
           <p class="wx-map-cap"><b id="sea-map-kind">Wind</b><span id="sea-map-note">Pinned on home</span></p>
         </div>
@@ -5687,7 +5688,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1227;
+    window.BOARD_VER = 1228;
 
     
     function communityShort() {
@@ -7289,7 +7290,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         chart: { label: "Chart", note: "Depth marks and channels pinned on home", url: "", chart: true },
         rip: { label: "Rip", note: "NWS 48-hour beach risk pinned on home", url: "", chart: false },
         clarity: { label: "Clarity", note: "Ocean color near the pin", url: "", chart: false },
-        ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false }
+        ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false },
+        buoys: { label: "Buoys", note: "NDBC stations near the pin. Tap a marker for readings.", url: "", chart: false }
       };
             if (!views[id]) id = "waves";
       if (id !== "rip" && window.__ripMap && window.__ripMap.map) {
@@ -7297,6 +7299,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         window.__ripMap = null;
         var ripHost = document.getElementById("sea-chart");
         if (ripHost) ripHost.innerHTML = "";
+      }
+      if (id !== "buoys" && window.__buoyMap && window.__buoyMap.map) {
+        try { window.__buoyMap.map.remove(); } catch (eB) {}
+        window.__buoyMap = null;
+        var buoyHost = document.getElementById("sea-chart");
+        if (buoyHost) buoyHost.innerHTML = "";
       }
       if (id !== "clarity" && window.__clarityMap && window.__clarityMap.map) {
         try { window.__clarityMap.map.remove(); } catch (eC) {}
@@ -7330,6 +7338,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
         paintClarityMap(chart, homeLat(), homeLon(), note);
         if (typeof noteFeed === "function") noteFeed("sea-map", true, "clarity");
+        return;
+      }
+      if (id === "buoys") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); frame.removeAttribute("data-src"); }
+        if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; }
+        if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
+        paintBuoyMap(chart, homeLat(), homeLon(), note);
+        if (typeof noteFeed === "function") noteFeed("sea-map", true, "buoys");
         return;
       }
       if (id === "chart") {
@@ -7378,6 +7394,44 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
 
 
 
+
+    function paintBuoyMap(el, latN, lonN, note) {
+      if (!el || typeof L === "undefined") return;
+      var lat = Number(latN), lon = Number(lonN);
+      if (!isFinite(lat) || !isFinite(lon)) return;
+      var stations = typeof buoyStations === "function" ? buoyStations() : [];
+      if (window.__buoyMap && window.__buoyMap.map) {
+        window.__buoyMap.map.setView([lat, lon], 7);
+        setTimeout(function () { try { window.__buoyMap.map.invalidateSize(); } catch (e) {} }, 80);
+      } else {
+        el.innerHTML = "";
+        var phone = phoneThrottle();
+        var map = L.map(el, { zoomControl: !phone, attributionControl: !phone, scrollWheelZoom: !phone, dragging: !phone }).setView([lat, lon], 7);
+        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
+          maxZoom: 16, attribution: "Esri Ocean"
+        }).addTo(map);
+        L.circleMarker([lat, lon], { radius: 6, color: "#c45c26", fillColor: "#f2b05e", fillOpacity: 1, weight: 2 }).addTo(map).bindTooltip("Home", { permanent: false });
+        stations.forEach(function (b) {
+          var m = L.circleMarker([b.lat, b.lon], { radius: 8, color: "#1a4a6a", fillColor: "#4a9bc7", fillOpacity: 0.9, weight: 2 }).addTo(map);
+          m.bindPopup("<b>" + b.name + "</b><br>Station " + b.id);
+          m.on("click", function () {
+            if (typeof setNat === "function") setNat("live-buoy", b.name + " (" + b.id + ")");
+            var facts = document.getElementById("buoy-facts");
+            if (facts) facts.innerHTML = "<span>Loading " + b.id + "…</span>";
+            fetch("https://raw.githubusercontent.com/valentenick-bit/fl-board/main/buoy.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (pack) {
+              var obs = pack && pack.stations ? pack.stations[b.id] : null;
+              if (!facts) return;
+              if (!obs) { facts.innerHTML = "<span>No stored reading for " + b.id + ".</span>"; return; }
+              function t(v, unit) { return v == null || v === "" ? "—" : v + (unit || ""); }
+              facts.innerHTML = "<span>Wind " + t(obs.windMph, " mph") + " · gust " + t(obs.gustMph, " mph") + "</span><span>Waves " + t(obs.wavesFt, " ft") + " · period " + t(obs.period, " sec") + "</span><span>Water " + t(obs.waterF, "°") + " · air " + t(obs.airF, "°") + "</span>";
+            }).catch(function () { if (facts) facts.innerHTML = "<span>Could not load " + b.id + ".</span>"; });
+          });
+        });
+        window.__buoyMap = { map: map };
+        [80, 300].forEach(function (ms) { setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, ms); });
+      }
+      if (note) note.textContent = "NDBC stations · tap a marker for readings · " + (homePlace() || "home");
+    }
 
     function paintClarityMap(el, latN, lonN, note) {
       if (!el || typeof L === "undefined") return;
