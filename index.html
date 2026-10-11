@@ -2165,6 +2165,8 @@
       font-size:17px; line-height:34px; padding:0; overflow:hidden; pointer-events:none;
     }
     .alert-ticker.on { display:flex; }
+    .wxrot-ack { appearance:none; border:0; background:#fff; color:#1a2a22; border-radius:999px; padding:2px 10px; font:inherit; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; margin-left:8px; flex:0 0 auto; }
+    html.dark .wxrot-ack { background:#f7f1e6; color:#121820; }
 
     .gmap-fail {
       display:flex; align-items:center; justify-content:center; text-align:center;
@@ -3568,7 +3570,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1229</span>
+      <span class="hdr-ver" id="hdr-ver">v1230</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3738,6 +3740,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
       <div class="alert-track"><span id="alerttext"></span></div>
+      <button type="button" id="wxrot-ack" class="wxrot-ack" hidden>Got it</button>
     </div>
     <div class="alert-ticker civic" id="civicbar">
       <b class="alert-lab" id="civiclab">ALERT</b>
@@ -5688,7 +5691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1229;
+    window.BOARD_VER = 1230;
 
     
     function communityShort() {
@@ -22438,6 +22441,17 @@ function mustEatsFL() {
       if (s) s.innerHTML = rows("storm", ROT_STORM_POOL, r.storm);
     }
     window.paintRotSet = paintRotSet;
+    (function bindWxAck() {
+      var btn = document.getElementById("wxrot-ack");
+      if (!btn) return;
+      btn.addEventListener("click", function () {
+        window.__wxRotAck = true;
+        var keep = (window.__nwsAlerts || []).filter(function (f) { return f && f.properties; });
+        window.__wxRotAckKey = keep.map(function (f) { return ((f.properties || {}).id || (f.properties || {}).event || ""); }).join("|");
+        btn.hidden = true;
+        if (typeof startNamedRotation === "function") startNamedRotation("normal");
+      });
+    })();
     function startNamedRotation(kind) {
       window.__storm = kind === "storm";
       window.__holdPage = false;
@@ -30126,7 +30140,12 @@ function homeCountyGuess() {
           if (!needScan) return;
           if (typeof playStation === "function") playStation("scan:30021", "Police", { keepSaved: true });
         })();
-        if (isStormRot) {
+        var alertKey = keep.map(function (f) { return ((f.properties || {}).id || (f.properties || {}).event || ""); }).join("|");
+        if (isStormRot && window.__wxRotAck && window.__wxRotAckKey === alertKey) {
+          // acknowledged this exact alert set — stay on normal
+          if (window.__storm) { window.__storm = false; startRotate(); }
+        } else if (isStormRot) {
+          if (window.__wxRotAckKey !== alertKey) window.__wxRotAck = false;
           window.__storm = true;
           pages = warnList();
           if (pages.indexOf(document.querySelector(".page.on") && document.querySelector(".page.on").id) < 0) {
@@ -30134,9 +30153,13 @@ function homeCountyGuess() {
             showPage(pages[0] || "radar");
           }
           startRotate();
+          var ackBtn = document.getElementById("wxrot-ack");
+          if (ackBtn) ackBtn.hidden = false;
         } else if (window.__storm) {
           window.__storm = false;
           startRotate();
+          var ackOff = document.getElementById("wxrot-ack");
+          if (ackOff) ackOff.hidden = true;
         }
         if (typeof rebuildDock === "function") rebuildDock();
         pagesFromDock();
