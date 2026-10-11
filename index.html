@@ -3570,7 +3570,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1247</span>
+      <span class="hdr-ver" id="hdr-ver">v1248</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5691,7 +5691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1247;
+    window.BOARD_VER = 1248;
 
     
     function communityShort() {
@@ -20516,17 +20516,30 @@ function paint() {
       function loadGather(done) {
         var place = typeof homePlace === "function" ? homePlace() : "";
         if (!place) { if (done) done(); return; }
-        var q = encodeURIComponent(place + ' (brewery OR taproom OR winery OR distillery OR "live music" OR karaoke OR trivia OR bingo OR "food truck" OR tasting OR "open mic" OR comedy OR festival OR "farmers market")');
+        var q = encodeURIComponent(place + ' ("live music" OR karaoke OR trivia OR bingo OR "farmers market" OR fair OR festival OR brewery OR taproom OR "open mic" OR comedy OR "food truck" OR "car show" OR parade)');
         var rss = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
+        var eb = "https://www.eventbrite.com/d/" + encodeURIComponent(place.split(",")[0] || place) + "/events/";
         var urls = [
           "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss),
           "https://api.allorigins.win/raw?url=" + encodeURIComponent(rss),
-          "https://corsproxy.io/?" + encodeURIComponent(rss)
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(eb)
         ];
         function next(i) {
           if (i >= urls.length) { if (done) done(); return; }
-          fetch(urls[i]).then(function (r) { return r.json(); }).then(function (d) {
+          fetch(urls[i]).then(function (r) { return r.text(); }).then(function (txt) {
+            var d = null;
+            try { d = JSON.parse(txt); } catch (e) {}
             var parsed = parseGatherItems(d);
+            if (!parsed.length && /eventbrite/i.test(urls[i])) {
+              var re = /<h3[^>]*>([^<]+)<\/h3>/gi, m, names = [];
+              while ((m = re.exec(txt)) && names.length < 12) {
+                var n = m[1].replace(/\s+/g, " ").trim();
+                if (n && n.length > 5) names.push(n);
+              }
+              parsed = names.map(function (n) {
+                return { sum: n, loc: place, when: new Date(Date.now() + 86400000), end: new Date(Date.now() + 86400000 + 3*3600000), src: "eventbrite" };
+              });
+            }
             if (parsed.length) {
               bag.eng = (bag.eng || []).concat(parsed);
               try { paint(); } catch (eP) {}
