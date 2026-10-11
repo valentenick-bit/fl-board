@@ -3563,14 +3563,21 @@ html.dark .metric-row small, html.dark .metric-row em { color:#d2c7ab; }
 html.dark .metric-spark svg line { stroke:#8a9aaa; }
 html.dark .metric-spark svg path { stroke:#e0c27a; }
 
-</style>
+
+    .ev-filters { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+    .ev-filters button { font:600 11px "Source Sans 3",sans-serif; padding:6px 10px; border-radius:999px; border:1px solid rgba(27,42,74,.18); background:#fff; color:#1b2a4a; cursor:pointer; }
+    .ev-filters button.on { background:#1b2a4a; color:#fff; border-color:#1b2a4a; }
+    html.dark .ev-filters button { background:#1b2a4a; color:#efe4c8; border-color:rgba(239,228,200,.3); }
+    html.dark .ev-filters button.on { background:#efe4c8; color:#1b2a4a; }
+
+  </style>
 </head>
 <body>
   <a class="skip-a11y" href="#now">Skip to Today</a>
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1250</span>
+      <span class="hdr-ver" id="hdr-ver">v1251</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4249,6 +4256,15 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="ent" class="page">
         <h2 data-k="Near this pin">Events</h2>
         <p id="ent-count" class="pill-key">Loading calendars…</p>
+        <div class="ev-filters" id="ent-filters">
+          <button type="button" data-ev-filter="all" class="on">All</button>
+          <button type="button" data-ev-filter="music">Music</button>
+          <button type="button" data-ev-filter="trivia">Trivia</button>
+          <button type="button" data-ev-filter="bingo">Bingo</button>
+          <button type="button" data-ev-filter="market">Markets</button>
+          <button type="button" data-ev-filter="food">Food</button>
+          <button type="button" data-ev-filter="ticket">Paid</button>
+        </div>
         <div id="ent-list"></div>
         <p class="pill-key" id="ent-refs">
           <a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">BeachWalk calendar</a>
@@ -5691,7 +5707,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1250;
+    window.BOARD_VER = 1251;
 
     
     function communityShort() {
@@ -20239,6 +20255,25 @@ function paintTakeoutDeals() {
         box.innerHTML = events.map(window.entCardHtml).join("");
         if (typeof stampLocPills === "function") stampLocPills(box);
       }
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest && e.target.closest("#ent-filters button");
+        if (!btn) return;
+        var filter = btn.getAttribute("data-ev-filter") || "all";
+        document.querySelectorAll("#ent-filters button").forEach(function (b) { b.classList.toggle("on", b === btn); });
+        var all = window.__entAll || [];
+        var filtered = all.filter(function (ev) {
+          if (filter === "all") return true;
+          var blob = String(ev.sum || "") + " " + String(ev.loc || "") + " " + String(ev.desc || "");
+          if (filter === "music") return /live music|karaoke|band|acoustic|open mic|concert/i.test(blob);
+          if (filter === "trivia") return /trivia/i.test(blob);
+          if (filter === "bingo") return /bingo/i.test(blob);
+          if (filter === "market") return /market|fair|festival/i.test(blob);
+          if (filter === "food") return /dinner|brunch|tasting|food truck|elks|breakfast/i.test(blob);
+          if (filter === "ticket") return /ticket|ticketmaster|axs|playhouse|theater/i.test(blob);
+          return true;
+        });
+        render("ent-list", filtered);
+      });
       var bag = { bw: [], eng: [], local: [], comedy: [] };
       try {
         var cached = JSON.parse(localStorage.getItem("bw-ent-cache") || "{}");
@@ -20516,7 +20551,7 @@ function paint() {
       function loadGather(done) {
         var place = typeof homePlace === "function" ? homePlace() : "";
         if (!place) { if (done) done(); return; }
-        var q = encodeURIComponent(place + ' ("live music" OR karaoke OR trivia OR bingo OR "farmers market" OR fair OR festival OR brewery OR taproom OR "open mic" OR comedy OR "food truck" OR "car show" OR parade)');
+        var q = encodeURIComponent(place + ' ("live music" OR karaoke OR trivia OR bingo OR "farmers market" OR fair OR festival OR brewery OR taproom OR "open mic" OR comedy OR "food truck" OR "car show" OR parade OR pub OR club OR restaurant OR "happy hour" OR "live band")');
         var rss = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
         var eb = "https://www.eventbrite.com/d/" + encodeURIComponent(place.split(",")[0] || place) + "/events/";
         var urls = [
