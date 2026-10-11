@@ -3568,7 +3568,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1214</span>
+      <span class="hdr-ver" id="hdr-ver">v1215</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3799,6 +3799,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <article class="pulse today-chip quake" id="chip-quake" hidden></article>
           <article class="pulse today-chip cane" id="chip-cane" hidden></article>
           <article class="pulse today-chip trash" id="chip-trash" hidden></article>
+          <article class="pulse today-chip launch" id="chip-launch" hidden></article>
         </div>
         <div class="card" id="today-sports" hidden>
           <b>Games</b>
@@ -5683,7 +5684,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1214;
+    window.BOARD_VER = 1215;
 
     
     function communityShort() {
@@ -7844,8 +7845,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (!box) return;
       var cached = null;
       try { cached = JSON.parse(localStorage.getItem("bw-launches") || "null"); } catch (e) {}
+      function isNasaSpacex(row) {
+        var blob = ((row.provider && row.provider.name) || "") + " " + ((row.vehicle && row.vehicle.name) || "") + " " + (row.name || "");
+        blob = blob.toLowerCase();
+        return /spacex|nasa|falcon|starship|sls|orion|crew dragon|cargo dragon/.test(blob);
+      }
       function draw(rows) {
-        window.__launches = rows || [];
+        rows = (rows || []).filter(isNasaSpacex);
+        window.__launches = rows;
         if (!rows.length) {
           box.innerHTML = "<span>No upcoming launch on the feed.</span>";
           return;
@@ -7860,6 +7867,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         }).join("");
         if (lead) lead.textContent = "Next up: " + rows[0].name + ". Tap Launch on the map for the pad and a typical track.";
         if (typeof noteFeed === "function") noteFeed("launches", true, rows.length + " upcoming");
+        if (typeof paintLaunchChip === "function") paintLaunchChip();
       }
       if (cached && cached.rows && Date.now() - cached.at < 2 * 60 * 60 * 1000) { draw(cached.rows); return; }
       box.innerHTML = "<span>Looking up the next launches…</span>";
@@ -7874,6 +7882,33 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       });
     }
     window.paintLaunches = paintLaunches;
+    function paintLaunchChip() {
+      var chip = document.getElementById("chip-launch");
+      if (!chip) return;
+      var rows = window.__launches || [];
+      var soon = null;
+      var now = Date.now();
+      rows.forEach(function (row) {
+        if (!row.t0) return;
+        var t = new Date(row.t0).getTime();
+        if (t > now && t < now + 24 * 3600 * 1000) {
+          if (!soon || t < soon.t) soon = { row: row, t: t };
+        }
+      });
+      if (!soon) { chip.hidden = true; chip.classList.remove("on"); return; }
+      var when = new Date(soon.t).toLocaleString("en-US", { hour: "numeric", minute: "2-digit" });
+      var name = (soon.row.vehicle && soon.row.vehicle.name ? soon.row.vehicle.name + " · " : "") + (soon.row.name || "Launch");
+      chip.hidden = false;
+      chip.classList.add("on");
+      chip.innerHTML = '<b>Launch in 24h</b><span>' + name + " · " + when + "</span>";
+      chip.onclick = function () {
+        if (typeof setSkyMap === "function") setSkyMap("launch");
+        var sky = document.getElementById("sky");
+        if (sky) sky.scrollIntoView({ behavior: "smooth" });
+      };
+    }
+    window.paintLaunchChip = paintLaunchChip;
+    setInterval(function () { try { paintLaunchChip(); } catch (e) {} }, 60000);
     function paintLaunchTrack() {
       var stage = document.getElementById("sky-map-stage");
       if (!stage) return;
