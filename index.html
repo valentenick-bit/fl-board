@@ -3577,7 +3577,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1256</span>
+      <span class="hdr-ver" id="hdr-ver">v1257</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5707,7 +5707,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1256;
+    window.BOARD_VER = 1257;
 
     
     function communityShort() {
@@ -7090,7 +7090,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     function showLandMap(id) {
       var views = {
         traffic: { label: "Traffic", kind: "traffic" },
-        sat: { label: "Satellite", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("satellite") : "" },
+        sat: { label: "Satellite", kind: "img", url: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg" },
         air: { label: "Air", kind: "iframe", url: typeof nullschoolPin === "function" ? nullschoolPin(homeLat(), homeLon(), "current/chem/surface/level/overlay=pm2p5") : "" },
         smoke: { label: "Smoke", kind: "smoke", url: "" },
         rain: { label: "Rain", kind: "iframe", url: typeof homeWindyEmbed === "function" ? homeWindyEmbed("rain") : "" },
@@ -25388,7 +25388,16 @@ function drawSurgeChart(points) {
           writeDoHour();
           window.__bwCharts.preds = preds; drawTideChart(preds);
           if (!window.__bwCharts.surge || window.__bwCharts.surge.length < 2) surgeFallbackTide();
-        }).catch(function () { touchFeed("tide", false, "NOAA tide fetch failed"); });
+        }).catch(function () {
+        fetch("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=Commons&datum=MLLW&station=8725520&begin_date=" + noaaDay(0) + "&end_date=" + noaaDay(1) + "&time_zone=lst_ldt&units=english&interval=hilo&format=json").then(function(r){return r.json()}).then(function(d){
+          var preds = (d && d.predictions) || [];
+          if (preds.length) {
+            var el1 = document.getElementById("live-tide-today");
+            if (el1) el1.textContent = preds.slice(0,4).map(function(p){return (p.type==="H"?"High":"Low")+" "+p.t.slice(11,16)+" "+p.v+" ft"}).join(" · ");
+            touchFeed("tide", true, preds.length + " events");
+          } else touchFeed("tide", false, "NOAA tide fetch failed");
+        }).catch(function(){ touchFeed("tide", false, "NOAA tide fetch failed"); });
+      });
       function noaaDay(offset) {
         var d = new Date(Date.now() + (offset || 0) * 86400000);
         return d.toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
@@ -26702,6 +26711,17 @@ function wxSvg(kind, box) {
       var visNote = document.getElementById("live-vis-note");
       var visM = c.visibility;
       if (visM == null && lastH >= 0 && h.visibility) visM = h.visibility[lastH];
+      if (visM == null) {
+        fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&current=visibility").then(function(r){return r.json()}).then(function(d){
+          var v = d && d.current && d.current.visibility;
+          if (v != null) {
+            var miles = Number(v) / 1609.34;
+            if (visEl) visEl.textContent = miles >= 10 ? "10+ mi" : miles >= 1 ? miles.toFixed(1) + " mi" : Math.round(miles * 5280) + " ft";
+            window.__visMiles = miles;
+            if (typeof noteFeed === "function") noteFeed("live-vis", true, visEl.textContent);
+          }
+        }).catch(function(){});
+      }
       if (visEl && visM != null) {
         var miles = Number(visM) / 1609.34;
         visEl.textContent = miles >= 10 ? "10+ mi" : miles >= 1 ? miles.toFixed(1) + " mi" : Math.round(miles * 5280) + " ft";
