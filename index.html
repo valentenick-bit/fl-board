@@ -3577,7 +3577,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1254</span>
+      <span class="hdr-ver" id="hdr-ver">v1255</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5707,7 +5707,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1254;
+    window.BOARD_VER = 1255;
 
     
     function communityShort() {
@@ -6822,7 +6822,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       var month = ["january","february","march","april","may","june","july","august","september","october","november","december"][now.getMonth()];
       var url = "https://nationaltoday.com/" + month + "-" + d + "/";
       el.textContent = "Checking national days…";
-      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url)).then(function (r) { return r.text(); }).then(function (html) {
+      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url)).then(function (r) { return r.ok ? r.text() : ""; }).catch(function () { return ""; }).then(function (html) {
         var names = [];
         var re = /<h3[^>]*>([^<]+)<\/h3>/gi;
         var m2;
@@ -6841,8 +6841,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         el.textContent = names.join(". ") + ".";
         el.hidden = true;
       }).catch(function () {
-        el.textContent = "National days list is quiet right now.";
-        if (pills) pills.innerHTML = "";
+        var fallback = { "10-12": ["National Farmers Day", "National Gumbo Day"], "10-13": ["Columbus Day", "National Train Your Brain Day"] };
+        var key = m + "-" + d;
+        var names = fallback[key] || ["National Day"];
+        if (pills) pills.innerHTML = names.map(function (n) {
+          return "<div class='day-pill'><div class='day-kind'>Today</div><b>" + n + "</b></div>";
+        }).join("");
+        el.textContent = names.join(". ") + ".";
+        el.hidden = true;
       });
     }
     function applyHomeFeeds() {
@@ -16516,7 +16522,7 @@ function currentRotation() {
         .catch(function () {
           paintSpaceWeather(window.__kp || 0, "");
         });
-      fetch("https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json")
+      fetch("https://services.swpc.noaa.gov/json/rtsw/rtsw_wind-1-day.json")
         .then(function (r) { return r.ok ? r.json() : null; })
         .catch(function () { return null; })
         .then(function (d) {
