@@ -3577,7 +3577,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1272</span>
+      <span class="hdr-ver" id="hdr-ver">v1273</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5707,7 +5707,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1272;
+    window.BOARD_VER = 1273;
 
     
     function communityShort() {
@@ -22301,8 +22301,19 @@ function mustEatsFL() {
         });
         if (typeof touchFeed === "function") touchFeed("flights", true, rows.length + " flights");
       }
+      var merged = [];
+      var seen = {};
+      function addRows(rows) {
+        (rows || []).forEach(function (f) {
+          var k = [f.who || "", f.flight || "", f.from || "", f.to || "", f.when || ""].join("|").toLowerCase();
+          if (seen[k]) return;
+          seen[k] = 1;
+          merged.push(f);
+        });
+      }
       function next(i) {
         if (i >= urls.length) {
+          if (merged.length) { paint({ updated: "merged", flights: merged }); return; }
           paint({
             updated: "fallback",
             flights: [{ who: "Dayna", flight: "Breeze MX537", from: "RSW", to: "BDL", when: "Sun Sep 6 10:00a", status: "Confirmed" }]
@@ -22316,8 +22327,10 @@ function mustEatsFL() {
           if (d && typeof d.contents === "string") {
             try { d = JSON.parse(d.contents); } catch (e2) { d = null; }
           }
+          if (d && Array.isArray(d.flights)) addRows(d.flights);
           if (d && d.error && i + 1 < urls.length) return next(i + 1);
-          if (d && Array.isArray(d.flights) && d.flights.length) paint(d);
+          if (i + 1 < urls.length) return next(i + 1);
+          if (merged.length) paint({ updated: "merged", flights: merged });
           else if (d && Array.isArray(d.flights) && !d.flights.length) return next(i + 1);
           else next(i + 1);
         }).catch(function () { next(i + 1); });
