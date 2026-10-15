@@ -3113,6 +3113,10 @@
     .buzz-hh .ev-ico svg { stroke:#1b2a22; fill:none; }
     .buzz-shop .ev-ico { background:#2a7d8f; }
     .buzz-shop .ev-ico svg { stroke:#fff; fill:none; }
+    .buzz-fly .ev-ico { background:#1b6b62; }
+    .buzz-fly .ev-ico svg { stroke:#fff; fill:none; }
+    html.dark .buzz-fly .ev-ico { background:#2a7d8f; }
+
 
 
     html.kiosk.wide #now.page.on,
@@ -3577,7 +3581,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1283</span>
+      <span class="hdr-ver" id="hdr-ver">v1284</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5707,7 +5711,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1283;
+    window.BOARD_VER = 1284;
 
     
     function communityShort() {
@@ -18052,16 +18056,20 @@ function currentRotation() {
       if (f.liveType) bits.push(f.liveType);
       if (!isNaN(f.nmLeft)) bits.push(Math.round(f.nmLeft) + " nm left");
       if (!isNaN(f.routePct)) bits.push(f.routePct + "% of route");
-      if (!bits.length) bits.push(f.liveKind ? "Live position updating…" : "Looking up live position…");
-      var tags = '<span class="place-tag place-out">' + (path || "Flight") + "</span>" +
+      var pills = '<span class="place-tag place-out">' + (path || "Flight") + "</span>" +
         '<span class="' + tagClass + '">' + (st || "Live") + "</span>";
-      if (eta) tags += '<span class="place-tag place-bw">' + eta + "</span>";
-      return stampTodayArt(
-        '<div class="card">' + tags +
-        "<b>" + [who, num, when].filter(Boolean).join(" · ") + "</b>" +
-        "<span>" + bits.join(" · ") + "</span></div>",
-        "fly"
-      );
+      if (eta) pills += '<span class="place-tag place-bw">' + eta + "</span>";
+      var title = [who, num].filter(Boolean).join(" · ") || "Flight";
+      var whenLine = when || "";
+      var detail = bits.join(" · ");
+      var ico = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
+      return '<div class="card ev-card buzz-card buzz-fly">' +
+        '<div class="ev-rail"><span class="ev-ico" aria-hidden="true">' + ico + '</span></div>' +
+        '<div class="ev-body"><div class="ev-pills">' + pills + '</div>' +
+        '<b>' + title + '</b>' +
+        (whenLine ? '<span class="ev-when">' + whenLine + '</span>' : '') +
+        (detail ? '<span class="eat-why">' + detail + '</span>' : '') +
+        '</div></div>';
     }
     function applyLivePlane(f, ac) {
       if (!ac) return "";
