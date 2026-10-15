@@ -3577,7 +3577,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1275</span>
+      <span class="hdr-ver" id="hdr-ver">v1276</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5707,7 +5707,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1275;
+    window.BOARD_VER = 1276;
 
     
     function communityShort() {
@@ -22305,11 +22305,28 @@ function mustEatsFL() {
       var seen = {};
       function flightKey(f) {
         var who = String(f.who || "").toLowerCase().replace(/\s+/g, "");
-        var code = String(f.flight || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        var raw = String(f.flight || "").toUpperCase();
+        var m = raw.match(/([A-Z]{2})\s*([0-9]+)/);
+        var code = m ? (m[1] + m[2]) : raw.replace(/[^A-Z0-9]/g, "");
         var from = String(f.from || "").toUpperCase().slice(0, 3);
         var to = String(f.to || "").toUpperCase().slice(0, 3);
-        var when = String(f.when || f.iso || "").replace(/[^0-9]/g, "").slice(0, 8);
-        return who + "|" + code + "|" + from + "|" + to + "|" + when;
+        var date = "";
+        if (f.iso) date = String(f.iso).slice(0, 10);
+        else {
+          var w = String(f.when || "");
+          var dm = w.match(/([A-Za-z]{3})\s+([0-9]{1,2})\s+([0-9]{4})/);
+          if (dm) {
+            var months = {Jan:"01",Feb:"02",Mar:"03",Apr:"04",May:"05",Jun:"06",Jul:"07",Aug:"08",Sep:"09",Oct:"10",Nov:"11",Dec:"12"};
+            date = dm[3] + "-" + (months[dm[1]] || "00") + "-" + ("0" + dm[2]).slice(-2);
+          } else {
+            var dm2 = w.match(/([A-Za-z]{3})\s+([0-9]{1,2})/);
+            if (dm2) {
+              var months2 = {Jan:"01",Feb:"02",Mar:"03",Apr:"04",May:"05",Jun:"06",Jul:"07",Aug:"08",Sep:"09",Oct:"10",Nov:"11",Dec:"12"};
+              date = (months2[dm2[1]] || "00") + "-" + ("0" + dm2[2]).slice(-2);
+            }
+          }
+        }
+        return who + "|" + code + "|" + from + "|" + to + "|" + date;
       }
       function addRows(rows) {
         (rows || []).forEach(function (f) {
