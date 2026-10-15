@@ -3603,7 +3603,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1290</span>
+      <span class="hdr-ver" id="hdr-ver">v1291</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5733,7 +5733,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1290;
+    window.BOARD_VER = 1291;
 
     
     function communityShort() {
@@ -11843,6 +11843,7 @@ function gatorRange() {
       };
       if (basins.gulf) views.gulf = { label: "Gulf satellite", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ga/GEOCOLOR/1000x1000.jpg" };
       if (basins.atl) views.atl = { label: "Atlantic tropics", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg" };
+      if (!basins.gulf && !basins.atl) views.conus = { label: "US satellite", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg" };
       window.__satViews = Object.keys(views);
       document.querySelectorAll("#radar-pills button").forEach(function (b) {
         var vid = b.getAttribute("data-radar");
@@ -14321,6 +14322,7 @@ function currentRotation() {
     function fetchWxQuake() {
       fetch("https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=" + new Date(Date.now()-2*86400000).toISOString() + "&minmagnitude=2.5&latitude=" + homeLat() + "&longitude=" + homeLon() + "&maxradiuskm=480")
         .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
         .then(function (d) {
           var feats = (d && d.features) || [];
           var el = document.getElementById("live-quake");
@@ -14360,6 +14362,7 @@ function currentRotation() {
         });
       fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_week.geojson")
         .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
         .then(function (d) {
           var el = document.getElementById("live-quake-sig");
           if (!el) return;
@@ -26331,7 +26334,7 @@ function drawSurgeChart(points) {
           if (typeof applyRadar === "function") applyRadar();
           if (typeof showRadarView === "function") showRadarView(0);
           if (typeof noteFeed === "function") noteFeed("sat", !!(window.__satBasins.gulf || window.__satBasins.atl), (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "radar only");
-          if (typeof noteFeed === "function") noteFeed("sat", !!(window.__satBasins.gulf || window.__satBasins.atl), (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "none");
+          if (typeof noteFeed === "function") noteFeed("sat", true, (window.__satBasins.gulf ? "gulf " : "") + (window.__satBasins.atl ? "atl" : "") || "conus");
           touchFeed("storms", true, storms.length ? (storms.length + " threat") : "none on pin");
           if (typeof noteFeed === "function") noteFeed("named-storms", true, storms.length ? (storms.length + " threat") : farStormLine());
           if (typeof writeTodayChips === "function") writeTodayChips();
