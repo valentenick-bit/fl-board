@@ -3603,7 +3603,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1293</span>
+      <span class="hdr-ver" id="hdr-ver">v1294</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4215,6 +4215,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-sky-map="lights">Lights</button>
             <button type="button" data-sky-map="sun">Sun</button>
             <button type="button" data-sky-map="launch">Launch</button>
+            <button type="button" data-sky-map="starman">Starman</button>
           </div>
           <p class="wx-map-cap"><b id="sky-map-kind">Night sky</b><span id="sky-map-note">Pinned on home</span></p>
         </div>
@@ -5733,7 +5734,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1293;
+    window.BOARD_VER = 1294;
 
     
     function communityShort() {
@@ -7758,6 +7759,86 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       }
     }
 
+
+    function paintStarmanMap(img, note) {
+      var AU = 149597870.7;
+      function draw(els) {
+        var c = document.createElement("canvas");
+        c.width = 900; c.height = 560;
+        var g = c.getContext("2d");
+        g.fillStyle = "#05070d";
+        g.fillRect(0, 0, 900, 560);
+        var cx = 450, cy = 280, scale = 145;
+        function pos(rAU, angDeg) {
+          var a = angDeg * Math.PI / 180;
+          return { x: cx + Math.cos(a) * rAU * scale, y: cy - Math.sin(a) * rAU * scale };
+        }
+        g.strokeStyle = "rgba(126,200,255,.35)"; g.lineWidth = 1.5;
+        g.beginPath(); g.arc(cx, cy, scale, 0, 6.3); g.stroke();
+        g.strokeStyle = "rgba(232,120,90,.35)";
+        g.beginPath(); g.arc(cx, cy, 1.524 * scale, 0, 6.3); g.stroke();
+        var e = els.e || 0.256, a = els.aAU || 1.325, w = els.w || 177.8, om = els.om || 316.9;
+        var peri = om + w;
+        g.strokeStyle = "#e6c56a"; g.lineWidth = 2;
+        g.beginPath();
+        for (var nu = 0; nu <= 360; nu += 3) {
+          var r = a * (1 - e * e) / (1 + e * Math.cos(nu * Math.PI / 180));
+          var p = pos(r, peri + nu);
+          if (nu === 0) g.moveTo(p.x, p.y); else g.lineTo(p.x, p.y);
+        }
+        g.closePath(); g.stroke();
+        var sun = pos(0, 0);
+        g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(cx, cy, 10, 0, 6.3); g.fill();
+        var day = new Date().getUTCDate() + (new Date().getUTCMonth()) * 30.4;
+        var earthAng = ((day - 3) / 365.25 * 360 + 102.9) % 360;
+        var earth = pos(1, earthAng);
+        g.fillStyle = "#7ec8ff"; g.beginPath(); g.arc(earth.x, earth.y, 7, 0, 6.3); g.fill();
+        g.strokeStyle = "#06101c"; g.lineWidth = 2; g.stroke();
+        var marsAng = (earthAng * 0.53 + 140) % 360;
+        var mars = pos(1.524, marsAng);
+        g.fillStyle = "#e8785a"; g.beginPath(); g.arc(mars.x, mars.y, 6, 0, 6.3); g.fill();
+        g.stroke();
+        var ta = els.ta || 227;
+        var rR = a * (1 - e * e) / (1 + e * Math.cos(ta * Math.PI / 180));
+        var road = pos(rR, peri + ta);
+        g.fillStyle = "#ffffff"; g.beginPath(); g.arc(road.x, road.y, 6, 0, 6.3); g.fill();
+        g.strokeStyle = "#e6c56a"; g.lineWidth = 2; g.stroke();
+        g.fillStyle = "#f4efe6"; g.font = "700 16px Source Sans 3, sans-serif";
+        g.fillText("Sun", cx + 14, cy + 5);
+        g.fillText("Earth", earth.x + 10, earth.y - 4);
+        g.fillText("Mars", mars.x + 10, mars.y - 4);
+        g.fillText("Starman", road.x + 10, road.y - 4);
+        g.fillStyle = "rgba(5,7,13,.78)";
+        g.fillRect(0, 0, 900, 48);
+        g.fillRect(0, 516, 900, 44);
+        g.fillStyle = "#f4efe6"; g.font = "700 20px Source Sans 3, sans-serif";
+        g.fillText("Starman · Tesla Roadster", 16, 32);
+        var sunAU = rR.toFixed(2);
+        var earthAU = Math.hypot(road.x - earth.x, road.y - earth.y) / scale;
+        g.font = "600 15px Source Sans 3, sans-serif";
+        g.fillText("Sun " + sunAU + " AU · Earth ~" + earthAU.toFixed(2) + " AU · orbit 0.99–1.66 AU", 16, 542);
+        if (img) img.src = c.toDataURL("image/jpeg", 0.88);
+        if (note) note.textContent = "Heliocentric orbit. White is the Roadster. Gold is its path.";
+      }
+      draw({ e: 0.256, aAU: 1.325, ta: 227, w: 177.8, om: 316.9 });
+      var url = "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27-143205%27&MAKE_EPHEM=YES&EPHEM_TYPE=ELEMENTS&CENTER=500@10&START_TIME=" + new Date().toISOString().slice(0,10) + "&STOP_TIME=" + new Date(Date.now()+86400000).toISOString().slice(0,10) + "&STEP_SIZE=1d";
+      fetch("https://corsproxy.io/?" + encodeURIComponent(url))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var txt = (d && d.result) || "";
+          var m = txt.match(/EC=\s*([\d.E+-]+).*?W\s*=\s*([\d.E+-]+).*?OM=\s*([\d.E+-]+).*?TA=\s*([\d.E+-]+).*?A\s*=\s*([\d.E+-]+)/s);
+          if (!m) return;
+          var els = {
+            e: parseFloat(m[1]),
+            w: parseFloat(m[2]),
+            om: parseFloat(m[3]),
+            ta: parseFloat(m[4]),
+            aAU: parseFloat(m[5]) / 149597870.7
+          };
+          if (els.e && els.aAU) draw(els);
+        }).catch(function () {});
+    }
+
     function paintIssSky(img, homeLatN, homeLonN, note) {
       function project(latP, lonP, clat, clon) {
         var la = latP * Math.PI / 180, lo = lonP * Math.PI / 180;
@@ -7867,7 +7948,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         planes: { label: "Planes", note: "Live flights near the home pin", kind: "planes", url: "" },
         lights: { label: "Lights", note: "Night lights around the home pin", kind: "lights", url: "" },
         sun: { label: "Sun", note: "SDO AIA 193 — flares and holes", kind: "img", url: "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg?" + Date.now() },
-        launch: { label: "Launch", note: "Pad and a typical ground track. Not the official path.", kind: "launch", url: "" }
+        launch: { label: "Launch", note: "Pad and a typical ground track. Not the official path.", kind: "launch", url: "" },
+        starman: { label: "Starman", note: "Tesla Roadster orbit. Sun, Earth, Mars.", kind: "starman", url: "" }
       };
       var kpNow = window.__kp != null ? Number(window.__kp) : 0;
       document.querySelectorAll("#sky-map-pills [data-sky-map=\"aurora\"]").forEach(function (b) { b.hidden = !(kpNow >= 4); });
@@ -7908,6 +7990,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) { img.hidden = true; img.classList.remove("on"); img.style.display = "none"; }
         if (typeof paintLaunchTrack === "function") paintLaunchTrack();
+      } else if (v.kind === "starman") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
+        if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "Starman"; }
+        if (typeof paintStarmanMap === "function") paintStarmanMap(img, note);
       } else if (v.kind === "img") {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) {
