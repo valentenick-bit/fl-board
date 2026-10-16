@@ -3603,7 +3603,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1294</span>
+      <span class="hdr-ver" id="hdr-ver">v1295</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5734,7 +5734,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1294;
+    window.BOARD_VER = 1295;
 
     
     function communityShort() {
@@ -9036,6 +9036,16 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       }
       photonAddressSuggest(q);
     }
+    function censusSuggest(q) {
+      return fetch("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=" + encodeURIComponent(q) + "&benchmark=Public_AR_Current&format=json")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          return ((d && d.result && d.result.addressMatches) || []).map(function (m) {
+            var c = m.coordinates || {};
+            return { label: String(m.matchedAddress || "").replace(/, USA$/i, ""), lat: c.y || "", lon: c.x || "" };
+          });
+        }).catch(function () { return []; });
+    }
     function photonAddressSuggest(q) {
       var num = (q.match(/^(\d+[A-Za-z]?)\b/) || [])[1] || "";
       var rest = q.replace(/^\d+[A-Za-z]?\s*/, "").replace(/,\s*(USA|US|United States)\s*$/i, "").trim();
@@ -9053,7 +9063,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             var pr = Object.assign({}, f.properties || {});
             var cc = String(pr.countrycode || "").toUpperCase();
             if (cc && cc !== "US") return;
-            if (rest && !streetMatches(pr, rest) && !(pr.postcode && q.indexOf(String(pr.postcode).slice(0, 5)) >= 0)) return;
+            if (rest && !streetMatches(pr, rest) && !(pr.postcode && q.indexOf(String(pr.postcode).slice(0, 5)) >= 0) && !(pr.city && q.toLowerCase().indexOf(String(pr.city).toLowerCase().slice(0, 5)) >= 0)) return;
             var label = formatUsAddr(pr, num);
             if (!label || seen[label]) return;
             seen[label] = 1;
@@ -9061,8 +9071,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             rows.push({ label: label, lat: coords ? coords[1] : "", lon: coords ? coords[0] : "" });
           });
         });
-        if (!rows.length) { hideAddrSuggest(); return; }
-        showAddrSuggest(rows.slice(0, 6));
+        if (rows.length) { showAddrSuggest(rows.slice(0, 6)); return; }
+        return censusSuggest(q).then(function (hits) {
+          if (hits && hits.length) showAddrSuggest(hits.slice(0, 6));
+          else hideAddrSuggest();
+        });
       }).catch(function () { hideAddrSuggest(); });
     }
     function fillGooglePlace(placeId, done) {
