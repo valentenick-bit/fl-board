@@ -3603,7 +3603,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1298</span>
+      <span class="hdr-ver" id="hdr-ver">v1299</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5242,6 +5242,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-v="C">°C</button>
           </div>
         </div>
+        <div class="set-line"><label>System</label>
+          <div class="set-row" id="set-system">
+            <button type="button" data-v="imperial">Imperial</button>
+            <button type="button" data-v="metric">Metric</button>
+          </div>
+        </div>
         <div class="set-line"><label>Greeting</label>
           <div class="set-row" id="set-greettone">
             <button type="button" data-v="full">Full</button>
@@ -5736,7 +5742,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1298;
+    window.BOARD_VER = 1299;
 
     
     function communityShort() {
@@ -6046,7 +6052,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefBoard: "1", briefWxHold: "0", briefPrevMaster: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", briefPrevBoard: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
       breakOn: "1", breakNat: "1", breakLoc: "1",
       contrast: "0", motion: "full", colorHelp: "1", tap: "0", links: "1",
-      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device",
+      horo: "gemini,aquarius", hdrWx: "feels", clock: "12", units: "F", system: "imperial", greetTone: "full", tickSpeed: "normal", dateFmt: "us", eventMiles: "25", sportMiles: "150", lang: "device",
       jokeDay: "1"
     };
 
@@ -6113,6 +6119,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
     function use12h() { return String((typeof getSet === "function" ? getSet().clock : "12") || "12") !== "24"; }
     function useC() { return String((typeof getSet === "function" ? getSet().units : "F") || "F") === "C"; }
+    function useMetric() { return String((typeof getSet === "function" ? getSet().system : "imperial") || "imperial") === "metric"; }
     function fmtTempN(f) {
       if (f == null || isNaN(Number(f))) return null;
       return useC() ? Math.round((Number(f) - 32) * 5 / 9) : Math.round(Number(f));
@@ -14305,7 +14312,8 @@ function currentRotation() {
             var h = c.relative_humidity_2m != null ? Math.round(c.relative_humidity_2m) + "%" : "—";
             var w = c.wind_speed_10m != null ? Math.round(c.wind_speed_10m) + " mph" : "—";
             var g = c.wind_gusts_10m != null ? Math.round(c.wind_gusts_10m) + " mph" : "—";
-            html += "<tr><td style=\"padding:4px\">" + s.name + "<br><small>" + s.where + "</small></td><td>" + s.elev + " m</td><td>" + t + "</td><td>" + p + "</td><td>" + h + "</td><td>" + w + "</td><td>" + g + "</td></tr>";
+            var elev = (typeof useMetric === "function" && useMetric()) ? s.elev + " m" : Math.round(s.elev * 3.28084) + " ft";
+            html += "<tr><td style=\"padding:4px\">" + s.name + "<br><small>" + s.where + "</small></td><td>" + elev + "</td><td>" + t + "</td><td>" + p + "</td><td>" + h + "</td><td>" + w + "</td><td>" + g + "</td></tr>";
           });
           html += "</tbody></table>";
           box.innerHTML = html;
@@ -22963,7 +22971,7 @@ function mustEatsFL() {
         mark("set-hdrwx", s.hdrWx || "feels");
         mark("set-clock", s.clock || "12");
         mark("set-datefmt", s.dateFmt || "us");
-        mark("set-units", s.units || "F");
+        mark("set-units", s.units || "F"); mark("set-system", s.system || "imperial");
         mark("set-greettone", s.greetTone || "full");
         mark("set-tickspeed", s.tickSpeed || "normal");
         mark("set-gmapson", s.gmapsOn !== "0" ? "1" : "0");
@@ -23176,6 +23184,7 @@ function mustEatsFL() {
       tap("set-datefmt", "dateFmt", function () { if (typeof clock === "function") clock(); if (typeof paintToday === "function") paintToday(); });
       tap("set-units", "units", function () { if (typeof paintHdrTemps === "function") paintHdrTemps(); if (typeof writeGreetingCard === "function") writeGreetingCard(); if (typeof loadWx === "function") loadWx(); if (typeof fillEmptyCards === "function") fillEmptyCards(); if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras(); if (typeof paintHdrWind === "function") paintHdrWind(); });
+      tap("set-system", "system", function () { if (typeof paintObsTable === "function") paintObsTable(); });
       tap("set-greettone", "greetTone", function () { if (typeof writeGreetingCard === "function") writeGreetingCard();
       if (typeof paintWxExtras === "function") paintWxExtras(); });
       tap("set-tickspeed", "tickSpeed", function () {
