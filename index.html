@@ -3603,7 +3603,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1295</span>
+      <span class="hdr-ver" id="hdr-ver">v1296</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4042,6 +4042,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="fc-scroll" id="tenday-scroll"><div class="tenday"></div></div>
         </div>
         </div>
+        <p class="sheet-kicker">Baseline observatories</p>
+        <div class="card" id="obs-card"><b>Global air</b><span id="obs-body">Loading Mauna Loa and the four baseline stations…</span><div class="metric-spark hist" id="obs-chart" style="height:48px;margin-top:8px"></div></div>
         <p class="sheet-kicker">Details</p>
         <div class="metric-table" id="wx-metrics">
           <div class="metric-wind-row">
@@ -5734,7 +5736,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1295;
+    window.BOARD_VER = 1296;
 
     
     function communityShort() {
@@ -14269,7 +14271,52 @@ function currentRotation() {
       if (max >= 95) return "Moderate";
       return "";
     }
-    function paintWxExtras() {
+
+    function paintObservatories() {
+      var body = document.getElementById("obs-body");
+      var chart = document.getElementById("obs-chart");
+      if (!body) return;
+      function spark(el, vals) {
+        if (!el || !vals.length) return;
+        var w = 280, h = 48, min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+        if (max === min) { max = min + 1; }
+        var pts = vals.map(function (v, i) {
+          var x = i / (vals.length - 1) * w;
+          var y = h - 4 - ((v - min) / (max - min)) * (h - 8);
+          return x.toFixed(1) + "," + y.toFixed(1);
+        }).join(" ");
+        el.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><polyline fill="none" stroke="#7ec8ff" stroke-width="2" points="' + pts + '"/></svg>';
+      }
+      Promise.all([
+        fetch("https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.txt").then(function (r) { return r.text(); }).catch(function () { return ""; }),
+        fetch("https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_trend_gl.txt").then(function (r) { return r.text(); }).catch(function () { return ""; })
+      ]).then(function (files) {
+        var mlo = [], gl = [];
+        (files[0] || "").split("\n").forEach(function (ln) {
+          if (ln.indexOf("#") === 0 || !ln.trim()) return;
+          var p = ln.trim().split(/\s+/);
+          if (p.length >= 5) mlo.push({ d: p[0] + "-" + p[1] + "-" + p[2], v: parseFloat(p[4]) });
+        });
+        (files[1] || "").split("\n").forEach(function (ln) {
+          if (ln.indexOf("#") === 0 || !ln.trim()) return;
+          var p = ln.trim().split(/\s+/);
+          if (p.length >= 5) gl.push({ d: p[0] + "-" + p[1] + "-" + p[2], v: parseFloat(p[4]) });
+        });
+        var last = mlo.length ? mlo[mlo.length - 1] : null;
+        var gLast = gl.length ? gl[gl.length - 1] : null;
+        var recent = mlo.slice(-30).map(function (x) { return x.v; });
+        if (chart && recent.length) spark(chart, recent);
+        var lines = [];
+        if (last) lines.push("Mauna Loa " + last.v.toFixed(1) + " ppm");
+        if (gLast) lines.push("Global baseline " + gLast.v.toFixed(1) + " ppm");
+        lines.push("Barrow · Samoa · South Pole · Mauna Loa");
+        body.textContent = lines.join(" · ");
+      }).catch(function () {
+        body.textContent = "Mauna Loa · Barrow · Samoa · South Pole";
+      });
+    }
+
+    function paintWxExtras() { if (typeof paintObservatories === 'function') paintObservatories();
       var alerts = window.__nwsAlerts || [];
       var days = window.__nwsDays || [];
       var low = overnightLowF();
