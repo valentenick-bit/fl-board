@@ -3603,7 +3603,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1301</span>
+      <span class="hdr-ver" id="hdr-ver">v1302</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5742,7 +5742,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1301;
+    window.BOARD_VER = 1302;
 
     
     function communityShort() {
@@ -8177,12 +8177,15 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       var map = L.map(host, { zoomControl: false, attributionControl: true }).setView([homeLa, homeLo], 7);
       window.__launchMap = map;
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 12, attribution: "© OSM" }).addTo(map);
-      L.marker([lat, lon]).addTo(map).bindTooltip((row.vehicle && row.vehicle.name ? row.vehicle.name + " · " : "") + row.name, { permanent: true });
+      var when = row.t0 ? new Date(row.t0).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : (row.date_str || "TBD");
+      L.circle([lat, lon], { radius: 150 * 1609, color: "#2a9d8f", weight: 1, fillOpacity: 0.05 }).addTo(map).bindTooltip("Likely visible (~150 mi)");
+      L.circle([lat, lon], { radius: 300 * 1609, color: "#e9c46a", weight: 1, fillOpacity: 0.03, dashArray: "4 4" }).addTo(map).bindTooltip("Possible (~300 mi)");
+      L.marker([lat, lon]).addTo(map).bindTooltip((row.vehicle && row.vehicle.name ? row.vehicle.name + " · " : "") + row.name + "<br>" + when, { permanent: true });
       L.polyline([[lat, lon], [endLat, endLon]], { color: "#e07a5f", weight: 3, dashArray: "6 6" }).addTo(map);
-      if (typeof homeLat === "function") L.circleMarker([homeLat(), homeLon()], { radius: 5, color: "#2a9d8f" }).addTo(map).bindTooltip("Home");
+      if (typeof homeLat === "function") L.circleMarker([homeLat(), homeLon()], { radius: 6, color: "#2a9d8f", fillOpacity: 0.8 }).addTo(map).bindTooltip("Home");
       setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 80);
       var note = document.getElementById("sky-map-note");
-      if (note) note.textContent = "Dashed line is a typical track from the pad, not the official trajectory.";
+      if (note) note.textContent = when + " · Dashed line is a typical track. Green circle ~150 mi likely, yellow ~300 mi possible.";
     }
     window.paintLaunchTrack = paintLaunchTrack;
     function pubFetch(url) {
