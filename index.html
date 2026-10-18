@@ -3604,7 +3604,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1304</span>
+      <span class="hdr-ver" id="hdr-ver">v1305</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5743,7 +5743,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1304; /* v1304 */
+    window.BOARD_VER = 1305;
 
     
     function communityShort() {
@@ -14308,20 +14308,57 @@ function currentRotation() {
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var rows = Array.isArray(d) ? d : [d];
-          var html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:4px">Observatory</th><th>Elev</th><th>Temp</th><th>Pressure</th><th>Humidity</th><th>Wind</th><th>Gust</th></tr></thead><tbody>';
-          sites.forEach(function (s, i) {
+          var data = sites.map(function (s, i) {
             var c = (rows[i] && rows[i].current) || {};
-            var t = (typeof fmtTemp === "function" && c.temperature_2m != null) ? fmtTemp(c.temperature_2m) : (c.temperature_2m != null ? Math.round(c.temperature_2m) + "°" : "—");
-            var p = c.surface_pressure != null ? (typeof useMetric === "function" && useMetric() ? Math.round(c.surface_pressure) + " hPa" : (c.surface_pressure * 0.02953).toFixed(2) + " in") : "—";
-            var h = c.relative_humidity_2m != null ? Math.round(c.relative_humidity_2m) + "%" : "—";
-            var w = c.wind_speed_10m != null ? (typeof fmtWindSpd === "function" ? fmtWindSpd(c.wind_speed_10m) : Math.round(c.wind_speed_10m) + " mph") : "—";
-            var g = c.wind_gusts_10m != null ? (typeof fmtWindSpd === "function" ? fmtWindSpd(c.wind_gusts_10m) : Math.round(c.wind_gusts_10m) + " mph") : "—";
-            var elev = (typeof useMetric === "function" && useMetric()) ? s.elev + " m" : Math.round(s.elev * 3.28084) + " ft";
-            html += "<tr><td style=\"padding:4px\">" + s.name + "<br><small>" + s.where + "</small></td><td>" + elev + "</td><td>" + t + "</td><td>" + p + "</td><td>" + h + "</td><td>" + w + "</td><td>" + g + "</td></tr>";
+            return {
+              name: s.name, where: s.where, elev: s.elev,
+              temp: c.temperature_2m, pressure: c.surface_pressure,
+              humidity: c.relative_humidity_2m, wind: c.wind_speed_10m, gust: c.wind_gusts_10m
+            };
           });
-          html += "</tbody></table>";
-          box.innerHTML = html;
-          if (body) body.textContent = "Live from Open-Meteo at each site.";
+          var sortCol = "elev", sortAsc = false;
+          function render() {
+            var sorted = data.slice().sort(function (a, b) {
+              var va = a[sortCol], vb = b[sortCol];
+              if (sortCol === "name") { va = a.name; vb = b.name; }
+              if (va == null) va = sortAsc ? Infinity : -Infinity;
+              if (vb == null) vb = sortAsc ? Infinity : -Infinity;
+              if (typeof va === "string") return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+              return sortAsc ? va - vb : vb - va;
+            });
+            var metric = typeof useMetric === "function" && useMetric();
+            var cols = [
+              { k:"name", l:"Observatory" }, { k:"elev", l:"Elev" }, { k:"temp", l:"Temp" },
+              { k:"pressure", l:"Pressure" }, { k:"humidity", l:"Humidity" }, { k:"wind", l:"Wind" }, { k:"gust", l:"Gust" }
+            ];
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>';
+            cols.forEach(function (c) {
+              var arrow = sortCol === c.k ? (sortAsc ? " ▲" : " ▼") : "";
+              html += '<th data-col="' + c.k + '" style="text-align:' + (c.k === "name" ? "left" : "right") + ';padding:4px;cursor:pointer;user-select:none">' + c.l + arrow + '</th>';
+            });
+            html += '</tr></thead><tbody>';
+            sorted.forEach(function (s) {
+              var t = s.temp != null ? (typeof fmtTemp === "function" ? fmtTemp(s.temp) : Math.round(s.temp) + "°") : "—";
+              var p = s.pressure != null ? (metric ? Math.round(s.pressure) + " hPa" : (s.pressure * 0.02953).toFixed(2) + " in") : "—";
+              var h = s.humidity != null ? Math.round(s.humidity) + "%" : "—";
+              var w = s.wind != null ? (typeof fmtWindSpd === "function" ? fmtWindSpd(s.wind) : Math.round(s.wind) + " mph") : "—";
+              var g = s.gust != null ? (typeof fmtWindSpd === "function" ? fmtWindSpd(s.gust) : Math.round(s.gust) + " mph") : "—";
+              var elev = metric ? s.elev + " m" : Math.round(s.elev * 3.28084) + " ft";
+              html += '<tr><td style="padding:4px;text-align:left">' + s.name + '<br><small>' + s.where + '</small></td><td style="text-align:right">' + elev + '</td><td style="text-align:right">' + t + '</td><td style="text-align:right">' + p + '</td><td style="text-align:right">' + h + '</td><td style="text-align:right">' + w + '</td><td style="text-align:right">' + g + '</td></tr>';
+            });
+            html += '</tbody></table>';
+            box.innerHTML = html;
+            box.querySelectorAll("th").forEach(function (th) {
+              th.onclick = function () {
+                var col = th.getAttribute("data-col");
+                if (sortCol === col) sortAsc = !sortAsc;
+                else { sortCol = col; sortAsc = col === "name"; }
+                render();
+              };
+            });
+          }
+          render();
+          if (body) body.textContent = "Live from Open-Meteo at each site. Click a column to sort.";
         }).catch(function () {
           if (body) body.textContent = "Observatory feed did not answer.";
         });
