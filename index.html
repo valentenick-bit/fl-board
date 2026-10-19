@@ -3604,7 +3604,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1306</span>
+      <span class="hdr-ver" id="hdr-ver">v1307</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5743,7 +5743,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1306;
+    window.BOARD_VER = 1307;
 
     
     function communityShort() {
@@ -14304,7 +14304,7 @@ function currentRotation() {
       ];
       var lats = sites.map(function (s) { return s.lat; }).join(",");
       var lons = sites.map(function (s) { return s.lon; }).join(",");
-      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lats + "&longitude=" + lons + "&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph")
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lats + "&longitude=" + lons + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph")
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var rows = Array.isArray(d) ? d : [d];
@@ -14312,8 +14312,8 @@ function currentRotation() {
             var c = (rows[i] && rows[i].current) || {};
             return {
               name: s.name, where: s.where, elev: s.elev,
-              temp: c.temperature_2m, pressure: c.surface_pressure,
-              humidity: c.relative_humidity_2m, wind: c.wind_speed_10m, gust: c.wind_gusts_10m
+              temp: c.temperature_2m, feels: c.apparent_temperature, pressure: c.surface_pressure,
+              humidity: c.relative_humidity_2m, wind: c.wind_speed_10m, gust: c.wind_gusts_10m, dir: c.wind_direction_10m
             };
           });
           if (!window.__obsSort) window.__obsSort = { col:"elev", asc:false };
@@ -14329,8 +14329,9 @@ function currentRotation() {
             });
             var metric = typeof useMetric === "function" && useMetric();
             var cols = [
-              { k:"name", l:"Observatory" }, { k:"elev", l:"Elev" }, { k:"temp", l:"Temp" },
-              { k:"pressure", l:"Pressure" }, { k:"humidity", l:"Humidity" }, { k:"wind", l:"Wind" }, { k:"gust", l:"Gust" }
+              { k:"name", l:"Observatory" }, { k:"elev", l:"Elev" }, { k:"temp", l:"Temp" }, { k:"feels", l:"Feels" },
+              { k:"wind", l:"Wind" }, { k:"dir", l:"Dir" }, { k:"gust", l:"Gust" },
+              { k:"pressure", l:"Pressure" }, { k:"humidity", l:"Humidity" }
             ];
             var html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>';
             cols.forEach(function (c) {
@@ -14340,12 +14341,14 @@ function currentRotation() {
             html += '</tr></thead><tbody>';
             sorted.forEach(function (s) {
               var t = s.temp != null ? (typeof fmtTemp === "function" ? fmtTemp(s.temp) : Math.round(s.temp) + "°") : "—";
+              var feels = s.feels != null ? (typeof fmtTemp === "function" ? fmtTemp(s.feels) : Math.round(s.feels) + "°") : "—";
               var p = s.pressure != null ? (metric ? Math.round(s.pressure) + " hPa" : (s.pressure * 0.02953).toFixed(2) + " in") : "—";
               var h = s.humidity != null ? Math.round(s.humidity) + "%" : "—";
               var w = s.wind != null ? (typeof fmtWindSpd === "function" ? fmtWindSpd(s.wind) : Math.round(s.wind) + " mph") : "—";
+              var dir = s.dir != null ? (typeof compassFromDeg === "function" ? compassFromDeg(s.dir) : Math.round(s.dir) + "°") : "—";
               var g = s.gust != null ? (typeof fmtWindSpd === "function" ? fmtWindSpd(s.gust) : Math.round(s.gust) + " mph") : "—";
               var elev = metric ? s.elev + " m" : Math.round(s.elev * 3.28084) + " ft";
-              html += '<tr><td style="padding:4px;text-align:left">' + s.name + '<br><small>' + s.where + '</small></td><td style="text-align:right">' + elev + '</td><td style="text-align:right">' + t + '</td><td style="text-align:right">' + p + '</td><td style="text-align:right">' + h + '</td><td style="text-align:right">' + w + '</td><td style="text-align:right">' + g + '</td></tr>';
+              html += '<tr><td style="padding:4px;text-align:left">' + s.name + '<br><small>' + s.where + '</small></td><td style="text-align:right">' + elev + '</td><td style="text-align:right">' + t + '</td><td style="text-align:right">' + feels + '</td><td style="text-align:right">' + w + '</td><td style="text-align:right">' + dir + '</td><td style="text-align:right">' + g + '</td><td style="text-align:right">' + p + '</td><td style="text-align:right">' + h + '</td></tr>';
             });
             html += '</tbody></table>';
             box.innerHTML = html;
