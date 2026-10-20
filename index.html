@@ -3604,7 +3604,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1308</span>
+      <span class="hdr-ver" id="hdr-ver">v1309</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5743,7 +5743,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1308;
+    window.BOARD_VER = 1309;
 
     
     function communityShort() {
@@ -21008,8 +21008,9 @@ function paint() {
           var dt = new Date(String(when).length <= 10 ? when + "T12:00:00" : when);
           whenTxt = isNaN(dt.getTime()) ? String(when) : dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         }
+        var body = r.body || r.summary || r.desc || "";
         return "<div class=\"comm-row\"><div class=\"comm-kicker\"><span class=\"kind-chip " + kind + "\">" + label + "</span>" +
-          (whenTxt ? "<em>" + whenTxt + "</em>" : "") + "</div><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(r.body || "").replace(/</g,"") + "</span></div>";
+          (whenTxt ? "<em>" + whenTxt + "</em>" : "") + "</div><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(body).replace(/</g,"") + "</span></div>";
       }).join("");
     }
     function paintCommWeek() {
@@ -30343,10 +30344,10 @@ function cardBits(id) {
             if (isNaN(dt.getTime())) return "";
             return dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           }
-          var need = (j.need || []).filter(function (r) { return r && (r.title || r.body); });
-          var rest = [].concat(j.notices || j.notifications || [], j.announce || []).filter(function (r) { return r && (r.title || r.body); });
+          var need = (j.need || []).filter(function (r) { return r && (r.title || r.body || r.summary); });
+          var rest = [].concat(j.notices || j.notifications || [], j.announce || []).filter(function (r) { return r && (r.title || r.body || r.summary); });
           rest.sort(function (a, b) { return String(b.posted || b.when || "").localeCompare(String(a.posted || a.when || "")); });
-          var surveys = (j.surveys || []).filter(function (r) { return r && (r.title || r.body); });
+          var surveys = (j.surveys || []).filter(function (r) { return r && (r.title || r.body || r.summary); });
           var seen = {};
           function take(list, n) {
             var out = [];
@@ -30368,14 +30369,14 @@ function cardBits(id) {
           story.push("Quick pass through what BeachWalk sent the residents.");
           need.forEach(function (r) {
             var t = clean(r.title);
-            var body = clip(r.body, 140);
+            var body = clip(r.body || r.summary || "", 140);
             var line = "Don't skip this one: " + t;
             if (body && body.toLowerCase().indexOf(t.toLowerCase()) < 0) line += " — " + body.charAt(0).toLowerCase() + body.slice(1);
             story.push(sayDot(line));
           });
           rest.forEach(function (r, i) {
             var t = clean(r.title);
-            var body = clip(r.body, 120);
+            var body = clip(r.body || r.summary || "", 120);
             var kind = clean(r.kind).toLowerCase();
             var when = whenOf(r);
             var line;
@@ -30398,7 +30399,7 @@ function cardBits(id) {
           });
           surveys.forEach(function (r) {
             var t = clean(r.title);
-            var body = clip(r.body, 110);
+            var body = clip(r.body || r.summary || "", 110);
             var line = "One more thing they want a pulse on: " + t;
             if (body) line += " — " + body.charAt(0).toLowerCase() + body.slice(1);
             story.push(sayDot(line));
