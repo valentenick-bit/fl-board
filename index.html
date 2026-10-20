@@ -3604,7 +3604,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1307</span>
+      <span class="hdr-ver" id="hdr-ver">v1308</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5743,7 +5743,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1307;
+    window.BOARD_VER = 1308;
 
     
     function communityShort() {
@@ -30034,7 +30034,7 @@ function wxSvg(kind, box) {
           if (typeof spinEl === "function") spinEl(tick, tickSpeedPx(), true);
           return;
         }
-        var GAP = "\u00a0".repeat(160);
+        var GAP = "\u00a0".repeat(80);
         var bits = [];
         var hr = (typeof recNowET === "function" ? recNowET() : new Date()).getHours();
         var night = hr >= 20 || hr < 6;
@@ -30277,7 +30277,6 @@ function cardBits(id) {
           if (pkgOn) house.push("a package is still on the way to the door");
           if (fl) house.push("there is a flight on the book — " + fl.replace(/[.]+$/, ""));
           if (house.length) story.push("Start with the house: " + house.join(", and ") + ".");
-          else story.push("Nothing urgent at the house, so the day is yours.");
 
           if (stayT && /stay in|lightning|warning|too rough/i.test(stayT)) {
             var st = stayT.replace(/[.]+$/, "");
@@ -30286,21 +30285,25 @@ function cardBits(id) {
             story.push("If you want the easy win outdoors, the board likes this window: " + bestT.replace(/[.]+$/, "") + ".");
           }
 
-          if (table) {
-            var sell = "For dinner, I would take " + table.title;
+          var mealHr = (typeof recNowET === "function" ? recNowET() : new Date()).getHours();
+          var mealOk = mealHr >= 16 && mealHr < 21;
+          var lunchOk = mealHr >= 11 && mealHr < 15;
+          if (table && (mealOk || lunchOk)) {
+            var mealWord = mealOk ? "dinner" : "lunch";
+            var sell = "For " + mealWord + ", I would take " + table.title;
             if (table.where) sell += " — it is " + table.where;
             sell += ".";
             if (table.why) sell += " The reason it won the card is simple: " + table.why.replace(/[.]+$/, "") + ".";
             else sell += " It is the local pick that keeps showing up with the ratings and the chatter to back it.";
             story.push(sell);
           }
-          if (deal && (!table || deal.title.toLowerCase() !== table.title.toLowerCase())) {
+          if (deal && mealOk && (!table || deal.title.toLowerCase() !== table.title.toLowerCase())) {
             var d = "If you want a cheaper first stop, " + deal.title + " has a happy hour worth using";
             if (deal.why) d += " — " + deal.why.replace(/[.]+$/, "");
             d += ".";
             story.push(d);
           }
-          if (coupon && (!deal || coupon.title.toLowerCase() !== deal.title.toLowerCase()) && (!table || coupon.title.toLowerCase() !== table.title.toLowerCase())) {
+          if (coupon && mealOk && (!deal || coupon.title.toLowerCase() !== deal.title.toLowerCase()) && (!table || coupon.title.toLowerCase() !== table.title.toLowerCase())) {
             story.push("And if you would rather pack dinner in, " + coupon.title + " is the takeout deal on the board" + (coupon.why ? ": " + coupon.why.replace(/[.]+$/, "") : "") + ".");
           }
           if (hot) {
@@ -30431,7 +30434,6 @@ function cardBits(id) {
           var tone = window.__nwsRank || "";
           if (tone === "emergency" || tone === "warning" || tone === "watch" || tone === "advisory") wrap.classList.add("tick-" + tone);
         }
-        if (window.__natLines && window.__natLines.length) bits = bits.concat(window.__natLines);
         if (typeof setTicker === "function") setTicker(tick, bits.join(GAP), tickSpeedPx());
         else {
           tick.innerHTML = bits.join(GAP);
