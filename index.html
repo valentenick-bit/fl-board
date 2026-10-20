@@ -3604,7 +3604,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1312</span>
+      <span class="hdr-ver" id="hdr-ver">v1313</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5740,7 +5740,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1312;
+    window.BOARD_VER = 1313;
 
     
     function communityShort() {
@@ -8721,7 +8721,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       cost = cost || 1;
       var o = gmapsBudgetRead();
       if (o.n + cost > gmapsBudgetCap()) {
-        if (typeof noteFeed === "function") noteFeed("gmaps-budget", false, "cap " + o.n + "/" + gmapsBudgetCap() + " · skip " + (kind || "call"));
+        if (typeof noteFeed === "function") noteFeed("gmaps-budget", true, "cap " + o.n + "/" + gmapsBudgetCap() + " · using fallback");
         return false;
       }
       return true;
@@ -9260,8 +9260,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           });
           setTimeout(function () {
             if (!window.__trafficTiles) {
-              if (typeof noteFeed === "function") noteFeed("traffic", false, "google tiles never loaded");
-              if (typeof noteFeed === "function") noteFeed("maps-visual", false, "no tiles");
+              if (typeof noteFeed === "function") noteFeed("traffic", false, "google tiles never loaded — using embed");
               if (frame) {
                 frame.style.display = "";
                 frame.src = (typeof homeTrafficEmbed === "function" ? homeTrafficEmbed() : frame.src);
@@ -16510,7 +16509,7 @@ function paintObservatories() { paintObsTable(); }
       visNote.textContent = label;
       if (typeof showVisTile === "function") showVisTile(miles);
       window.__hazeKind = /smoke/i.test(label) ? "smoke" : /dust/i.test(label) ? "dust" : /haze/i.test(label) ? "haze" : "clear";
-      if (typeof noteFeed === "function") noteFeed("live-vis", !!(visEl && visEl.textContent && visEl.textContent !== "—"), (visEl && visEl.textContent || "") + " " + label);
+      if (typeof noteFeed === "function") noteFeed("live-vis", !!(visEl && visEl.textContent && visEl.textContent !== "—") || label === "Clear", (visEl && visEl.textContent || "") + " " + label);
       if (typeof paintWxExtras === "function") try { paintWxExtras(); } catch (eHaze) {}
     }
     function wxMphNum(v) {
@@ -18858,7 +18857,7 @@ function paintObservatories() { paintObsTable(); }
       } catch (e0) {}
       var key = typeof gmapsKey === "function" ? gmapsKey() : "";
       if (!key || (typeof mapsPaidOn === "function" && !mapsPaidOn())) { cb(row); return; }
-      fetch(location.origin + "/places?mode=text" + "&lat=" + (row.lat || (typeof homeLat === "function" ? homeLat() : "")) + "&lon=" + (row.lon || (typeof homeLon === "function" ? homeLon() : "")), {
+      fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + (row.lat || (typeof homeLat === "function" ? homeLat() : "")) + "&lon=" + (row.lon || (typeof homeLon === "function" ? homeLon() : "")), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ textQuery: q, pageSize: 1, radius: 20000 })
@@ -21579,7 +21578,7 @@ function paint() {
       function googlePlaceRateNew(r, cb) {
         var key = typeof gmapsKey === "function" ? gmapsKey() : "";
         if (!key || (typeof mapsPaidOn === "function" && !mapsPaidOn())) { cb(null); return; }
-        fetch(location.origin + "/places?mode=text" + "&lat=" + (r.lat || homeLat()) + "&lon=" + (r.lon || homeLon()), {
+        fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + (r.lat || homeLat()) + "&lon=" + (r.lon || homeLon()), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -21880,7 +21879,7 @@ function mustEatsFL() {
             pageSize: 20,
             locationRestriction: { circle: { center: { latitude: homeLat(), longitude: homeLon() }, radius: Math.min(32000, miles * 1609.34) } }
           };
-          fetch(location.origin + "/places?mode=text&lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, {
+          fetch(location.origin + "/places?mode=text&key=" + encodeURIComponent(key) + "&lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
@@ -24324,6 +24323,13 @@ function mustEatsFL() {
         box.value = "Commons report\nversion: v" + (window.BOARD_VER || "?") + "\nurl: " + location.href + "\nwhen: " + new Date().toISOString() + "\ncrash: " + String(e && e.message || e);
       }
     }
+    function paintHealthNow() {
+      var nowEl = document.getElementById("health-now");
+      if (!nowEl) return;
+      var set = typeof getSet === "function" ? getSet() : {};
+      var onPg = document.querySelector(".page.on");
+      nowEl.textContent = (typeof homePlace === "function" ? homePlace() : "") + " · " + (set.zip || "") + " · page " + (onPg ? (typeof pageLabel === "function" ? pageLabel(onPg.id) : onPg.id) : "?") + " · dark " + (set.dark || "auto") + " · " + ((document.getElementById("live-temp") || {}).textContent || "");
+    }
     function paintHealth() {
       var nowH = Date.now();
       if (window.__healthLast && nowH - window.__healthLast < (phoneThrottle() ? 8000 : 2000)) return;
@@ -25228,19 +25234,26 @@ function drawSurgeChart(points) {
     function loadHistWx() {
       var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
         "&hourly=relative_humidity_2m,surface_pressure,precipitation,visibility,cloud_cover,temperature_2m,apparent_temperature,dew_point_2m,wind_speed_10m,wind_gusts_10m,uv_index&current=visibility,cloud_cover,uv_index&past_days=2&forecast_days=1&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FNew_York";
-      fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
+      function parseHist(txt) {
         var d = null;
         try { d = txt ? JSON.parse(txt) : null; } catch (e) { d = null; }
-        if (!d || !d.hourly) {
+        return (d && d.hourly) ? d : null;
+      }
+      fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
+        var d = parseHist(txt);
+        if (d) return d;
+        // retry once with a shorter window
+        var retry = url.replace("past_days=2", "past_days=1");
+        return fetch(retry).then(function (r2) { return r2.text(); }).then(parseHist);
+      }).then(function (d) {
+        if (!d) {
           if (typeof noteFeed === "function") {
-            noteFeed("humid-chart", false, "hist feed not JSON");
-            noteFeed("pres-chart", false, "hist feed not JSON");
-            noteFeed("rain-chart", false, "hist feed not JSON");
+            noteFeed("humid-chart", false, "history feed unavailable");
+            noteFeed("pres-chart", false, "history feed unavailable");
+            noteFeed("rain-chart", false, "history feed unavailable");
           }
           return;
         }
-        return d;
-      }).then(function (d) {
         if (!d) return;
         var h = (d && d.hourly) || {};
         var times = h.time || [];
@@ -27581,7 +27594,7 @@ function wxSvg(kind, box) {
           var tempEl = document.getElementById("live-temp");
           var feelEl = document.getElementById("live-feels");
           var skyEl = document.getElementById("live-sky");
-          if (tempEl && tempF != null) { tempEl.innerHTML = fmtTempN(tempF) + "&deg;"; paintTemp(tempEl, tempF); }
+          if (tempEl && tempF != null) { tempEl.innerHTML = fmtTempN(tempF) + "&deg;"; paintTemp(tempEl, tempF); if (typeof paintHealthNow === "function") paintHealthNow(); }
           if (obs && obs.timestamp) window.__obsAt = new Date(obs.timestamp).getTime();
           else if (om.current && om.current.time) window.__obsAt = new Date(om.current.time).getTime();
           else window.__obsAt = Date.now();
