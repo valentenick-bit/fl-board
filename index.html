@@ -3604,7 +3604,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1315</span>
+      <span class="hdr-ver" id="hdr-ver">v1316</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5361,14 +5361,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <div class="set-card" id="set-radio" style="scroll-margin-top:12px">
         <h3>Radio</h3>
         <p class="hint" id="radio-status">Tap a station to play. The last station is remembered. Mute stops it. Quiet hours follow Dark mode unless you set times.</p>
-        <label>Stations</label>
-        <div class="rowbtns" id="radio-stations">
-          <button type="button" class="on" data-stream="https://oom-cmg.streamguys1.com/tam949/tam949-sgplayer-aac">94.9 Magic</button>
-          <button type="button" data-stream="https://oom-cmg.streamguys1.com/tam1055/tam1055-sgplayer-aac">105.5 Dove</button>
-          <button type="button" data-stream="https://stream.revma.ihrhls.com/zc5096">104.9 Seaview</button>
-          <button type="button" data-stream="https://stream.revma.ihrhls.com/zc641">107.9 WSRZ</button>
-          <button type="button" data-stream="">Mute</button>
-        </div>
+        <label>AM</label>
+        <div class="rowbtns" id="radio-am"></div>
+        <label>FM</label>
+        <div class="rowbtns" id="radio-fm"></div>
+        <div class="rowbtns" id="radio-stations" hidden></div>
+        <div class="rowbtns" id="radio-mute"></div>
         <label>Scanners</label>
         <p class="hint" id="scan-intro">Quiet until a call. Broadcastify may play a short ad first.</p>
         <div class="rowbtns" id="scan-btns">
@@ -5740,7 +5738,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1315;
+    window.BOARD_VER = 1316;
 
     
     function communityShort() {
@@ -12415,12 +12413,34 @@ function currentRotation() {
         ["WBUR", "https://icecast-stream.wbur.org/wbur_www"]
       ]
     };
+    function isAmStation(name) {
+      var n = String(name || "");
+      if (/\bAM\b/i.test(n)) return true;
+      if (/\bFM\b/i.test(n)) return false;
+      if (/\d+\.\d+/.test(n)) return false;
+      var m = n.match(/\b(\d{3,4})\b/);
+      return !!(m && Number(m[1]) >= 530 && Number(m[1]) <= 1710);
+    }
     function paintRadioButtons(list) {
       var box = document.getElementById("radio-stations");
+      var am = document.getElementById("radio-am");
+      var fm = document.getElementById("radio-fm");
+      var mute = document.getElementById("radio-mute");
       if (!box || !list || !list.length) return;
-      box.innerHTML = list.map(function (row) {
-        return '<button type="button" data-stream="' + row[1] + '">' + row[0] + "</button>";
-      }).join("") + '<button type="button" data-stream="">Mute</button>';
+      var amRows = [], fmRows = [];
+      list.forEach(function (row) {
+        if (isAmStation(row[0])) amRows.push(row);
+        else fmRows.push(row);
+      });
+      function btns(rows) {
+        return rows.map(function (row) {
+          return '<button type="button" data-stream="' + row[1] + '">' + row[0] + "</button>";
+        }).join("");
+      }
+      if (am) am.innerHTML = btns(amRows) || '<span class="hint">No AM stations for this pin.</span>';
+      if (fm) fm.innerHTML = btns(fmRows) || '<span class="hint">No FM stations for this pin.</span>';
+      if (mute) mute.innerHTML = '<button type="button" data-stream="">Mute</button>';
+      box.innerHTML = btns(list) + '<button type="button" data-stream="">Mute</button>';
       var nwr = document.getElementById("nwr-btn");
       if (nwr) {
         nwr.setAttribute("data-stream", noaaUrl());
@@ -12473,7 +12493,7 @@ function currentRotation() {
         var calls = typeof noaaCalls === "function" ? noaaCalls() : [];
         return calls.some(function (c) { return String(url).toUpperCase().indexOf(String(c).toUpperCase()) >= 0; });
       }
-      var buttons = document.querySelectorAll("#radio-stations button[data-stream]");
+      var buttons = document.querySelectorAll("#radio-stations button[data-stream], #radio-am button[data-stream], #radio-fm button[data-stream], #radio-mute button[data-stream]");
       var key = radioUrlKey(url);
       return Array.prototype.some.call(buttons, function (b) {
         return radioUrlKey(b.getAttribute("data-stream")) === key;
@@ -12512,7 +12532,7 @@ function currentRotation() {
       }
       if (pinSaved && radioAllowedOnThisPin(pinSaved)) {
         var lab = rec.label || "";
-        var buttons = document.querySelectorAll("#radio-stations button[data-stream]");
+        var buttons = document.querySelectorAll("#radio-stations button[data-stream], #radio-am button[data-stream], #radio-fm button[data-stream], #radio-mute button[data-stream]");
         Array.prototype.forEach.call(buttons, function (b) {
           if (radioUrlKey(b.getAttribute("data-stream")) === radioUrlKey(pinSaved)) lab = b.textContent || lab;
         });
@@ -12520,7 +12540,7 @@ function currentRotation() {
         return;
       }
       if (String((typeof getSet === "function" && getSet().kiosk) || "") === "1") {
-        var first = document.querySelector('#radio-stations button[data-stream]:not([data-stream=""])');
+        var first = document.querySelector('#radio-fm button[data-stream]:not([data-stream=""]), #radio-am button[data-stream]:not([data-stream=""])');
         if (first && typeof playStation === "function") playStation(first.getAttribute("data-stream"), first.textContent);
         else if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
         return;
@@ -12636,7 +12656,7 @@ function currentRotation() {
       var btn = null;
       if (saved === "") btn = document.querySelector('.rowbtns button[data-stream=""]');
       else if (saved) btn = document.querySelector('.rowbtns button[data-stream="' + saved + '"]');
-      if (!btn) btn = document.querySelector('#radio-stations button[data-stream]:not([data-stream=""])');
+      if (!btn) btn = document.querySelector('#radio-fm button[data-stream]:not([data-stream=""]), #radio-am button[data-stream]:not([data-stream=""])');
       if (!btn) return;
       if (getSet().kiosk !== "1") return;
       function start() {
@@ -13322,7 +13342,7 @@ function currentRotation() {
       if (!radioLabelLooksBlank(label)) return String(label).trim();
       url = String(url || "");
       if (/weatherusa|\/NWR\//i.test(url) && typeof noaaName === "function") return noaaName();
-      var nodes = document.querySelectorAll("#radio-stations button[data-stream], #set-radio button[data-stream], #set-radio button[data-scan], #nwr-btn");
+      var nodes = document.querySelectorAll("#radio-am button[data-stream], #radio-fm button[data-stream], #radio-mute button[data-stream], #set-radio button[data-stream], #set-radio button[data-scan], #nwr-btn");
       for (var i = 0; i < nodes.length; i++) {
         var u = nodes[i].getAttribute("data-stream") || nodes[i].getAttribute("data-scan") || "";
         if (!u) continue;
@@ -13369,7 +13389,7 @@ function currentRotation() {
           } else { url = ""; label = ""; }
         }
         if (!url) {
-          var first = document.querySelector('#radio-stations button[data-stream]:not([data-stream=""])');
+          var first = document.querySelector('#radio-fm button[data-stream]:not([data-stream=""]), #radio-am button[data-stream]:not([data-stream=""])');
           if (first) { url = first.getAttribute("data-stream") || ""; label = first.textContent || ""; }
         }
         if (typeof saveRadioForPin === "function") saveRadioForPin(url, label, false);
