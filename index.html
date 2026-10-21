@@ -3604,7 +3604,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1316</span>
+      <span class="hdr-ver" id="hdr-ver">v1317</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5738,7 +5738,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1316;
+    window.BOARD_VER = 1317;
 
     
     function communityShort() {
@@ -12427,8 +12427,11 @@ function currentRotation() {
       var fm = document.getElementById("radio-fm");
       var mute = document.getElementById("radio-mute");
       if (!box || !list || !list.length) return;
-      var amRows = [], fmRows = [];
+      var amRows = [], fmRows = [], seen = {};
       list.forEach(function (row) {
+        var key = String(row[0] || "").toLowerCase().replace(/\s+/g, " ").trim();
+        if (!key || seen[key]) return;
+        seen[key] = true;
         if (isAmStation(row[0])) amRows.push(row);
         else fmRows.push(row);
       });
@@ -12572,17 +12575,24 @@ function currentRotation() {
         retuneRadioForPin();
       }
       var preset = radioMarketPreset() || [];
+      function stationKey(name) {
+        var n = String(name || "").toLowerCase();
+        n = n.replace(/\b(fm|am|radio|the|news|talk)\b/g, " ");
+        n = n.replace(/\d+(\.\d+)?/g, " ");
+        n = n.replace(/[^a-z]/g, "");
+        return n.slice(0, 12) || String(name || "").toLowerCase().slice(0, 12);
+      }
       function pad(list) {
-        var out = (preset || []).slice(0, 12);
-        var seen = {};
-        out.forEach(function (row) { seen[String(row[0] || "").toLowerCase().slice(0, 24)] = true; });
-        (preset || []).forEach(function (row) {
-          if (out.length >= 12) return;
-          var key = String(row[0] || "").toLowerCase().slice(0, 24);
-          if (seen[key]) return;
+        var out = [], seen = {};
+        function add(row) {
+          if (!row || out.length >= 12) return;
+          var key = stationKey(row[0]);
+          if (!key || seen[key]) return;
           seen[key] = true;
           out.push(row);
-        });
+        }
+        (preset || []).forEach(add);
+        (list || []).forEach(add);
         return out;
       }
       var q = "countrycode=US&geo_lat=" + homeLat() + "&geo_long=" + homeLon() + "&geo_distance=160000&hidebroken=true&order=clickcount&reverse=true&limit=40";
