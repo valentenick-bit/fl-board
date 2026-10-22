@@ -192,7 +192,7 @@
     header.night { filter:none; }
 
     .sky-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:4; background:transparent; }
-    .hdr-sun, .hdr-moon { position:absolute; left:0; top:0; border-radius:50%; opacity:0; pointer-events:none; }
+    .hdr-sun, .hdr-moon { position:absolute; left:0; top:0; border-radius:50%; opacity:0; pointer-events:auto; cursor:pointer; }
     .hdr-sun { transition:opacity 1.2s linear, background 20s linear; will-change:transform,opacity; }
     .hdr-moon { transition:opacity 2.4s linear; will-change:transform,opacity; }
     .hdr-sun { width:28px; height:28px; z-index:3; background:#ffd24a; box-shadow:0 0 28px 12px rgba(255,210,70,.95); }
@@ -300,6 +300,22 @@
     .rot-row .rot-note { display:block; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:0; text-transform:none; }
     .rot-row button { border:0; background:var(--sand); color:var(--navy); border-radius:8px; padding:6px 10px; font-weight:700; }
     html.dark .rot-row button { background:#2a3430; color:#f7f1e6; }
+
+    
+    .cond-strip {
+      display:none; flex:0 0 auto; align-items:center; gap:8px;
+      min-height:28px; padding:4px 14px; font-size:13px; font-weight:700;
+      background:#3d4a5c; color:#f7f1e6; border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .cond-strip.on { display:flex; }
+    .cond-strip.frost { background:#4a5a6a; }
+    .cond-strip.air { background:#6a4a28; }
+    .cond-strip.tide { background:#5a3a28; }
+    .cond-strip.fire { background:#7a3a18; }
+    .cond-strip.uv { background:#6a5a28; }
+    html.dark .cond-strip { background:#2a3440; }
+    header.sky-surge { background:linear-gradient(180deg,#3a4a5c 0%,#1a2838 78%) !important; }
+    header.sky-surge .hdr-sea { background:linear-gradient(180deg, rgba(40,70,100,.1) 0%, rgba(30,50,80,.25) 100%) !important; }
 
     header { flex:0 0 auto; background:var(--navy); color:#f7f1e6; padding:20px 12px 28px; min-height:136px; display:grid; grid-template-columns:1fr; align-items:center; gap:0; border-bottom:none; position:sticky; top:0; overflow:visible; z-index:24; flex-shrink:0; pointer-events:auto; transition:background 90s linear, color 45s linear, border-color 90s linear; }
     .sky-fade { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; transition:opacity 90s linear; }
@@ -3605,7 +3621,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1326</span>
+      <span class="hdr-ver" id="hdr-ver">v1327</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3772,6 +3788,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </div>
       </div>
     </header>
+    <div class="cond-strip" id="cond-strip" hidden><span id="cond-text"></span></div>
     <div class="alert-ticker" id="alertbar">
       <b class="alert-lab" id="alertlab">WATCH</b>
       <div class="alert-track"><span id="alerttext"></span></div>
@@ -5739,7 +5756,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1326;
+    window.BOARD_VER = 1327;
 
     
     function communityShort() {
@@ -31775,6 +31792,59 @@ function homeCountyGuess() {
       if (pop) pop.addEventListener("click", function (e) { if (e.target === pop) close(); });
     })();
 
-    </script>
+    
+    function paintCondStrip() {
+      var strip = document.getElementById("cond-strip");
+      if (!strip) return;
+      var alertOn = !!(document.getElementById("alertbar") && document.getElementById("alertbar").classList.contains("on"));
+      var civicOn = !!(document.getElementById("civicbar") && document.getElementById("civicbar").classList.contains("on"));
+      var tick = document.querySelector(".ticker");
+      var tickAlert = tick && /tick-warning|tick-emergency|tick-watch/.test(tick.className);
+      if (alertOn || civicOn || tickAlert) { strip.hidden = true; strip.classList.remove("on"); return; }
+      var msgs = [];
+      var kind = "";
+      var frost = (document.getElementById("live-frost") || {}).textContent || "";
+      var freeze = (document.getElementById("live-freeze") || {}).textContent || "";
+      var air = (document.getElementById("live-air") || {}).textContent || "";
+      var uv = (document.getElementById("live-uv") || {}).textContent || "";
+      var fire = (document.getElementById("live-firewx") || {}).textContent || "";
+      var tide = (document.getElementById("live-redtide") || {}).textContent || "";
+      if (/advisory|warning|frost/i.test(frost)) { msgs.push("Frost risk"); kind = "frost"; }
+      if (/freeze/i.test(freeze)) { msgs.push("Freeze risk"); kind = kind || "frost"; }
+      if (/unhealthy|poor|moderate/i.test(air)) { msgs.push("Air quality elevated"); kind = kind || "air"; }
+      if (/high|extreme|very high/i.test(uv)) { msgs.push("UV is high"); kind = kind || "uv"; }
+      if (/elevated|critical|red flag/i.test(fire)) { msgs.push("Fire weather elevated"); kind = kind || "fire"; }
+      if (/red tide|bloom/i.test(tide)) { msgs.push("Red tide nearby"); kind = kind || "tide"; }
+      if (!msgs.length) { strip.hidden = true; strip.classList.remove("on"); return; }
+      var txt = document.getElementById("cond-text");
+      if (txt) txt.textContent = msgs[0];
+      strip.className = "cond-strip on " + (kind || "");
+      strip.hidden = false;
+    }
+    function checkCoastalSurge() {
+      var head = document.querySelector("header");
+      if (!head) return;
+      var coastal = typeof seaKind === "function" && seaKind() !== "inland";
+      var risk = window.__wxRisk || {};
+      var cane = (document.getElementById("live-cane") || {}).textContent || "";
+      var tropical = coastal && (risk.cane || risk.hurr || /hurricane|tropical|watch|warning/i.test(cane));
+      head.classList.toggle("sky-surge", !!tropical);
+    }
+    function wireSkyJumps() {
+      var sun = document.getElementById("hdr-sun");
+      var moon = document.getElementById("hdr-moon");
+      function go(map) {
+        if (typeof showPage === "function") showPage("sky");
+        setTimeout(function () {
+          if (typeof showSkyMap === "function") showSkyMap(map, true);
+        }, 80);
+      }
+      if (sun && !sun.__wired) { sun.__wired = true; sun.addEventListener("click", function () { go("sun"); }); }
+      if (moon && !moon.__wired) { moon.__wired = true; moon.addEventListener("click", function () { go("moon"); }); }
+    }
+    setInterval(function () { try { paintCondStrip(); checkCoastalSurge(); } catch (e) {} }, 15000);
+    setTimeout(function () { try { paintCondStrip(); checkCoastalSurge(); wireSkyJumps(); } catch (e) {} }, 2000);
+
+</script>
 </body>
 </html>
