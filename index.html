@@ -3621,7 +3621,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1335</span>
+      <span class="hdr-ver" id="hdr-ver">v1336</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5756,7 +5756,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1335;
+    window.BOARD_VER = 1336;
 
     
     function communityShort() {
@@ -13237,7 +13237,7 @@ function currentRotation() {
           var phTick = typeof moonPhase === "function" ? moonPhase() : 0.5;
           var litTick = (1 - Math.cos(phTick * Math.PI * 2)) / 2;
           if (!(nightTick && litTick > 0.08)) moon.style.opacity = "0";
-          else {
+          else if (!window.__moonWin) {
             moon.classList.add("up");
             moon.style.opacity = "1";
             var head = document.querySelector("header");
@@ -31908,19 +31908,8 @@ function homeCountyGuess() {
     setTimeout(function () {
       try {
         var m = document.getElementById("hdr-moon");
-        var h = document.querySelector("header");
-        if (m && h && h.classList.contains("sky-night") && !m.innerHTML && typeof paintMoonFace === "function") paintMoonFace(m);
-        if (m && h && h.classList.contains("sky-night")) {
-          m.classList.add("up");
-          m.style.opacity = "1";
-          var hw = h.offsetWidth || 360;
-          var hh = h.offsetHeight || 80;
-          var hr = new Date().getHours();
-          var p = Math.max(0.15, Math.min(0.85, (hr - 18) / 12));
-          var xPct = 12 + p * 76;
-          var topPx = 8 + (1 - Math.sin(p * Math.PI)) * Math.max(20, hh * 0.28);
-          m.style.transform = "translate3d(" + ((xPct / 100) * hw - 14) + "px," + topPx + "px,0)";
-        }
+        if (m && !m.innerHTML && typeof paintMoonFace === "function") paintMoonFace(m);
+        if (typeof placeSunMoonArc === "function") placeSunMoonArc();
       } catch (e) {}
     }, 1500);
     setInterval(function () { try { wireSkyJumps(); } catch (e) {} }, 8000);
