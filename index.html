@@ -3621,7 +3621,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1332</span>
+      <span class="hdr-ver" id="hdr-ver">v1333</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5756,7 +5756,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1332;
+    window.BOARD_VER = 1333;
 
     
     function communityShort() {
@@ -25118,9 +25118,14 @@ function mustEatsFL() {
       var lab = document.getElementById("live-moon-label");
       if (lab) {
         var times = win ? hh(win.rise) + " to " + hh(win.set) + " at the house" : "";
+        if (!times) {
+          var rises = (window.__bwCharts && window.__bwCharts.moonRises) || [];
+          var sets = (window.__bwCharts && window.__bwCharts.moonSets) || [];
+          if (rises.length && sets.length) times = hh(Date.parse(rises[1] || rises[0])) + " to " + hh(Date.parse(sets[2] || sets[1] || sets[0])) + " at the house";
+        }
         var illum = typeof moonIllumPct === "function" ? moonIllumPct() : null;
         var bit = kind + (illum != null ? " · " + illum + "%" : "");
-        lab.textContent = times ? bit + " · " + times : bit;
+        lab.textContent = times ? bit + " · " + times : (bit || "Rise and set at the house");
         lab.title = bit;
       }
       var riseTxt = win ? hh(win.rise) : "";
@@ -25996,9 +26001,11 @@ function drawSurgeChart(points) {
             if (lab) lab.textContent = "Sunrise " + hh(rise) + " · Sunset " + hh(set);
             applySunDark();
             drawSunChart(rise, set);
-            drawMoonChart();
           }
+          if (typeof drawMoonChart === "function") drawMoonChart();
           if (typeof paintSkyHeader === "function") paintSkyHeader();
+          var hdrMoon = document.getElementById("hdr-moon");
+          if (hdrMoon) { hdrMoon.classList.add("up"); hdrMoon.style.opacity = "1"; if (!hdrMoon.innerHTML && typeof paintMoonFace === "function") paintMoonFace(hdrMoon); }
         }).catch(function () {});
       fetch("https://api.sunrise-sunset.org/json?lat=" + homeLat() + "&lng=" + homeLon() + "&formatted=0")
         .then(function (r) { return r.json(); })
