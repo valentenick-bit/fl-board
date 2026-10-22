@@ -195,13 +195,13 @@
     .hdr-sun, .hdr-moon { position:absolute; left:0; top:0; border-radius:50%; opacity:0; pointer-events:auto; cursor:pointer; }
     .hdr-sun { transition:opacity 1.2s linear, background 20s linear; will-change:transform,opacity; }
     .hdr-moon { transition:opacity 2.4s linear; will-change:transform,opacity; }
-    .hdr-sun { width:28px; height:28px; z-index:3; background:#ffd24a; box-shadow:0 0 28px 12px rgba(255,210,70,.95); }
+    .hdr-sun { width:28px; height:28px; z-index:9; background:#ffd24a; box-shadow:0 0 28px 12px rgba(255,210,70,.95); pointer-events:auto; cursor:pointer; }
     header:not(.sky-night) .hdr-sun.up { opacity:1; }
     .hdr-moon.up { opacity:.92; }
     header.sky-dawn .hdr-sun { background:#f2b05e; }
     header.sky-dusk .hdr-sun.up { background:#e07a5f; }
-    .hdr-moon { width:28px; height:28px; left:0; top:0; background:transparent; box-shadow:none; z-index:3; overflow:visible; pointer-events:none; display:flex; align-items:center; justify-content:center; font-size:22px; line-height:1; filter:drop-shadow(0 0 8px rgba(255,255,255,.45)); }
-    .hdr-moon svg { display:block; width:100%; height:100%; overflow:visible; }
+    .hdr-moon { width:28px; height:28px; left:0; top:0; background:transparent; box-shadow:none; z-index:9; overflow:visible; pointer-events:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:22px; line-height:1; filter:drop-shadow(0 0 8px rgba(255,255,255,.45)); }
+    .hdr-moon svg { display:block; width:100%; height:100%; overflow:visible; pointer-events:none; }
     @media (max-width: 720px) {
       .hdr-moon { width:22px; height:22px; }
     }
@@ -3621,7 +3621,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1327</span>
+      <span class="hdr-ver" id="hdr-ver">v1328</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5756,7 +5756,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1327;
+    window.BOARD_VER = 1328;
 
     
     function communityShort() {
@@ -31831,19 +31831,20 @@ function homeCountyGuess() {
       head.classList.toggle("sky-surge", !!tropical);
     }
     function wireSkyJumps() {
-      var sun = document.getElementById("hdr-sun");
-      var moon = document.getElementById("hdr-moon");
       function go(map) {
         if (typeof showPage === "function") showPage("sky");
         setTimeout(function () {
           if (typeof showSkyMap === "function") showSkyMap(map, true);
-        }, 80);
+        }, 120);
       }
-      if (sun && !sun.__wired) { sun.__wired = true; sun.addEventListener("click", function () { go("sun"); }); }
-      if (moon && !moon.__wired) { moon.__wired = true; moon.addEventListener("click", function () { go("moon"); }); }
+      var sun = document.getElementById("hdr-sun");
+      var moon = document.getElementById("hdr-moon");
+      if (sun && !sun.__wired) { sun.__wired = true; sun.style.pointerEvents = "auto"; sun.style.cursor = "pointer"; sun.style.zIndex = "9"; sun.addEventListener("click", function (e) { e.stopPropagation(); go("sun"); }); }
+      if (moon && !moon.__wired) { moon.__wired = true; moon.style.pointerEvents = "auto"; moon.style.cursor = "pointer"; moon.style.zIndex = "9"; moon.addEventListener("click", function (e) { e.stopPropagation(); go("moon"); }); }
     }
     setInterval(function () { try { paintCondStrip(); checkCoastalSurge(); } catch (e) {} }, 15000);
     setTimeout(function () { try { paintCondStrip(); checkCoastalSurge(); wireSkyJumps(); } catch (e) {} }, 2000);
+    setInterval(function () { try { wireSkyJumps(); } catch (e) {} }, 8000);
 
 </script>
 </body>
