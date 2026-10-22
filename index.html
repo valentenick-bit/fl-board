@@ -3621,7 +3621,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1340</span>
+      <span class="hdr-ver" id="hdr-ver">v1341</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5756,7 +5756,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1340;
+    window.BOARD_VER = 1341;
 
     
     function communityShort() {
@@ -13005,15 +13005,18 @@ function currentRotation() {
           park(moon, moonPos, 28);
           moon.classList.add("up");
           moon.style.opacity = "1";
-        } else if (moon.classList.contains("up") || (document.querySelector("header") && document.querySelector("header").classList.contains("sky-night"))) {
-          var hr = new Date().getHours();
-          var p = Math.max(0.2, Math.min(0.8, (hr < 6 ? hr + 24 : hr) - 18) / 12);
-          var fallback = { p: p, xPct: 10 + p * 80, topPx: 10 + (1 - Math.sin(p * Math.PI)) * Math.max(16, hh * 0.3) };
-          park(moon, fallback, 28);
-          moon.classList.add("up");
-          moon.style.opacity = "1";
         } else {
-          moon.style.opacity = "0";
+          var hr = new Date().getHours();
+          var night = document.querySelector("header") && document.querySelector("header").classList.contains("sky-night");
+          if (night || moon.classList.contains("up")) {
+            var p = Math.max(0.25, Math.min(0.75, ((hr < 6 ? hr + 24 : hr) - 18) / 12));
+            var fallback = { p: p, xPct: 15 + p * 70, topPx: 12 + (1 - Math.sin(p * Math.PI)) * Math.max(14, hh * 0.25) };
+            park(moon, fallback, 28);
+            moon.classList.add("up");
+            moon.style.opacity = "1";
+          } else {
+            moon.style.opacity = "0";
+          }
         }
       }
     }
@@ -13244,8 +13247,10 @@ function currentRotation() {
           var phTick = typeof moonPhase === "function" ? moonPhase() : 0.5;
           var litTick = (1 - Math.cos(phTick * Math.PI * 2)) / 2;
           if (!(nightTick && litTick > 0.08)) moon.style.opacity = "0";
-          else if (!window.__moonWin) {
-            moon.style.opacity = "0";
+          else if (!window.__moonWin && document.querySelector("header") && document.querySelector("header").classList.contains("sky-night")) {
+            moon.classList.add("up");
+            moon.style.opacity = "1";
+            if (typeof placeSunMoonArc === "function") placeSunMoonArc();
           }
         }
         if (document.hidden || document.documentElement.classList.contains("phone")) {
