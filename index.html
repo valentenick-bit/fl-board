@@ -194,7 +194,7 @@
     .sky-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:4; background:transparent; }
     .hdr-sun, .hdr-moon { position:absolute; left:0; top:0; border-radius:50%; opacity:0; pointer-events:auto; cursor:pointer; }
     .hdr-sun { transition:opacity 1.2s linear, background 20s linear; will-change:transform,opacity; }
-    .hdr-moon { transition:opacity 2.4s linear; will-change:transform,opacity; }
+    .hdr-moon { transition:opacity .4s linear; will-change:transform,opacity; }
     .hdr-sun { width:28px; height:28px; z-index:9; background:#ffd24a; box-shadow:0 0 28px 12px rgba(255,210,70,.95); pointer-events:auto; cursor:pointer; }
     header:not(.sky-night) .hdr-sun.up { opacity:1; }
     .hdr-moon.up { opacity:1 !important; }
@@ -3621,7 +3621,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1330</span>
+      <span class="hdr-ver" id="hdr-ver">v1331</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5756,7 +5756,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1330;
+    window.BOARD_VER = 1331;
 
     
     function communityShort() {
@@ -13035,8 +13035,9 @@ function currentRotation() {
         var win = typeof moonNowWindow === "function" ? moonNowWindow() : null;
         window.__moonNight = !!win;
         window.__moonWin = win;
-        if (!win) { moon.classList.remove("up"); moon.style.opacity = "0"; }
-        else { moon.classList.add("up"); moon.style.opacity = "1"; }
+        if (win) { window.__moonWinLast = win; moon.classList.add("up"); moon.style.opacity = "1"; }
+        else if (window.__moonWinLast && Date.now() < window.__moonWinLast.set + 600000) { moon.classList.add("up"); moon.style.opacity = "1"; }
+        else { moon.classList.remove("up"); moon.style.opacity = "0"; }
       }
     }
     setInterval(function () { if (document.hidden || document.documentElement.classList.contains("phone")) return; if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 30000);
@@ -13215,7 +13216,7 @@ function currentRotation() {
           var coverWm = window.__skyCover || "light";
           if (coverWm === "heavy") moon.style.opacity = String(Math.max(0.6, fade * 0.8));
           else moon.style.opacity = String(Math.max(0.9, fade));
-        } else if (moon && !moonWin) {
+        } else if (moon && !moonWin && !(window.__moonWinLast && Date.now() < window.__moonWinLast.set + 600000)) {
           moon.style.opacity = "0";
         }
         if (document.hidden || document.documentElement.classList.contains("phone")) {
