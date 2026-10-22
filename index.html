@@ -3605,7 +3605,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1324</span>
+      <span class="hdr-ver" id="hdr-ver">v1325</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5739,7 +5739,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1324;
+    window.BOARD_VER = 1325;
 
     
     function communityShort() {
@@ -20844,8 +20844,8 @@ function paint() {
           if (!title) return;
           if (!/(festival|fair|market|bingo|trivia|karaoke|concert|comedy|parade|potluck|meetup|mixer|fundraiser|community|church|library|open mic|car show|live music|gathering|brewery|taproom|winery|distillery|acoustic|jam session|live band|tasting|food truck|paint night|watch party|brunch|yoga)/.test(blob)) return;
           if (city && city.length > 3 && blob.indexOf(city) < 0 && place && blob.indexOf(place.split(",")[0]) < 0) {
-            /* still keep if event words are strong */
-            if (!/(festival|fair|farmers market|bingo|parade|block party)/.test(blob)) return;
+            /* keep if it is a venue event or strong event words */
+            if (!/(festival|fair|farmers market|bingo|parade|block party|brewery|taproom|live music|live band|music bingo|jam session|open mic|karaoke|trivia|winery|distillery)/.test(blob)) return;
           }
           var when = new Date(it.pubDate || it.published || it.date || Date.now() + 86400000);
           if (isNaN(when.getTime())) when = new Date(Date.now() + 86400000);
@@ -20863,15 +20863,20 @@ function paint() {
       function loadGather(done) {
         var place = typeof homePlace === "function" ? homePlace() : "";
         if (!place) { if (done) done(); return; }
+        var city = (place.split(",")[0] || place).trim();
         var q = encodeURIComponent(place + ' ("live music" OR karaoke OR trivia OR bingo OR "farmers market" OR "craft fair" OR festival OR brewery OR taproom OR "open mic" OR comedy OR "food truck" OR "car show" OR parade OR "happy hour" OR "live band" OR "acoustic" OR "dj" OR "dance" OR "line dancing" OR "zumba" OR "yoga" OR "drum circle" OR "jam session" OR "open stage" OR "meat raffle" OR "fish fry" OR "spaghetti dinner" OR "pancake breakfast")');
+        var venueQ = encodeURIComponent(city + ' (brewery OR taproom OR "beer hall" OR winery OR distillery OR "music hall" OR "live music" OR "upcoming events" OR "event calendar" OR "music bingo")');
         var rss = "https://news.google.com/rss/search?q=" + q + "&hl=en-US&gl=US&ceid=US:en";
+        var venueRss = "https://news.google.com/rss/search?q=" + venueQ + "&hl=en-US&gl=US&ceid=US:en";
         var clubQ = encodeURIComponent(place + ' ("bingo night" OR "meat raffle" OR "fish fry" OR "spaghetti dinner" OR "pancake breakfast" OR "lodge" OR "fraternal" OR "club meeting" OR "community dinner" OR "benefit dinner")');
         var clubRss = "https://news.google.com/rss/search?q=" + clubQ + "&hl=en-US&gl=US&ceid=US:en";
-        var eb = "https://www.eventbrite.com/d/" + encodeURIComponent(place.split(",")[0] || place) + "/events/";
+        var eb = "https://www.eventbrite.com/d/" + encodeURIComponent(city) + "/events/";
         var urls = [
           "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss),
+          "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(venueRss),
           "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(clubRss),
           "https://api.allorigins.win/raw?url=" + encodeURIComponent(rss),
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(venueRss),
           "https://api.allorigins.win/raw?url=" + encodeURIComponent(eb)
         ];
         function next(i) {
