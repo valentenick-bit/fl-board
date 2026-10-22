@@ -3621,7 +3621,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1328</span>
+      <span class="hdr-ver" id="hdr-ver">v1329</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5756,7 +5756,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1328;
+    window.BOARD_VER = 1329;
 
     
     function communityShort() {
@@ -31837,10 +31837,21 @@ function homeCountyGuess() {
           if (typeof showSkyMap === "function") showSkyMap(map, true);
         }, 120);
       }
-      var sun = document.getElementById("hdr-sun");
-      var moon = document.getElementById("hdr-moon");
-      if (sun && !sun.__wired) { sun.__wired = true; sun.style.pointerEvents = "auto"; sun.style.cursor = "pointer"; sun.style.zIndex = "9"; sun.addEventListener("click", function (e) { e.stopPropagation(); go("sun"); }); }
-      if (moon && !moon.__wired) { moon.__wired = true; moon.style.pointerEvents = "auto"; moon.style.cursor = "pointer"; moon.style.zIndex = "9"; moon.addEventListener("click", function (e) { e.stopPropagation(); go("moon"); }); }
+      function onSky(el, map) {
+        if (!el || el.__wired) return;
+        el.__wired = true;
+        el.style.pointerEvents = "auto";
+        el.style.cursor = "pointer";
+        el.style.zIndex = "9";
+        el.addEventListener("click", function (e) {
+          var t = e.target;
+          if (t && t.closest && t.closest(".hamb, #hamb, #hdr-radio, #hdr-setbtn, .hdr-left, .clock-bits, button")) return;
+          e.stopPropagation();
+          go(map);
+        });
+      }
+      onSky(document.getElementById("hdr-sun"), "sun");
+      onSky(document.getElementById("hdr-moon"), "moon");
     }
     setInterval(function () { try { paintCondStrip(); checkCoastalSurge(); } catch (e) {} }, 15000);
     setTimeout(function () { try { paintCondStrip(); checkCoastalSurge(); wireSkyJumps(); } catch (e) {} }, 2000);
