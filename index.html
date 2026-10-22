@@ -999,6 +999,15 @@
       border-radius:16px; background:rgba(255,255,255,.55);
       color:var(--navy); border:1px solid var(--hair); border-left:5px solid var(--teal);
     }
+
+    .best-hour, .tonight-card { margin:8px 0 12px; }
+    .best-hour b, .tonight-card b { display:block; margin-bottom:4px; color:var(--teal); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+    .best-hour span, .tonight-card span { display:block; font-size:15px; line-height:1.45; color:var(--navy); }
+    html.dark .best-hour, html.dark .tonight-card { background:#2a3430; }
+    html.dark .best-hour span, html.dark .tonight-card span { color:#f7f1e6; }
+    html.dark .best-hour b, html.dark .tonight-card b { color:#7fd3c6; }
+    .next-action { display:block; font-weight:700; color:var(--teal); margin-bottom:4px; font-size:13px; }
+    html.dark .next-action { color:#7fd3c6; }
     .best-chip { margin:10px 0 8px; }
     .best-chip:empty, .best-chip[hidden] { display:none !important; }
     .best-chip b, .today-chip b { display:block; margin-bottom:5px; color:var(--teal); }
@@ -3622,7 +3631,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1368</span>
+      <span class="hdr-ver" id="hdr-ver">v1369</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3827,6 +3836,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <span id="greet-next"></span>
           <span class="greet-more" id="greet-more"></span>
           <small class="greet-hint" id="greet-hint">Tap for today&rsquo;s details</small>
+        </div>
+        <div class="card best-hour" id="best-hour" hidden>
+          <b>Best window</b>
+          <span id="best-hour-body">Looking at the next few hours…</span>
+        </div>
+        <div class="card tonight-card" id="tonight-card" hidden>
+          <b>Tonight</b>
+          <span id="tonight-body">Checking the evening…</span>
         </div>
         <div class="card" id="day-card"><b>Today on the calendar</b><div id="day-pills" class="day-pills"></div><span id="day-card-body">Checking the national days…</span></div>
         <div class="go-strip" id="go-strip">
@@ -5757,7 +5774,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1368;
+    window.BOARD_VER = 1369;
 
     
     function communityShort() {
@@ -13972,8 +13989,110 @@ function currentRotation() {
         if (tile) tile.classList.remove("on");
       });
     })();
+
+
+    function pkgNextAction(item) {
+      var d = String(item.detail || "").toLowerCase();
+      var t = String(item.title || "").toLowerCase();
+      if (/out for delivery|out for deliv/.test(d + t)) return "Out for delivery";
+      if (/arriving today|today/.test(d) && /eta|arriv/.test(d)) return "Arriving today";
+      if (/delay|held|stuck|exception/.test(d)) return "Delayed";
+      return "";
+    }
+    function flyNextAction(f) {
+      var st = String(f.liveStatus || f.status || "").toLowerCase();
+      var when = flightWhenMs(f);
+      var hrs = isNaN(when) ? 99 : (when - Date.now()) / 3600000;
+      if (/delay/.test(st)) return "Delayed";
+      if (hrs < 6 && hrs > 0 && !/gate/.test(st)) return "Gate not assigned yet";
+      if (/board/.test(st)) return "Boarding soon";
+      if (/cancel/.test(st)) return "Cancelled";
+      return "";
+    }
+    function paintBestHour() {
+      var card = document.getElementById("best-hour");
+      var body = document.getElementById("best-hour-body");
+      if (!card || !body) return;
+      var hours = window.__hours || [];
+      if (!hours.length) { card.hidden = true; return; }
+      var now = Date.now();
+      var scored = [];
+      hours.forEach(function (h) {
+        if (!h || !h.startTime) return;
+        var t = new Date(h.startTime).getTime();
+        if (t < now || t > now + 12 * 3600000) return;
+        var wind = Number(h.windSpeed || 0);
+        var pop = Number((h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0);
+        var temp = Number(h.temperature || 70);
+        var uv = Number(h.uvIndex || 0);
+        var score = 100;
+        if (wind > 25) score -= 40;
+        else if (wind > 15) score -= 20;
+        else if (wind > 10) score -= 8;
+        if (pop > 50) score -= 35;
+        else if (pop > 30) score -= 18;
+        else if (pop > 10) score -= 6;
+        if (temp < 55 || temp > 90) score -= 25;
+        else if (temp < 65 || temp > 82) score -= 10;
+        if (uv > 8) score -= 8;
+        scored.push({ t: t, score: score, wind: wind, pop: pop, temp: temp, h: h });
+      });
+      if (!scored.length) { card.hidden = true; return; }
+      // find best 2-hour window
+      var best = null, bestScore = -999;
+      for (var i = 0; i < scored.length - 1; i++) {
+        var win = scored[i].score + scored[i + 1].score;
+        if (win > bestScore) { bestScore = win; best = scored[i]; }
+      }
+      if (!best) best = scored[0];
+      var end = new Date(best.t + 2 * 3600000);
+      var startStr = new Date(best.t).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+      var endStr = end.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+      var reasons = [];
+      if (best.wind < 10) reasons.push("light wind");
+      else if (best.wind < 15) reasons.push("quietest wind");
+      if (best.pop < 10) reasons.push("no rain");
+      else if (best.pop < 30) reasons.push("low rain chance");
+      if (best.temp >= 65 && best.temp <= 82) reasons.push("comfortable temp");
+      var reason = reasons.slice(0, 2).join(" and ") || "least-bad stretch";
+      body.textContent = startStr + "–" + endStr + ". " + reason.charAt(0).toUpperCase() + reason.slice(1) + ".";
+      card.hidden = false;
+    }
+    function paintTonight() {
+      var card = document.getElementById("tonight-card");
+      var body = document.getElementById("tonight-body");
+      if (!card || !body) return;
+      var hr = new Date().getHours();
+      if (hr < 16) { card.hidden = true; return; }
+      var parts = [];
+      var cloud = document.getElementById("live-cloud");
+      var cloudPct = cloud ? parseInt(cloud.textContent, 10) : 50;
+      if (!isNaN(cloudPct) && cloudPct < 40) parts.push("Clear enough for stars.");
+      var moon = document.getElementById("live-sky-moonpct") || document.getElementById("live-moonpct");
+      if (moon && moon.textContent && !/^—$/.test(moon.textContent.trim())) {
+        parts.push("Moon is " + moon.textContent.replace(/lit/i, "").trim() + " lit.");
+      }
+      var tide = document.getElementById("live-tide-today");
+      if (tide && tide.textContent && /low/i.test(tide.textContent)) {
+        var m = tide.textContent.match(/low[^.]*/i);
+        if (m) parts.push(m[0].trim() + ".");
+      }
+      var evs = (window.__entAll || []).filter(function (e) {
+        if (!e || !e.when || !/music|live|band|concert/i.test((e.sum || "") + " " + (e.title || ""))) return false;
+        var t = new Date(e.when).getTime();
+        var now = Date.now();
+        return t > now && t < now + 8 * 3600000;
+      });
+      if (evs.length) {
+        var e = evs[0];
+        parts.push((e.sum || e.title || "Live music") + " tonight.");
+      }
+      if (!parts.length) { card.hidden = true; return; }
+      body.textContent = parts.join(" ");
+      card.hidden = false;
+    }
     function writeTodayChips() {
-      try { __writeTodayChipsBody(); } catch (eChip) { if (typeof noteFeed === 'function') noteFeed('today-chips', false, String(eChip && eChip.message || eChip)); }
+      try { paintBestHour(); paintTonight(); __writeTodayChipsBody(); } catch (eChip) { if (typeof noteFeed === 'function') noteFeed('today-chips', false, String(eChip && eChip.message || eChip)); }
     }
     function __writeTodayChipsBody() {
       var bolt = document.getElementById("chip-bolt");
@@ -18435,11 +18554,13 @@ function paintObservatories() { paintObsTable(); }
       if (eta) pills += '<span class="place-tag place-bw">' + eta + "</span>";
       var title = [who, num].filter(Boolean).join(" · ") || "Flight";
       var whenLine = when || "";
+      var nextAct = typeof flyNextAction === "function" ? flyNextAction(f) : "";
       var detail = bits.join(" · ");
       var ico = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
       return '<div class="card ev-card buzz-card buzz-fly">' +
         '<div class="ev-rail"><span class="ev-ico" aria-hidden="true">' + ico + '</span></div>' +
         '<div class="ev-body"><div class="ev-pills">' + pills + '</div>' +
+        (nextAct ? '<span class="next-action">' + nextAct + '</span>' : '') +
         '<b>' + title + '</b>' +
         (whenLine ? '<span class="ev-when">' + whenLine + '</span>' : '') +
         (detail ? '<span class="eat-why">' + detail + '</span>' : '') +
@@ -21311,6 +21432,7 @@ function paint() {
             '<div class="ev-body">' +
               '<span class="place-tag place-out">On the way</span>' +
               (who ? '<span class="kind-tag">' + who + "</span>" : "") +
+              (function(){ var na = typeof pkgNextAction === "function" ? pkgNextAction(item) : ""; return na ? '<span class="next-action">' + na + '</span>' : ""; })() +
               "<b>" + title + "</b>" +
               (detail ? '<span class="ev-when">' + detail + "</span>" : "") +
               trackBtn +
