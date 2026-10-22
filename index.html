@@ -1505,6 +1505,20 @@
     .storm-charts { gap:8px; }
     .storm-hist-card { background:transparent; border:0; box-shadow:none; padding:0; }
 
+
+    .normal-pill { display:inline-block; margin:4px 0 8px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.04em; background:#e8f0ee; color:#1b5c4e; }
+    .normal-pill.warm { background:#f4e6c4; color:#6a4e16; }
+    .normal-pill.cool { background:#d4e4f4; color:#1b4a6a; }
+    html.dark .normal-pill { background:#2a3430; color:#c8ebe2; }
+    html.dark .normal-pill.warm { background:#3d3420; color:#f0e0b8; }
+    html.dark .normal-pill.cool { background:#1d2a3d; color:#c8d8f0; }
+    #sea-window, .good-night { margin:6px 0 10px; }
+    #sea-window b { display:block; margin-bottom:4px; color:var(--teal); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+    #sea-window span { display:block; font-size:15px; line-height:1.4; }
+    .good-night { font-size:14px; color:var(--teal); font-weight:650; }
+    html.dark .good-night { color:#7fd3c6; }
+    .metric-spark svg { stroke-width:2; }
+    .metric-spark.empty { opacity:.4; }
     .metric-spark svg { width:100%; height:72px; display:block; }
     .metric-row.has-chart {
       grid-template-columns: minmax(6.2rem,36%) minmax(140px,1fr);
@@ -3631,7 +3645,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1369</span>
+      <span class="hdr-ver" id="hdr-ver">v1370</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4064,6 +4078,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="wx-top-left">
 
         <p class="wx-nowline" id="wx-nowline">Updating…</p>
+        <span class="normal-pill" id="normal-pill" hidden>near normal</span>
         <p class="sheet-kicker">Hourly forecast</p>
         <div class="card" id="cloud-card"><b>Clouds</b><span id="cloud-note">By height, next hours, for this pin.</span><div class="cloud-grid" id="cloud-grid"></div></div>
         <div class="card" id="rain-windows"><b>Rain</b><span id="rain-windows-body">Checking the gauge…</span></div>
@@ -4183,6 +4198,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="sea-top-left">
         <p class="sheet-kicker">Boating</p>
         <div class="card" id="beach-card"><b>Beach</b><span id="beach-line">Checking the shore…</span><div id="uv-bar" class="uv-bar" hidden></div></div>
+        <div class="card" id="sea-window" hidden>
+          <b>Next good window</b>
+          <span id="sea-window-body">Looking at the next 48 hours…</span>
+        </div>
         <div class="card boat-card" id="boat-card">
           <b id="coast-title">Boating report</b>
           <strong id="boat-go" class="boat-go">Checking the water…</strong>
@@ -4238,6 +4257,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
 
       <section id="sky" class="page sheet">
         <h2 data-k="After dark">Sky</h2>
+        <p class="good-night" id="good-night" hidden>Good night for…</p>
         <div class="sky-top">
         <div class="sky-map-frame sheet-map" id="sky-map-frame">
           <div class="radar-crop radar-stage" id="sky-map-stage">
@@ -5774,7 +5794,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1369;
+    window.BOARD_VER = 1370;
 
     
     function communityShort() {
@@ -14009,6 +14029,87 @@ function currentRotation() {
       if (/cancel/.test(st)) return "Cancelled";
       return "";
     }
+
+    function paintNormalPill() {
+      var pill = document.getElementById("normal-pill");
+      if (!pill) return;
+      var climate = window.__wxClimate;
+      var today = window.__nwsToday || {};
+      var high = Number(today.temperature || today.high || (window.__wxNow && window.__wxNow.temp) || 0);
+      var avg = climate && Number(climate.avgHigh || climate.normal || 0);
+      if (!high || !avg) { pill.hidden = true; return; }
+      var diff = Math.round(high - avg);
+      if (Math.abs(diff) < 3) {
+        pill.textContent = "near normal";
+        pill.className = "normal-pill";
+      } else if (diff > 0) {
+        pill.textContent = "+" + diff + "° above normal";
+        pill.className = "normal-pill warm";
+      } else {
+        pill.textContent = diff + "° below normal";
+        pill.className = "normal-pill cool";
+      }
+      pill.hidden = false;
+    }
+    function paintSeaWindow() {
+      var card = document.getElementById("sea-window");
+      var body = document.getElementById("sea-window-body");
+      if (!card || !body) return;
+      var sea = document.getElementById("marine");
+      if (sea && sea.getAttribute("data-sea") === "inland") { card.hidden = true; return; }
+      var hours = window.__hours || [];
+      if (!hours.length) { card.hidden = true; return; }
+      var now = Date.now();
+      var scored = [];
+      hours.forEach(function (h) {
+        if (!h || !h.startTime) return;
+        var t = new Date(h.startTime).getTime();
+        if (t < now || t > now + 48 * 3600000) return;
+        var wind = Number(h.windSpeed || 0);
+        var wave = Number(h.waveHeight || 2);
+        var score = 100;
+        if (wind > 20) score -= 40;
+        else if (wind > 15) score -= 20;
+        if (wave > 4) score -= 30;
+        else if (wave > 3) score -= 15;
+        scored.push({ t: t, score: score, wind: wind, wave: wave });
+      });
+      if (!scored.length) { card.hidden = true; return; }
+      var best = scored.reduce(function (a, b) { return a.score > b.score ? a : b; });
+      if (best.score < 40) {
+        body.textContent = "No good window in the next 48 hours.";
+      } else {
+        var start = new Date(best.t);
+        var end = new Date(best.t + 6 * 3600000);
+        var sStr = start.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+        var eStr = end.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+        var day = start.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
+        body.textContent = day + " " + sStr + "–" + eStr + ". Light wind, " + Math.round(best.wave) + " ft seas.";
+      }
+      card.hidden = false;
+    }
+    function paintGoodNight() {
+      var line = document.getElementById("good-night");
+      if (!line) return;
+      var cloud = document.getElementById("live-cloud");
+      var cloudPct = cloud ? parseInt(cloud.textContent, 10) : 100;
+      if (isNaN(cloudPct) || cloudPct > 40) { line.hidden = true; return; }
+      var moon = document.getElementById("live-sky-moonpct");
+      var moonPct = moon ? parseInt(moon.textContent, 10) : 100;
+      var meteor = document.getElementById("live-meteor");
+      var planet = document.getElementById("live-planet2");
+      var text = "";
+      if (meteor && meteor.textContent && !/^—$/.test(meteor.textContent.trim()) && cloudPct < 30) {
+        text = "Good night for " + meteor.textContent.trim() + ".";
+      } else if (planet && planet.textContent && planet.textContent !== "—" && cloudPct < 35) {
+        text = "Good night for " + planet.textContent.trim() + ".";
+      } else if (!isNaN(moonPct) && moonPct < 40 && cloudPct < 30) {
+        text = "Good night for dark sky.";
+      }
+      if (!text) { line.hidden = true; return; }
+      line.textContent = text;
+      line.hidden = false;
+    }
     function paintBestHour() {
       var card = document.getElementById("best-hour");
       var body = document.getElementById("best-hour-body");
@@ -14092,7 +14193,7 @@ function currentRotation() {
       card.hidden = false;
     }
     function writeTodayChips() {
-      try { paintBestHour(); paintTonight(); __writeTodayChipsBody(); } catch (eChip) { if (typeof noteFeed === 'function') noteFeed('today-chips', false, String(eChip && eChip.message || eChip)); }
+      try { paintBestHour(); paintTonight(); paintNormalPill(); paintSeaWindow(); paintGoodNight(); __writeTodayChipsBody(); } catch (eChip) { if (typeof noteFeed === 'function') noteFeed('today-chips', false, String(eChip && eChip.message || eChip)); }
     }
     function __writeTodayChipsBody() {
       var bolt = document.getElementById("chip-bolt");
