@@ -3621,7 +3621,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1334</span>
+      <span class="hdr-ver" id="hdr-ver">v1335</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5756,7 +5756,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1334;
+    window.BOARD_VER = 1335;
 
     
     function communityShort() {
@@ -12938,10 +12938,20 @@ function currentRotation() {
       var g = pack.gaps[Math.floor(Math.random() * pack.gaps.length)];
       return (((g[0] + g[1]) / 2) / pack.w) * 100;
     }
+    function moonParse(s) {
+      if (!s) return NaN;
+      if (/Z$|[+-]\d\d:?\d\d$/.test(s)) return Date.parse(s);
+      var off = new Date().getTimezoneOffset();
+      var sign = off > 0 ? "-" : "+";
+      var abs = Math.abs(off);
+      var hh = String(Math.floor(abs / 60)).padStart(2, "0");
+      var mm = String(abs % 60).padStart(2, "0");
+      return Date.parse(s + sign + hh + ":" + mm);
+    }
     function moonWindows() {
       var c = window.__bwCharts || {};
-      var rises = (c.moonRises || []).map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-      var sets = (c.moonSets || []).map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
+      var rises = (c.moonRises || []).map(moonParse).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
+      var sets = (c.moonSets || []).map(moonParse).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
       return rises.map(function (r) {
         var s = null;
         for (var i = 0; i < sets.length; i++) { if (sets[i] > r) { s = sets[i]; break; } }
@@ -25133,7 +25143,11 @@ function mustEatsFL() {
         if (!times) {
           var rises = (window.__bwCharts && window.__bwCharts.moonRises) || [];
           var sets = (window.__bwCharts && window.__bwCharts.moonSets) || [];
-          if (rises.length && sets.length) times = hh(Date.parse(rises[1] || rises[0])) + " to " + hh(Date.parse(sets[2] || sets[1] || sets[0])) + " at the house";
+          var nowMs = Date.now();
+          var nextRise = rises.map(function (s) { return Date.parse(s); }).filter(function (n) { return n > nowMs; })[0];
+          var nextSet = sets.map(function (s) { return Date.parse(s); }).filter(function (n) { return n > nowMs; })[0];
+          if (nextRise && nextSet) times = hh(nextRise) + " to " + hh(nextSet) + " at the house";
+          else if (rises.length && sets.length) times = hh(Date.parse(rises[rises.length - 1])) + " to " + hh(Date.parse(sets[sets.length - 1])) + " at the house";
         }
         var illum = typeof moonIllumPct === "function" ? moonIllumPct() : null;
         var bit = kind + (illum != null ? " · " + illum + "%" : "");
@@ -26016,8 +26030,14 @@ function drawSurgeChart(points) {
           }
           if (typeof drawMoonChart === "function") drawMoonChart();
           if (typeof paintSkyHeader === "function") paintSkyHeader();
+          if (typeof placeSkyBodies === "function") placeSkyBodies();
           var hdrMoon = document.getElementById("hdr-moon");
-          if (hdrMoon && window.__moonWin) { hdrMoon.classList.add("up"); hdrMoon.style.opacity = "1"; if (!hdrMoon.innerHTML && typeof paintMoonFace === "function") paintMoonFace(hdrMoon); }
+          if (hdrMoon && window.__moonWin) {
+            hdrMoon.classList.add("up");
+            hdrMoon.style.opacity = "1";
+            if (!hdrMoon.innerHTML && typeof paintMoonFace === "function") paintMoonFace(hdrMoon);
+            if (typeof placeSunMoonArc === "function") placeSunMoonArc();
+          }
         }).catch(function () {});
       fetch("https://api.sunrise-sunset.org/json?lat=" + homeLat() + "&lng=" + homeLon() + "&formatted=0")
         .then(function (r) { return r.json(); })
