@@ -3646,7 +3646,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1377</span>
+      <span class="hdr-ver" id="hdr-ver">v1378</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3890,6 +3890,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div id="today-quake" hidden>
           <div id="today-quake-body"></div>
         </div>
+        <div id="today-health" hidden>
+          <div id="today-health-body"></div>
+        </div>
         <div id="today-cane" data-p="storms" hidden>
           <div id="today-cane-body"></div>
         </div>
@@ -3908,6 +3911,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="pulse-grid" id="today-pulse" hidden>
           <article class="pulse today-chip bolt" id="chip-bolt" hidden></article>
           <article class="pulse today-chip quake" id="chip-quake" hidden></article>
+          <article class="pulse today-chip health" id="chip-health" hidden></article>
           <article class="pulse today-chip cane" id="chip-cane" hidden></article>
           <article class="pulse today-chip trash" id="chip-trash" hidden></article>
           <article class="pulse today-chip launch" id="chip-launch" hidden></article>
@@ -5795,7 +5799,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1377;
+    window.BOARD_VER = 1378;
 
     
     function communityShort() {
@@ -14182,6 +14186,39 @@ function currentRotation() {
       body.textContent = parts.join(" ");
       card.hidden = false;
     }
+    function loadHealthAdv() {
+      if (window.__healthAdvAt && Date.now() - window.__healthAdvAt < 6 * 3600000) return;
+      var urls = [
+        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/health-adv.json",
+        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/health-adv.json"
+      ];
+      function next(i) {
+        if (i >= urls.length) return;
+        fetch(urls[i]).then(function (r) { return r.json(); }).then(function (d) {
+          window.__healthAdv = d || {};
+          window.__healthAdvAt = Date.now();
+          if (typeof writeTodayChips === "function") writeTodayChips();
+        }).catch(function () { next(i + 1); });
+      }
+      next(0);
+    }
+    function healthAdvForHome() {
+      var list = (window.__healthAdv && window.__healthAdv.advisories) || [];
+      var set = typeof getSet === "function" ? getSet() : {};
+      var st = typeof homeState === "function" ? homeState() : "";
+      var county = String(set.county || "").replace(/\s+county$/i, "").trim().toLowerCase();
+      var place = String(typeof homePlace === "function" ? homePlace() : "").toLowerCase();
+      var flCounty = { "englewood":"sarasota", "venice":"sarasota", "north port":"sarasota", "sarasota":"sarasota", "osprey":"sarasota", "nokomis":"sarasota" };
+      if (!county && st === "FL" && flCounty[place]) county = flCounty[place];
+      return list.filter(function (a) {
+        if (!a) return false;
+        if (st && a.state && String(a.state).toUpperCase() !== st) return false;
+        var ac = String(a.county || "").toLowerCase();
+        if (county && ac === county) return true;
+        if (place && ac && place.indexOf(ac) >= 0) return true;
+        return false;
+      });
+    }
     function writeTodayChips() {
       try { paintBestHour(); paintTonight(); paintNormalPill(); paintSeaWindow(); paintGoodNight(); __writeTodayChipsBody(); } catch (eChip) { if (typeof noteFeed === 'function') noteFeed('today-chips', false, String(eChip && eChip.message || eChip)); }
     }
@@ -14352,6 +14389,27 @@ function currentRotation() {
         } else if (trashBody) trashBody.innerHTML = "";
       }
       var school = window.__schoolChip;
+      var healthHits = typeof healthAdvForHome === "function" ? healthAdvForHome() : [];
+      var healthBox = document.getElementById("today-health");
+      var healthBody = document.getElementById("today-health-body");
+      var healthChip = document.getElementById("chip-health");
+      var healthOn = healthHits.length > 0;
+      if (healthChip) healthChip.classList.toggle("on", healthOn);
+      if (healthBox) healthBox.hidden = !healthOn;
+      if (healthOn && healthBody && typeof stampTodayArt === "function") {
+        var h = healthHits[0];
+        var lvl = String(h.level || "advisory");
+        healthBody.innerHTML = stampTodayArt(
+          '<div class="card hot"><span class="warn-tag">' + (lvl === "alert" ? "Alert" : "Advisory") + '</span><span class="kind-tag warn-tag">Health</span><b>' + (h.county || "") + " · " + (h.disease || "Health advisory") + '</b><span>' + (h.summary || "A health advisory is in effect for this county.") + '</span></div>',
+          "health"
+        );
+      } else if (healthBody) healthBody.innerHTML = "";
+      var hanCard = document.getElementById("han-card");
+      var hanBody = document.getElementById("live-han");
+      if (hanCard && healthOn) {
+        hanCard.hidden = false;
+        if (hanBody) hanBody.textContent = (healthHits[0].summary || "") + (healthHits[0].url ? " " + healthHits[0].url : "");
+      }
       var schoolBox = document.getElementById("today-school");
       var schoolBody = document.getElementById("today-school-body");
       if (schoolBox) schoolBox.hidden = !(school && school.on);
@@ -14362,6 +14420,7 @@ function currentRotation() {
         );
       } else if (schoolBody) schoolBody.innerHTML = "";
     }
+    if (typeof loadHealthAdv === "function") loadHealthAdv();
     writeTodayChips();
     try { paintMeteorChip(); loadSpaceWeather(); loadKingTides(); loadIssPasses(); } catch (eBootSky) {}
     function writeHdrMeta() {
