@@ -3669,7 +3669,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1406</span>
+      <span class="hdr-ver" id="hdr-ver">v1407</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5831,7 +5831,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1406;
+    window.BOARD_VER = 1407;
 
     
     function communityShort() {
@@ -7795,35 +7795,41 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       var type = ac.t || "";
       var reg = ac.r || "";
       var id = "pr-" + (ac.hex || call).replace(/[^a-z0-9]/gi, "");
-      var base = "<div style='font:600 13px Source Sans 3,sans-serif;color:#0b1a2a'><b>" + call + "</b>" +
+      var key = String(ac.flight || "").trim();
+      var cached = (window.__routeCache && key && window.__routeCache[key]) || "";
+      var routeLine = cached && cached !== "none" ? cached : (key ? "<span id='" + id + "' style='font-weight:500;color:#5a6a7a'></span>" : "");
+      return "<div style='font:600 13px Source Sans 3,sans-serif;color:#0b1a2a'><b>" + call + "</b>" +
         (reg ? "<br><span style='font-weight:500'>" + reg + "</span>" : "") +
         (type ? " · " + type : "") +
         "<br>" + alt + " · " + spd +
-        "<br><span id='" + id + "' style='font-weight:500;color:#5a6a7a'>Looking up route…</span></div>";
-      if (ac.flight && !window.__routeCache) window.__routeCache = {};
+        (routeLine ? "<br>" + routeLine : "") + "</div>";
+    }
+    function lookupRoute(ac, marker) {
       var key = String(ac.flight || "").trim();
-      if (key && !window.__routeCache[key]) {
-        window.__routeCache[key] = "pending";
-        fetch("https://api.adsbdb.com/v0/callsign/" + encodeURIComponent(key))
-          .then(function (r) { return r.json(); })
-          .then(function (d) {
-            var fr = (d && d.response && d.response.flightroute) || {};
-            var o = fr.origin || {}, dest = fr.destination || {};
-            var txt = (o.iata_code || o.icao_code || "—") + " → " + (dest.iata_code || dest.icao_code || "—");
-            if (o.municipality || dest.municipality) txt += "<br>" + (o.municipality || "") + (o.municipality && dest.municipality ? " → " : "") + (dest.municipality || "");
-            window.__routeCache[key] = txt;
-            var el = document.getElementById(id);
-            if (el) el.innerHTML = txt;
-          })
-          .catch(function () {
-            window.__routeCache[key] = "";
-            var el = document.getElementById(id);
-            if (el) el.textContent = "";
-          });
-      } else if (key && window.__routeCache[key] && window.__routeCache[key] !== "pending") {
-        base = base.replace("Looking up route…", window.__routeCache[key]);
+      if (!key) return;
+      if (!window.__routeCache) window.__routeCache = {};
+      if (window.__routeCache[key]) {
+        if (window.__routeCache[key] !== "none") marker.setPopupContent(planePopup(ac));
+        return;
       }
-      return base;
+      window.__routeCache[key] = "pending";
+      var id = "pr-" + (ac.hex || key).replace(/[^a-z0-9]/gi, "");
+      var el = document.getElementById(id);
+      if (el) el.textContent = "Looking up…";
+      fetch("https://api.adsbdb.com/v0/callsign/" + encodeURIComponent(key))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d) { window.__routeCache[key] = "none"; return; }
+          var fr = (d.response && d.response.flightroute) || {};
+          var o = fr.origin || {}, dest = fr.destination || {};
+          if (!o.iata_code && !o.icao_code && !dest.iata_code && !dest.icao_code) { window.__routeCache[key] = "none"; return; }
+          var txt = (o.iata_code || o.icao_code || "—") + " → " + (dest.iata_code || dest.icao_code || "—");
+          if (o.municipality || dest.municipality) txt += "<br>" + (o.municipality || "") + (o.municipality && dest.municipality ? " → " : "") + (dest.municipality || "");
+          window.__routeCache[key] = txt;
+          marker.setPopupContent(planePopup(ac));
+          marker.openPopup();
+        })
+        .catch(function () { window.__routeCache[key] = "none"; });
     }
     function paintPlaneMap(el, latN, lonN, note) {
       if (window.__planeBusy) return;
@@ -7870,6 +7876,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
                 markers[id].setPopupContent(planePopup(ac));
               } else {
                 markers[id] = L.marker(ll, { icon: planeIcon(ac.track) }).addTo(window.__planeMap).bindPopup(planePopup(ac));
+                markers[id].on("click", function () { lookupRoute(ac, markers[id]); });
               }
             });
             Object.keys(markers).forEach(function (id) {
