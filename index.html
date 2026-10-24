@@ -3665,7 +3665,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1380</span>
+      <span class="hdr-ver" id="hdr-ver">v1381</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5818,7 +5818,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1380;
+    window.BOARD_VER = 1381;
 
     
     function communityShort() {
@@ -28314,27 +28314,31 @@ function wxSvg(kind, box) {
             function omWord(c) {
               return c >= 95 ? "Thunderstorms" : c >= 80 ? "Showers" : c >= 61 ? "Rain" : c >= 3 ? "Cloudy" : c >= 2 ? "Partly cloudy" : "Sunny";
             }
-            var need = rows.some(function (r) { return !r.row; });
-            if (!need) { paintTen(rows); }
-            else {
-              fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=America%2FNew_York")
-                .then(function (r) { return r.json(); })
-                .then(function (om) {
-                  var times = (om.daily && om.daily.time) || [];
-                  var his = (om.daily && om.daily.temperature_2m_max) || [];
-                  var los = (om.daily && om.daily.temperature_2m_min) || [];
-                  var pops = (om.daily && om.daily.precipitation_probability_max) || [];
-                  var codes = (om.daily && om.daily.weather_code) || [];
-                  rows.forEach(function (r) {
-                    if (r.row) return;
-                    var ix = times.indexOf(r.key);
-                    if (ix < 0) return;
-                    r.row = { fx: omWord(codes[ix] || 0), hi: Math.round(his[ix]), lo: Math.round(los[ix]), pop: pops[ix] || 0 };
-                  });
-                  paintTen(rows);
-                })
-                .catch(function () { paintTen(rows.filter(function (r) { return r.row; })); });
+            function fillTen(om) {
+              var times = (om && om.daily && om.daily.time) || [];
+              var his = (om && om.daily && om.daily.temperature_2m_max) || [];
+              var los = (om && om.daily && om.daily.temperature_2m_min) || [];
+              var pops = (om && om.daily && om.daily.precipitation_probability_max) || [];
+              var codes = (om && om.daily && om.daily.weather_code) || [];
+              var byKey = {};
+              times.forEach(function (t, ix) { byKey[t] = ix; });
+              rows.forEach(function (r) {
+                var ix = byKey[r.key];
+                if (ix == null) return;
+                var omRow = { fx: omWord(codes[ix] || 0), hi: Math.round(his[ix]), lo: Math.round(los[ix]), pop: pops[ix] || 0 };
+                if (!r.row) r.row = omRow;
+                else {
+                  if (r.row.hi == null) r.row.hi = omRow.hi;
+                  if (r.row.lo == null) r.row.lo = omRow.lo;
+                  if (!r.row.fx) r.row.fx = omRow.fx;
+                }
+              });
+              paintTen(rows);
             }
+            fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=auto")
+              .then(function (r) { return r.json(); })
+              .then(fillTen)
+              .catch(function () { paintTen(rows.filter(function (r) { return r.row; })); });
           }
           fetch("https://api.weather.gov/stations/" + (window.__obsStation || "KVNC") + "/observations?limit=36", { headers: hdr })
             .then(function (r) { return r.json(); })
