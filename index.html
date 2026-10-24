@@ -1286,7 +1286,11 @@
       background:transparent;
       border:0;
       box-shadow:none;
+      display:block;
     }
+    #tenday .wx-top-left { width:100%; min-width:0; }
+    #tenday .fc-scroll { width:100%; max-width:100%; }
+    #tenday .hourly, #tenday .tenday { width:max-content; min-width:100%; }
     .hourly { display:flex; flex-direction:row; flex-wrap:nowrap; gap:8px; width:max-content; max-width:none; margin:0; padding:2px 2px 8px; overflow:visible; background:transparent; border:0; border-radius:0; }
     .hourly .day {
       flex:0 0 64px; width:64px; box-sizing:border-box;
@@ -1831,7 +1835,7 @@
       #land .land-map-frame .radar-crop { min-height:0; max-height:none; }
       #land .land-top-left { grid-column:1; grid-row:1; }
     }
-    #tenday .wx-top { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,46%); gap:12px 16px; align-items:start; }
+    #tenday .wx-top { display:grid; grid-template-columns:minmax(320px,1fr) minmax(280px,46%); gap:12px 16px; align-items:start; }
     #tenday .wx-map-frame { grid-column:2; grid-row:1; margin:0; max-width:100%; }
     #tenday .wx-top-left { grid-column:1; grid-row:1; min-width:0; max-width:100%; overflow:visible; }
     @media (orientation:portrait) {
@@ -3665,7 +3669,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1382</span>
+      <span class="hdr-ver" id="hdr-ver">v1383</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5825,7 +5829,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1382;
+    window.BOARD_VER = 1383;
 
     
     function communityShort() {
@@ -28057,6 +28061,16 @@ function wxSvg(kind, box) {
           if (typeof noteFeed === "function") noteFeed("10-day", true, times.length + " days");
         }
         if (typeof loadWxRecords === "function") loadWxRecords();
+        // Force scroll containers to the column width so the strips are visible
+        ["hourly-scroll", "tenday-scroll"].forEach(function (id) {
+          var sc = document.getElementById(id);
+          var parent = sc && sc.parentElement;
+          if (sc && parent) {
+            var pw = parent.clientWidth || parent.offsetWidth;
+            if (pw > 40 && sc.offsetWidth < 40) sc.style.width = pw + "px";
+            else if (pw > 40) sc.style.width = "100%";
+          }
+        });
       }).catch(function () {});
     }
     window.forceForecastStrips = forceForecastStrips;
