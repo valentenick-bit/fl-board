@@ -3669,7 +3669,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1386</span>
+      <span class="hdr-ver" id="hdr-ver">v1387</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4111,12 +4111,12 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="card" id="cloud-card"><b>Clouds</b><span id="cloud-note">By height, next hours, for this pin.</span><div class="cloud-grid" id="cloud-grid"></div></div>
         <div class="card" id="rain-windows"><b>Rain</b><span id="rain-windows-body">Checking the gauge…</span></div>
         <div class="fc-scroll" id="hourly-scroll"><div class="hourly">
-          <div class="hour">8a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>79&deg;</b></div>
-          <div class="hour">10a<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><b>87&deg;</b></div>
-          <div class="hour">12p<svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><b>90&deg;</b></div>
-          <div class="hour">2p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>93&deg;</b></div>
-          <div class="hour">5p<svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><b>88&deg;</b></div>
-          <div class="hour">8p<svg viewBox="0 0 32 32"><path d="M6 12h16" stroke="#5c6b7a" fill="none" stroke-width="2"/></svg><b>80&deg;</b></div>
+          <div class="day today"><span class="hi">79&deg;</span><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><span class="dpop"></span><span class="dname">Now</span></div>
+          <div class="day"><span class="hi">87&deg;</span><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#c4a35a"/></svg><span class="dpop"></span><span class="dname">10a</span></div>
+          <div class="day"><span class="hi">90&deg;</span><svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="5" fill="#c4a35a"/><ellipse cx="20" cy="22" rx="8" ry="5" fill="#d9d2c4"/></svg><span class="dpop"></span><span class="dname">12p</span></div>
+          <div class="day"><span class="hi">93&deg;</span><svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span class="dpop"></span><span class="dname">2p</span></div>
+          <div class="day"><span class="hi">88&deg;</span><svg viewBox="0 0 32 32"><ellipse cx="16" cy="14" rx="9" ry="6" fill="#8aa0b5"/></svg><span class="dpop"></span><span class="dname">5p</span></div>
+          <div class="day"><span class="hi">80&deg;</span><svg viewBox="0 0 32 32"><path d="M6 12h16" stroke="#5c6b7a" fill="none" stroke-width="2"/></svg><span class="dpop"></span><span class="dname">8p</span></div>
         </div></div>
         <p class="sheet-kicker">10-day forecast</p>
         <div class="fc-scroll" id="tenday-scroll"><div class="tenday"></div></div>
@@ -5829,7 +5829,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1386;
+    window.BOARD_VER = 1387;
 
     
     function communityShort() {
@@ -24470,8 +24470,8 @@ function mustEatsFL() {
           ["rain-month", txt("live-rain-mo")],
           ["uv", txt("live-uv")],
           ["hourly", (function(){
-            var n = document.querySelectorAll(".hourly .hour").length;
-            var first = document.querySelector(".hourly .hour.now") || document.querySelector(".hourly .hour");
+            var n = document.querySelectorAll(".hourly .day").length;
+            var first = document.querySelector(".hourly .day.today") || document.querySelector(".hourly .day");
             var label = first ? (first.textContent || "").replace(/\s+/g, " ").trim() : "";
             return n ? (n + " hours · " + label) : "";
           })()],
@@ -28021,11 +28021,12 @@ function wxSvg(kind, box) {
             var popN = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
             var label = hi === 0 ? "Now" : when;
             var icon = typeof wxSvg === "function" ? wxSvg(typeof wxKind === "function" ? wxKind(h.shortForecast, new Date(h.startTime).getTime(), popN) : "partly", 26) : "";
-            return '<div class="hour' + (hi === 0 ? " now" : "") + '">' +
-              '<span>' + label + "</span>" + icon +
-              "<b>" + (typeof fmtTempN === "function" ? fmtTempN(h.temperature) : Math.round(h.temperature)) + "&deg;</b>" +
-              (popN >= 10 ? '<span class="pop">' + Math.round(popN) + "%</span>" : "") +
-              "</div>";
+            var temp = typeof fmtTempN === "function" ? fmtTempN(h.temperature) : Math.round(h.temperature);
+            var pop = isFinite(popN) && popN >= 10 ? '<span class="dpop">' + Math.round(popN) + "%</span>" : '<span class="dpop"></span>';
+            return '<div class="day' + (hi === 0 ? " today" : "") + '">' +
+              '<span class="hi">' + temp + "&deg;</span>" +
+              icon + pop +
+              '<span class="dname">' + label + "</span></div>";
           }).join("");
           if (typeof noteFeed === "function") noteFeed("hourly", true, slice.length + " hours");
         }
