@@ -3669,7 +3669,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1394</span>
+      <span class="hdr-ver" id="hdr-ver">v1395</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5831,7 +5831,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1394;
+    window.BOARD_VER = 1395;
 
     
     function communityShort() {
@@ -7786,67 +7786,57 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
     function paintPlaneMap(el, latN, lonN, note) {
       if (window.__planeBusy) return;
-      var on = document.querySelector(".page.on");
-      if (on && on.id !== "sky") return;
       window.__planeBusy = true;
       var frame = document.getElementById("sky-map");
       if (frame) { frame.hidden = true; frame.classList.remove("on"); frame.style.display = "none"; }
       if (el) { el.hidden = false; el.classList.add("on"); el.style.display = "block"; el.alt = "Planes"; }
+      var c = document.createElement("canvas");
+      c.width = 900; c.height = 560;
+      var g = c.getContext("2d");
+      g.fillStyle = "#071422";
+      g.fillRect(0, 0, 900, 560);
+      g.strokeStyle = "rgba(126,200,255,.15)"; g.lineWidth = 1;
+      for (var gx = 100; gx < 900; gx += 100) { g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, 560); g.stroke(); }
+      for (var gy = 70; gy < 560; gy += 70) { g.beginPath(); g.moveTo(0, gy); g.lineTo(900, gy); g.stroke(); }
+      g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(450, 280, 8, 0, 6.3); g.fill();
+      g.strokeStyle = "#06101c"; g.lineWidth = 2; g.stroke();
+      g.fillStyle = "#f4efe6"; g.font = "600 13px Source Sans 3, sans-serif";
+      g.fillText("Home", 462, 276);
+      if (el) el.src = c.toDataURL("image/jpeg", 0.88);
+      if (note) note.textContent = "Loading flights…";
       fetch("https://api.adsb.lol/v2/lat/" + Number(latN).toFixed(3) + "/lon/" + Number(lonN).toFixed(3) + "/dist/100")
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var rows = (d && d.ac) || [];
-          var c = document.createElement("canvas");
-          c.width = 900; c.height = 560;
-          var g = c.getContext("2d");
-          g.fillStyle = "#071422";
-          g.fillRect(0, 0, 900, 560);
-          var z = 7, n = Math.pow(2, z);
-          var fx = (Number(lonN) + 180) / 360 * n;
-          var s = Math.sin(Number(latN) * Math.PI / 180);
-          var fy = (1 - Math.log((1 + s) / (1 - s)) / (2 * Math.PI)) / 2 * n;
-          var left = Math.floor(fx) - 1, top = Math.floor(fy) - 1;
-          var loaded = 0, need = 9;
-          function finish() {
-            loaded++;
-            if (loaded < need) return;
+          var lat0 = Number(latN), lon0 = Number(lonN);
+          var scale = 2.5;
+          rows.slice(0, 50).forEach(function (ac) {
+            if (ac.lat == null || ac.lon == null) return;
+            var dx = (Number(ac.lon) - lon0) * Math.cos(lat0 * Math.PI / 180) * 69 * scale;
+            var dy = (Number(ac.lat) - lat0) * 69 * scale;
+            var px = 450 + dx;
+            var py = 280 - dy;
+            if (px < 20 || px > 880 || py < 20 || py > 540) return;
+            g.save();
+            g.translate(px, py);
+            g.rotate((Number(ac.track) || 0) * Math.PI / 180);
             g.fillStyle = "#f2c14e";
-            g.beginPath(); g.arc(450, 280, 7, 0, 6.3); g.fill();
-            g.strokeStyle = "#06101c"; g.lineWidth = 2; g.stroke();
-            rows.slice(0, 40).forEach(function (ac) {
-              if (ac.lat == null || ac.lon == null) return;
-              var ax = (Number(ac.lon) + 180) / 360 * n;
-              var as = Math.sin(Number(ac.lat) * Math.PI / 180);
-              var ay = (1 - Math.log((1 + as) / (1 - as)) / (2 * Math.PI)) / 2 * n;
-              var px = (ax - left) / 3 * 900;
-              var py = (ay - top) / 3 * 560;
-              if (px < 0 || px > 900 || py < 0 || py > 560) return;
-              g.save();
-              g.translate(px, py);
-              g.rotate((Number(ac.track) || 0) * Math.PI / 180);
-              g.fillStyle = "#f2c14e";
-              g.beginPath();
-              g.moveTo(0, -10); g.lineTo(6, 8); g.lineTo(-6, 8); g.closePath();
-              g.fill();
-              g.restore();
-            });
-            if (el) el.src = c.toDataURL("image/jpeg", 0.88);
-            if (note) note.textContent = rows.length + " flights within 100 miles. Gold triangles are aircraft.";
-          }
-          for (var dy = 0; dy < 3; dy++) for (var dx = 0; dx < 3; dx++) {
-            (function (dx, dy) {
-              var ty = top + dy;
-              if (ty < 0 || ty >= n) { finish(); return; }
-              var tx = ((left + dx) % n + n) % n;
-              var im = new Image();
-              im.crossOrigin = "anonymous";
-              im.onload = function () { g.drawImage(im, dx * 300, dy * 186, 300, 186); finish(); };
-              im.onerror = function () { finish(); };
-              im.src = "https://tile.openstreetmap.org/" + z + "/" + tx + "/" + ty + ".png";
-            })(dx, dy);
-          }
+            g.beginPath();
+            g.moveTo(0, -9); g.lineTo(5, 7); g.lineTo(-5, 7); g.closePath();
+            g.fill();
+            g.restore();
+            var call = String(ac.flight || "").trim();
+            if (call) {
+              g.fillStyle = "#f4efe6"; g.font = "500 11px Source Sans 3, sans-serif";
+              g.fillText(call, px + 8, py - 2);
+            }
+          });
+          if (el) el.src = c.toDataURL("image/jpeg", 0.88);
+          if (note) note.textContent = rows.length + " flights within 100 miles. Gold triangles are aircraft.";
         })
-        .catch(function () { if (note) note.textContent = "Flight feed did not answer."; })
+        .catch(function () {
+          if (note) note.textContent = "Flight feed did not answer. Home pin is marked.";
+        })
         .then(function () { window.__planeBusy = false; });
     }
 
