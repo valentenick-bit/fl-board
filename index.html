@@ -3665,7 +3665,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1381</span>
+      <span class="hdr-ver" id="hdr-ver">v1382</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5825,7 +5825,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1381;
+    window.BOARD_VER = 1382;
 
     
     function communityShort() {
@@ -27563,8 +27563,8 @@ function wxSvg(kind, box) {
         window.__wxNow = window.__wxNow || {};
         window.__wxNow.cloudCover = Number(coverNow);
       }
-      if (dewEl && dewNow != null && !/Dew/.test(dewEl.textContent || "")) dewEl.textContent = "Dew " + fmtTempN(dewNow) + "°";
-      if (presEl && presNow != null && !/\d/.test(presEl.textContent || "")) presEl.textContent = typeof fmtPresIn === "function" ? fmtPresIn(Number(presNow) * 0.02953) : (Number(presNow) * 0.02953).toFixed(2) + '"';
+      if (dewEl && dewNow != null) dewEl.textContent = "Dew " + fmtTempN(dewNow) + "°";
+      if (presEl && presNow != null) presEl.textContent = typeof fmtPresIn === "function" ? fmtPresIn(Number(presNow) * 0.02953) : (Number(presNow) * 0.02953).toFixed(2) + '"';
       var presNote = document.getElementById("live-pres-note");
       if (presNote && lastH >= 3 && h.surface_pressure && h.surface_pressure[lastH] != null && h.surface_pressure[lastH - 3] != null) {
         var nowIn = Number(h.surface_pressure[lastH]) * 0.02953;
@@ -27990,6 +27990,77 @@ function wxSvg(kind, box) {
       if (row) row.textContent = c.normalHi + "° / " + c.normalLo + "° · rec " + c.recHi + "° / " + c.recLo + "°" + (c.avgRain != null ? " · " + c.avgRain + " in" : "");
     }
 
+    function forceForecastStrips() {
+      if (!isFinite(homeLat()) || !isFinite(homeLon())) return;
+      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
+        "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index,cloud_cover" +
+        "&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,relative_humidity_2m,dew_point_2m,surface_pressure,cloud_cover" +
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+        "&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York";
+      fetch(url).then(function (r) { return r.json(); }).then(function (om) {
+        if (!om || om.error) return;
+        window.__omCurrent = om.current || window.__omCurrent;
+        try { if (typeof paintWxFromOm === "function") paintWxFromOm(om); } catch (eP) {}
+        var hours = typeof hoursFromOm === "function" ? hoursFromOm(om) : [];
+        var box = document.querySelector(".hourly");
+        if (box && hours.length) {
+          var nowMs = Date.now();
+          var startH = 0;
+          for (var si = 0; si < hours.length; si++) {
+            var endH = hours[si].endTime ? new Date(hours[si].endTime).getTime() : new Date(hours[si].startTime).getTime() + 3600000;
+            if (endH > nowMs) { startH = si; break; }
+          }
+          var slice = hours.slice(startH, startH + 10);
+          while (slice.length < 10 && hours.length > slice.length) slice.push(hours[slice.length]);
+          box.innerHTML = slice.map(function (h, hi) {
+            var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", hour12: true, timeZone: "America/New_York" }).replace(" ", "").replace(/\.\s*/g, "").toUpperCase();
+            var popN = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+            var label = hi === 0 ? "Now" : when;
+            var icon = typeof wxSvg === "function" ? wxSvg(typeof wxKind === "function" ? wxKind(h.shortForecast, new Date(h.startTime).getTime(), popN) : "partly", 26) : "";
+            return '<div class="hour' + (hi === 0 ? " now" : "") + '">' +
+              '<span>' + label + "</span>" + icon +
+              "<b>" + (typeof fmtTempN === "function" ? fmtTempN(h.temperature) : Math.round(h.temperature)) + "&deg;</b>" +
+              (popN >= 10 ? '<span class="pop">' + Math.round(popN) + "%</span>" : "") +
+              "</div>";
+          }).join("");
+          if (typeof noteFeed === "function") noteFeed("hourly", true, slice.length + " hours");
+        }
+        var td = document.querySelector(".tenday");
+        var d = om.daily || {};
+        var times = d.time || [];
+        if (td && times.length) {
+          var caps = times.slice(0, 10).map(function (day, i) {
+            var hi = Math.round(d.temperature_2m_max[i]);
+            var lo = Math.round(d.temperature_2m_min[i]);
+            var name = i === 0 ? "Today" : new Date(day + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
+            var dt = new Date(day + "T12:00:00");
+            return {
+              label: name,
+              date: (dt.getMonth() + 1) + "/" + dt.getDate(),
+              hi: hi,
+              lo: lo,
+              pop: (d.precipitation_probability_max || [])[i],
+              kind: typeof wmoKind === "function" ? wmoKind((d.weather_code || [])[i]) : "partly",
+              today: i === 0
+            };
+          });
+          if (typeof paintTendayCapsules === "function") paintTendayCapsules(caps);
+          else {
+            td.innerHTML = caps.map(function (r, i) {
+              return '<div class="day' + (i === 0 ? " today" : "") + '">' +
+                '<span class="hi">' + r.hi + "&deg;</span>" +
+                '<span class="lo">' + r.lo + "&deg;</span>" +
+                '<span class="dname">' + r.label + "</span>" +
+                '<span class="ddate">' + r.date + "</span></div>";
+            }).join("");
+          }
+          if (typeof noteFeed === "function") noteFeed("10-day", true, times.length + " days");
+        }
+        if (typeof loadWxRecords === "function") loadWxRecords();
+      }).catch(function () {});
+    }
+    window.forceForecastStrips = forceForecastStrips;
+
     function refreshWeather() {
       if (!isFinite(homeLat()) || !isFinite(homeLon())) return;
       var hdr = { "Accept": "application/geo+json", "User-Agent": "CommonsBoard/1.0 (valente.nick@gmail.com)" };
@@ -28255,6 +28326,7 @@ function wxSvg(kind, box) {
             if (typeof lockForecastStrips === "function") lockForecastStrips();
             if (typeof writeBriefingSoon === "function") writeBriefingSoon();
             if (typeof loadWxRecords === "function") loadWxRecords();
+            if (typeof forceForecastStrips === "function") forceForecastStrips();
           }
           if (days.length && document.querySelector(".tenday")) {
             var td = document.querySelector(".tenday");
@@ -28424,7 +28496,9 @@ function wxSvg(kind, box) {
 
     loadWxSnap();
     refreshWeather();
+    setTimeout(forceForecastStrips, 800);
     setInterval(refreshWeather, 5 * 60 * 1000);
+    setInterval(forceForecastStrips, 5 * 60 * 1000);
     setTimeout(function () { if (typeof settleLoadings === 'function') settleLoadings(); }, 12000);
     (function radarLoop() {
       applyRadar();
