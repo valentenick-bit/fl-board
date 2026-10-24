@@ -3669,7 +3669,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1391</span>
+      <span class="hdr-ver" id="hdr-ver">v1392</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4310,6 +4310,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-sky-map="neptune">Neptune</button>
             <button type="button" data-sky-map="launch">Launch</button>
             <button type="button" data-sky-map="starman">Starman</button>
+            <button type="button" data-sky-map="voyager">Voyager</button>
           </div>
           <p class="wx-map-cap"><b id="sky-map-kind">Night sky</b><span id="sky-map-note">Pinned on home</span></p>
         </div>
@@ -5830,7 +5831,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1391;
+    window.BOARD_VER = 1392;
 
     
     function communityShort() {
@@ -7936,6 +7937,59 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         }).catch(function () {});
     }
 
+
+    function paintVoyagerMap(img, note) {
+      var c = document.createElement("canvas");
+      c.width = 900; c.height = 560;
+      var g = c.getContext("2d");
+      g.fillStyle = "#05070d";
+      g.fillRect(0, 0, 900, 560);
+      var cx = 450, cy = 280, scale = 2.15;
+      function pos(rAU, angDeg) {
+        var a = angDeg * Math.PI / 180;
+        return { x: cx + Math.cos(a) * rAU * scale, y: cy - Math.sin(a) * rAU * scale };
+      }
+      var orbits = [
+        { r: 1, color: "rgba(126,200,255,.25)" },
+        { r: 5.2, color: "rgba(196,163,90,.3)" },
+        { r: 9.5, color: "rgba(232,200,150,.25)" },
+        { r: 19.2, color: "rgba(180,220,230,.2)" },
+        { r: 30.1, color: "rgba(100,140,220,.25)" }
+      ];
+      orbits.forEach(function (o) {
+        g.strokeStyle = o.color; g.lineWidth = 1;
+        g.beginPath(); g.arc(cx, cy, o.r * scale, 0, 6.3); g.stroke();
+      });
+      g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(cx, cy, 8, 0, 6.3); g.fill();
+      g.fillStyle = "#f4efe6"; g.font = "600 13px Source Sans 3, sans-serif";
+      g.fillText("Sun", cx + 12, cy + 4);
+      var day = new Date().getUTCDate() + (new Date().getUTCMonth()) * 30.4;
+      var earthAng = ((day - 3) / 365.25 * 360 + 102.9) % 360;
+      var earth = pos(1, earthAng);
+      g.fillStyle = "#7ec8ff"; g.beginPath(); g.arc(earth.x, earth.y, 4, 0, 6.3); g.fill();
+      var v1 = pos(172.7, 259);
+      var v2 = pos(144.4, 303);
+      g.strokeStyle = "rgba(244,239,230,.15)"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(cx, cy); g.lineTo(v1.x, v1.y); g.stroke();
+      g.beginPath(); g.moveTo(cx, cy); g.lineTo(v2.x, v2.y); g.stroke();
+      g.fillStyle = "#ffffff"; g.beginPath(); g.arc(v1.x, v1.y, 5, 0, 6.3); g.fill();
+      g.strokeStyle = "#7ec8ff"; g.lineWidth = 2; g.stroke();
+      g.fillStyle = "#e6c56a"; g.beginPath(); g.arc(v2.x, v2.y, 5, 0, 6.3); g.fill();
+      g.strokeStyle = "#e6c56a"; g.lineWidth = 2; g.stroke();
+      g.fillStyle = "#f4efe6"; g.font = "700 14px Source Sans 3, sans-serif";
+      g.fillText("V1", v1.x + 8, v1.y - 2);
+      g.fillText("V2", v2.x + 8, v2.y + 4);
+      g.fillStyle = "rgba(5,7,13,.78)";
+      g.fillRect(0, 0, 900, 48);
+      g.fillRect(0, 516, 900, 44);
+      g.fillStyle = "#f4efe6"; g.font = "700 20px Source Sans 3, sans-serif";
+      g.fillText("Voyager 1 & 2", 16, 32);
+      g.font = "600 15px Source Sans 3, sans-serif";
+      g.fillText("V1 ~173 AU · V2 ~144 AU · Neptune 30 AU · inner planets not to scale", 16, 542);
+      if (img) img.src = c.toDataURL("image/jpeg", 0.88);
+      if (note) note.textContent = "Heliocentric. White is Voyager 1, gold is Voyager 2. Distances approximate.";
+    }
+
     function paintIssSky(img, homeLatN, homeLonN, note) {
       function project(latP, lonP, clat, clon) {
         var la = latP * Math.PI / 180, lo = lonP * Math.PI / 180;
@@ -8053,7 +8107,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         uranus: { label: "Uranus", note: "Voyager 2 full disc (NASA/JPL)", kind: "img", url: "https://images-assets.nasa.gov/image/PIA18182/PIA18182~orig.jpg" },
         neptune: { label: "Neptune", note: "Voyager 2 full disc (NASA/JPL)", kind: "img", url: "https://images-assets.nasa.gov/image/PIA01492/PIA01492~orig.jpg" },
         launch: { label: "Launch", note: "Pad and a typical ground track. Not the official path.", kind: "launch", url: "" },
-        starman: { label: "Starman", note: "Tesla Roadster orbit. Sun, Earth, Mars.", kind: "starman", url: "" }
+        starman: { label: "Starman", note: "Tesla Roadster orbit. Sun, Earth, Mars.", kind: "starman", url: "" },
+        voyager: { label: "Voyager", note: "Voyager 1 and 2 beyond Neptune.", kind: "voyager", url: "" }
       };
       var kpNow = window.__kp != null ? Number(window.__kp) : 0;
       document.querySelectorAll("#sky-map-pills [data-sky-map=\"aurora\"]").forEach(function (b) { b.hidden = !(kpNow >= 4); });
@@ -8094,6 +8149,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) { img.hidden = true; img.classList.remove("on"); img.style.display = "none"; }
         if (typeof paintLaunchTrack === "function") paintLaunchTrack();
+      } else if (v.kind === "voyager") {
+        if (frame) { frame.hidden = true; frame.classList.remove("on"); frame.src = "about:blank"; }
+        if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "Voyager"; }
+        if (typeof paintVoyagerMap === "function") paintVoyagerMap(img, note);
       } else if (v.kind === "starman") {
         if (frame) { frame.classList.remove("on"); frame.style.display = "none"; }
         if (img) { img.hidden = false; img.classList.add("on"); img.style.display = "block"; img.alt = "Starman"; }
