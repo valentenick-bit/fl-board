@@ -3669,7 +3669,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1400</span>
+      <span class="hdr-ver" id="hdr-ver">v1401</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5831,7 +5831,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1400;
+    window.BOARD_VER = 1401;
 
     
     function communityShort() {
@@ -7789,53 +7789,48 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       window.__planeBusy = true;
       var frame = document.getElementById("sky-map");
       if (frame) { frame.hidden = true; frame.classList.remove("on"); frame.style.display = "none"; }
-      if (el) { el.hidden = false; el.classList.add("on"); el.style.display = "block"; el.alt = "Planes"; }
-      var c = document.createElement("canvas");
-      c.width = 900; c.height = 560;
-      var g = c.getContext("2d");
-      g.fillStyle = "#071422";
-      g.fillRect(0, 0, 900, 560);
-      g.strokeStyle = "rgba(126,200,255,.4)"; g.lineWidth = 1;
-      for (var gx = 100; gx < 900; gx += 100) { g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, 560); g.stroke(); }
-      for (var gy = 70; gy < 560; gy += 70) { g.beginPath(); g.moveTo(0, gy); g.lineTo(900, gy); g.stroke(); }
-      g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(450, 280, 8, 0, 6.3); g.fill();
-      g.strokeStyle = "#06101c"; g.lineWidth = 2; g.stroke();
-      g.fillStyle = "#f4efe6"; g.font = "600 13px Source Sans 3, sans-serif";
-      g.fillText("Home", 462, 276);
-      if (el) el.src = c.toDataURL("image/jpeg", 0.88);
+      if (el) { el.hidden = true; el.classList.remove("on"); el.style.display = "none"; }
+      var stage = document.getElementById("sky-map-stage");
+      var host = document.getElementById("sky-launch-map");
+      if (!host && stage) {
+        host = document.createElement("div");
+        host.id = "sky-launch-map";
+        host.style.cssText = "position:absolute;inset:0;z-index:3;background:#102033";
+        stage.appendChild(host);
+      }
+      if (host) { host.hidden = false; host.style.display = "block"; }
       if (note) note.textContent = "Loading flights…";
       fetch("/adsb?lat=" + Number(latN).toFixed(3) + "&lon=" + Number(lonN).toFixed(3) + "&dist=100")
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var rows = (d && d.ac) || [];
-          var lat0 = Number(latN), lon0 = Number(lonN);
-          var scale = 2.5;
-          rows.slice(0, 50).forEach(function (ac) {
+          if (!window.L || !host) { if (note) note.textContent = rows.length + " flights. Map library missing."; return; }
+          if (host._leaflet_id && window.__planeMap) { window.__planeMap.remove(); host._leaflet_id = null; }
+          host.innerHTML = "";
+          var map = L.map(host, { zoomControl: false, attributionControl: true }).setView([Number(latN), Number(lonN)], 8);
+          window.__planeMap = map;
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 14, attribution: "© OSM" }).addTo(map);
+          L.circleMarker([Number(latN), Number(lonN)], { radius: 7, color: "#f2c14e", fillColor: "#f2c14e", fillOpacity: 1, weight: 2 }).addTo(map).bindTooltip("Home");
+          rows.slice(0, 60).forEach(function (ac) {
             if (ac.lat == null || ac.lon == null) return;
-            var dx = (Number(ac.lon) - lon0) * Math.cos(lat0 * Math.PI / 180) * 69 * scale;
-            var dy = (Number(ac.lat) - lat0) * 69 * scale;
-            var px = 450 + dx;
-            var py = 280 - dy;
-            if (px < 20 || px > 880 || py < 20 || py > 540) return;
-            g.save();
-            g.translate(px, py);
-            g.rotate((Number(ac.track) || 0) * Math.PI / 180);
-            g.fillStyle = "#f2c14e";
-            g.beginPath();
-            g.moveTo(0, -9); g.lineTo(5, 7); g.lineTo(-5, 7); g.closePath();
-            g.fill();
-            g.restore();
-            var call = String(ac.flight || "").trim();
-            if (call) {
-              g.fillStyle = "#f4efe6"; g.font = "500 11px Source Sans 3, sans-serif";
-              g.fillText(call, px + 8, py - 2);
-            }
+            var call = String(ac.flight || ac.hex || "").trim();
+            var track = Number(ac.track) || 0;
+            var icon = L.divIcon({
+              className: "plane-icon",
+              html: "<div style='width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:14px solid #f2c14e;transform:rotate(" + track + "deg);filter:drop-shadow(0 0 2px #06101c)'></div>",
+              iconSize: [12, 14],
+              iconAnchor: [6, 7]
+            });
+            var tip = call;
+            if (ac.alt_baro) tip += " · " + Math.round(ac.alt_baro / 100) + "00 ft";
+            if (ac.gs) tip += " · " + Math.round(ac.gs) + " kt";
+            L.marker([Number(ac.lat), Number(ac.lon)], { icon: icon }).addTo(map).bindTooltip(tip);
           });
-          if (el) el.src = c.toDataURL("image/jpeg", 0.88);
+          setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 100);
           if (note) note.textContent = rows.length + " flights within 100 miles. Gold triangles are aircraft.";
         })
         .catch(function () {
-          if (note) note.textContent = "Flight feed did not answer. Home pin is marked.";
+          if (note) note.textContent = "Flight feed did not answer.";
         })
         .then(function () { window.__planeBusy = false; });
     }
