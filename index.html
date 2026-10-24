@@ -3669,7 +3669,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1392</span>
+      <span class="hdr-ver" id="hdr-ver">v1393</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5831,7 +5831,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1392;
+    window.BOARD_VER = 1393;
 
     
     function communityShort() {
@@ -7944,50 +7944,57 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       var g = c.getContext("2d");
       g.fillStyle = "#05070d";
       g.fillRect(0, 0, 900, 560);
-      var cx = 450, cy = 280, scale = 2.15;
+      var cx = 450, cy = 280, scale = 1.35;
       function pos(rAU, angDeg) {
         var a = angDeg * Math.PI / 180;
         return { x: cx + Math.cos(a) * rAU * scale, y: cy - Math.sin(a) * rAU * scale };
       }
       var orbits = [
-        { r: 1, color: "rgba(126,200,255,.25)" },
-        { r: 5.2, color: "rgba(196,163,90,.3)" },
-        { r: 9.5, color: "rgba(232,200,150,.25)" },
-        { r: 19.2, color: "rgba(180,220,230,.2)" },
-        { r: 30.1, color: "rgba(100,140,220,.25)" }
+        { r: 5.2, color: "rgba(196,163,90,.35)", label: "Jupiter" },
+        { r: 9.5, color: "rgba(232,200,150,.3)", label: "Saturn" },
+        { r: 19.2, color: "rgba(180,220,230,.25)", label: "Uranus" },
+        { r: 30.1, color: "rgba(100,140,220,.3)", label: "Neptune" }
       ];
       orbits.forEach(function (o) {
         g.strokeStyle = o.color; g.lineWidth = 1;
         g.beginPath(); g.arc(cx, cy, o.r * scale, 0, 6.3); g.stroke();
+        var p = pos(o.r, 20);
+        g.fillStyle = o.color; g.font = "500 11px Source Sans 3, sans-serif";
+        g.fillText(o.label, p.x + 4, p.y);
       });
-      g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(cx, cy, 8, 0, 6.3); g.fill();
-      g.fillStyle = "#f4efe6"; g.font = "600 13px Source Sans 3, sans-serif";
-      g.fillText("Sun", cx + 12, cy + 4);
-      var day = new Date().getUTCDate() + (new Date().getUTCMonth()) * 30.4;
-      var earthAng = ((day - 3) / 365.25 * 360 + 102.9) % 360;
-      var earth = pos(1, earthAng);
-      g.fillStyle = "#7ec8ff"; g.beginPath(); g.arc(earth.x, earth.y, 4, 0, 6.3); g.fill();
+      g.fillStyle = "#f2c14e"; g.beginPath(); g.arc(cx, cy, 7, 0, 6.3); g.fill();
+      g.fillStyle = "#f4efe6"; g.font = "600 12px Source Sans 3, sans-serif";
+      g.fillText("Sun", cx + 10, cy + 4);
+      function trajectory(rEnd, angEnd, color) {
+        g.strokeStyle = color; g.lineWidth = 1.5; g.setLineDash([4, 3]);
+        g.beginPath();
+        for (var r = 1; r <= rEnd; r += 2) {
+          var p = pos(r, angEnd);
+          if (r === 1) g.moveTo(p.x, p.y); else g.lineTo(p.x, p.y);
+        }
+        g.stroke();
+        g.setLineDash([]);
+      }
+      trajectory(172.7, 259, "rgba(126,200,255,.6)");
+      trajectory(144.4, 303, "rgba(230,197,106,.6)");
       var v1 = pos(172.7, 259);
       var v2 = pos(144.4, 303);
-      g.strokeStyle = "rgba(244,239,230,.15)"; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(cx, cy); g.lineTo(v1.x, v1.y); g.stroke();
-      g.beginPath(); g.moveTo(cx, cy); g.lineTo(v2.x, v2.y); g.stroke();
-      g.fillStyle = "#ffffff"; g.beginPath(); g.arc(v1.x, v1.y, 5, 0, 6.3); g.fill();
+      g.fillStyle = "#ffffff"; g.beginPath(); g.arc(v1.x, v1.y, 6, 0, 6.3); g.fill();
       g.strokeStyle = "#7ec8ff"; g.lineWidth = 2; g.stroke();
-      g.fillStyle = "#e6c56a"; g.beginPath(); g.arc(v2.x, v2.y, 5, 0, 6.3); g.fill();
+      g.fillStyle = "#e6c56a"; g.beginPath(); g.arc(v2.x, v2.y, 6, 0, 6.3); g.fill();
       g.strokeStyle = "#e6c56a"; g.lineWidth = 2; g.stroke();
-      g.fillStyle = "#f4efe6"; g.font = "700 14px Source Sans 3, sans-serif";
-      g.fillText("V1", v1.x + 8, v1.y - 2);
-      g.fillText("V2", v2.x + 8, v2.y + 4);
+      g.fillStyle = "#f4efe6"; g.font = "700 13px Source Sans 3, sans-serif";
+      g.fillText("Voyager 1", v1.x + 10, v1.y - 2);
+      g.fillText("Voyager 2", v2.x + 10, v2.y + 4);
       g.fillStyle = "rgba(5,7,13,.78)";
       g.fillRect(0, 0, 900, 48);
       g.fillRect(0, 516, 900, 44);
       g.fillStyle = "#f4efe6"; g.font = "700 20px Source Sans 3, sans-serif";
       g.fillText("Voyager 1 & 2", 16, 32);
       g.font = "600 15px Source Sans 3, sans-serif";
-      g.fillText("V1 ~173 AU · V2 ~144 AU · Neptune 30 AU · inner planets not to scale", 16, 542);
+      g.fillText("V1 ~173 AU · V2 ~144 AU · dashed lines are trajectories · Neptune 30 AU", 16, 542);
       if (img) img.src = c.toDataURL("image/jpeg", 0.88);
-      if (note) note.textContent = "Heliocentric. White is Voyager 1, gold is Voyager 2. Distances approximate.";
+      if (note) note.textContent = "Heliocentric. White is Voyager 1, gold is Voyager 2. Trajectories are approximate.";
     }
 
     function paintIssSky(img, homeLatN, homeLonN, note) {
