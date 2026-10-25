@@ -340,7 +340,8 @@ export default {
       return new Response(JSON.stringify({ updated: "", gmapsKey: "", error: "maps.json is Drive-only" }), { status: 200, headers: hdr });
     }
     if (url.pathname === "/onebite") {
-      const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
+      const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*", "access-control-allow-methods": "GET,OPTIONS", "access-control-allow-headers": "Content-Type" };
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
       const lat = url.searchParams.get("lat") || "";
       const lon = url.searchParams.get("lon") || "";
       const limit = Math.min(30, Number(url.searchParams.get("limit")) || 30);
