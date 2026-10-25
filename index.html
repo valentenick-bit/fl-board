@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1458</span>
+      <span class="hdr-ver" id="hdr-ver">v1460</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5890,7 +5890,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1458;
+    window.BOARD_VER = 1460;
 
     
     function communityShort() {
@@ -28428,10 +28428,10 @@ function wxSvg(kind, box) {
       fetch("https://api.weather.gov/points/" + lat.toFixed(4) + "," + lon.toFixed(4), { headers: { Accept: "application/geo+json" } })
         .then(function (r) { return r.json(); })
         .then(function (pt) {
-          var props = pt && pt.properties || {};
+          var props = (pt && pt.properties) || {};
           var hourlyUrl = props.forecastHourly;
           var dailyUrl = props.forecast;
-          if (!hourlyUrl) return;
+          if (!hourlyUrl) return null;
           return Promise.all([
             fetch(hourlyUrl, { headers: { Accept: "application/geo+json" } }).then(function (r) { return r.json(); }),
             dailyUrl ? fetch(dailyUrl, { headers: { Accept: "application/geo+json" } }).then(function (r) { return r.json(); }) : Promise.resolve(null)
@@ -28447,7 +28447,7 @@ function wxSvg(kind, box) {
             var nowMs = Date.now();
             var slice = periods.filter(function (p) { return new Date(p.endTime).getTime() > nowMs; }).slice(0, 10);
             box.innerHTML = slice.map(function (h, hi) {
-              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", hour12: true, timeZone: "America/New_York" }).replace(" ", "").toUpperCase();
+              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", hour12: true }).replace(" ", "").toUpperCase();
               var label = hi === 0 ? "Now" : when;
               var temp = h.temperature;
               var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
@@ -28466,83 +28466,6 @@ function wxSvg(kind, box) {
             if (typeof noteFeed === "function") noteFeed("10-day", true, dayPeriods.length + " days");
           }
         }).catch(function () {});
-      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
-        "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index,cloud_cover" +
-        "&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,relative_humidity_2m,dew_point_2m,surface_pressure,cloud_cover" +
-        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
-        "&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=10&timezone=America%2FNew_York";
-      fetch(url).then(function (r) { return r.json(); }).then(function (om) {
-        if (!om || om.error) return;
-        window.__omCurrent = om.current || window.__omCurrent;
-        try { if (typeof paintWxFromOm === "function") paintWxFromOm(om); } catch (eP) {}
-        var hours = typeof hoursFromOm === "function" ? hoursFromOm(om) : [];
-        var box = document.querySelector(".hourly");
-        if (box && hours.length) {
-          var nowMs = Date.now();
-          var startH = 0;
-          for (var si = 0; si < hours.length; si++) {
-            var endH = hours[si].endTime ? new Date(hours[si].endTime).getTime() : new Date(hours[si].startTime).getTime() + 3600000;
-            if (endH > nowMs) { startH = si; break; }
-          }
-          var slice = hours.slice(startH, startH + 10);
-          while (slice.length < 10 && hours.length > slice.length) slice.push(hours[slice.length]);
-          box.innerHTML = slice.map(function (h, hi) {
-            var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", hour12: true, timeZone: "America/New_York" }).replace(" ", "").replace(/\.\s*/g, "").toUpperCase();
-            var popN = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
-            var label = hi === 0 ? "Now" : when;
-            var icon = typeof wxSvg === "function" ? wxSvg(typeof wxKind === "function" ? wxKind(h.shortForecast, new Date(h.startTime).getTime(), popN) : "partly", 26) : "";
-            var temp = typeof fmtTempN === "function" ? fmtTempN(h.temperature) : Math.round(h.temperature);
-            var pop = isFinite(popN) && popN >= 10 ? '<span class="dpop">' + Math.round(popN) + "%</span>" : '<span class="dpop"></span>';
-            return '<div class="day' + (hi === 0 ? " today" : "") + '">' +
-              '<span class="hi">' + temp + "&deg;</span>" +
-              icon + pop +
-              '<span class="dname">' + label + "</span></div>";
-          }).join("");
-          if (typeof noteFeed === "function") noteFeed("hourly", true, slice.length + " hours");
-        }
-        var td = document.querySelector(".tenday");
-        var d = om.daily || {};
-        var times = d.time || [];
-        if (td && times.length) {
-          var caps = times.slice(0, 10).map(function (day, i) {
-            var hi = Math.round(d.temperature_2m_max[i]);
-            var lo = Math.round(d.temperature_2m_min[i]);
-            var name = i === 0 ? "Today" : new Date(day + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
-            var dt = new Date(day + "T12:00:00");
-            return {
-              label: name,
-              date: (dt.getMonth() + 1) + "/" + dt.getDate(),
-              hi: hi,
-              lo: lo,
-              pop: (d.precipitation_probability_max || [])[i],
-              kind: typeof wmoKind === "function" ? wmoKind((d.weather_code || [])[i]) : "partly",
-              today: i === 0
-            };
-          });
-          if (typeof paintTendayCapsules === "function") paintTendayCapsules(caps);
-          else {
-            td.innerHTML = caps.map(function (r, i) {
-              return '<div class="day' + (i === 0 ? " today" : "") + '">' +
-                '<span class="hi">' + r.hi + "&deg;</span>" +
-                '<span class="lo">' + r.lo + "&deg;</span>" +
-                '<span class="dname">' + r.label + "</span>" +
-                '<span class="ddate">' + r.date + "</span></div>";
-            }).join("");
-          }
-          if (typeof noteFeed === "function") noteFeed("10-day", true, times.length + " days");
-        }
-        if (typeof loadWxRecords === "function") loadWxRecords();
-        // Force scroll containers to the column width so the strips are visible
-        ["hourly-scroll", "tenday-scroll"].forEach(function (id) {
-          var sc = document.getElementById(id);
-          var parent = sc && sc.parentElement;
-          if (sc && parent) {
-            var pw = parent.clientWidth || parent.offsetWidth;
-            if (pw > 40 && sc.offsetWidth < 40) sc.style.width = pw + "px";
-            else if (pw > 40) sc.style.width = "100%";
-          }
-        });
-      }).catch(function () {});
     }
     window.forceForecastStrips = forceForecastStrips;
 
