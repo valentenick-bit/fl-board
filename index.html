@@ -3687,7 +3687,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1438</span>
+      <span class="hdr-ver" id="hdr-ver">v1439</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5886,7 +5886,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1438;
+    window.BOARD_VER = 1439;
 
     
     function communityShort() {
@@ -22246,21 +22246,32 @@ function paint() {
         var lat = homeLat(), lon = homeLon();
         if (!isFinite(lat) || !isFinite(lon)) return;
         var miles = Number((getSet() || {}).eventMiles || 25);
-        fetch("https://api.onebite.app/venue?lat=" + lat + "&lon=" + lon + "&limit=100").then(function (r) { return r.json(); }).then(function (venues) {
-          if (!Array.isArray(venues)) return;
-          window.__portnoyNear = venues.filter(function (v) {
-            var loc = v.loc && v.loc.coordinates;
-            if (!loc || loc.length < 2) return false;
-            var vlon = loc[0], vlat = loc[1];
-            var d = milesOf(vlat, vlon);
-            if (d == null || d > miles) return false;
-            var dave = (v.reviewStats && v.reviewStats.dave) || {};
-            return dave.averageScore > 0;
-          }).map(function (v) {
-            return { name: v.name, score: (v.reviewStats.dave || {}).averageScore, city: v.city };
+        var offsets = [[0,0],[0.15,0],[-0.15,0],[0,0.2],[0,-0.2],[0.1,0.15],[-0.1,-0.15]];
+        var seen = {}, all = [];
+        var pending = offsets.length;
+        offsets.forEach(function (off) {
+          var qlat = lat + off[0], qlon = lon + off[1];
+          fetch("https://api.onebite.app/venue?lat=" + qlat + "&lon=" + qlon + "&limit=100").then(function (r) { return r.json(); }).then(function (venues) {
+            if (Array.isArray(venues)) venues.forEach(function (v) {
+              var id = v.id || v.name;
+              if (id && !seen[id]) { seen[id] = true; all.push(v); }
+            });
+          }).catch(function () {}).then(function () {
+            pending--;
+            if (pending > 0) return;
+            window.__portnoyNear = all.filter(function (v) {
+              var loc = v.loc && v.loc.coordinates;
+              if (!loc || loc.length < 2) return false;
+              var d = milesOf(loc[1], loc[0]);
+              if (d == null || d > miles) return false;
+              var dave = (v.reviewStats && v.reviewStats.dave) || {};
+              return dave.averageScore > 0;
+            }).map(function (v) {
+              return { name: v.name, score: (v.reviewStats.dave || {}).averageScore, city: v.city };
+            });
+            if (window.__eats && typeof renderEatList === "function") renderEatList();
           });
-          if (window.__eats && typeof renderEatList === "function") renderEatList();
-        }).catch(function () {});
+        });
       }
       function portnoyScore(name) {
         var n = String(name || "").toLowerCase();
