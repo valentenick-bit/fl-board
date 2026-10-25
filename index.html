@@ -3687,7 +3687,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1433</span>
+      <span class="hdr-ver" id="hdr-ver">v1434</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5886,7 +5886,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1433;
+    window.BOARD_VER = 1434;
 
     
     function communityShort() {
@@ -9071,7 +9071,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       return true;
     }
     function eatsNearCacheKey() {
-      return "v2:" + String(Math.round(homeLat() * 200) / 200) + "," + String(Math.round(homeLon() * 200) / 200) + ":" + String((getSet() || {}).eventMiles || 25);
+      return "v3:" + String(Math.round(homeLat() * 200) / 200) + "," + String(Math.round(homeLon() * 200) / 200) + ":" + String((getSet() || {}).eventMiles || 25);
     }
     function communityName() {
       var n = String((getSet() || {}).community || "").trim();
@@ -22739,17 +22739,27 @@ function mustEatsFL() {
         if (!key || !paid) return cb(null);
         if (!gmapsCanSpend("places-new", 1)) return cb(null);
         var miles = Number((getSet() || {}).eventMiles || 25);
-        var body = {
-          includedTypes: ["restaurant", "bar", "american_restaurant", "seafood_restaurant", "mexican_restaurant", "steak_house", "italian_restaurant", "mediterranean_restaurant", "pizza_restaurant", "cafe", "coffee_shop", "bakery", "barbecue_restaurant", "chinese_restaurant", "japanese_restaurant", "thai_restaurant", "indian_restaurant"],
-          maxResultCount: 60,
-          rankPreference: "POPULARITY",
-          locationRestriction: {
-            circle: {
-              center: { latitude: homeLat(), longitude: homeLon() },
-              radius: Math.min(50000, miles * 1609.34)
+        var typeGroups = [
+          ["restaurant", "bar"],
+          ["pizza_restaurant"],
+          ["seafood_restaurant", "steak_house"],
+          ["italian_restaurant", "mexican_restaurant"],
+          ["cafe", "coffee_shop", "bakery"],
+          ["barbecue_restaurant", "chinese_restaurant", "japanese_restaurant", "thai_restaurant", "indian_restaurant"]
+        ];
+        function makeBody(types) {
+          return {
+            includedTypes: types,
+            maxResultCount: 20,
+            rankPreference: "POPULARITY",
+            locationRestriction: {
+              circle: {
+                center: { latitude: homeLat(), longitude: homeLon() },
+                radius: Math.min(50000, miles * 1609.34)
+              }
             }
-          }
-        };
+          };
+        }
         function parsePlaces(j, label) {
           if (j && j.error) {
             if (typeof noteFeed === "function") noteFeed("eats-src", false, label + " · " + (j.error.message || j.error.status || "denied"));
@@ -22780,22 +22790,35 @@ function mustEatsFL() {
             };
           });
         }
-        function hit(url, label) {
-          if (!gmapsSpend("places-new", 1)) return Promise.resolve(null);
-          return fetch(url, {
+        function hitOne(types, label) {
+          if (!gmapsSpend("places-new", 1)) return Promise.resolve([]);
+          return fetch("https://places.googleapis.com/v1/places:searchNearby", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "X-Goog-Api-Key": key,
               "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.currentOpeningHours,places.priceLevel,places.location,places.types"
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(makeBody(types))
           }).then(function (r) { return r.json(); }).then(function (j) {
-            var list = parsePlaces(j, label);
-            if (list && list.length) {
-              if (typeof gCacheSet === "function") gCacheSet("eats-near", eatsNearCacheKey(), list);
-              if (typeof noteFeed === "function") noteFeed("eats-src", true, label + " · " + list.length);
-              cb(list);
+            return parsePlaces(j, label) || [];
+          }).catch(function () { return []; });
+        }
+        function hitAll() {
+          return Promise.all(typeGroups.map(function (types, i) {
+            return hitOne(types, "group" + i);
+          })).then(function (results) {
+            var seen = {}, merged = [];
+            results.forEach(function (list) {
+              (list || []).forEach(function (r) {
+                var k = (r.name || "").toLowerCase();
+                if (k && !seen[k]) { seen[k] = true; merged.push(r); }
+              });
+            });
+            if (merged.length) {
+              if (typeof gCacheSet === "function") gCacheSet("eats-near", eatsNearCacheKey(), merged);
+              if (typeof noteFeed === "function") noteFeed("eats-src", true, "merged · " + merged.length);
+              cb(merged);
               return true;
             }
             return false;
@@ -22816,7 +22839,7 @@ function mustEatsFL() {
         getHit("/places?lat=" + homeLat() + "&lon=" + homeLon() + "&miles=" + miles, "Places proxy")
           .then(function (ok) {
             if (ok) return true;
-            return hit("https://places.googleapis.com/v1/places:searchNearby", "Places New");
+            return hitAll();
           })
           .then(function (ok) { if (!ok) cb(mustEats()); })
           .catch(function () { cb(mustEats()); });
