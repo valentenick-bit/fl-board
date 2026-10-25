@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1457</span>
+      <span class="hdr-ver" id="hdr-ver">v1458</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5890,7 +5890,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1457;
+    window.BOARD_VER = 1458;
 
     
     function communityShort() {
@@ -28424,7 +28424,49 @@ function wxSvg(kind, box) {
 
     function forceForecastStrips() {
       if (!isFinite(homeLat()) || !isFinite(homeLon())) return;
-      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() +
+      var lat = homeLat(), lon = homeLon();
+      fetch("https://api.weather.gov/points/" + lat.toFixed(4) + "," + lon.toFixed(4), { headers: { Accept: "application/geo+json" } })
+        .then(function (r) { return r.json(); })
+        .then(function (pt) {
+          var props = pt && pt.properties || {};
+          var hourlyUrl = props.forecastHourly;
+          var dailyUrl = props.forecast;
+          if (!hourlyUrl) return;
+          return Promise.all([
+            fetch(hourlyUrl, { headers: { Accept: "application/geo+json" } }).then(function (r) { return r.json(); }),
+            dailyUrl ? fetch(dailyUrl, { headers: { Accept: "application/geo+json" } }).then(function (r) { return r.json(); }) : Promise.resolve(null)
+          ]);
+        })
+        .then(function (pair) {
+          if (!pair) return;
+          var hourly = pair[0], daily = pair[1];
+          var periods = (hourly && hourly.properties && hourly.properties.periods) || [];
+          var days = (daily && daily.properties && daily.properties.periods) || [];
+          var box = document.querySelector(".hourly");
+          if (box && periods.length) {
+            var nowMs = Date.now();
+            var slice = periods.filter(function (p) { return new Date(p.endTime).getTime() > nowMs; }).slice(0, 10);
+            box.innerHTML = slice.map(function (h, hi) {
+              var when = new Date(h.startTime).toLocaleTimeString("en-US", { hour: "numeric", hour12: true, timeZone: "America/New_York" }).replace(" ", "").toUpperCase();
+              var label = hi === 0 ? "Now" : when;
+              var temp = h.temperature;
+              var pop = (h.probabilityOfPrecipitation && h.probabilityOfPrecipitation.value) || 0;
+              var popHtml = pop >= 10 ? '<span class="dpop">' + Math.round(pop) + "%</span>" : '<span class="dpop"></span>';
+              return '<div class="day' + (hi === 0 ? " today" : "") + '"><span class="hi">' + temp + "&deg;</span>" + popHtml + '<span class="dname">' + label + "</span></div>";
+            }).join("");
+            if (typeof noteFeed === "function") noteFeed("hourly", true, slice.length + " hours");
+          }
+          var td = document.querySelector(".tenday");
+          if (td && days.length) {
+            var dayPeriods = days.filter(function (p) { return p.isDaytime; }).slice(0, 10);
+            td.innerHTML = dayPeriods.map(function (d, i) {
+              var name = i === 0 ? "Today" : d.name;
+              return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + d.temperature + "&deg;</span><span class="dname">' + name + "</span></div>";
+            }).join("");
+            if (typeof noteFeed === "function") noteFeed("10-day", true, dayPeriods.length + " days");
+          }
+        }).catch(function () {});
+      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
         "&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,surface_pressure,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index,cloud_cover" +
         "&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,relative_humidity_2m,dew_point_2m,surface_pressure,cloud_cover" +
         "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
