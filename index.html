@@ -3677,7 +3677,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1422</span>
+      <span class="hdr-ver" id="hdr-ver">v1423</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5860,7 +5860,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1422;
+    window.BOARD_VER = 1423;
 
     
     function communityShort() {
@@ -30289,9 +30289,23 @@ function wxSvg(kind, box) {
         var list = document.getElementById("ent-list");
         if (list && window.__entAll && window.entCardHtml) {
           var rows = (window.__entAll || []).slice().sort(function (a, b) {
-            return (typeof eventLeaveMs === "function" ? eventLeaveMs(a) : 0) - (typeof eventLeaveMs === "function" ? eventLeaveMs(b) : 0);
+            var da = a.when instanceof Date ? a.when : new Date(a.when);
+            var db = b.when instanceof Date ? b.when : new Date(b.when);
+            return (da.getTime() || 0) - (db.getTime() || 0);
           });
-          list.innerHTML = rows.map(window.entCardHtml).join("");
+          var groups = {}, order = [];
+          rows.forEach(function (e) {
+            var d = e.when instanceof Date ? e.when : new Date(e.when);
+            var key = isNaN(d.getTime()) ? "Upcoming" : d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+            if (!groups[key]) { groups[key] = []; order.push(key); }
+            groups[key].push(e);
+          });
+          var html = "";
+          order.forEach(function (key) {
+            html += '<div class="ev-day-hdr">' + key + ' <span style="font-weight:500;color:#8a8070">· ' + groups[key].length + '</span></div>';
+            html += groups[key].map(window.entCardHtml).join("");
+          });
+          list.innerHTML = html;
         }
       }, 400);
       var label = locLabelFromDrive(d, e.inside);
