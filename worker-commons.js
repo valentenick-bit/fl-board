@@ -343,7 +343,7 @@ export default {
       const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
       const lat = url.searchParams.get("lat") || "";
       const lon = url.searchParams.get("lon") || "";
-      const limit = url.searchParams.get("limit") || "100";
+      const limit = Math.min(30, Number(url.searchParams.get("limit")) || 30);
       if (!lat || !lon) return new Response(JSON.stringify([]), { status: 200, headers: hdr });
       try {
         const r = await fetch("https://api.onebite.app/venue?lat=" + lat + "&lon=" + lon + "&limit=" + limit, {
