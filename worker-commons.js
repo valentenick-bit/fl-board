@@ -7,6 +7,7 @@ const KEY_ID = "1JhkFQtAHTEQCrzq-_JowhwZT3h48nK-p";
 const FLIGHT_ID = "1sExkZ82XjLbegVoXeYP7iXUHmwa7DF2i";
 const COMM_ID = "1NnpKNIiPTQch7s02z_PQ3u_MxwxRrq16";
 const EVENTS_ID = "1Z-f0UAh1z2_JHAWy77Zx88oIu8x2HELI";
+const MAPS_ID = "1SbVS5vyn_3BlauYniVZCnOERlBeWSIhq";
 
 function asRaw(src) {
   src = String(src || "").trim();
@@ -322,6 +323,21 @@ export default {
         incoming: [],
         delivered: []
       });
+    }
+    if (url.pathname === "/maps.json") {
+      const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
+      const urls = driveUrls(MAPS_ID);
+      for (const src of urls) {
+        try {
+          const r = await fetch(src + (src.indexOf("?") >= 0 ? "&" : "?") + "cb=" + Date.now(), {
+            headers: { "User-Agent": "Commons/1.0", Accept: "application/json" },
+            cf: { cacheTtl: 0 }
+          });
+          const text = jsonOk(await r.text());
+          if (text) return new Response(text, { status: 200, headers: hdr });
+        } catch (e) {}
+      }
+      return new Response(JSON.stringify({ updated: "", gmapsKey: "", error: "maps.json is Drive-only" }), { status: 200, headers: hdr });
     }
     if (url.pathname === "/key.json") {
       return driveJson(KEY_ID, "key.json", { updated: "", error: "Drive file must be Anyone with the link, Viewer" });
