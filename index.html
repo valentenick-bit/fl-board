@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1463</span>
+      <span class="hdr-ver" id="hdr-ver">v1464</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5890,7 +5890,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1463;
+    window.BOARD_VER = 1464;
 
     
     function communityShort() {
@@ -12404,6 +12404,12 @@ function currentRotation() {
     }
     function showPage(id) {
       window.showPage = showPage;
+      var rotPages = typeof rotateList === "function" ? rotateList() : [];
+      if (rotPages.indexOf(id) < 0 && id !== "now") {
+        window.__holdPage = true;
+      } else if (rotPages.indexOf(id) >= 0) {
+        window.__holdPage = false;
+      }
       if (!window.__dockSeen) window.__dockSeen = {};
       if (id === "tenday") window.__dockSeen.tenday = (window.__nwsAlerts || []).length + ((window.__cane && window.__cane.name) ? 1 : 0);
       if (id === "comm") window.__dockSeen.comm = (window.__commNotes || []).filter(function (n) { return n && n.new; }).length;
@@ -18722,7 +18728,51 @@ function paintObservatories() { paintObsTable(); }
         if (on) document.querySelectorAll("#dock button[data-p]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-p") === on.id); });
       }
     }
-    function rotateList() {
+    // Map rotation: 5s cycle, 60s pause on pill select
+    window.__mapRot = window.__mapRot || { wx: 0, land: 0, sea: 0, sky: 0 };
+    window.__mapPause = window.__mapPause || {};
+    function mapPills(page) {
+      var sel = { wx: "#wx-map-pills button", land: "#land-map-pills button", sea: "#sea-map-pills button", sky: "#sky-map-pills button" };
+      return document.querySelectorAll(sel[page] || "");
+    }
+    function mapAttr(page) {
+      return { wx: "data-wx-map", land: "data-land-map", sea: "data-sea-map", sky: "data-sky-map" }[page];
+    }
+    function mapShowFn(page) {
+      return { wx: "wxMapShow", land: "showLandMap", sea: "showSeaMap", sky: "showSkyMap" }[page];
+    }
+    function rotateMap(page) {
+      if (window.__mapPause[page] && Date.now() < window.__mapPause[page]) return;
+      var pills = mapPills(page);
+      if (!pills.length) return;
+      var visible = [];
+      pills.forEach(function (b) { if (!b.hidden) visible.push(b); });
+      if (!visible.length) return;
+      window.__mapRot[page] = (window.__mapRot[page] + 1) % visible.length;
+      var btn = visible[window.__mapRot[page]];
+      var id = btn.getAttribute(mapAttr(page));
+      var fn = window[mapShowFn(page)];
+      if (fn && id) fn(id);
+    }
+    function startMapRot(page) {
+      if (window.__mapRotTimer) clearInterval(window.__mapRotTimer[page]);
+      if (!window.__mapRotTimer) window.__mapRotTimer = {};
+      window.__mapRotTimer[page] = setInterval(function () {
+        var on = document.querySelector(".page.on");
+        var pageId = { wx: "tenday", land: "land", sea: "marine", sky: "sky" }[page];
+        if (on && on.id === pageId) rotateMap(page);
+      }, 5000);
+    }
+    ["wx", "land", "sea", "sky"].forEach(startMapRot);
+    // Pause map rotation on pill click
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest("#wx-map-pills button, #land-map-pills button, #sea-map-pills button, #sky-map-pills button");
+      if (!btn) return;
+      var page = btn.closest("#wx-map-pills") ? "wx" : btn.closest("#land-map-pills") ? "land" : btn.closest("#sea-map-pills") ? "sea" : "sky";
+      window.__mapPause[page] = Date.now() + 60000;
+    });
+
+        function rotateList() {
       var skip = { villa:1, health:1, guide:1, ideas:1, sources:1, menu:1, triggers:1, kioskpage:1, settings:1, sports:1, radio:1, account:1, welcome:1, business:1 };
       var seen = {};
       var list = loadRots().normal.filter(function (id) {
