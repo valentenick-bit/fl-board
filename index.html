@@ -1221,7 +1221,9 @@
     #eat-list .kind-tag.eat-steak, .card span.kind-tag.eat-steak { background:#8b3d2a; color:#fff; }
     #eat-list .kind-tag.eat-bbq, .card span.kind-tag.eat-bbq { background:#8b5e3c; color:#fff; }
     #eat-list .kind-tag.eat-mex, .card span.kind-tag.eat-mex { background:#c45a2a; color:#fff; }
+    #eat-list .kind-tag.eat-pizza, .card span.kind-tag.eat-pizza { background:#c45c26; color:#fff; }
     #eat-list .kind-tag.eat-ital, .card span.kind-tag.eat-ital { background:#7a2d3a; color:#fff; }
+    .portnoy-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#1a1a1a; color:#f2c14e; font-size:11px; font-weight:800; }
     #eat-list .kind-tag.eat-japan, .card span.kind-tag.eat-japan { background:#2a4a7a; color:#fff; }
     #eat-list .kind-tag.eat-china, .card span.kind-tag.eat-china { background:#a33a3a; color:#fff; }
     #eat-list .kind-tag.eat-thai, .card span.kind-tag.eat-thai { background:#3d8b5a; color:#fff; }
@@ -3684,7 +3686,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1425</span>
+      <span class="hdr-ver" id="hdr-ver">v1427</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4413,6 +4415,19 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="eats" class="page">
         <h2 data-k="Near this pin">Restaurants</h2>
         <p class="pill-key" id="eat-count">Restaurants near home…</p>
+        <div class="ev-filters" id="eat-filters">
+          <button type="button" data-eat-filter="all" class="on">All</button>
+          <button type="button" data-eat-filter="Pizza">Pizza</button>
+          <button type="button" data-eat-filter="Seafood">Seafood</button>
+          <button type="button" data-eat-filter="Steak">Steak</button>
+          <button type="button" data-eat-filter="Italian">Italian</button>
+          <button type="button" data-eat-filter="Mexican">Mexican</button>
+          <button type="button" data-eat-filter="BBQ">BBQ</button>
+          <button type="button" data-eat-filter="American">American</button>
+          <button type="button" data-eat-filter="Japanese">Japanese</button>
+          <button type="button" data-eat-filter="Chinese">Chinese</button>
+          <button type="button" data-eat-filter="Thai">Thai</button>
+        </div>
         <div class="split-list" id="eat-list"></div>
       </section>
       <section id="golf" class="page">
@@ -5868,7 +5883,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1425;
+    window.BOARD_VER = 1427;
 
     
     function communityShort() {
@@ -20199,7 +20214,7 @@ function paintObservatories() { paintObsTable(); }
         var locFull = (typeof enrichLoc === "function") ? enrichLoc(row.addr || row.where || mapQ || row.name) : (row.addr || mapQ || "");
         return '<div class="card ev-card eat-card buzz-card map-hit buzz-' + kind + '" ' + venueDataAttrs(row, kind, { buzz: row.name, busy: mapQ }) + '>' +
           '<div class="ev-rail' + ((rail.dow || rail.num) ? "" : " rail-solo") + '"><span class="ev-dow">' + (rail.dow || "") + '</span><span class="ev-num">' + (rail.num || "") + '</span><span class="ev-ico" aria-hidden="true">' + rail.ico + '</span></div>' +
-          '<div class="ev-body"><div class="ev-pills">' + pills + '</div>' +
+          '<div class="ev-body"><div class="ev-pills">' + pills + portnoyHtml + '</div>' +
           "<b>" + escBuzz(row.name) + "</b>" +
           ((kind === "hot" ? (row.inside ? row.where : (row.where || row.addr)) : (row.where || row.addr)) ? '<span class="ev-when">' + escBuzz(kind === "hot" ? (row.inside ? row.where : (row.where || row.addr)) : (row.where || row.addr)) + "</span>" : "") +
           (why ? '<span class="eat-why">' + escBuzz(why) + "</span>" : "") +
@@ -22057,7 +22072,8 @@ function paint() {
         if (/steak|chop house|steakhouse/.test(c) && !/sea|fish/.test(c)) return "Steak";
         if (/bbq|barbecue|smoke/.test(c)) return "BBQ";
         if (/mex|taco|tex-mex/.test(c)) return "Mexican";
-        if (/ital|pizza|pasta|pizzeria/.test(c)) return "Italian";
+        if (/pizza|pizzeria/.test(c)) return "Pizza";
+        if (/ital|pasta/.test(c)) return "Italian";
         if (/sushi|japan|ramen/.test(c)) return "Japanese";
         if (/china|chinese|szech/.test(c)) return "Chinese";
         if (/thai/.test(c)) return "Thai";
@@ -22072,7 +22088,7 @@ function paint() {
       }
       function kindCls(kind) {
         var k = String(kind || "Restaurant");
-        var map = { Seafood:"sea", Steak:"steak", BBQ:"bbq", Mexican:"mex", Italian:"ital", Japanese:"japan", Chinese:"china", Thai:"thai", Indian:"india", Mediterranean:"med", French:"fr", American:"amer", Cafe:"cafe", Breakfast:"brk" };
+        var map = { Seafood:"sea", Steak:"steak", BBQ:"bbq", Mexican:"mex", Pizza:"pizza", Italian:"ital", Japanese:"japan", Chinese:"china", Thai:"thai", Indian:"india", Mediterranean:"med", French:"fr", American:"amer", Cafe:"cafe", Breakfast:"brk" };
         return map[k] || "rest";
       }
       function card(r) {
@@ -22100,6 +22116,8 @@ function paint() {
         if (r.prevRating != null && r.rating != null && Number(r.prevRating) !== Number(r.rating)) {
           delta = Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
         }
+        var portnoy = (r.kind === "Pizza") ? portnoyScore(r.name) : null;
+        var portnoyHtml = portnoy != null ? '<span class="portnoy-tag" title="Dave Portnoy / Barstool Pizza">Portnoy ' + portnoy.toFixed(1) + '</span>' : "";
         return '<div class="card ev-card eat-card map-hit" ' + venueDataAttrs(r, r.kind || "restaurant", { eat: r.name, busy: mapQ }) + '>' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + delta + '</span><span class="ev-ico ev-price" aria-hidden="true">' + (bucks || "–") + "</span></div>" +
           '<div class="ev-body"><div class="ev-pills">' + pills + '</div>' +
@@ -22230,8 +22248,46 @@ function paint() {
           });
         }
         window.__eatReviewFloor = used;
-        return list.slice(0, 25);
+        return list;
       }
+      var PORTNOY = {
+        "frank pepe": 9.1, "pepe": 9.1,
+        "sally": 8.4, "sally's": 8.4,
+        "modern": 7.8, "modern apizza": 7.8,
+        "lucali": 9.4,
+        "di fara": 8.9,
+        "l&b spumoni": 7.6,
+        "joe's pizza": 7.2, "joe pizza": 7.2,
+        "prince street": 6.8,
+        "grimaldi": 7.1,
+        "patsy": 7.4, "patsy's": 7.4,
+        "lomardi": 7.0, "lombardi": 7.0,
+        "john's of bleecker": 7.3,
+        "artichoke": 6.2,
+        "two boots": 5.8,
+        "pizza hut": 2.1,
+        "domino": 1.8, "domino's": 1.8,
+        "papa john": 3.2,
+        "little caesar": 2.4
+      };
+      function portnoyScore(name) {
+        var n = String(name || "").toLowerCase();
+        for (var k in PORTNOY) { if (n.indexOf(k) >= 0) return PORTNOY[k]; }
+        return null;
+      }
+      window.__eatFilter = "all";
+      function filterEats(list) {
+        var f = window.__eatFilter || "all";
+        if (f === "all") return list;
+        return (list || []).filter(function (r) { return r.kind === f; });
+      }
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest && e.target.closest("#eat-filters button");
+        if (!btn) return;
+        window.__eatFilter = btn.getAttribute("data-eat-filter") || "all";
+        document.querySelectorAll("#eat-filters button").forEach(function (b) { b.classList.toggle("on", b === btn); });
+        if (window.__eats) drawEats(filterEats(window.__eatAll || window.__eats));
+      });
       function drawEats(list) {
         var box = document.getElementById("eat-list");
         var note = document.getElementById("eat-count");
@@ -22242,6 +22298,8 @@ function paint() {
           var old = prev[r.name];
           if (old && old.rating != null) r.prevRating = old.rating;
         });
+        window.__eatAll = list;
+        list = filterEats(list);
         window.__eats = list;
         try {
           list.forEach(function (r) {
