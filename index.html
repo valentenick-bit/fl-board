@@ -1223,7 +1223,9 @@
     #eat-list .kind-tag.eat-mex, .card span.kind-tag.eat-mex { background:#c45a2a; color:#fff; }
     #eat-list .kind-tag.eat-pizza, .card span.kind-tag.eat-pizza { background:#c45c26; color:#fff; }
     #eat-list .kind-tag.eat-ital, .card span.kind-tag.eat-ital { background:#7a2d3a; color:#fff; }
-    .portnoy-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#1a1a1a; color:#f2c14e; font-size:11px; font-weight:800; }
+    .onebite-stamp { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; width:44px; height:44px; margin-left:8px; border-radius:50%; background:#c41e3a; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); vertical-align:middle; }
+    .onebite-score { font-size:14px; font-weight:900; line-height:1; }
+    .onebite-label { font-size:6px; font-weight:700; letter-spacing:.5px; line-height:1; margin-top:1px; }
     #eat-list .kind-tag.eat-coffee, .card span.kind-tag.eat-coffee { background:#5c4033; color:#fff; }
     #eat-list .kind-tag.eat-japan, .card span.kind-tag.eat-japan { background:#2a4a7a; color:#fff; }
     #eat-list .kind-tag.eat-china, .card span.kind-tag.eat-china { background:#a33a3a; color:#fff; }
@@ -3687,7 +3689,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1442</span>
+      <span class="hdr-ver" id="hdr-ver">v1443</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5886,7 +5888,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1442;
+    window.BOARD_VER = 1443;
 
     
     function communityShort() {
@@ -22121,7 +22123,7 @@ function paint() {
           delta = Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
         }
         var portnoy = portnoyScore(r.name);
-        var portnoyHtml = portnoy != null ? '<span class="portnoy-tag" title="Dave Portnoy / Barstool Pizza">Portnoy ' + portnoy.toFixed(1) + '</span>' : "";
+        var portnoyHtml = portnoy != null ? '<span class="onebite-stamp" title="One Bite review by Dave Portnoy"><span class="onebite-score">' + portnoy.toFixed(1) + '</span><span class="onebite-label">ONE BITE</span></span>' : "";
         return '<div class="card ev-card eat-card map-hit" ' + venueDataAttrs(r, r.kind || "restaurant", { eat: r.name, busy: mapQ }) + '>' +
           '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + delta + '</span><span class="ev-ico ev-price" aria-hidden="true">' + (bucks || "–") + "</span></div>" +
           '<div class="ev-body"><div class="ev-pills">' + pills + portnoyHtml + '</div>' +
@@ -22269,7 +22271,8 @@ function paint() {
               return dave.averageScore > 0;
             });
             window.__portnoyNear = near.map(function (v) {
-              return { name: v.name, score: (v.reviewStats.dave || {}).averageScore, city: v.city, lat: v.loc.coordinates[1], lon: v.loc.coordinates[0] };
+              var addr = [v.address1, v.city, v.state, v.zip].filter(Boolean).join(", ");
+              return { name: v.name, score: (v.reviewStats.dave || {}).averageScore, city: v.city, addr: addr, lat: v.loc.coordinates[1], lon: v.loc.coordinates[0] };
             });
             var pool = window.__eatPool || [];
             var have = {};
@@ -22277,7 +22280,7 @@ function paint() {
             window.__portnoyNear.forEach(function (p) {
               var key = (p.name || "").toLowerCase();
               if (have[key]) return;
-              pool.push({ name: p.name, kind: "Pizza", rating: null, reviews: 0, lat: p.lat, lon: p.lon, addr: p.city || "", types: ["pizza_restaurant"], miles: milesOf(p.lat, p.lon) });
+              pool.push({ name: p.name, kind: "Pizza", rating: null, reviews: 0, lat: p.lat, lon: p.lon, addr: p.addr || p.city || "", types: ["pizza_restaurant"], miles: milesOf(p.lat, p.lon) });
               have[key] = true;
             });
             window.__eatPool = pool;
