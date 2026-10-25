@@ -3687,7 +3687,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1441</span>
+      <span class="hdr-ver" id="hdr-ver">v1442</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5886,7 +5886,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1441;
+    window.BOARD_VER = 1442;
 
     
     function communityShort() {
@@ -22231,6 +22231,7 @@ function paint() {
       function rankEats(pool) {
         var base = dedupeEats((pool || []).concat(mustEats())).filter(inRange).filter(isSitDownEat);
         base.forEach(function (r) { r.kind = kindOf(r.name || "", r.types || [r.kind || ""]); });
+        if (typeof markPortnoyPizza === "function") markPortnoyPizza(base);
         base.sort(function (a, b) {
           var ra = Number(a.rating) || 0, rb = Number(b.rating) || 0;
           if (rb !== ra) return rb - ra;
@@ -22259,17 +22260,29 @@ function paint() {
           }).catch(function () {}).then(function () {
             pending--;
             if (pending > 0) return;
-            window.__portnoyNear = all.filter(function (v) {
+            var near = all.filter(function (v) {
               var loc = v.loc && v.loc.coordinates;
               if (!loc || loc.length < 2) return false;
               var d = milesOf(loc[1], loc[0]);
               if (d == null || d > miles) return false;
               var dave = (v.reviewStats && v.reviewStats.dave) || {};
               return dave.averageScore > 0;
-            }).map(function (v) {
-              return { name: v.name, score: (v.reviewStats.dave || {}).averageScore, city: v.city };
             });
-            if (window.__eats && typeof renderEatList === "function") renderEatList();
+            window.__portnoyNear = near.map(function (v) {
+              return { name: v.name, score: (v.reviewStats.dave || {}).averageScore, city: v.city, lat: v.loc.coordinates[1], lon: v.loc.coordinates[0] };
+            });
+            var pool = window.__eatPool || [];
+            var have = {};
+            pool.forEach(function (r) { have[(r.name || "").toLowerCase()] = true; });
+            window.__portnoyNear.forEach(function (p) {
+              var key = (p.name || "").toLowerCase();
+              if (have[key]) return;
+              pool.push({ name: p.name, kind: "Pizza", rating: null, reviews: 0, lat: p.lat, lon: p.lon, addr: p.city || "", types: ["pizza_restaurant"], miles: milesOf(p.lat, p.lon) });
+              have[key] = true;
+            });
+            window.__eatPool = pool;
+            if (typeof rankEats === "function" && typeof drawEats === "function") drawEats(rankEats(pool));
+            else if (typeof renderEatList === "function") renderEatList();
           });
         });
       }
@@ -22280,6 +22293,11 @@ function paint() {
           return n.indexOf(pn) >= 0 || pn.indexOf(n) >= 0 || n.replace(/[^a-z]/g, "").indexOf(pn.replace(/[^a-z]/g, "")) >= 0;
         })[0];
         return hit ? hit.score : null;
+      }
+      function markPortnoyPizza(list) {
+        (list || []).forEach(function (r) {
+          if (portnoyScore(r.name) != null) r.kind = "Pizza";
+        });
       }
       window.__eatFilter = "all";
       function filterEats(list) {
