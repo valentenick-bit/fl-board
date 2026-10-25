@@ -1224,6 +1224,7 @@
     #eat-list .kind-tag.eat-pizza, .card span.kind-tag.eat-pizza { background:#c45c26; color:#fff; }
     #eat-list .kind-tag.eat-ital, .card span.kind-tag.eat-ital { background:#7a2d3a; color:#fff; }
     .portnoy-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#1a1a1a; color:#f2c14e; font-size:11px; font-weight:800; }
+    #eat-list .kind-tag.eat-coffee, .card span.kind-tag.eat-coffee { background:#5c4033; color:#fff; }
     #eat-list .kind-tag.eat-japan, .card span.kind-tag.eat-japan { background:#2a4a7a; color:#fff; }
     #eat-list .kind-tag.eat-china, .card span.kind-tag.eat-china { background:#a33a3a; color:#fff; }
     #eat-list .kind-tag.eat-thai, .card span.kind-tag.eat-thai { background:#3d8b5a; color:#fff; }
@@ -3686,7 +3687,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1428</span>
+      <span class="hdr-ver" id="hdr-ver">v1429</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4427,6 +4428,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <button type="button" data-eat-filter="Japanese">Japanese</button>
           <button type="button" data-eat-filter="Chinese">Chinese</button>
           <button type="button" data-eat-filter="Thai">Thai</button>
+          <button type="button" data-eat-filter="Cafe">Cafe</button>
+          <button type="button" data-eat-filter="Coffee">Coffee</button>
         </div>
         <div class="split-list" id="eat-list"></div>
       </section>
@@ -5883,7 +5886,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1428;
+    window.BOARD_VER = 1429;
 
     
     function communityShort() {
@@ -22078,17 +22081,17 @@ function paint() {
         if (/china|chinese|szech/.test(c)) return "Chinese";
         if (/thai/.test(c)) return "Thai";
         if (/india/.test(c)) return "Indian";
-        if (/greek|gyro|mediter/.test(c)) return "Mediterranean";
-        if (/french|bistro/.test(c)) return "French";
-        if (/amer|diner|burger|bar and grill|pub/.test(c)) return "American";
-        if (/cafe|coffee|bakery/.test(c)) return "Cafe";
-        if (/break/.test(c)) return "Breakfast";
-        if (c) return c.replace(/\b\w/g, function (x) { return x.toUpperCase(); }).split(" ")[0];
-        return "Restaurant";
+        if (/coffee|espresso|latte/.test(c)) return "Coffee";
+        if (/cafe|bakery/.test(c)) return "Cafe";
+        if (/greek|gyro|mediter/.test(c)) return "American";
+        if (/french|bistro/.test(c)) return "American";
+        if (/amer|diner|burger|bar and grill|pub|grill|tavern/.test(c)) return "American";
+        if (/break/.test(c)) return "American";
+        return "American";
       }
       function kindCls(kind) {
         var k = String(kind || "Restaurant");
-        var map = { Seafood:"sea", Steak:"steak", BBQ:"bbq", Mexican:"mex", Pizza:"pizza", Italian:"ital", Japanese:"japan", Chinese:"china", Thai:"thai", Indian:"india", Mediterranean:"med", French:"fr", American:"amer", Cafe:"cafe", Breakfast:"brk" };
+        var map = { Seafood:"sea", Steak:"steak", BBQ:"bbq", Mexican:"mex", Pizza:"pizza", Italian:"ital", Japanese:"japan", Chinese:"china", Thai:"thai", Indian:"india", Coffee:"coffee", Cafe:"cafe", American:"amer" };
         return map[k] || "rest";
       }
       function card(r) {
@@ -22224,31 +22227,17 @@ function paint() {
         return enoughReviewsAt(r, window.__eatReviewFloor || 2500);
       }
       function rankEats(pool) {
-        var floors = [2500, 1500, 800, 250, 1, 0];
         var base = dedupeEats((pool || []).concat(mustEats())).filter(inRange).filter(isSitDownEat);
-        var mapsOn = typeof mapsPaidOn === "function" ? mapsPaidOn() : true;
-        var list = [];
-        var used = 0;
-        for (var i = 0; i < floors.length; i++) {
-          used = floors[i];
-          list = base.filter(function (r) { return used <= 0 || enoughReviewsAt(r, floors[i]); });
-          list.sort(function (a, b) {
-            var ra = Number(a.rating) || 0, rb = Number(b.rating) || 0;
-            if (rb !== ra) return rb - ra;
-            var rev = (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
-            if (rev) return rev;
-            return (Number(a.miles) || 99) - (Number(b.miles) || 99);
-          });
-          if (list.length >= 8) break;
-        }
-        if (list.length < 8) {
-          used = 0;
-          list = base.slice().sort(function (a, b) {
-            return (Number(a.miles) || 99) - (Number(b.miles) || 99);
-          });
-        }
-        window.__eatReviewFloor = used;
-        return list;
+        base.forEach(function (r) { r.kind = kindOf(r.kind || r.name || ""); });
+        base.sort(function (a, b) {
+          var ra = Number(a.rating) || 0, rb = Number(b.rating) || 0;
+          if (rb !== ra) return rb - ra;
+          var rev = (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
+          if (rev) return rev;
+          return (Number(a.miles) || 99) - (Number(b.miles) || 99);
+        });
+        window.__eatReviewFloor = 0;
+        return base;
       }
       var PORTNOY = {
         "frank pepe": 9.1, "pepe": 9.1,
