@@ -3026,7 +3026,7 @@
     .joke-card span { display:block; line-height:1.45; }
     .dist-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#e7f3f1; color:#1f6f64; font-size:11px; font-weight:800; letter-spacing:.02em; }
     .worth-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#f2c14e; color:#3a2a10; font-size:11px; font-weight:800; }
-    .ev-day-hdr { font:700 13px Source Sans 3,sans-serif; color:#5c6b7a; padding:12px 4px 4px; border-bottom:1px solid var(--hair,#d9d2c4); margin-top:8px; }
+    .ev-day-hdr { font:700 15px Source Sans 3,sans-serif; color:#1b2a4a; padding:14px 4px 6px; border-bottom:2px solid var(--gold,#c4a35a); margin:16px 0 8px; background:rgba(196,163,90,.08); border-radius:4px; }
     html.dark .ev-day-hdr { color:#d4c9ae; border-color:#3a3428; }
     .dock-badge { position:absolute; top:2px; right:4px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#e07a5f; color:#fff; font:700 10px Source Sans 3,sans-serif; line-height:16px; text-align:center; }
     .src-fresh { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
@@ -3677,7 +3677,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1421</span>
+      <span class="hdr-ver" id="hdr-ver">v1422</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5860,7 +5860,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1421;
+    window.BOARD_VER = 1422;
 
     
     function communityShort() {
@@ -21218,17 +21218,22 @@ function paintTakeoutDeals() {
       function render(id, events) {
         var box = document.getElementById(id);
         if (!box || !events.length) return;
+        var sorted = events.slice().sort(function (a, b) {
+          var da = a.when instanceof Date ? a.when : new Date(a.when);
+          var db = b.when instanceof Date ? b.when : new Date(b.when);
+          return (da.getTime() || 0) - (db.getTime() || 0);
+        });
         var groups = {};
         var order = [];
-        events.forEach(function (e) {
+        sorted.forEach(function (e) {
           var d = e.when instanceof Date ? e.when : new Date(e.when);
-          var key = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+          var key = isNaN(d.getTime()) ? "Upcoming" : d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
           if (!groups[key]) { groups[key] = []; order.push(key); }
           groups[key].push(e);
         });
         var html = "";
         order.forEach(function (key) {
-          html += '<div class="ev-day-hdr">' + key + '</div>';
+          html += '<div class="ev-day-hdr">' + key + ' <span style="font-weight:500;color:#8a8070">· ' + groups[key].length + '</span></div>';
           html += groups[key].map(window.entCardHtml).join("");
         });
         box.innerHTML = html;
