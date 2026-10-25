@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1461</span>
+      <span class="hdr-ver" id="hdr-ver">v1462</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5890,7 +5890,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1461;
+    window.BOARD_VER = 1462;
 
     
     function communityShort() {
@@ -28458,10 +28458,15 @@ function wxSvg(kind, box) {
           }
           var td = document.querySelector(".tenday");
           if (td && days.length) {
-            var dayPeriods = days.filter(function (p) { return p.isDaytime; }).slice(0, 10);
+            var dayPeriods = days.filter(function (p) { return p.isDaytime; }).slice(0, 7);
+            var nightPeriods = days.filter(function (p) { return !p.isDaytime; });
             td.innerHTML = dayPeriods.map(function (d, i) {
-              var name = i === 0 ? "Today" : d.name;
-              return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + d.temperature + '&deg;</span><span class="dname">' + name + '</span></div>';
+              var name = i === 0 ? "Today" : d.name.slice(0, 3);
+              var night = nightPeriods[i];
+              var lo = night ? night.temperature : "";
+              var pop = (d.probabilityOfPrecipitation && d.probabilityOfPrecipitation.value) || 0;
+              var popHtml = pop >= 10 ? '<span class="dpop">' + Math.round(pop) + '%</span>' : '';
+              return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + d.temperature + '&deg;</span>' + (lo ? '<span class="lo">' + lo + '&deg;</span>' : '') + popHtml + '<span class="dname">' + name + '</span></div>';
             }).join("");
             if (typeof noteFeed === "function") noteFeed("10-day", true, dayPeriods.length + " days");
           }
