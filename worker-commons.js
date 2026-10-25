@@ -339,6 +339,22 @@ export default {
       }
       return new Response(JSON.stringify({ updated: "", gmapsKey: "", error: "maps.json is Drive-only" }), { status: 200, headers: hdr });
     }
+    if (url.pathname === "/onebite") {
+      const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
+      const lat = url.searchParams.get("lat") || "";
+      const lon = url.searchParams.get("lon") || "";
+      const limit = url.searchParams.get("limit") || "100";
+      if (!lat || !lon) return new Response(JSON.stringify([]), { status: 200, headers: hdr });
+      try {
+        const r = await fetch("https://api.onebite.app/venue?lat=" + lat + "&lon=" + lon + "&limit=" + limit, {
+          headers: { "User-Agent": "Commons/1.0", Accept: "application/json" }
+        });
+        const text = await r.text();
+        return new Response(text, { status: 200, headers: hdr });
+      } catch (e) {
+        return new Response(JSON.stringify([]), { status: 200, headers: hdr });
+      }
+    }
     if (url.pathname === "/key.json") {
       return driveJson(KEY_ID, "key.json", { updated: "", error: "Drive file must be Anyone with the link, Viewer" });
     }
