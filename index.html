@@ -3025,6 +3025,14 @@
     .daily-bits { display:grid; grid-template-columns:1fr; gap:12px; margin:12px 0 4px; }
     .joke-card span { display:block; line-height:1.45; }
     .dist-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#e7f3f1; color:#1f6f64; font-size:11px; font-weight:800; letter-spacing:.02em; }
+    .worth-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#f2c14e; color:#3a2a10; font-size:11px; font-weight:800; }
+    .ev-day-hdr { font:700 13px Source Sans 3,sans-serif; color:#5c6b7a; padding:12px 4px 4px; border-bottom:1px solid var(--hair,#d9d2c4); margin-top:8px; }
+    html.dark .ev-day-hdr { color:#d4c9ae; border-color:#3a3428; }
+    .dock-badge { position:absolute; top:2px; right:4px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#e07a5f; color:#fff; font:700 10px Source Sans 3,sans-serif; line-height:16px; text-align:center; }
+    .src-fresh { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+    .src-fresh.green { background:#2a9d8f; }
+    .src-fresh.yellow { background:#f2c14e; }
+    .src-fresh.red { background:#e07a5f; }
     html.dark .dist-tag { background:#1a3330; color:#9ee0d4; }
     html.band-laptop #now .today-boards,
     html.band-wall.orient-land #now .today-boards { grid-template-columns:1fr 1fr; }
@@ -3669,7 +3677,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1412</span>
+      <span class="hdr-ver" id="hdr-ver">v1415</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5831,7 +5839,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1412;
+    window.BOARD_VER = 1415;
 
     
     function communityShort() {
@@ -11009,6 +11017,30 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       });
       return lines.join("\n");
     }
+    function updateDockBadges() {
+      if (!window.__dockSeen) window.__dockSeen = {};
+      var pages = ["tenday", "comm", "ent"];
+      var counts = { tenday: 0, comm: 0, ent: 0 };
+      var alerts = window.__nwsAlerts || [];
+      var storms = (window.__cane && window.__cane.name) ? 1 : 0;
+      var events = (window.__entAll || []).length;
+      counts.tenday = alerts.length + storms;
+      counts.comm = (window.__commNotes || []).filter(function (n) { return n && n.new; }).length;
+      counts.ent = events;
+      pages.forEach(function (p) {
+        var btn = document.querySelector('.dock button[data-p="' + p + '"]');
+        if (!btn) return;
+        var seen = window.__dockSeen[p] || 0;
+        var diff = Math.max(0, counts[p] - seen);
+        var badge = btn.querySelector(".dock-badge");
+        if (diff > 0 && !btn.classList.contains("on")) {
+          if (!badge) { badge = document.createElement("span"); badge.className = "dock-badge"; btn.style.position = "relative"; btn.appendChild(badge); }
+          badge.textContent = diff > 9 ? "9+" : String(diff);
+        } else if (badge) {
+          badge.remove();
+        }
+      });
+    }
     function paintSources() {
       var box = document.getElementById("source-list");
       var pinEl = document.getElementById("src-pin");
@@ -11058,7 +11090,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       });
       box.innerHTML = painted.map(function (r) {
         var cls = r._ok === false ? "src-stale" : (r.updated !== "no ping yet" ? "src-ok" : "");
-        return "<tr data-src=\"" + r.id + "\"><td>" + r.page + "</td><td>" + r.stat +
+        var fresh = "red";
+        if (r._ok !== false && r.updated && r.updated !== "no ping yet") {
+          var ageMin = 0;
+          var m = String(r.updated).match(/(\d+)\s*(m|min|h|hr|d)/i);
+          if (m) { ageMin = parseInt(m[1], 10) * (m[2].toLowerCase().charAt(0) === "h" ? 60 : m[2].toLowerCase().charAt(0) === "d" ? 1440 : 1); }
+          fresh = ageMin < 30 ? "green" : ageMin < 120 ? "yellow" : "red";
+        }
+        return "<tr data-src=\"" + r.id + "\"><td><span class='src-fresh " + fresh + "'></span>" + r.page + "</td><td>" + r.stat +
           (r._detail ? "<br><small>" + String(r._detail).replace(/</g, "") + "</small>" : "") +
           "</td><td>" + r.primary + "</td><td>" + (r.backup || "—") + "</td><td>" + (r.at || "—") +
           "</td><td class=\"" + cls + "\">" + r.updated + "</td></tr>";
@@ -12303,6 +12342,11 @@ function currentRotation() {
     }
     function showPage(id) {
       window.showPage = showPage;
+      if (!window.__dockSeen) window.__dockSeen = {};
+      if (id === "tenday") window.__dockSeen.tenday = (window.__nwsAlerts || []).length + ((window.__cane && window.__cane.name) ? 1 : 0);
+      if (id === "comm") window.__dockSeen.comm = (window.__commNotes || []).filter(function (n) { return n && n.new; }).length;
+      if (id === "ent") window.__dockSeen.ent = (window.__entAll || []).length;
+      if (typeof updateDockBadges === "function") updateDockBadges();
       var cur = document.querySelector(".page.on");
       if (cur && cur.id && pageOnRotation(cur.id)) window.__fromPage = cur.id;
       var jump = "";
@@ -21122,6 +21166,11 @@ function paintTakeoutDeals() {
           distHtml = '<span class="dist-tag loc-pill">' + (fallback || "Drive…") + "</span>";
         }
         var kindHtml = kind ? ('<span class="kind-tag ' + kind.cls + '">' + kind.label + "</span>") : "";
+        var worthHtml = "";
+        if (e.miles != null && e.miles > 10) {
+          var reason = (kind && kind.label) || (live ? "Live music" : "") || (/free/i.test(e.sum || "") ? "Free" : "") || (/kid|family|child/i.test(e.sum || "") ? "Kid-friendly" : "") || "Worth the trip";
+          worthHtml = '<span class="worth-tag" title="' + reason + '">Worth the drive</span>';
+        }
         var whenLine = allDay ? "All day" : (typeof fmtClockTime === "function" ? fmtClockTime(e.when) : "");
         var rd = typeof railDateParts === "function" ? railDateParts(e.when) : { dow: "—", num: "—" };
         var dow = rd.dow;
@@ -21133,7 +21182,7 @@ function paintTakeoutDeals() {
         var driveKey = String(e.sum || "") + "|" + (e.when && e.when.toISOString ? e.when.toISOString() : "");
         var locLine = title || place || "";
         var placeLabel = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : place;
-        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + worthHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
           (e.opens ? " · opens " + e.opens : "") +
           (function () {
             if (!e.when || e.inside) return "";
@@ -21148,7 +21197,20 @@ function paintTakeoutDeals() {
       function render(id, events) {
         var box = document.getElementById(id);
         if (!box || !events.length) return;
-        box.innerHTML = events.map(window.entCardHtml).join("");
+        var groups = {};
+        var order = [];
+        events.forEach(function (e) {
+          var d = e.when instanceof Date ? e.when : new Date(e.when);
+          var key = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+          if (!groups[key]) { groups[key] = []; order.push(key); }
+          groups[key].push(e);
+        });
+        var html = "";
+        order.forEach(function (key) {
+          html += '<div class="ev-day-hdr">' + key + '</div>';
+          html += groups[key].map(window.entCardHtml).join("");
+        });
+        box.innerHTML = html;
         if (typeof stampLocPills === "function") stampLocPills(box);
       }
       document.addEventListener("click", function (e) {
@@ -32057,7 +32119,7 @@ function homeCountyGuess() {
     if (typeof syncBriefToWeatherTicker === "function") syncBriefToWeatherTicker();
     if (typeof publishHomePin === "function") publishHomePin();
     pollAlerts();
-    setInterval(function () { if (!document.hidden && typeof placeSunMoonArc === "function") placeSunMoonArc(); }, 20000);
+    setInterval(function () { if (!document.hidden && typeof placeSunMoonArc === "function") placeSunMoonArc(); if (typeof updateDockBadges === "function") updateDockBadges(); }, 20000);
     try { lockForecastStrips(); } catch (eLock) {}
     /* v992-bind */
     if (typeof lockForecastStrips === "function") lockForecastStrips();
