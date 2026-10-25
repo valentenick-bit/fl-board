@@ -3687,7 +3687,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1429</span>
+      <span class="hdr-ver" id="hdr-ver">v1430</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5886,7 +5886,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1429;
+    window.BOARD_VER = 1430;
 
     
     function communityShort() {
@@ -22069,24 +22069,25 @@ function paint() {
         if (m == null && r && r.lat != null && r.lon != null) m = r.miles = milesOf(r.lat, r.lon);
         return m != null && !isNaN(m) && m <= cap;
       }
-      function kindOf(raw) {
-        var c = String(raw || "").toLowerCase().replace(/[_/]+/g, " ");
-        if (/sea|fish|oyster|crab|shrimp|grouper|chowder|seafood/.test(c)) return "Seafood";
-        if (/steak|chop house|steakhouse/.test(c) && !/sea|fish/.test(c)) return "Steak";
-        if (/bbq|barbecue|smoke/.test(c)) return "BBQ";
-        if (/mex|taco|tex-mex/.test(c)) return "Mexican";
-        if (/pizza|pizzeria/.test(c)) return "Pizza";
-        if (/ital|pasta/.test(c)) return "Italian";
-        if (/sushi|japan|ramen/.test(c)) return "Japanese";
-        if (/china|chinese|szech/.test(c)) return "Chinese";
-        if (/thai/.test(c)) return "Thai";
-        if (/india/.test(c)) return "Indian";
-        if (/coffee|espresso|latte/.test(c)) return "Coffee";
-        if (/cafe|bakery/.test(c)) return "Cafe";
-        if (/greek|gyro|mediter/.test(c)) return "American";
-        if (/french|bistro/.test(c)) return "American";
-        if (/amer|diner|burger|bar and grill|pub|grill|tavern/.test(c)) return "American";
-        if (/break/.test(c)) return "American";
+      function kindOf(raw, types) {
+        var blob = (String(raw || "") + " " + (types || []).join(" ")).toLowerCase().replace(/[_/]+/g, " ");
+        var t = (types || []).map(function (x) { return String(x).toLowerCase(); });
+        function has(re) { return re.test(blob) || t.some(function (x) { return re.test(x); }); }
+        if (has(/seafood|sea_food|fish_restaurant|oyster|crab_house/)) return "Seafood";
+        if (has(/steak_house|steakhouse|chop_house/) && !has(/seafood/)) return "Steak";
+        if (has(/barbecue|bbq|smokehouse/)) return "BBQ";
+        if (has(/mexican|taco|tex_mex|tex-mex/)) return "Mexican";
+        if (has(/pizza|pizzeria/)) return "Pizza";
+        if (has(/italian|pasta|trattoria/)) return "Italian";
+        if (has(/japanese|sushi|ramen/)) return "Japanese";
+        if (has(/chinese|szechuan|cantonese/)) return "Chinese";
+        if (has(/thai/)) return "Thai";
+        if (has(/indian|curry/)) return "Indian";
+        if (has(/coffee_shop|coffee|espresso/)) return "Coffee";
+        if (has(/cafe|bakery|café/)) return "Cafe";
+        if (has(/mediterranean|greek|gyro/)) return "Italian";
+        if (has(/french|bistro/)) return "American";
+        if (has(/american|burger|diner|pub|bar_and_grill|grill/)) return "American";
         return "American";
       }
       function kindCls(kind) {
@@ -22228,7 +22229,7 @@ function paint() {
       }
       function rankEats(pool) {
         var base = dedupeEats((pool || []).concat(mustEats())).filter(inRange).filter(isSitDownEat);
-        base.forEach(function (r) { r.kind = kindOf(r.kind || r.name || ""); });
+        base.forEach(function (r) { r.kind = kindOf(r.name || "", r.types || [r.kind || ""]); });
         base.sort(function (a, b) {
           var ra = Number(a.rating) || 0, rb = Number(b.rating) || 0;
           if (rb !== ra) return rb - ra;
@@ -22510,7 +22511,7 @@ function paint() {
           gRated: p.rating != null,
           open: p.opening_hours ? p.opening_hours.open_now : null,
           priceLevel: p.price_level,
-          kind: kindOf(((p.types || []).join(" ")) + " " + (p.name || "")),
+          kind: kindOf(p.name || "", p.types || []),
           miles: (lat && lon) ? milesFn(lat, lon) : null,
           lat: lat, lon: lon,
           area: p.vicinity || p.formatted_address || "",
@@ -22647,7 +22648,7 @@ function mustEatsFL() {
                   lat: el.lat, lon: el.lon,
                   addr: [el.tags["addr:street"], el.tags["addr:city"]].filter(Boolean).join(", "),
                   types: [el.tags.amenity || "restaurant"],
-                  kind: kindOf((el.tags.cuisine || "") + " " + el.tags.name)
+                  kind: kindOf(el.tags.name || "", [el.tags.cuisine || ""])
                 };
               });
             } else if (places.length) {
@@ -22697,7 +22698,7 @@ function mustEatsFL() {
               reviews: pl.userRatingCount || 0,
               priceLevel: pl.priceLevel,
               open: pl.currentOpeningHours ? pl.currentOpeningHours.openNow : null,
-              kind: kindOf(((pl.types || []).join(" ")) + " " + name),
+              kind: kindOf(name, pl.types || []),
               types: pl.types || [],
               miles: (lat && lon) ? milesOf(lat, lon) : null,
               lat: lat, lon: lon,
@@ -22768,7 +22769,7 @@ function mustEatsFL() {
               reviews: pl.userRatingCount || 0,
               priceLevel: pl.priceLevel,
               open: pl.currentOpeningHours ? pl.currentOpeningHours.openNow : null,
-              kind: kindOf(((pl.types || []).join(" ")) + " " + name),
+              kind: kindOf(name, pl.types || []),
               types: pl.types || [],
               miles: (lat && lon) ? milesOf(lat, lon) : null,
               lat: lat, lon: lon,
