@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1485</span>
+      <span class="hdr-ver" id="hdr-ver">v1486</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5891,7 +5891,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1485;
+    window.BOARD_VER = 1486;
 
     
     function communityShort() {
@@ -13944,25 +13944,31 @@ function currentRotation() {
       var want = window.__radioWant || {};
       if (radioIsPlaying()) {
         if (window.speechSynthesis) speechSynthesis.cancel();
+        window.__lastRadio = { url: want.url || rec.url || "", label: want.label || rec.label || "" };
         if (typeof saveRadioForPin === "function") saveRadioForPin(want.url || rec.url, want.label || rec.label, true);
         window.__radioWant = { url: "", label: "" };
         if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true, userAction: true });
       } else {
-        var url = rec.url || want.url || "";
-        var label = rec.label || want.label || "";
-        if (url && typeof radioAllowedOnThisPin === "function" && !radioAllowedOnThisPin(url)) {
-          if (/weatherusa|\/NWR\//i.test(url) && typeof noaaUrl === "function") {
-            url = noaaUrl();
-            label = typeof noaaName === "function" ? noaaName() : "NOAA";
-          } else { url = ""; label = ""; }
-        }
-        if (!url) {
-          var first = document.querySelector('#radio-fm button[data-stream]:not([data-stream=""]), #radio-am button[data-stream]:not([data-stream=""])');
-          if (first) { url = first.getAttribute("data-stream") || ""; label = first.textContent || ""; }
-        }
-        if (typeof saveRadioForPin === "function") saveRadioForPin(url, label, false);
+        var last = window.__lastRadio || {};
+        var url = last.url || rec.url || want.url || "";
+        var label = last.label || rec.label || want.label || "";
         window.__nwrUserMuted = false;
-        if (typeof playStation === "function") playStation(url, label, { userAction: true });
+        if (url === "tts:noaa" || /transcript/i.test(label)) {
+          if (typeof speakNoaaTranscript === "function") speakNoaaTranscript();
+        } else {
+          if (url && typeof radioAllowedOnThisPin === "function" && !radioAllowedOnThisPin(url)) {
+            if (/weatherusa|\/NWR\//i.test(url) && typeof noaaUrl === "function") {
+              url = noaaUrl();
+              label = typeof noaaName === "function" ? noaaName() : "NOAA";
+            } else { url = ""; label = ""; }
+          }
+          if (!url) {
+            var first = document.querySelector('#radio-fm button[data-stream]:not([data-stream=""]), #radio-am button[data-stream]:not([data-stream=""])');
+            if (first) { url = first.getAttribute("data-stream") || ""; label = first.textContent || ""; }
+          }
+          if (typeof saveRadioForPin === "function") saveRadioForPin(url, label, false);
+          if (typeof playStation === "function") playStation(url, label, { userAction: true });
+        }
       }
       if (typeof paintHdrRadio === "function") paintHdrRadio();
     }
