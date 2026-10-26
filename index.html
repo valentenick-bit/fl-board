@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1473</span>
+      <span class="hdr-ver" id="hdr-ver">v1474</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5890,7 +5890,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1473;
+    window.BOARD_VER = 1474;
 
     
     function communityShort() {
@@ -26321,6 +26321,13 @@ function drawSurgeChart(points) {
       });
     }
 
+    function marineZoneType(areaDesc) {
+      var a = String(areaDesc || "").toLowerCase();
+      if (/beyond|60 nm|offshore|waters from.*out/.test(a)) return "offshore";
+      if (/20.?60|20 to 60/.test(a)) return "20-60 nm";
+      if (/coastal|bay|inlet|shore|nearshore|0.?20/.test(a)) return "coastal";
+      return "marine";
+    }
     function marineAlertKind(ev, headline, desc) {
       var t = [ev, headline, desc].join(" ").toLowerCase();
       if (/special marine|waterspout/.test(t)) return "smw";
@@ -26588,7 +26595,8 @@ function drawSurgeChart(points) {
         var craftEl = document.getElementById("live-craft");
         if (craftEl && alerts.some(function (a) { return a.kind === "sca" || a.kind === "gale"; })) {
           var top = alerts.filter(function (a) { return a.kind === "sca" || a.kind === "gale"; })[0];
-          craftEl.textContent = (top && top.event) || "Advisory";
+          var zoneType = typeof marineZoneType === "function" ? marineZoneType(top && top.area) : "";
+          craftEl.textContent = ((top && top.event) || "Advisory") + (zoneType ? " · " + zoneType : "");
         }
         if (typeof noteFeed === "function") noteFeed("coastal", true, verdict + " · " + (alerts.length ? alerts.length + " marine alerts" : "no marine alerts"));
       }
@@ -26602,6 +26610,7 @@ function drawSurgeChart(points) {
           out.push({
             kind: kind,
             event: ev,
+            area: p.areaDesc || "",
             line: String(p.headline || p.description || "").replace(/\s+/g, " ").slice(0, 140)
           });
         });
