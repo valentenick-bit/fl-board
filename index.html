@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1480</span>
+      <span class="hdr-ver" id="hdr-ver">v1481</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5891,7 +5891,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1480;
+    window.BOARD_VER = 1481;
 
     
     function communityShort() {
@@ -11554,6 +11554,35 @@ function gatorRange() {
       return /weatherusa|\/NWR\/|scan:(47751|25922|47752)\b|broadcastify\.(cdnstream1|com)\/(47751|25922|47752)|relay\.broadcastify|3dm76hyntrcg|sq6bz0cn3krf/i.test(String(u || ""));
     }
     function noaaName() { return getSet().nwrName || "NOAA Weather Radio"; }
+    function speakNoaaTranscript() {
+      if (!window.speechSynthesis) return;
+      var text = window.__noaaTranscript || "";
+      if (!text) {
+        if (typeof fetchNoaaTranscript === "function") {
+          fetchNoaaTranscript().then(function (t) {
+            if (t) { window.__noaaTranscript = t; speakNoaaTranscript(); }
+          });
+        }
+        return;
+      }
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text.slice(0, 1200));
+      u.rate = 0.95;
+      u.pitch = 1;
+      var voices = speechSynthesis.getVoices();
+      var en = voices.filter(function (v) { return /en-US|en_US/.test(v.lang); })[0];
+      if (en) u.voice = en;
+      u.onend = function () {
+        if (window.__radioWant && /tts|transcript/i.test(window.__radioWant.label || "")) {
+          setTimeout(speakNoaaTranscript, 8000);
+        }
+      };
+      speechSynthesis.speak(u);
+      var status = document.getElementById("radio-status");
+      if (status) status.textContent = "Speaking NOAA transcript (stream offline)";
+      window.__radioWant = { url: "tts:noaa", label: "NOAA transcript" };
+      if (typeof paintHdrRadio === "function") paintHdrRadio();
+    }
     function scanPack() {
       var wfo = getSet().wfo || "";
       var st = homeState();
@@ -12738,7 +12767,10 @@ function currentRotation() {
             if (window.__nwrTry < list.length) {
               if (status) status.textContent = "Trying another NOAA feed for " + (noaaName() || "this pin") + "…";
               playStation(noaaUrl(), noaaName(), { keepSaved: true, nwrRetry: true, force: true });
-            } else if (status) status.textContent = (noaaName() || "NOAA") + " did not start for " + homePlace() + ".";
+            } else {
+              if (status) status.textContent = "Stream offline. Speaking transcript…";
+              if (typeof speakNoaaTranscript === "function") speakNoaaTranscript();
+            }
           };
         }
       } else {
