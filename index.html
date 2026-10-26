@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1492</span>
+      <span class="hdr-ver" id="hdr-ver">v1493</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5891,7 +5891,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1492;
+    window.BOARD_VER = 1493;
 
     
     function communityShort() {
@@ -11562,9 +11562,16 @@ function gatorRange() {
       var ampm = hh >= 12 ? "PM" : "AM";
       var h12 = hh % 12 || 12;
       var timeStr = "The time is " + h12 + ":" + mm + " " + ampm + ". ";
+      var issued = "";
+      if (window.__noaaIssued) {
+        var d = new Date(window.__noaaIssued);
+        var ih = d.getHours(), im = String(d.getMinutes()).padStart(2, "0");
+        var iampm = ih >= 12 ? "PM" : "AM", ih12 = ih % 12 || 12;
+        issued = "This forecast was issued at " + ih12 + ":" + im + " " + iampm + ". ";
+      }
       var id = "This is NOAA Weather Radio station " + call + ", serving the " + place + " area. ";
       var close = " This concludes the NOAA Weather Radio broadcast.";
-      var full = (id + timeStr + text + close).slice(0, 1400);
+      var full = (id + timeStr + issued + text + close).slice(0, 1400);
       var parts = full.split(/(?<=[.!?])\s+/).filter(function (s) { return s.trim(); });
       speechSynthesis.cancel();
       var voices = speechSynthesis.getVoices();
@@ -31237,6 +31244,7 @@ function wxSvg(kind, box) {
         text = text.replace(/Here is your NOAA Weather Radio point forecast\.?/i, "");
         text = text.replace(/Here is your area weather roundup\.?/i, "Nearby: ");
         text = text.replace(/Here is your local forecast\.?/i, "Forecast: ");
+        window.__noaaIssued = Date.now();
         return text.slice(0, 2500);
       }).catch(function () { return ""; });
     }
