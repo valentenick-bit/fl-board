@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1469</span>
+      <span class="hdr-ver" id="hdr-ver">v1470</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5890,7 +5890,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1469;
+    window.BOARD_VER = 1470;
 
     
     function communityShort() {
@@ -12581,6 +12581,10 @@ function currentRotation() {
     }
     function playStation(url, label, opts) {
       opts = opts || {};
+      if (window.__nwrUserMuted && url && !opts.userAction) {
+        return;
+      }
+      opts = opts || {};
       if (url && !opts.force && typeof radioAllowedOnThisPin === "function" && !radioAllowedOnThisPin(url)) {
         if (/weatherusa|\/NWR\//i.test(url) && typeof noaaUrl === "function") {
           url = noaaUrl();
@@ -12933,7 +12937,7 @@ function currentRotation() {
       }
       if (rec.muted) window.__radioMuted = true;
       if (window.__radioMuted) {
-        if (typeof playStation === "function" && live) playStation("", "Mute", { keepSaved: true });
+        if (typeof playStation === "function" && live) playStation("", "Mute", { keepSaved: true, userAction: true });
         if (typeof paintHdrRadio === "function") paintHdrRadio();
         return;
       }
@@ -12953,15 +12957,15 @@ function currentRotation() {
       if (String((typeof getSet === "function" && getSet().kiosk) || "") === "1") {
         var first = document.querySelector('#radio-fm button[data-stream]:not([data-stream=""]), #radio-am button[data-stream]:not([data-stream=""])');
         if (first && typeof playStation === "function") playStation(first.getAttribute("data-stream"), first.textContent);
-        else if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+        else if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true, userAction: true });
         return;
       }
       if (want && !radioAllowedOnThisPin(want) || live && !radioAllowedOnThisPin(live) || pinSaved && !radioAllowedOnThisPin(pinSaved)) {
-        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true, userAction: true });
         return;
       }
       if (want && radioAllowedOnThisPin(want)) return;
-      if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+      if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true, userAction: true });
     }
 
     function fillZipRadio() {
@@ -13087,7 +13091,7 @@ function currentRotation() {
           playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
           return;
         }
-        if (inQuietHours()) { playStation("", "Mute", { keepSaved: true }); return; }
+        if (inQuietHours()) { playStation("", "Mute", { keepSaved: true, userAction: true }); return; }
         playStation(btn.getAttribute("data-stream"), btn.textContent);
       }
       start();
@@ -13872,7 +13876,7 @@ function currentRotation() {
       var want = window.__radioWant || {};
       if (radioIsPlaying()) {
         if (typeof saveRadioForPin === "function") saveRadioForPin(want.url || rec.url, want.label || rec.label, true);
-        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
+        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true, userAction: true });
       } else {
         var url = rec.url || want.url || "";
         var label = rec.label || want.label || "";
@@ -13887,8 +13891,8 @@ function currentRotation() {
           if (first) { url = first.getAttribute("data-stream") || ""; label = first.textContent || ""; }
         }
         if (typeof saveRadioForPin === "function") saveRadioForPin(url, label, false);
-        if (typeof saveRadioForPin === "function") saveRadioForPin(url, label, false);
-        if (typeof playStation === "function") playStation(url, label);
+        window.__nwrUserMuted = false;
+        if (typeof playStation === "function") playStation(url, label, { userAction: true });
       }
       if (typeof paintHdrRadio === "function") paintHdrRadio();
     }
@@ -32227,7 +32231,7 @@ function homeCountyGuess() {
             }
             if (!url) {
               window.__forceRadio = false;
-              playStation("", "Mute", { keepSaved: true });
+              playStation("", "Mute", { keepSaved: true, userAction: true });
               return;
             }
             window.__forceRadio = true;
