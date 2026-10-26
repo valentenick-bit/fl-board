@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1467</span>
+      <span class="hdr-ver" id="hdr-ver">v1468</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5890,7 +5890,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1467;
+    window.BOARD_VER = 1468;
 
     
     function communityShort() {
@@ -12924,17 +12924,11 @@ function currentRotation() {
       var audio = document.getElementById("radioPlayer");
       var live = (audio && (audio.getAttribute("src") || audio.src)) || "";
       var warnOn = !!(window.__nwrAlert) || !!(window.__wxRisk && window.__wxRisk.warn);
-      var quiet = typeof inQuietHours === "function" && inQuietHours();
-      if (warnOn && !window.__nwrUserMuted && !quiet) {
+      if (warnOn && !window.__nwrUserMuted) {
         window.__forceRadio = true;
         window.__radioMuted = false;
         if (typeof saveRadioForPin === "function") saveRadioForPin(noaaUrl(), noaaName() + " (warning)", false);
         if (typeof playStation === "function") playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true, force: true });
-        return;
-      }
-      if (quiet && !window.__radioWant.url) {
-        window.__radioMuted = true;
-        if (typeof playStation === "function") playStation("", "Mute", { keepSaved: true });
         return;
       }
       if (rec.muted) window.__radioMuted = true;
@@ -13089,12 +13083,11 @@ function currentRotation() {
       if (getSet().kiosk !== "1") return;
       function start() {
         if (window.__nwrUserMuted) return;
-        var quiet = typeof inQuietHours === "function" && inQuietHours();
-        if ((window.__nwrAlert || (window.__wxRisk && window.__wxRisk.warn)) && !quiet) {
+        if (window.__nwrAlert || (window.__wxRisk && window.__wxRisk.warn)) {
           playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true });
           return;
         }
-        if (quiet) { playStation("", "Mute", { keepSaved: true }); return; }
+        if (inQuietHours()) { playStation("", "Mute", { keepSaved: true }); return; }
         playStation(btn.getAttribute("data-stream"), btn.textContent);
       }
       start();
