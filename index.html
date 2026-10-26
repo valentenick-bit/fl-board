@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1476</span>
+      <span class="hdr-ver" id="hdr-ver">v1478</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5891,7 +5891,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1476;
+    window.BOARD_VER = 1478;
 
     
     function communityShort() {
@@ -31165,6 +31165,29 @@ function wxSvg(kind, box) {
       if (!title || /loading|checking|none/i.test(title)) return "";
       return extra && extra !== title ? title + ". " + extra : title;
     }
+    function fetchNoaaTranscript() {
+      var lat = typeof homeLat === "function" ? homeLat() : 0;
+      var lon = typeof homeLon === "function" ? homeLon() : 0;
+      if (!isFinite(lat) || !isFinite(lon)) return Promise.resolve("");
+      return fetch("https://api.weather.gov/points/" + lat + "," + lon + "/radio", {
+        headers: { Accept: "application/vnd.noaa.radio+xml", "User-Agent": "CommonsBoard" }
+      }).then(function (r) { return r.text(); }).then(function (xml) {
+        var text = xml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        text = text.replace(/Here is your NOAA Weather Radio point forecast\.?/i, "");
+        text = text.replace(/Here is your area weather roundup\.?/i, "Nearby: ");
+        text = text.replace(/Here is your local forecast\.?/i, "Forecast: ");
+        return text.slice(0, 800);
+      }).catch(function () { return ""; });
+    }
+    window.__noaaTranscript = "";
+    function refreshNoaaTranscript() {
+      fetchNoaaTranscript().then(function (t) {
+        if (t) window.__noaaTranscript = t;
+      });
+    }
+    setTimeout(refreshNoaaTranscript, 2000);
+    setInterval(refreshNoaaTranscript, 15 * 60 * 1000);
+
     function writeBriefing() {
       try {
         var nowMs = Date.now();
@@ -31569,7 +31592,7 @@ function cardBits(id) {
             return "<b>" + b.title + ".</b>" + "\u00a0".repeat(18) + spaceSentences((b.lines || []).join(" "));
           }).join("\u00a0".repeat(72));
         }
-        var wxB = weatherBit();
+        var wxB = window.__noaaTranscript || weatherBit();
         var tdB = todayBit();
         var bdB = boardBit();
         var spB = sportsBit();
