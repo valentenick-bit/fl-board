@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1489</span>
+      <span class="hdr-ver" id="hdr-ver">v1490</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5891,7 +5891,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1489;
+    window.BOARD_VER = 1490;
 
     
     function communityShort() {
@@ -11557,19 +11557,25 @@ function gatorRange() {
       var name = (near && near[1]) || noaaName();
       var id = "NOAA Weather Radio, station " + call + ", " + name.replace(/^NOAA\s*/i, "") + ". ";
       var full = (id + text).slice(0, 1400);
+      var parts = full.split(/(?<=[.!?])\s+/).filter(function (s) { return s.trim(); });
       speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(full);
-      u.rate = 0.95;
-      u.pitch = 1;
       var voices = speechSynthesis.getVoices();
       var en = voices.filter(function (v) { return /en-US|en_US/.test(v.lang); })[0];
-      if (en) u.voice = en;
-      u.onend = function () {
-        if (window.__radioWant && window.__radioWant.url === "tts:noaa") {
-          setTimeout(speakNoaaTranscript, 3000);
+      var i = 0;
+      function next() {
+        if (window.__radioWant && window.__radioWant.url !== "tts:noaa") return;
+        if (i >= parts.length) {
+          if (window.__radioWant && window.__radioWant.url === "tts:noaa") setTimeout(speakNoaaTranscript, 3000);
+          return;
         }
-      };
-      speechSynthesis.speak(u);
+        var u = new SpeechSynthesisUtterance(parts[i]);
+        u.rate = 0.95;
+        u.pitch = 1;
+        if (en) u.voice = en;
+        u.onend = function () { i++; setTimeout(next, 350); };
+        speechSynthesis.speak(u);
+      }
+      next();
       var status = document.getElementById("radio-status");
       if (status) status.textContent = "Speaking NOAA transcript (stream offline)";
       window.__radioWant = { url: "tts:noaa", label: "NOAA transcript" };
