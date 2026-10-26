@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1474</span>
+      <span class="hdr-ver" id="hdr-ver">v1475</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4243,6 +4243,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-sea-map="clarity">Clarity</button>
             <button type="button" data-sea-map="ais">Traffic</button>
             <button type="button" data-sea-map="buoys">Buoys</button>
+            <button type="button" data-sea-map="zones">Zones</button>
           </div>
           <p class="wx-map-cap"><b id="sea-map-kind">Wind</b><span id="sea-map-note">Pinned on home</span></p>
         </div>
@@ -5890,7 +5891,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1474;
+    window.BOARD_VER = 1475;
 
     
     function communityShort() {
@@ -7497,7 +7498,8 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         rip: { label: "Rip", note: "NWS 48-hour beach risk pinned on home", url: "", chart: false },
         clarity: { label: "Clarity", note: "Ocean color near the pin", url: "", chart: false },
         ais: { label: "Traffic", note: "Live ships (AIS) around the home pin", url: homeVesselEmbed(), chart: false },
-        buoys: { label: "Buoys", note: "NDBC stations near the pin. Tap a marker for readings.", url: "", chart: false }
+        buoys: { label: "Buoys", note: "NDBC stations near the pin. Tap a marker for readings.", url: "", chart: false },
+        zones: { label: "Zones", note: "NWS marine zones around the pin", url: "", chart: false }
       };
             if (!views[id]) id = "waves";
       if (id !== "rip" && window.__ripMap && window.__ripMap.map) {
@@ -7552,6 +7554,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
         paintBuoyMap(chart, homeLat(), homeLon(), note);
         if (typeof noteFeed === "function") noteFeed("sea-map", true, "buoys");
+        return;
+      }
+      if (id === "zones") {
+        if (frame) { frame.classList.remove("on"); frame.style.display = "none"; frame.removeAttribute("src"); frame.removeAttribute("data-src"); }
+        if (aisBox) { aisBox.hidden = true; aisBox.style.display = "none"; }
+        if (chart) { chart.hidden = false; chart.classList.add("on"); chart.style.display = "block"; }
+        paintZonesMap(chart, homeLat(), homeLon(), note);
+        if (typeof noteFeed === "function") noteFeed("sea-map", true, "zones");
         return;
       }
       if (id === "chart") {
@@ -7717,6 +7727,36 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       return host;
     }
 
+    function paintZonesMap(el, latN, lonN, note) {
+      if (!el || typeof L === "undefined") return;
+      var lat = Number(latN), lon = Number(lonN);
+      if (!isFinite(lat) || !isFinite(lon)) return;
+      var span = 1.5;
+      var bounds = [[lat - span, lon - span], [lat + span, lon + span]];
+      var src = "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/marine_beachforecast_summary/MapServer/export?bbox=" +
+        (lon - span) + "," + (lat - span) + "," + (lon + span) + "," + (lat + span) +
+        "&bboxSR=4326&imageSR=4326&size=900,520&format=png32&transparent=true&layers=show:0&f=image&t=" + Date.now();
+      if (window.__zonesMap && window.__zonesMap.map) {
+        window.__zonesMap.map.setView([lat, lon], 8);
+        if (window.__zonesMap.marker) window.__zonesMap.marker.setLatLng([lat, lon]);
+        if (window.__zonesMap.overlay) window.__zonesMap.map.removeLayer(window.__zonesMap.overlay);
+        window.__zonesMap.overlay = L.imageOverlay(src, bounds, { opacity: 0.7 }).addTo(window.__zonesMap.map);
+        setTimeout(function () { try { window.__zonesMap.map.invalidateSize(); } catch (e) {} }, 80);
+      } else {
+        el.innerHTML = "";
+        var phone = phoneThrottle();
+        var map = L.map(el, { zoomControl: !phone, attributionControl: !phone, scrollWheelZoom: !phone, dragging: !phone }).setView([lat, lon], 8);
+        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}", {
+          maxZoom: 16, attribution: "Esri Ocean · NWS zones"
+        }).addTo(map);
+        var overlay = L.imageOverlay(src, bounds, { opacity: 0.7 }).addTo(map);
+        var marker = L.circleMarker([lat, lon], { radius: 7, color: "#1a5f7a", fillColor: "#57c5b6", fillOpacity: 1, weight: 2 }).addTo(map);
+        marker.bindTooltip("Home pin", { permanent: false });
+        window.__zonesMap = { map: map, marker: marker, overlay: overlay };
+        [80, 300].forEach(function (ms) { setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, ms); });
+      }
+      if (note) note.textContent = "NWS marine zones · " + (typeof homePlace === "function" ? homePlace() : "home");
+    }
     function paintRipMap(el, latN, lonN, note) {
       if (!el || typeof L === "undefined") return;
       var lat = Number(latN), lon = Number(lonN);
