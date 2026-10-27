@@ -455,9 +455,14 @@
     header.holiday-mlk, header.holiday-presidents { box-shadow: inset 0 -3px 0 #c9a227; }
     header.holiday-juneteenth { box-shadow: inset 0 -3px 0 #000; }
     header.holiday-labor { box-shadow: inset 0 -3px 0 #cd7f32; }
-    .holiday-confetti, .holiday-leaves { position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:15; }
-    .holiday-confetti i, .holiday-leaves i { position:absolute; top:-20px; font-style:normal; font-size:18px; animation: hfall 6s linear infinite; }
-    @keyframes hfall { to { transform: translateY(160px) rotate(360deg); opacity:.3; } }
+    .holiday-confetti, .holiday-leaves { position:fixed; top:0; left:0; right:0; height:200px; pointer-events:none; overflow:hidden; z-index:100; }
+    .holiday-confetti i, .holiday-leaves i { position:absolute; top:0; font-style:normal; font-size:24px; animation: hfall 4s linear infinite; }
+    @keyframes hfall { 0% { transform: translateY(0) rotate(0); opacity:1; } 100% { transform: translateY(180px) rotate(360deg); opacity:0; } }
+    header.holiday-halloween { border-bottom: 4px solid #ff6600 !important; }
+    header.holiday-july4 { border-bottom: 4px solid #b22234 !important; }
+    header.holiday-newyear { border-bottom: 4px solid #d4af37 !important; }
+    header.holiday-thanksgiving { border-bottom: 4px solid #d2691e !important; }
+    header.holiday-christmas { border-bottom: 4px solid #165b33 !important; }
     #holiday-badge { background:rgba(0,0,0,.5); padding:2px 6px; border-radius:4px; }
     header .temp, header .feels strong, #live-heat {
       text-shadow:none !important;
@@ -3704,7 +3709,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1524</span>
+      <span class="hdr-ver" id="hdr-ver">v1525</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5925,7 +5930,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1524;
+    window.BOARD_VER = 1525;
 
     
     function communityShort() {
@@ -14228,24 +14233,15 @@ function currentRotation() {
       }
       fest.className = "";
       fest.innerHTML = "";
-      if (h === "newyear" || h === "july4") {
-        fest.className = "holiday-confetti";
-        for (var i = 0; i < 12; i++) {
+      if (h === "newyear" || h === "july4" || h === "halloween" || h === "thanksgiving" || h === "christmas") {
+        fest.className = h === "halloween" || h === "thanksgiving" ? "holiday-leaves" : "holiday-confetti";
+        var icons = { newyear: "✦", july4: "🇺🇸", halloween: "🦇", thanksgiving: "🍂", christmas: "❄️" };
+        for (var i = 0; i < 15; i++) {
           var el = document.createElement("i");
           el.style.left = (Math.random() * 100) + "%";
-          el.style.animationDelay = (Math.random() * 4) + "s";
-          el.style.color = h === "july4" ? ["#b22234","#fff","#3c3b6e"][i % 3] : "#d4af37";
-          el.textContent = h === "july4" ? "✦" : "●";
+          el.style.animationDelay = (Math.random() * 3) + "s";
+          el.textContent = icons[h] || "●";
           fest.appendChild(el);
-        }
-      } else if (h === "thanksgiving" || h === "halloween") {
-        fest.className = "holiday-leaves";
-        for (var j = 0; j < 8; j++) {
-          var lf = document.createElement("i");
-          lf.style.left = (Math.random() * 100) + "%";
-          lf.style.animationDelay = (Math.random() * 5) + "s";
-          lf.textContent = h === "halloween" ? "🦇" : "🍂";
-          fest.appendChild(lf);
         }
       }
     }
