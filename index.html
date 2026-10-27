@@ -12900,6 +12900,11 @@ function currentRotation() {
         var scan = btn.getAttribute("data-scan");
         var stream = scan ? "scan:" + scan : btn.getAttribute("data-stream");
         var hasWarn = !!(window.__wxRisk && window.__wxRisk.warn);
+        if (hasWarn && btn.id !== "nwr-btn") {
+          var st = document.getElementById("radio-status");
+          if (st) st.textContent = "Warning active. NOAA only.";
+          return;
+        }
         if (typeof inQuietHours === "function" && inQuietHours() && !hasWarn) {
           var st = document.getElementById("radio-status");
           if (st) st.textContent = "Quiet hours.";
@@ -32428,6 +32433,10 @@ function homeCountyGuess() {
             if (typeof saveRadioForPin === "function") saveRadioForPin(noaaUrl(), noaaName() + " (warning)", false);
             if (getSet().noaa !== "0") {
               playStation(noaaUrl(), noaaName() + " (warning)", { keepSaved: true, force: true });
+              setTimeout(function () {
+                var a = document.getElementById("radioPlayer");
+                if (a && (a.paused || a.readyState < 2) && typeof speakNoaaTranscript === "function") speakNoaaTranscript();
+              }, 5000);
             }
           } else if (window.__nwrAlert) {
             window.__nwrUserMuted = false;
