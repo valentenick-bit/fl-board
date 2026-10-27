@@ -3701,7 +3701,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1526</span>
+      <span class="hdr-ver" id="hdr-ver">v1527</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5912,7 +5912,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1526;
+    window.BOARD_VER = 1527;
 
     
     function communityShort() {
@@ -12908,17 +12908,25 @@ function currentRotation() {
         if (prev.url && typeof playStation === "function") playStation(prev.url, prev.label, { keepSaved: true });
       }
     }, 5000);
-    // memory guard - pause heavy work if heap is high
+    // pause heavy work when tab is hidden or memory is high
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) {
+        if (window.__planeTimer) { clearInterval(window.__planeTimer); window.__planeTimer = 0; }
+        var iframes = document.querySelectorAll("iframe[src]:not([src='about:blank'])");
+        iframes.forEach(function (f) { if (f.id !== "radioPlayer") f.setAttribute("data-src", f.src); f.src = "about:blank"; });
+      } else {
+        var iframes = document.querySelectorAll("iframe[data-src]");
+        iframes.forEach(function (f) { if (f.getAttribute("data-src")) f.src = f.getAttribute("data-src"); });
+      }
+    });
     setInterval(function () {
       if (!performance.memory) return;
       var used = performance.memory.usedJSHeapSize / 1048576;
-      if (used > 200) {
+      if (used > 250) {
         if (window.__planeTimer) { clearInterval(window.__planeTimer); window.__planeTimer = 0; }
-        var audio = document.getElementById("radioPlayer");
-        if (audio && !audio.paused) { audio.pause(); }
-        console.log("memory guard: paused heavy work at", Math.round(used), "MB");
+        console.log("memory guard:", Math.round(used), "MB");
       }
-    }, 15000);
+    }, 60000);
     (function bindSettingsRadio() {
       var host = document.getElementById("set-radio") || document.getElementById("radio");
       if (!host) return;
@@ -13656,7 +13664,7 @@ function currentRotation() {
         else { moon.classList.remove("up"); moon.style.opacity = "0"; }
       }
     }
-    setInterval(function () { if (document.hidden || document.documentElement.classList.contains("phone")) return; if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 30000);
+    setInterval(function () { if (document.hidden || document.documentElement.classList.contains("phone")) return; if (typeof paintSkyHeader === "function") paintSkyHeader(); }, 60000);
 
     function skyWeatherNow() {
       var hours = window.__hours || [];
@@ -25830,7 +25838,7 @@ function mustEatsFL() {
       if (onHealth && onHealth.classList.contains("on") && typeof paintHealth === "function") paintHealth();
       var onSrc = document.getElementById("sources");
       if (onSrc && onSrc.classList.contains("on") && typeof paintSources === "function") paintSources();
-    }, 30000);
+    }, 60000);
 
 
     (function seedWxTiles() {
