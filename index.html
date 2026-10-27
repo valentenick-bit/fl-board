@@ -12865,18 +12865,27 @@ function currentRotation() {
     })();
     // quiet hours mute - only warning overrides
     setInterval(function () {
-      if (typeof inQuietHours !== "function" || !inQuietHours()) return;
+      var quiet = typeof inQuietHours === "function" && inQuietHours();
       var hasWarn = !!(window.__wxRisk && window.__wxRisk.warn) || !!(window.__nwsAlerts && window.__nwsAlerts.some && window.__nwsAlerts.some(function(f){ return /warning/i.test((f.properties||{}).event||""); }));
-      if (hasWarn || window.__nwrAlert) return;
       var audio = document.getElementById("radioPlayer");
-      if (audio && !audio.paused) {
-        audio.pause();
-        window.__radioMuted = true;
-        if (typeof paintHdrRadio === "function") paintHdrRadio();
-        var st = document.getElementById("radio-status");
-        if (st) st.textContent = "Quiet hours.";
+      if (quiet && !hasWarn && !window.__nwrAlert) {
+        if (audio && !audio.paused && !window.__quietPrev) {
+          window.__quietPrev = { url: (window.__radioWant && window.__radioWant.url) || "", label: (window.__radioWant && window.__radioWant.label) || "" };
+        }
+        if (audio && !audio.paused) {
+          audio.pause();
+          window.__radioMuted = true;
+          if (typeof paintHdrRadio === "function") paintHdrRadio();
+          var st = document.getElementById("radio-status");
+          if (st) st.textContent = "Quiet hours.";
+        }
+        if (window.speechSynthesis && speechSynthesis.speaking) speechSynthesis.cancel();
+      } else if (!quiet && window.__quietPrev && !hasWarn && !window.__nwrAlert) {
+        var prev = window.__quietPrev;
+        window.__quietPrev = null;
+        window.__radioMuted = false;
+        if (prev.url && typeof playStation === "function") playStation(prev.url, prev.label, { keepSaved: true });
       }
-      if (window.speechSynthesis && speechSynthesis.speaking) speechSynthesis.cancel();
     }, 5000);
     // memory guard - pause heavy work if heap is high
     setInterval(function () {
@@ -23880,6 +23889,14 @@ function mustEatsFL() {
         window.__wxRotAckKey = window.__lastAlertKey || "";
         btn.hidden = true;
         if (typeof window.__restoreRadioAfterAlert === "function") window.__restoreRadioAfterAlert();
+        if (typeof inQuietHours === "function" && inQuietHours()) {
+          window.__radioMuted = true;
+          var audio = document.getElementById("radioPlayer");
+          if (audio) audio.pause();
+          if (window.speechSynthesis) speechSynthesis.cancel();
+          var st = document.getElementById("radio-status");
+          if (st) st.textContent = "Quiet hours.";
+        }
         if (typeof startNamedRotation === "function") startNamedRotation("normal");
       });
     })();
