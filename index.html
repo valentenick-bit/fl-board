@@ -3701,7 +3701,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1531</span>
+      <span class="hdr-ver" id="hdr-ver">v1532</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5912,7 +5912,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1531;
+    window.BOARD_VER = 1532;
 
     
     function communityShort() {
@@ -20242,18 +20242,29 @@ function paintObservatories() { paintObsTable(); }
       pill.className = "busy-tag " + (info.level || "");
     }
     function loadBusyPills() {
+      if (document.hidden) return;
+      var now = Date.now();
+      if (window.__busyAt && now - window.__busyAt < 15 * 60 * 1000) return;
+      window.__busyAt = now;
+      window.__busyCache = window.__busyCache || {};
       var cards = document.querySelectorAll("#today-do .card[data-busy], #eat-list .card[data-busy], #ent-list .card[data-busy]");
       var n = 0;
+      var seen = {};
       cards.forEach(function (card) {
         var q = card.getAttribute("data-busy") || "";
         if (!venueLooksPublic(q + " " + card.textContent)) return;
+        if (seen[q]) return;
+        seen[q] = 1;
+        var hit = window.__busyCache[q];
+        if (hit && now - hit.at < 30 * 60 * 1000) { applyBusyPill(card, hit.d); return; }
         n += 1;
         fetch("/busy?q=" + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (d) {
+          window.__busyCache[q] = { at: Date.now(), d: d };
           applyBusyPill(card, d);
           if (typeof noteFeed === "function" && d && d.label) noteFeed("busy-pills", true, d.label);
         }).catch(function () {});
       });
-      if (typeof noteFeed === "function") noteFeed("busy-pills", true, n ? ("checked " + n + " venues") : "no public venues");
+      if (typeof noteFeed === "function") noteFeed("busy-pills", true, n ? ("checked " + n + " venues") : "cached");
     }
     window.loadBusyPills = loadBusyPills;
     
@@ -22473,8 +22484,14 @@ function paint() {
       }
       window.__portnoyNear = window.__portnoyNear || [];
       function loadPortnoyNear() {
+        if (document.hidden) return;
         var lat = homeLat(), lon = homeLon();
         if (!isFinite(lat) || !isFinite(lon)) return;
+        var pinKey = lat.toFixed(2) + "," + lon.toFixed(2);
+        var now = Date.now();
+        if (window.__onebiteKey === pinKey && window.__onebiteAt && now - window.__onebiteAt < 6 * 3600 * 1000) return;
+        window.__onebiteKey = pinKey;
+        window.__onebiteAt = now;
         var miles = Number((getSet() || {}).eventMiles || 25);
         var offsets = [[0,0]];
         var seen = {}, all = [];
@@ -22511,8 +22528,10 @@ function paint() {
               have[key] = true;
             });
             window.__eatPool = pool;
+            window.__onebitePainting = true;
             if (typeof rankEats === "function" && typeof drawEats === "function") drawEats(rankEats(pool));
             else if (typeof renderEatList === "function") renderEatList();
+            window.__onebitePainting = false;
           });
         });
       }
@@ -22581,7 +22600,7 @@ function paint() {
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants in range.</b><span>Nothing sit-down inside ' + miles + " miles of the pin.</span></div>";
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list[0].name + " " + (list[0].rating || "") + " first") : "none in range");
         eatCacheWrite(list);
-        if (typeof loadPortnoyNear === "function") loadPortnoyNear();
+        if (!window.__onebitePainting && typeof loadPortnoyNear === "function") loadPortnoyNear();
         if (typeof window.paintEatPick === "function") window.paintEatPick();
         if (list && list[0] && typeof selectEat === "function") selectEat(window.__eatPick && list.some(function (x) { return x.name === window.__eatPick.name; }) ? window.__eatPick : list[0]);
       }
