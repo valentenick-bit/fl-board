@@ -340,7 +340,7 @@ export default {
       return new Response(JSON.stringify({ updated: "", gmapsKey: "", error: "maps.json is Drive-only" }), { status: 200, headers: hdr });
     }
     if (url.pathname === "/onebite") {
-      const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*", "access-control-allow-methods": "GET,OPTIONS", "access-control-allow-headers": "Content-Type" };
+      const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600", "access-control-allow-origin": "*", "access-control-allow-methods": "GET,OPTIONS", "access-control-allow-headers": "Content-Type" };
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
       const lat = url.searchParams.get("lat") || "";
       const lon = url.searchParams.get("lon") || "";
@@ -529,7 +529,7 @@ export default {
     }
 
     if (url.pathname === "/busy") {
-      const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
+      const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=900", "access-control-allow-origin": "*" };
       const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
       if (q.length < 4) return new Response(JSON.stringify({ q: q, label: "" }), { headers: hdr });
       const src = "https://r.jina.ai/https://www.google.com/maps/search/" + encodeURIComponent(q);
