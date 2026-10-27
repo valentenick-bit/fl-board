@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1508</span>
+      <span class="hdr-ver" id="hdr-ver">v1509</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5891,7 +5891,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1508;
+    window.BOARD_VER = 1509;
 
     
     function communityShort() {
@@ -12862,6 +12862,20 @@ function currentRotation() {
         });
       });
     })();
+    setInterval(function () {
+      if (typeof inQuietHours !== "function" || !inQuietHours()) return;
+      if (window.__nwrUserMuted || window.__radioMuted) return;
+      if (window.__wxRisk && window.__wxRisk.warn) return;
+      var audio = document.getElementById("radioPlayer");
+      if (audio && !audio.paused) {
+        audio.pause();
+        window.__radioMuted = true;
+        if (typeof paintHdrRadio === "function") paintHdrRadio();
+        var st = document.getElementById("radio-status");
+        if (st) st.textContent = "Quiet hours. Tap a station to play anyway.";
+      }
+      if (window.speechSynthesis && speechSynthesis.speaking) speechSynthesis.cancel();
+    }, 10000);
     (function bindSettingsRadio() {
       var host = document.getElementById("set-radio") || document.getElementById("radio");
       if (!host) return;
