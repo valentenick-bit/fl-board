@@ -3691,7 +3691,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1513</span>
+      <span class="hdr-ver" id="hdr-ver">v1514</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5891,7 +5891,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1513;
+    window.BOARD_VER = 1514;
 
     
     function communityShort() {
@@ -7992,7 +7992,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           .catch(function () { if (note) note.textContent = "Flight feed did not answer."; });
       }
       refresh();
-      window.__planeTimer = setInterval(refresh, 15000);
+      window.__planeTimer = setInterval(refresh, 30000);
       window.__planeBusy = false;
     }
 
@@ -12863,8 +12863,17 @@ function currentRotation() {
         });
       });
     })();
-    // quiet hours mute check disabled for testing
-    // setInterval(function () { ... }, 10000);
+    // memory guard - pause heavy work if heap is high
+    setInterval(function () {
+      if (!performance.memory) return;
+      var used = performance.memory.usedJSHeapSize / 1048576;
+      if (used > 200) {
+        if (window.__planeTimer) { clearInterval(window.__planeTimer); window.__planeTimer = 0; }
+        var audio = document.getElementById("radioPlayer");
+        if (audio && !audio.paused) { audio.pause(); }
+        console.log("memory guard: paused heavy work at", Math.round(used), "MB");
+      }
+    }, 15000);
     (function bindSettingsRadio() {
       var host = document.getElementById("set-radio") || document.getElementById("radio");
       if (!host) return;
