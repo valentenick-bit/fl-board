@@ -455,15 +455,7 @@
     header.holiday-mlk, header.holiday-presidents { box-shadow: inset 0 -3px 0 #c9a227; }
     header.holiday-juneteenth { box-shadow: inset 0 -3px 0 #000; }
     header.holiday-labor { box-shadow: inset 0 -3px 0 #cd7f32; }
-    .holiday-confetti, .holiday-leaves { position:fixed; top:0; left:0; right:0; height:200px; pointer-events:none; overflow:hidden; z-index:100; }
-    .holiday-confetti i, .holiday-leaves i { position:absolute; top:0; font-style:normal; font-size:24px; animation: hfall 4s linear infinite; }
-    @keyframes hfall { 0% { transform: translateY(0) rotate(0); opacity:1; } 100% { transform: translateY(180px) rotate(360deg); opacity:0; } }
-    header.holiday-halloween { border-bottom: 4px solid #ff6600 !important; }
-    header.holiday-july4 { border-bottom: 4px solid #b22234 !important; }
-    header.holiday-newyear { border-bottom: 4px solid #d4af37 !important; }
-    header.holiday-thanksgiving { border-bottom: 4px solid #d2691e !important; }
-    header.holiday-christmas { border-bottom: 4px solid #165b33 !important; }
-    #holiday-badge { background:rgba(0,0,0,.5); padding:2px 6px; border-radius:4px; }
+
     header .temp, header .feels strong, #live-heat {
       text-shadow:none !important;
       -webkit-text-stroke:0;
@@ -3709,7 +3701,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1525</span>
+      <span class="hdr-ver" id="hdr-ver">v1526</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5514,17 +5506,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <button type="button" data-v="1">On</button>
           </div>
         </div>
-        <div class="set-line"><label>Holiday preview</label>
-          <div class="set-row" id="set-holiday">
-            <button type="button" data-v="">Off</button>
-            <button type="button" data-v="newyear">New Year</button>
-            <button type="button" data-v="july4">July 4</button>
-            <button type="button" data-v="halloween">Halloween</button>
-            <button type="button" data-v="thanksgiving">Thanksgiving</button>
-            <button type="button" data-v="christmas">Christmas</button>
-          </div>
-        </div>
-        <div class="set-line"><label>Civic chime</label>
+<div class="set-line"><label>Civic chime</label>
           <div class="set-row" id="set-civicchime">
             <button type="button" data-v="0">Off</button>
             <button type="button" data-v="1">On</button>
@@ -5930,7 +5912,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1525;
+    window.BOARD_VER = 1526;
 
     
     function communityShort() {
@@ -14187,71 +14169,12 @@ function currentRotation() {
       var st = typeof homeState === "function" ? homeState() : "";
       el.textContent = city && st ? (city + ", " + st) : (city || st || "");
     }
-    function currentHoliday() {
-      var preview = (typeof getSet === "function" && getSet().holiday) || "";
-      if (preview) return preview;
-      var d = new Date();
-      var m = d.getMonth() + 1, day = d.getDate(), dow = d.getDay();
-      var nth = Math.ceil(day / 7);
-      if (m === 1 && day === 1) return "newyear";
-      if (m === 1 && dow === 1 && nth === 3) return "mlk";
-      if (m === 2 && dow === 1 && nth === 3) return "presidents";
-      if (m === 5 && dow === 1 && day > 24) return "memorial";
-      if (m === 6 && day === 19) return "juneteenth";
-      if (m === 7 && day === 4) return "july4";
-      if (m === 9 && dow === 1 && nth === 1) return "labor";
-      if (m === 10 && dow === 1 && nth === 2) return "columbus";
-      if (m === 10 && day === 31) return "halloween";
-      if (m === 11 && day === 11) return "veterans";
-      if (m === 11 && dow === 4 && nth === 4) return "thanksgiving";
-      if (m === 12 && day === 25) return "christmas";
-      if (m === 12 && day === 31) return "newyear";
-      return "";
-    }
-    function paintHoliday() {
-      var head = document.querySelector("header");
-      if (!head) return;
-      var h = currentHoliday();
-      ["newyear","mlk","presidents","memorial","juneteenth","july4","labor","columbus","halloween","veterans","thanksgiving","christmas"].forEach(function (c) {
-        head.classList.toggle("holiday-" + c, c === h);
-      });
-      var badge = document.getElementById("holiday-badge");
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.id = "holiday-badge";
-        badge.style.cssText = "position:absolute;top:4px;right:60px;font-size:11px;opacity:.7;z-index:20;";
-        head.appendChild(badge);
-      }
-      badge.textContent = h ? "🎉 " + h.toUpperCase() : "";
-      badge.style.cssText = "position:fixed;top:8px;right:80px;font-size:14px;font-weight:bold;background:#ff6600;color:#fff;padding:4px 10px;border-radius:6px;z-index:9999;";
-      console.log("holiday paint:", h);
-      var fest = document.getElementById("holiday-fest");
-      if (!fest) {
-        fest = document.createElement("div");
-        fest.id = "holiday-fest";
-        head.appendChild(fest);
-      }
-      fest.className = "";
-      fest.innerHTML = "";
-      if (h === "newyear" || h === "july4" || h === "halloween" || h === "thanksgiving" || h === "christmas") {
-        fest.className = h === "halloween" || h === "thanksgiving" ? "holiday-leaves" : "holiday-confetti";
-        var icons = { newyear: "✦", july4: "🇺🇸", halloween: "🦇", thanksgiving: "🍂", christmas: "❄️" };
-        for (var i = 0; i < 15; i++) {
-          var el = document.createElement("i");
-          el.style.left = (Math.random() * 100) + "%";
-          el.style.animationDelay = (Math.random() * 3) + "s";
-          el.textContent = icons[h] || "●";
-          fest.appendChild(el);
-        }
-      }
-    }
     function paintSkyHeader() {
       var head = document.querySelector("header");
       if (!head) return;
       if (typeof paintHdrPlace === "function") paintHdrPlace();
       if (typeof seedStars === "function") seedStars();
       if (typeof paintHeaderGround === "function") paintHeaderGround();
-      if (typeof paintHoliday === "function") paintHoliday();
       if (typeof paintWelcome === "function") paintWelcome();
       var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
@@ -14401,7 +14324,6 @@ function currentRotation() {
       var stampPlace = (typeof homeNearKey === "function" && homeNearKey()) ? " on the Key" : "";
       if (stamp) stamp.textContent = fmtClockDate(now) + stampPlace;
       paintSkyHeader();
-      if (typeof paintHoliday === "function") paintHoliday();
       if (typeof paintHdrRadio === "function") paintHdrRadio();
       if (typeof layoutPalms === "function") layoutPalms();
             if (typeof syncLightningUI === "function") syncLightningUI();
@@ -24444,7 +24366,6 @@ function mustEatsFL() {
         if (audio && typeof setLoudness === "function") setLoudness(audio, audio.getAttribute("src") || "");
       });
       tap("set-noaa", "noaa");
-      tap("set-holiday", "holiday", function () { if (typeof paintHoliday === "function") paintHoliday(); });
       tap("set-civicchime", "civicChime");
       tap("set-breakchime", "breakChime");
       tap("set-scancivic", "scanCivic");
