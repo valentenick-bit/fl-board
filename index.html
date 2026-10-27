@@ -446,6 +446,18 @@
     header .brand, header .clock, header .tempblock label, header .iconblock label, header .feels label, header #hdr-wx-lab, header #when, header .hdr-ver, header .hdr-citystate, header .hdr-updated {
       text-shadow:none !important;
     }
+    header.holiday-newyear { box-shadow: inset 0 -3px 0 #d4af37; }
+    header.holiday-july4 { box-shadow: inset 0 -3px 0 #b22234; }
+    header.holiday-christmas { box-shadow: inset 0 -3px 0 #165b33; }
+    header.holiday-halloween { box-shadow: inset 0 -3px 0 #ff6600; }
+    header.holiday-thanksgiving { box-shadow: inset 0 -3px 0 #d2691e; }
+    header.holiday-memorial, header.holiday-veterans { box-shadow: inset 0 -3px 0 #8b0000; }
+    header.holiday-mlk, header.holiday-presidents { box-shadow: inset 0 -3px 0 #c9a227; }
+    header.holiday-juneteenth { box-shadow: inset 0 -3px 0 #000; }
+    header.holiday-labor { box-shadow: inset 0 -3px 0 #cd7f32; }
+    .holiday-confetti, .holiday-leaves { position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:5; }
+    .holiday-confetti i, .holiday-leaves i { position:absolute; top:-10px; font-style:normal; animation: hfall 8s linear infinite; }
+    @keyframes hfall { to { transform: translateY(140px) rotate(360deg); opacity:0; } }
     header .temp, header .feels strong, #live-heat {
       text-shadow:none !important;
       -webkit-text-stroke:0;
@@ -14159,12 +14171,68 @@ function currentRotation() {
       var st = typeof homeState === "function" ? homeState() : "";
       el.textContent = city && st ? (city + ", " + st) : (city || st || "");
     }
+    function currentHoliday() {
+      var d = new Date();
+      var m = d.getMonth() + 1, day = d.getDate(), dow = d.getDay();
+      var nth = Math.ceil(day / 7);
+      if (m === 1 && day === 1) return "newyear";
+      if (m === 1 && dow === 1 && nth === 3) return "mlk";
+      if (m === 2 && dow === 1 && nth === 3) return "presidents";
+      if (m === 5 && dow === 1 && day > 24) return "memorial";
+      if (m === 6 && day === 19) return "juneteenth";
+      if (m === 7 && day === 4) return "july4";
+      if (m === 9 && dow === 1 && nth === 1) return "labor";
+      if (m === 10 && dow === 1 && nth === 2) return "columbus";
+      if (m === 10 && day === 31) return "halloween";
+      if (m === 11 && day === 11) return "veterans";
+      if (m === 11 && dow === 4 && nth === 4) return "thanksgiving";
+      if (m === 12 && day === 25) return "christmas";
+      if (m === 12 && day === 31) return "newyear";
+      return "";
+    }
+    function paintHoliday() {
+      var head = document.querySelector("header");
+      if (!head) return;
+      var h = currentHoliday();
+      ["newyear","mlk","presidents","memorial","juneteenth","july4","labor","columbus","halloween","veterans","thanksgiving","christmas"].forEach(function (c) {
+        head.classList.toggle("holiday-" + c, c === h);
+      });
+      var fest = document.getElementById("holiday-fest");
+      if (!fest) {
+        fest = document.createElement("div");
+        fest.id = "holiday-fest";
+        head.appendChild(fest);
+      }
+      fest.className = "";
+      fest.innerHTML = "";
+      if (h === "newyear" || h === "july4") {
+        fest.className = "holiday-confetti";
+        for (var i = 0; i < 12; i++) {
+          var el = document.createElement("i");
+          el.style.left = (Math.random() * 100) + "%";
+          el.style.animationDelay = (Math.random() * 4) + "s";
+          el.style.color = h === "july4" ? ["#b22234","#fff","#3c3b6e"][i % 3] : "#d4af37";
+          el.textContent = h === "july4" ? "✦" : "●";
+          fest.appendChild(el);
+        }
+      } else if (h === "thanksgiving" || h === "halloween") {
+        fest.className = "holiday-leaves";
+        for (var j = 0; j < 8; j++) {
+          var lf = document.createElement("i");
+          lf.style.left = (Math.random() * 100) + "%";
+          lf.style.animationDelay = (Math.random() * 5) + "s";
+          lf.textContent = h === "halloween" ? "🦇" : "🍂";
+          fest.appendChild(lf);
+        }
+      }
+    }
     function paintSkyHeader() {
       var head = document.querySelector("header");
       if (!head) return;
       if (typeof paintHdrPlace === "function") paintHdrPlace();
       if (typeof seedStars === "function") seedStars();
       if (typeof paintHeaderGround === "function") paintHeaderGround();
+      if (typeof paintHoliday === "function") paintHoliday();
       if (typeof paintWelcome === "function") paintWelcome();
       var hr = parseInt(new Date().toLocaleString("en-US",{hour:"numeric",hour12:false,timeZone:"America/New_York"}), 10);
       var warn = !!(window.__wxRisk && window.__wxRisk.warn);
