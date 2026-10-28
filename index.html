@@ -16,7 +16,10 @@
         var touch = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
         var ua = navigator.userAgent || "";
         var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
-        var phone = w <= 720 || (h <= 520 && w <= 980) || (coarse && Math.min(w, h) <= 900) || (touch && mobile && Math.min(w, h) <= 900);
+        var sw = 0;
+        try { sw = Math.max(screen.width || 0, screen.height || 0); } catch (eS) {}
+        var largePanel = sw >= 1280;
+        var phone = !largePanel && (w <= 720 || (h <= 520 && w <= 980) || (coarse && Math.min(w, h) <= 900) || (touch && mobile && Math.min(w, h) <= 900));
         if (phone) {
           document.documentElement.classList.add("phone");
         document.documentElement.classList.add("dim-motion");
@@ -32,6 +35,22 @@
       })();
     } catch (e) {}
   
+
+    (function capLeaflet() {
+      function patch() {
+        if (typeof L === "undefined" || !L.TileLayer || L.TileLayer.prototype.__bwPatched) return;
+        var orig = L.TileLayer.prototype.initialize;
+        L.TileLayer.prototype.initialize = function (url, options) {
+          options = options || {};
+          if (options.keepBuffer == null) options.keepBuffer = 2;
+          return orig.call(this, url, options);
+        };
+        L.TileLayer.prototype.__bwPatched = true;
+      }
+      if (typeof L !== "undefined") patch();
+      else document.addEventListener("DOMContentLoaded", function () { setTimeout(patch, 100); });
+      window.addEventListener("load", patch);
+    })();
     function wakeBoard() {
       try {
         if (document.documentElement.classList.contains("phone")) {
@@ -86,6 +105,8 @@
         el.hidden = true;
       });
       document.addEventListener("click", function (e) {
+        window.__userTouched = true;
+        if (window.__fallbackRot) { clearInterval(window.__fallbackRot); window.__fallbackRot = null; }
         var t = e.target && e.target.closest ? e.target.closest("button, [data-p], #hamb, #morebtn") : null;
         if (!t) return;
         var key = t.getAttribute && t.getAttribute("data-k");
@@ -157,7 +178,7 @@
         var n = 0;
         window.__fallbackRot = setInterval(function () {
           if (window.__paused) return;
-          if (window.__rotStarted) { clearInterval(window.__fallbackRot); window.__fallbackRot = null; return; }
+          if (window.__rotStarted || window.__userTouched) { clearInterval(window.__fallbackRot); window.__fallbackRot = null; return; }
           n = (n + 1) % ids.length;
           var id = ids[n];
           if (typeof window.showPage === "function") window.showPage(id);
@@ -172,6 +193,17 @@
     :root { --lean:0deg; --wag:2deg; --sway-dur:3.6s; --sand:#f3eee4; --sand-2:#e8dfcf; --navy:#1b2a4a; --teal:#2a9d8f; --gold:#c4a35a; --coral:#e07a5f; --muted:#5c6b7a; --hair:rgba(196,163,90,.42); --card:#f7f2e8; }
     * { box-sizing: border-box; }
 
+
+    /* pause continuous animations on hidden pages and under dim-motion */
+    .page:not(.on) *,
+    .page:not(.on) .hdr-cloud-svg,
+    html.dim-motion .hdr-cloud-svg,
+    html.dim-motion header .cloud,
+    html.dim-motion header .hdr-tree,
+    html.dim-motion .palm,
+    html.dim-motion .sky-scene * {
+      animation-play-state: paused !important;
+    }
     html, body { margin:0; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; overscroll-behavior:none; background:#cfc6b6; font-family:"Source Sans 3",system-ui,sans-serif; color:var(--navy); }
     html, body { background:var(--sand); }
     .frame { position:relative; width:100%; height:100dvh; max-height:100dvh; min-height:0; max-width:none; margin:0; background:var(--sand); display:flex; flex-direction:column; overflow:hidden; }
@@ -3701,7 +3733,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1533</span>
+      <span class="hdr-ver" id="hdr-ver">v1534</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5912,7 +5944,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1533;
+    window.BOARD_VER = 1534;
 
     
     function communityShort() {
@@ -16248,6 +16280,9 @@ function paintObservatories() { paintObsTable(); }
 
     function isPhoneView() {
       if (document.documentElement.classList.contains("kiosk")) return false;
+      var sw = 0;
+      try { sw = Math.max(screen.width || 0, screen.height || 0); } catch (eS) {}
+      if (sw >= 1280) return false;
       var w = window.innerWidth || 0, h = window.innerHeight || 0;
       var coarse = false;
       try { coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches; } catch (e) {}
