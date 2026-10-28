@@ -3736,7 +3736,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1540</span>
+      <span class="hdr-ver" id="hdr-ver">v1541</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5946,7 +5946,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1540;
+    window.BOARD_VER = 1541;
 
     
     function communityShort() {
@@ -32598,14 +32598,20 @@ function homeCountyGuess() {
           writeBriefing();
           return;
         }
+        var rankOrder = { emergency: 0, warning: 1, watch: 2, advisory: 3, statement: 4, other: 5 };
+        keep.sort(function (a, b) {
+          var ra = rankOrder[nwsRank((a.properties || {}).event)] || 5;
+          var rb = rankOrder[nwsRank((b.properties || {}).event)] || 5;
+          return ra - rb;
+        });
         var isEmerg = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; }) ||
           (window.__publicSafety || []).some(function (x) { return /evac|911|dam|hazmat|shelter|civil/.test(x.kind || ""); });
         var isWarn = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "warning"; }) || !!deskWarn.length;
         var isWatch = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "watch"; });
         var isAdv = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "advisory" || nwsRank((f.properties || {}).event) === "statement"; });
         var parts = keep.map(nwsLine).concat(deskWarn);
-        var body = parts.join("\u00a0".repeat(160));
-        if (window.__hurrTick) body += "\u00a0".repeat(160) + spaceSentences("Hurricane tracker. " + window.__hurrTick);
+        var body = parts.join("\u00a0".repeat(40) + " · " + "\u00a0".repeat(40));
+        if (window.__hurrTick) body += "\u00a0".repeat(40) + " · " + "\u00a0".repeat(40) + spaceSentences("Hurricane tracker. " + window.__hurrTick);
         var tone = isEmerg ? "emergency" : isWarn ? "warning" : isWatch ? "watch" : isAdv ? "advisory" : (keep.length ? "advisory" : "watch");
         bar.className = "alert-ticker on " + tone;
         if (typeof paintHdrAlert === "function") paintHdrAlert(keep, isWarn || isEmerg, tone);
