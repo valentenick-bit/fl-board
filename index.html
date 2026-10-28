@@ -2292,7 +2292,9 @@
       flex:0 0 auto; display:flex; align-items:center; justify-content:center;
       min-width:92px; padding:0 12px; letter-spacing:.16em; font-size:12px;
       text-transform:uppercase; font-weight:800;
+      border:0; background:transparent; color:inherit; cursor:pointer; font-family:inherit;
     }
+    .alert-lab:hover, .alert-lab:focus { filter:brightness(1.15); }
     .alert-track { flex:1 1 auto; min-width:0; overflow:hidden; display:flex; align-items:center; }
     .alert-ticker.advisory { background:#c9b36a; color:#1b2430; }
     .alert-ticker.advisory .alert-lab { background:#8a7428; color:#fff8e6; }
@@ -3733,7 +3735,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1535</span>
+      <span class="hdr-ver" id="hdr-ver">v1536</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -3895,14 +3897,13 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             <span class="hdr-chip heat" id="live-heat">Heat index</span>
             <button type="button" class="hdr-chip radio on" id="hdr-radio">Mute</button>
           </div>
-          <button type="button" class="hdr-chip hdr-alert" id="hdr-alert" hidden></button>
         </div>
       </div>
       </div>
     </header>
     <div class="cond-strip" id="cond-strip" hidden><span id="cond-text"></span></div>
     <div class="alert-ticker" id="alertbar">
-      <b class="alert-lab" id="alertlab">WATCH</b>
+      <button type="button" class="alert-lab" id="alertlab" title="Open Emergency">WATCH</button>
       <div class="alert-track"><span id="alerttext"></span></div>
       <button type="button" id="wxrot-ack" class="wxrot-ack" hidden>Got it</button>
     </div>
@@ -5751,7 +5752,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </div>
       <div class="set-card">
         <h3>When weather takes over</h3>
-        <p class="hint">A watch or warning switches the board to this list. Pages marked “only when live” stay out until that condition is true.</p>
+        <p class="hint">A warning switches the board to this list. Pages marked “only when live” stay out until that condition is true.</p>
         <p class="hint">Lightning is not its own page. It swaps into the Weather radar frame when a strike is within 10 miles. Storms is one page for the cone, hurricane track, and Gulf or Atlantic satellite. It only joins when a named storm can affect the home address. Two storms: pick the name at the top; closest to home is first. The live cam drops out after dark unless Cam at night is on.</p>
         <div id="set-rot-storm"></div>
       </div>
@@ -5944,7 +5945,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1535;
+    window.BOARD_VER = 1536;
 
     
     function communityShort() {
@@ -16718,7 +16719,7 @@ function paintObservatories() { paintObsTable(); }
         if (typeof toggleHdrRadio === "function") toggleHdrRadio();
         return;
       }
-      if (e.target && e.target.id === "hdr-alert") {
+      if (e.target && (e.target.id === "alertlab" || (e.target.closest && e.target.closest("#alertlab")))) {
         if (typeof showPage === "function") showPage("contacts");
         if (typeof holdThenRotate === "function") holdThenRotate(90000);
         return;
@@ -32473,7 +32474,7 @@ function homeCountyGuess() {
         var isTrueEmerg = keep.some(function (f) {
           return typeof isTrueEmergency === "function" && isTrueEmergency((f.properties || {}).event);
         });
-        var isStormRot = keep.length > 0;
+        var isStormRot = !!isWarnEarly;
         window.__wxRisk.warn = !!isWarnEarly;
         window.__wxRisk.emergency = keep.some(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; });
         touchFeed("alerts", true, keep.length ? (keep.length + " alerts") : "no warnings");
