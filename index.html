@@ -3733,7 +3733,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1534</span>
+      <span class="hdr-ver" id="hdr-ver">v1535</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5944,7 +5944,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1534;
+    window.BOARD_VER = 1535;
 
     
     function communityShort() {
@@ -14140,13 +14140,16 @@ function currentRotation() {
       el.textContent = playing ? "Mute" : (radioShortName(label) || "Radio");
       el.title = playing ? ("Mute " + (label || "radio")) : ("Play " + (label || "radio"));
     }
-    function paintHdrAlert(keep, isWarn) {
+    function paintHdrAlert(keep, isWarn, rank) {
       var el = document.getElementById("hdr-alert");
       if (!el) return;
-      if (!keep || !keep.length) { el.hidden = true; el.classList.remove("on","watch","warn"); el.textContent = ""; return; }
+      if (!keep || !keep.length) { el.hidden = true; el.classList.remove("on","watch","warn","advisory"); el.textContent = ""; return; }
       el.hidden = false;
-      el.className = "hdr-chip hdr-alert on " + (isWarn ? "warn" : "watch");
-      el.textContent = isWarn ? "Warning" : "Watch";
+      var r = String(rank || (isWarn ? "warning" : "watch")).toLowerCase();
+      var label = r === "emergency" ? "Emergency" : r === "warning" ? "Warning" : r === "advisory" ? "Advisory" : r === "statement" ? "Statement" : "Watch";
+      var cls = (r === "emergency" || r === "warning") ? "warn" : r === "advisory" ? "advisory" : "watch";
+      el.className = "hdr-chip hdr-alert on " + cls;
+      el.textContent = label;
     }
 
     function headerGround() {
@@ -31841,8 +31844,8 @@ function cardBits(id) {
       ev = String(ev || "").toLowerCase();
       if (/emergency/.test(ev)) return "emergency";
       if (/warning/.test(ev)) return "warning";
-      if (/watch/.test(ev)) return "watch";
       if (/advisory/.test(ev)) return "advisory";
+      if (/watch/.test(ev)) return "watch";
       if (/statement/.test(ev)) return "statement";
       return "other";
     }
@@ -32383,7 +32386,7 @@ function homeCountyGuess() {
           ? "emergency"
           : high.some(function (f) { return nwsRank((f.properties || {}).event) === "warning"; })
             ? "warning"
-            : high.length ? "watch" : (low.length ? "advisory" : "");
+            : high.length ? "watch" : (low.length ? (low.some(function (f) { return nwsRank((f.properties || {}).event) === "advisory"; }) ? "advisory" : "statement") : "");
         var nwrA = document.getElementById("live-nwr-alert");
         if (nwrA) {
           nwrA.textContent = keep.length
@@ -32603,9 +32606,9 @@ function homeCountyGuess() {
         var parts = keep.map(nwsLine).concat(deskWarn);
         var body = parts.join("\u00a0".repeat(160));
         if (window.__hurrTick) body += "\u00a0".repeat(160) + spaceSentences("Hurricane tracker. " + window.__hurrTick);
-        var tone = isEmerg ? "emergency" : isWarn ? "warning" : isWatch ? "watch" : isAdv ? "advisory" : "watch";
+        var tone = isEmerg ? "emergency" : isWarn ? "warning" : isWatch ? "watch" : isAdv ? "advisory" : (keep.length ? "advisory" : "watch");
         bar.className = "alert-ticker on " + tone;
-        if (typeof paintHdrAlert === "function") paintHdrAlert(keep, isWarn || isEmerg);
+        if (typeof paintHdrAlert === "function") paintHdrAlert(keep, isWarn || isEmerg, tone);
         var lab = document.getElementById("alertlab");
         if (lab) lab.textContent = isEmerg ? "EMERGENCY" : isWarn ? "WARNING" : isWatch ? "WATCH" : "ADVISORY";
         if (isEmerg) maybeAlarmEmergencies(keep.filter(function (f) { return nwsRank((f.properties || {}).event) === "emergency"; }));
