@@ -2567,6 +2567,41 @@
 
     html.kiosk .day { padding:4px 10px; }
     html.kiosk .card { padding:8px 10px; margin-bottom:6px; }
+    /* kiosk Today: 3 columns, alerts bar */
+    html.kiosk #now .today-shell {
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      grid-template-rows:auto 1fr;
+      gap:10px 12px;
+      height:100%;
+      min-height:0;
+    }
+    html.kiosk #now .today-main,
+    html.kiosk #now .today-side { display:contents; }
+    html.kiosk #now .today-out-grid { display:contents; }
+    html.kiosk #now #wx-strips,
+    html.kiosk #now #greet-card,
+    html.kiosk #now #go-strip { grid-column:1; }
+    html.kiosk #now #today-hot-col,
+    html.kiosk #now #today-eat-col,
+    html.kiosk #now #today-do-col { grid-column:2; }
+    html.kiosk #now #today-wear-col,
+    html.kiosk #now #today-deliv-col,
+    html.kiosk #now #today-fly { grid-column:3; }
+    html.kiosk #now #today-bolt,
+    html.kiosk #now #today-flood,
+    html.kiosk #now #today-fog,
+    html.kiosk #now #today-trash,
+    html.kiosk #now #today-school,
+    html.kiosk #now #leave-card { grid-column:1 / -1; }
+    html.kiosk #now .today-sec-h { font-size:13px; margin:0 0 4px; }
+    html.kiosk #now .card { font-size:16px; }
+    html.kiosk #now #greet-hi { font-size:28px; }
+    html.kiosk #now #out-now-word { font-size:32px; }
+    html.kiosk #now .kiosk-flip { position:relative; min-height:0; overflow:hidden; }
+    html.kiosk #now .kiosk-flip > * { display:none; }
+    html.kiosk #now .kiosk-flip > *.on { display:block; }
+
 
     html.wide {}
     html.kiosk .page.on { overflow:hidden; }
@@ -3752,7 +3787,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1553</span>
+      <span class="hdr-ver" id="hdr-ver">v1554</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5962,7 +5997,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1553;
+    window.BOARD_VER = 1554;
 
     
     function communityShort() {
@@ -16383,6 +16418,31 @@ function paintObservatories() { paintObsTable(); }
       }
     }
     window.packKiosk = packKiosk;
+    function kioskFlipZones() {
+      if (!document.documentElement.classList.contains("kiosk")) return;
+      var zones = [
+        ["#today-hot-col", "#today-eat-col", "#today-do-col"],
+        ["#today-wear-col", "#today-deliv-col", "#today-fly"]
+      ];
+      zones.forEach(function (ids) {
+        var els = ids.map(function (id) { return document.querySelector(id); }).filter(Boolean);
+        var live = els.filter(function (el) { return el.offsetParent !== null || el.querySelector(":not([hidden])"); });
+        if (live.length < 2) { els.forEach(function (el) { el.classList.remove("kiosk-flip"); }); return; }
+        var wrap = live[0].parentElement;
+        if (!wrap) return;
+        wrap.classList.add("kiosk-flip");
+        var i = 0;
+        function show() {
+          live.forEach(function (el, n) { el.classList.toggle("on", n === i); });
+          i = (i + 1) % live.length;
+        }
+        show();
+        if (wrap.__flip) clearInterval(wrap.__flip);
+        wrap.__flip = setInterval(show, 9000);
+      });
+    }
+    setInterval(kioskFlipZones, 2000);
+
 
     (function layoutMode() {
       function apply() {
