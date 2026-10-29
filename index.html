@@ -3773,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1567</span>
+      <span class="hdr-ver" id="hdr-ver">v1568</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5987,7 +5987,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1567;
+    window.BOARD_VER = 1568;
 
     
     function communityShort() {
@@ -22431,9 +22431,9 @@ function paint() {
       }
       window.milesOf = milesOf;
       var cachedEats = eatCacheRead();
-      if (cachedEats.length) {
+      if (cachedEats.length && !window.__eatEnrichActive) {
         window.__eatPool = dedupeEats((window.__eatPool || []).concat(cachedEats));
-        setTimeout(function () { try { paint(cachedEats); } catch (eC) {} }, 0);
+        setTimeout(function () { try { if (!window.__eatEnrichActive) paint(cachedEats); } catch (eC) {} }, 0);
       }
       function inRange(r) {
         var cap = Number((getSet() || {}).eventMiles || 25) + 0.25;
@@ -22739,6 +22739,7 @@ function paint() {
         if (list && list[0] && typeof selectEat === "function") selectEat(window.__eatPick && list.some(function (x) { return x.name === window.__eatPick.name; }) ? window.__eatPick : list[0]);
       }
       function paint(list) {
+        if (window.__eatEnrichActive) return;
         var box = document.getElementById("eat-list");
         var note = document.getElementById("eat-count");
         var miles = Number((getSet() || {}).eventMiles || 25);
@@ -22764,8 +22765,8 @@ function paint() {
         if (typeof loadEatEnrich !== "function") return;
         loadEatEnrich(function (enrich) {
           if (!enrich || !enrich.length) return;
-          var pool = (window.__eatPool || []).filter(function (r) { return r && r.fromEnrich; });
-          window.__eatPool = mergeEatEnrich(pool, enrich);
+          window.__eatEnrichActive = true;
+          window.__eatPool = mergeEatEnrich([], enrich);
           (window.__eatPool || []).forEach(function (r) { r.fromEnrich = true; });
           if (typeof drawEats === "function") drawEats(rankEats(window.__eatPool));
         });
