@@ -3773,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1560</span>
+      <span class="hdr-ver" id="hdr-ver">v1561</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5986,7 +5986,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1560;
+    window.BOARD_VER = 1561;
 
     
     function communityShort() {
@@ -22758,6 +22758,16 @@ function paint() {
           if (!window.__eatRateBusy) enrichGoogleRatings(live);
         }, 800);
       }
+      function applyEatEnrich() {
+        if (typeof loadEatEnrich !== "function") return;
+        loadEatEnrich(function (enrich) {
+          if (!enrich || !enrich.length) return;
+          var pool = window.__eatPool || [];
+          window.__eatPool = mergeEatEnrich(pool, enrich);
+          if (typeof drawEats === "function") drawEats(rankEats(window.__eatPool));
+        });
+      }
+      setTimeout(applyEatEnrich, 1500);
       function enrichGoogleRatings(list) {
         if (window.__eatRateBusy) return;
         window.__eatRateBusy = true;
@@ -23032,7 +23042,50 @@ function mustEatsFL() {
         if (typeof homeNearKey === "function" && homeNearKey()) return mustEatsFL();
         return [];
       }
-      function fromOsmEats(cb) {
+  
+    function eatPinKey() {
+      var lat = Math.round(homeLat() * 100) / 100;
+      var lon = Math.round(homeLon() * 100) / 100;
+      return lat.toFixed(2) + "_" + lon.toFixed(2);
+    }
+    function loadEatEnrich(cb) {
+      var key = eatPinKey();
+      var name = "eats-" + key + ".json";
+      var urls = [
+        "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/" + name,
+        "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/" + name
+      ];
+      var i = 0;
+      function next() {
+        if (i >= urls.length) return cb([]);
+        fetch(urls[i++] + "?cb=" + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          if (d && Array.isArray(d.places)) return cb(d.places);
+          next();
+        }).catch(function () { next(); });
+      }
+      next();
+    }
+    function mergeEatEnrich(osm, enrich) {
+      var byName = {};
+      (enrich || []).forEach(function (e) {
+        var k = String(e.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (k) byName[k] = e;
+      });
+      return (osm || []).map(function (r) {
+        var k = String(r.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        var e = byName[k];
+        if (!e) return r;
+        if (e.kind) r.kind = e.kind;
+        if (e.style) r.style = e.style;
+        if (e.rating != null) r.rating = e.rating;
+        if (e.happyHour) r.happyHour = e.happyHour;
+        if (e.deal) r.deal = e.deal;
+        if (e.events) r.events = e.events;
+        if (e.addr && !r.addr) r.addr = e.addr;
+        return r;
+      });
+    }
+    function fromOsmEats(cb) {
         if (document.documentElement.classList.contains("phone") && !window.__osmReady) {
           if (!window.__osmEatWait) {
             window.__osmEatWait = setTimeout(function () {
@@ -23043,9 +23096,9 @@ function mustEatsFL() {
           return cb([]);
         }
         var lat = homeLat(), lon = homeLon();
-        var miles = Number((getSet() || {}).eventMiles || 25);
-        var rad = Math.round(Math.min(25000, miles * 1609.34));
-        var q = "[out:json][timeout:20];(node[amenity=restaurant](around:" + rad + "," + lat + "," + lon + ");node[amenity=bar](around:" + rad + "," + lat + "," + lon + "););out body 40;";
+        var miles = 10;
+        var rad = Math.round(miles * 1609.34);
+        var q = "[out:json][timeout:25];(node[amenity~\"restaurant|fast_food|cafe|bar|pub|ice_cream|food_court|biergarten\"](around:" + rad + "," + lat + "," + lon + "););out body 80;";
         var urls = [
           "/osm-eats?lat=" + lat + "&lon=" + lon + "&miles=" + miles,
           "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q)
