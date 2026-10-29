@@ -2246,8 +2246,8 @@
     .ticker-stack { flex-shrink:0; width:100%; display:flex; flex-direction:column; }
     .ticker, .break-ticker {
       position:relative; left:auto; right:auto; bottom:auto;
-      width:100%; height:36px; box-sizing:border-box;
-      font-size:15px; line-height:20px;
+      width:100%; height:40px; box-sizing:border-box;
+      font-size:16px; line-height:24px;
       padding:8px 0; overflow:hidden; white-space:nowrap; pointer-events:none;
     }
     @media (max-width:720px) {
@@ -2264,8 +2264,8 @@
     html.dark .ticker.tick-emergency { background:#3a0808; }
     .alert-ticker {
       display:none; flex:0 0 auto; align-items:stretch;
-      height:36px; box-sizing:border-box; font-weight:700;
-      font-size:15px; line-height:20px; padding:0; overflow:hidden; pointer-events:none;
+      height:40px; box-sizing:border-box; font-weight:700;
+      font-size:16px; line-height:24px; padding:0; overflow:hidden; pointer-events:none;
     }
     .alert-ticker.on { display:flex; }
     .wxrot-ack { appearance:none; border:0; background:#fff; color:#1a2a22; border-radius:999px; padding:2px 10px; font:inherit; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; margin-left:8px; flex:0 0 auto; pointer-events:auto; z-index:2; }
@@ -3736,7 +3736,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1543</span>
+      <span class="hdr-ver" id="hdr-ver">v1544</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5946,7 +5946,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1543;
+    window.BOARD_VER = 1544;
 
     
     function communityShort() {
@@ -29248,7 +29248,7 @@ function wxSvg(kind, box) {
     function spaceSentences(s) {
       return String(s || "")
         .replace(/\s+/g, " ")
-        .replace(/([.!?])\s+/g, "$1" + "\u00a0".repeat(28))
+        .replace(/([.!?])\s+/g, "$1" + "\u00a0".repeat(12) + "·" + "\u00a0".repeat(12))
         .trim();
     }
     function setTicker(el, html, speed) {
@@ -31474,16 +31474,14 @@ function wxSvg(kind, box) {
           var tNum = parseInt(temp, 10);
           var fNum = parseInt(feel, 10);
           var nowClk = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
-          var open = "As of " + nowClk + " at " + place + ".";
+          var open = place + ", " + nowClk + ".";
+          if (isFinite(tNum)) open += " " + tNum + "°";
+          if (isFinite(fNum) && Math.abs(fNum - tNum) >= 3) open += ", feels " + fNum + "°";
           if (sky && !/^checking|^updating|^here's/i.test(sky)) {
             var skyOne = sky.replace(/\s+/g, " ").replace(/\.$/, "");
-            open += " Right now it is " + skyOne.charAt(0).toLowerCase() + skyOne.slice(1);
-            if (!/[.!?]$/.test(open)) open += ".";
-          } else if (isFinite(tNum)) {
-            open += " It is " + tNum + " degrees";
-            if (isFinite(fNum) && Math.abs(fNum - tNum) >= 3) open += ", and it feels more like " + fNum;
-            open += ".";
+            open += ". " + skyOne.charAt(0).toUpperCase() + skyOne.slice(1);
           }
+          if (!/[.!?]$/.test(open)) open += ".";
           story.push(open);
           if (isFinite(tNum) && isFinite(fNum) && Math.abs(fNum - tNum) >= 3 && sky && sky.indexOf("feels") < 0) {
             if (fNum > tNum) story.push("Humidity makes it feel closer to " + fNum + " when you step outside.");
@@ -31497,12 +31495,12 @@ function wxSvg(kind, box) {
           if (!isFinite(windN) && isFinite(Number(wxNow.wind))) windN = Number(wxNow.wind);
           if (!isFinite(gustN) && isFinite(Number(wxNow.gust))) gustN = Number(wxNow.gust);
           if (isFinite(windN) && windN >= 15) {
-            var wline = "The wind is doing real work at about " + Math.round(windN) + " miles an hour";
-            if (isFinite(gustN) && gustN > windN + 4) wline += ", with gusts up near " + Math.round(gustN);
-            wline += ", so hats, umbrellas, and light chairs are going to fight you.";
+            var wline = "Wind " + Math.round(windN) + " mph";
+            if (isFinite(gustN) && gustN > windN + 4) wline += ", gusts " + Math.round(gustN);
+            wline += ".";
             story.push(wline);
           } else if (isFinite(windN) && windN >= 8) {
-            story.push("There is a steady breeze around " + Math.round(windN) + " miles an hour" + (isFinite(gustN) && gustN > windN ? ", gusting toward " + Math.round(gustN) : "") + " — noticeable, not a reason to cancel the day.");
+            story.push("Breeze " + Math.round(windN) + " mph" + (isFinite(gustN) && gustN > windN ? ", gusts " + Math.round(gustN) : "") + ".");
           } else if (isFinite(windN)) {
             var calm = "Wind is light right now, about " + Math.round(windN) + " miles an hour";
             if (isFinite(gustN) && gustN > windN + 3) calm += ", with short gusts to " + Math.round(gustN);
@@ -31601,7 +31599,7 @@ function wxSvg(kind, box) {
             story.push("Looking further out, the ten-day is " + ten.replace(/\.$/, "") + ".");
           }
           if (story.length < 2) return "";
-          return "<b>Weather.</b>" + "\u00a0".repeat(24) + spaceSentences(story.join(" "));
+          return "<b>Weather.</b>" + "\u00a0".repeat(48) + spaceSentences(story.join(" "));
         }
         
 function cardBits(id) {
@@ -31699,7 +31697,7 @@ function cardBits(id) {
             story.push("On the calendar, " + dayLine.charAt(0).toLowerCase() + dayLine.slice(1));
           }
           if (story.length < 2) return "";
-          return "<b>Today.</b>" + "\u00a0".repeat(24) + spaceSentences(story.join(" "));
+          return "<b>Today.</b>" + "\u00a0".repeat(48) + spaceSentences(story.join(" "));
         }
         function boardBit() {
           if (s.briefBoard === "0") return "";
@@ -31779,14 +31777,14 @@ function cardBits(id) {
             story.push(sayDot(line));
           });
           story.push("That's the official board. Town nights stay on Events.");
-          return "<b>BeachWalk.</b>" + "\u00a0".repeat(24) + spaceSentences(story.join(" "));
+          return "<b>BeachWalk.</b>" + "\u00a0".repeat(48) + spaceSentences(story.join(" "));
         }
         function sportsBit() {
           if (s.briefSports === "0") return "";
           var blocks = window.__sportsBlocks || [];
           if (!blocks.length) return "";
           return blocks.map(function (b) {
-            return "<b>" + b.title + ".</b>" + "\u00a0".repeat(18) + spaceSentences((b.lines || []).join(" "));
+            return "<b>" + b.title + ".</b>" + "\u00a0".repeat(40) + spaceSentences((b.lines || []).join(" "));
           }).join("\u00a0".repeat(72));
         }
         var wxB = window.__noaaTranscript || weatherBit();
