@@ -3773,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1587</span>
+      <span class="hdr-ver" id="hdr-ver">v1588</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4525,6 +4525,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </section>
       <section id="golf" class="page">
         <h2 data-k="Near this pin">Golf</h2>
+        <div class="eat-filters" id="golf-filters">
+          <button type="button" data-golf-kind="all" class="on">All</button>
+          <button type="button" data-golf-kind="Public">Public</button>
+          <button type="button" data-golf-kind="Private">Private</button>
+          <button type="button" data-golf-kind="Semi-Private">Semi-Private</button>
+          <button type="button" data-golf-kind="Resort">Resort</button>
+          <button type="button" data-golf-kind="Executive">Executive</button>
+        </div>
         <p class="pill-key" id="golf-count">Courses near home…</p>
         <div class="split-list" id="golf-list"></div>
       </section>
@@ -5987,7 +5995,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1587;
+    window.BOARD_VER = 1588;
 
     
     function communityShort() {
@@ -23508,11 +23516,13 @@ function mustEatsFL() {
           (stats ? '<span class="ev-when">' + stats + "</span>" : "") +
           "</div></div>";
       }
+      var golfKind = "all";
       function draw(list) {
         var box = document.getElementById("golf-list");
         var note = document.getElementById("golf-count");
         var miles = golfMiles();
         list = rank(list || window.__golfPool || []);
+        if (golfKind !== "all") list = list.filter(function (r) { return String(r.kind || "").toLowerCase() === golfKind.toLowerCase(); });
         window.__golfs = list;
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Nothing golf-shaped inside ' + miles + " miles of the pin.</span></div>";
         if (note) note.textContent = list.length ? (list.length + " courses in " + miles + " mi · nearest first") : ("No courses in " + miles + " mi");
@@ -23829,6 +23839,14 @@ function mustEatsFL() {
         });
       }
       window.reloadGolf = run;
+      var filt = document.getElementById("golf-filters");
+      if (filt) filt.addEventListener("click", function (e) {
+        var b = e.target.closest("button");
+        if (!b) return;
+        golfKind = b.getAttribute("data-golf-kind") || "all";
+        filt.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+        draw(window.__golfPool || []);
+      });
       setTimeout(run, 1800);
       setInterval(run, 20 * 60 * 1000);
     })();
