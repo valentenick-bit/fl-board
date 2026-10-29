@@ -3773,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1571</span>
+      <span class="hdr-ver" id="hdr-ver">v1572</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5987,7 +5987,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1571;
+    window.BOARD_VER = 1572;
 
     
     function communityShort() {
@@ -22430,11 +22430,8 @@ function paint() {
         return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
       }
       window.milesOf = milesOf;
-      var cachedEats = eatCacheRead();
-      if (cachedEats.length && !window.__eatEnrichActive) {
-        window.__eatPool = dedupeEats((window.__eatPool || []).concat(cachedEats));
-        setTimeout(function () { try { if (!window.__eatEnrichActive) paint(cachedEats); } catch (eC) {} }, 0);
-      }
+      try { localStorage.removeItem("bw-eats-live"); } catch (eWipe) {}
+      window.__eatEnrichActive = true;
       function inRange(r) {
         var cap = Number((getSet() || {}).eventMiles || 25) + 0.25;
         var m = r && r.miles;
@@ -22734,7 +22731,7 @@ function paint() {
           : ("Looking up restaurants inside " + miles + " mi");
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No restaurants in range.</b><span>Nothing sit-down inside ' + miles + " miles of the pin.</span></div>";
         if (typeof noteFeed === "function") noteFeed("eats", !!list.length, list.length ? (list[0].name + " " + (list[0].rating || "") + " first") : "none in range");
-        eatCacheWrite(list);
+        if (window.__eatEnrichActive) eatCacheWrite(list);
         if (!window.__onebitePainting && typeof loadPortnoyNear === "function") loadPortnoyNear();
         if (typeof window.paintEatPick === "function") window.paintEatPick();
         if (list && list[0] && typeof selectEat === "function") selectEat(window.__eatPick && list.some(function (x) { return x.name === window.__eatPick.name; }) ? window.__eatPick : list[0]);
