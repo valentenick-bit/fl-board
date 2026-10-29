@@ -3773,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1588</span>
+      <span class="hdr-ver" id="hdr-ver">v1589</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4657,6 +4657,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div class="card storm-tap" id="storm-details-btn" data-storm-pop="details"><b>Track and hazards</b><span>Forecast positions, wind radii, watches</span></div>
           <div class="card storm-tap" id="storm-watch-btn" data-storm-pop="watch"><b>Local watch</b><span>Alerts, outlook, reports near the pin</span></div>
         </div>
+        <div class="card" id="storm-power-card">
+          <b>Power outages</b>
+          <span id="storm-power-body">Checking local utility…</span>
+          <div class="dials" id="storm-power-dials"></div>
+        </div>
         <div id="hurr-disc" hidden><b>NHC discussion</b><span></span></div>
         <div id="hurr-adv" hidden><b>Public advisory</b><span></span></div>
         <div id="storm-track-card" hidden><b>Forecast track</b><span id="storm-track-body">Waiting on the advisory for positions.</span></div>
@@ -4756,18 +4761,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <div class="dials" id="emerg-vet"></div>
 
         <div class="card" id="emerg-power-card"><b>Power</b><span id="emerg-power-body">Utility for this pin loads with the address.</span></div>
-        <div id="emerg-fpl-block" hidden>
-        <div class="row3">
-          <div class="card"><b>Sarasota</b><span id="fpl-sar">Checking…</span></div>
-          <div class="card"><b>Charlotte</b><span id="fpl-cha">Checking…</span></div>
-          <div class="card"><b>FPL system</b><span id="fpl-tot">Checking…</span></div>
-        </div>
-        <p id="fpl-counts">Waiting on FPL county file…</p>
-        <div class="dials">
-          <a class="dial" href="https://www.fplmaps.com/" target="_blank" rel="noopener"><b>Open live FPL map</b><em>fplmaps.com</em></a>
-          <a class="dial" href="tel:8004688243"><b>Report outage</b><em>800-4-OUTAGE</em></a>
-        </div>
-        </div>
+        
         <div class="card" id="wildlife-card"><b>Wildlife and animal control</b><span id="wildlife-note">Number follows this pin.</span></div>
         <div class="dials" id="emerg-wild"></div>
         <div class="dials" id="emerg-call"></div>
@@ -5995,7 +5989,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1588;
+    window.BOARD_VER = 1589;
 
     
     function communityShort() {
@@ -24022,10 +24016,15 @@ function mustEatsFL() {
       setInterval(load, 30 * 60 * 1000);
     })();
     (function fplCounts() {
+      var body = document.getElementById("storm-power-body");
+      var dials = document.getElementById("storm-power-dials");
       var el = document.getElementById("live-fpl");
-      if (!el) return;
-      function grab(county, done) {
-        fetch("https://corsproxy.io/?" + encodeURIComponent("https://poweroutage.us/area/county/florida/" + county))
+      if (!body) return;
+      var st = (typeof homeState === "function" && homeState()) || "";
+      var isFL = st === "FL";
+      function grab(county, state, done) {
+        var url = "https://poweroutage.us/area/county/" + state.toLowerCase() + "/" + county.toLowerCase();
+        fetch("https://corsproxy.io/?" + encodeURIComponent(url))
           .then(function (r) { return r.text(); })
           .then(function (html) {
             var t = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
@@ -24033,13 +24032,20 @@ function mustEatsFL() {
             done(county, m ? m[1] : "—");
           }).catch(function () { done(county, "—"); });
       }
-      var got = {};
-      function paint() {
-        if (got.charlotte == null || got.sarasota == null) return;
-        el.textContent = "Charlotte out " + got.charlotte + " · Sarasota out " + got.sarasota + " · FPL 800-468-8243";
+      if (isFL) {
+        var got = {};
+        function paint() {
+          if (got.charlotte == null || got.sarasota == null) return;
+          body.textContent = "Charlotte: " + got.charlotte + " out · Sarasota: " + got.sarasota + " out";
+          if (dials) dials.innerHTML = '<a class="dial" href="https://www.fplmaps.com/" target="_blank" rel="noopener"><b>Open FPL map</b><em>fplmaps.com</em></a><a class="dial" href="tel:8004688243"><b>Report outage</b><em>800-4-OUTAGE</em></a>';
+          if (el) el.textContent = body.textContent;
+        }
+        grab("charlotte", "florida", function (c, n) { got[c] = n; paint(); });
+        grab("sarasota", "florida", function (c, n) { got[c] = n; paint(); });
+      } else {
+        body.textContent = "Local utility covers this pin. Check your provider for outage status.";
+        if (dials) dials.innerHTML = '<a class="dial" href="https://poweroutage.us/" target="_blank" rel="noopener"><b>Open outage map</b><em>poweroutage.us</em></a>';
       }
-      grab("charlotte", function (c, n) { got[c] = n; paint(); });
-      grab("sarasota", function (c, n) { got[c] = n; paint(); });
     })();
 
         function showTrayTab(which) {
