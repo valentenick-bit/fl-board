@@ -3773,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1582</span>
+      <span class="hdr-ver" id="hdr-ver">v1583</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5987,7 +5987,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1582;
+    window.BOARD_VER = 1583;
 
     
     function communityShort() {
@@ -20685,10 +20685,10 @@ function paintObservatories() { paintObsTable(); }
             }
           });
         }
-        one("hot", "(concert OR festival OR \"live music\" OR tickets OR \"sold out\" OR comedy) (" + pin + ")", ["concert","festival","ticket","music","comedy","fair"]);
-        one("table", "(restaurant OR dining OR brunch OR \"best restaurant\" OR chef) (" + pin + ")", ["restaurant","dining","brunch","chef","reservation"]);
-        one("hh", "(\"happy hour\" OR \"drink specials\" OR \"bar specials\" OR \"half off apps\") (" + pin + ")", ["happy hour","specials","draft","appetizer","drink"]);
-        one("shop", "(sale OR clearance OR \"percent off\" OR coupon OR bogo OR \"warehouse sale\") (" + pin + ")", ["sale","clearance","off","bogo","deal"]);
+        one("hot", "(concert OR festival OR \"live music\" OR tickets OR \"sold out\" OR comedy OR show OR band OR singer OR performance) (" + pin + ")", ["concert","festival","ticket","music","comedy","fair","show","band"]);
+        one("table", "(restaurant OR dining OR brunch OR \"best restaurant\" OR chef OR \"new restaurant\" OR \"opening\" OR \"food truck\" OR \"tasting menu\") (" + pin + ")", ["restaurant","dining","brunch","chef","reservation","opening","tasting"]);
+        one("hh", "(\"happy hour\" OR \"drink specials\" OR \"bar specials\" OR \"half off apps\" OR \"2 for 1\" OR \"dollar oysters\" OR \"wing night\") (" + pin + ")", ["happy hour","specials","draft","appetizer","drink","wings","oysters"]);
+        one("shop", "(sale OR clearance OR \"percent off\" OR coupon OR bogo OR \"warehouse sale\" OR \"grand opening\" OR \"new store\") (" + pin + ")", ["sale","clearance","off","bogo","deal","opening"]);
       }
 
       function fillBuzzFallbacks(pack) {
@@ -20760,6 +20760,15 @@ function paintObservatories() { paintObsTable(); }
           }
         }
       }
+      function inEnrich(name) {
+        var n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!n) return false;
+        var pool = (window.__eatPool || window.__eats || []);
+        return pool.some(function (r) {
+          var rn = String(r.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          return rn && (rn === n || rn.indexOf(n) >= 0 || n.indexOf(rn) >= 0);
+        });
+      }
       function firstBuzz(kind) {
         var list = (window.__buzz && window.__buzz[kind]) || [];
         list = list.filter(function (row) {
@@ -20768,6 +20777,12 @@ function paintObservatories() { paintObsTable(); }
           if (typeof milesOf !== "function") return true;
           return milesOf(x.lat, x.lon) <= 25;
         });
+        if (kind === "table" || kind === "hh") {
+          list = list.filter(function (row) {
+            var name = (row.item && row.item.title) || "";
+            return inEnrich(name);
+          });
+        }
         if (!list.length) return null;
         var pool = list.slice(0, Math.min(8, list.length));
         var row = pool[buzzPickIndex(kind, pool.length)];
