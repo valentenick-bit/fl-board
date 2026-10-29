@@ -3773,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1558</span>
+      <span class="hdr-ver" id="hdr-ver">v1559</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -4025,6 +4025,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         </div>
         <div id="today-flood" hidden>
           <div id="today-flood-body"></div>
+        </div>
+        <div id="today-craft" hidden>
+          <div id="today-craft-body"></div>
         </div>
         <div id="today-fog" hidden>
           <div id="today-fog-body"></div>
@@ -5983,7 +5986,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1558;
+    window.BOARD_VER = 1559;
 
     
     function communityShort() {
@@ -15445,7 +15448,6 @@ function paintObservatories() { paintObsTable(); }
           : floodOn
             ? "Flood advisory. Urban flooding — standing water in streets and swales, not a river."
             : "";
-      showWxStrip("wx-flood", floodOn, floodTxt);
       var g = window.__riverGauge;
       var gTxt = "";
       if (g && g.stage != null) gTxt = (g.short || "Gauge") + " " + (typeof fmtTideFt === "function" ? fmtTideFt(g.stage) : Number(g.stage).toFixed(1) + " ft");
@@ -15491,7 +15493,9 @@ function paintObservatories() { paintObsTable(); }
         noteFeed("live-tsunami", true, tsuEl ? tsuEl.textContent : "—");
         noteFeed("live-volcano", true, volEl ? volEl.textContent : "—");
       }
-      if (typeof paintTodayHazards === "function") paintTodayHazards({ floodOn: floodOn, floodTxt: floodTxt, fogOn: fogOn, fogTxt: fogTxt });
+      var craftOn = hasAlert(/small craft|gale|hazardous seas|lake wind/);
+      var craftTxt = craftOn ? "Small craft advisory. Rough water and stronger wind on the open water." : "";
+      if (typeof paintTodayHazards === "function") paintTodayHazards({ floodOn: floodOn, floodTxt: floodTxt, fogOn: fogOn, fogTxt: fogTxt, craftOn: craftOn, craftTxt: craftTxt });
 
       var age = window.__obsAt ? (Date.now() - window.__obsAt) : 0;
       var late = age > 90 * 60 * 1000;
@@ -17785,6 +17789,7 @@ function paintObservatories() { paintObsTable(); }
         );
       }
       one("flood", info.floodOn, "Street flooding", info.floodTxt || "Standing water in streets, not a river.");
+      one("craft", info.craftOn, "Small craft", info.craftTxt || "Rough water on the open water.");
       one("fog", info.fogOn, "Dense fog", info.fogTxt || "Short visibility overnight.");
       var fl = document.getElementById("live-flood");
       var fg = document.getElementById("live-fog");
