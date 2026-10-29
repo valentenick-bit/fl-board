@@ -2569,22 +2569,24 @@
     html.kiosk .card { padding:8px 10px; margin-bottom:6px; }
     /* kiosk Today: 3 columns, no scroll */
     html.kiosk #now { overflow:hidden; height:100%; display:flex; flex-direction:column; }
-    html.kiosk #now > h2 { flex:0 0 auto; margin:0 0 6px; }
+    html.kiosk #now > h2 { flex:0 0 auto; margin:0 0 8px; font-size:22px; }
+    html.kiosk #now .today-shell { display:block; height:100%; min-height:0; overflow:hidden; }
+    html.kiosk #now .today-main,
+    html.kiosk #now .today-side { display:none !important; }
     html.kiosk #now .kiosk-cols {
-      display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;
-      flex:1 1 auto; min-height:0; overflow:hidden;
+      display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;
+      height:100%; min-height:0; overflow:hidden;
     }
     html.kiosk #now .kiosk-col {
-      min-width:0; min-height:0; overflow:hidden;
-      display:flex; flex-direction:column; gap:8px;
+      min-width:0; min-height:0; overflow:auto;
+      display:flex; flex-direction:column; gap:10px;
+      background:rgba(255,255,255,.04); border-radius:12px; padding:10px;
     }
-    html.kiosk #now .kiosk-col > * { flex:0 0 auto; }
+    html.kiosk #now .kiosk-col h3 { margin:0; font-size:13px; letter-spacing:.1em; text-transform:uppercase; opacity:.7; }
     html.kiosk #now .today-sec-h { font-size:12px; margin:0 0 4px; letter-spacing:.06em; }
     html.kiosk #now .card { font-size:16px; margin:0; }
     html.kiosk #now #greet-hi { font-size:26px; }
     html.kiosk #now #out-now-word { font-size:30px; }
-    html.kiosk #now .kiosk-flip > * { display:none; }
-    html.kiosk #now .kiosk-flip > *.on { display:block; }
 
 
     html.wide {}
@@ -3771,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1557</span>
+      <span class="hdr-ver" id="hdr-ver">v1558</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5981,7 +5983,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1557;
+    window.BOARD_VER = 1558;
 
     
     function communityShort() {
@@ -16407,39 +16409,45 @@ function paintObservatories() { paintObsTable(); }
       var shell = document.getElementById("today-shell");
       if (!shell) return;
       var cols = document.getElementById("kiosk-cols");
+      var ids = ["#greet-card","#go-strip","#today-hot-col","#today-eat-col","#today-do-col","#today-wear-col","#today-deliv-col","#today-fly"];
       if (!on) {
         if (cols) {
-          ["#greet-card","#go-strip","#today-hot-col","#today-eat-col","#today-do-col","#today-wear-col","#today-deliv-col","#today-fly"].forEach(function (id) {
+          ids.forEach(function (id) {
             var el = document.querySelector(id);
-            var home = el && el.__kioskHome;
-            if (el && home) home.appendChild(el);
+            if (el && el.__kioskHome) el.__kioskHome.appendChild(el);
           });
           cols.remove();
         }
         return;
       }
-      if (cols) return;
-      var now = ["#greet-card", "#go-strip"];
-      var tonight = ["#today-hot-col", "#today-eat-col", "#today-do-col"];
-      var house = ["#today-wear-col", "#today-deliv-col", "#today-fly"];
-      cols = document.createElement("div");
-      cols.id = "kiosk-cols";
-      cols.className = "kiosk-cols";
-      [now, tonight, house].forEach(function (ids) {
-        var col = document.createElement("div");
-        col.className = "kiosk-col";
-        ids.forEach(function (id) {
-          var el = document.querySelector(id);
-          if (!el) return;
-          el.__kioskHome = el.parentElement;
-          col.appendChild(el);
+      if (!cols) {
+        cols = document.createElement("div");
+        cols.id = "kiosk-cols";
+        cols.className = "kiosk-cols";
+        var groups = [
+          ["Now", "#greet-card", "#go-strip"],
+          ["Tonight", "#today-hot-col", "#today-eat-col", "#today-do-col"],
+          ["House", "#today-wear-col", "#today-deliv-col", "#today-fly"]
+        ];
+        groups.forEach(function (g) {
+          var col = document.createElement("div");
+          col.className = "kiosk-col";
+          var h = document.createElement("h3");
+          h.textContent = g[0];
+          col.appendChild(h);
+          g.slice(1).forEach(function (id) {
+            var el = document.querySelector(id);
+            if (!el) return;
+            if (!el.__kioskHome) el.__kioskHome = el.parentElement;
+            col.appendChild(el);
+          });
+          cols.appendChild(col);
         });
-        cols.appendChild(col);
-      });
-      shell.appendChild(cols);
+        shell.appendChild(cols);
+      }
     }
-    setInterval(buildKioskToday, 1000);
-    setTimeout(buildKioskToday, 200);
+    setInterval(buildKioskToday, 800);
+    setTimeout(buildKioskToday, 100);
 
 
     (function layoutMode() {
