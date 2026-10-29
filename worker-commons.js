@@ -500,7 +500,8 @@ export default {
       const miles = 10;
       if (!isFinite(lat) || !isFinite(lon)) return new Response(JSON.stringify({ places: [] }), { headers: hdr });
       const rad = Math.round(miles * 1609.34);
-      const q = "[out:json][timeout:25];(node[amenity~\\"restaurant|fast_food|cafe|bar|pub|ice_cream|food_court|biergarten\\"](around:" + rad + "," + lat + "," + lon + "););out body 80;";
+      const amenities = ["restaurant","fast_food","cafe","bar","pub","ice_cream","food_court","biergarten"];
+      const q = "[out:json][timeout:25];(" + amenities.map(function (a) { return "node[amenity=" + a + "](around:" + rad + "," + lat + "," + lon + ");"; }).join("") + ");out body 80;";
       const srcs = [
         "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q),
         "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q)
