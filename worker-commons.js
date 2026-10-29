@@ -512,7 +512,7 @@ export default {
           if (!r.ok) continue;
           const d = await r.json();
           const els = d.elements || [];
-          const places = els.filter(function (el) { return el.tags && el.tags.name; }).slice(0, 20).map(function (el) {
+          const places = els.filter(function (el) { return el.tags && el.tags.name; }).slice(0, 80).map(function (el) {
             return {
               displayName: { text: el.tags.name },
               formattedAddress: [el.tags["addr:street"], el.tags["addr:city"]].filter(Boolean).join(", "),
