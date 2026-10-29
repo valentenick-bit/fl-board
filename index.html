@@ -3773,7 +3773,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1583</span>
+      <span class="hdr-ver" id="hdr-ver">v1584</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5987,7 +5987,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1583;
+    window.BOARD_VER = 1584;
 
     
     function communityShort() {
@@ -22218,14 +22218,33 @@ function paint() {
         if (off) off.hidden = on;
         if (title) title.textContent = on ? (j.community || commName()) : commName();
         if (note) {
+          var upd = j.updated ? new Date(j.updated).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
           note.textContent = on
-            ? ("From the association · " + (j.source ? "TownSq" : "HOA") + (j.updated ? " · " + String(j.updated).replace("T", " ").slice(0, 16) : ""))
+            ? ("Last harvest: " + (upd || "unknown") + " · " + (j.source ? "TownSq" : "HOA"))
             : "Official notices from the association to residents.";
         }
         if (!on) return;
         function commDay(v) { var m = String(v || "").match(/\d{4}-\d{2}-\d{2}/); return m ? m[0] : ""; }
+        function parseEventDate(title) {
+          var s = String(title || "");
+          var m = s.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+          if (m) return m[3] + "-" + m[1].padStart(2,"0") + "-" + m[2].padStart(2,"0");
+          m = s.match(/(\d{1,2})\.(\d{1,2})(?!\d)/);
+          if (m) { var y = new Date().getFullYear(); return y + "-" + m[1].padStart(2,"0") + "-" + m[2].padStart(2,"0"); }
+          var months = {jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12"};
+          m = s.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:,?\s+(\d{4}))?/i);
+          if (m) { var y = m[3] || new Date().getFullYear(); return y + "-" + months[m[1].toLowerCase().slice(0,3)] + "-" + m[2].padStart(2,"0"); }
+          return "";
+        }
+        function keepUntil(r) {
+          var eventDay = parseEventDate(r.title || "") || parseEventDate(r.body || "");
+          var posted = commDay(r.posted) || commDay(r.when);
+          if (eventDay) return eventDay;
+          if (posted) return posted;
+          return "";
+        }
         var today = (typeof commonsDayKey === "function") ? commonsDayKey() : new Date().toISOString().slice(0, 10);
-        var cutD = new Date(today + "T12:00:00"); cutD.setDate(cutD.getDate() - 7);
+        var cutD = new Date(today + "T12:00:00"); cutD.setDate(cutD.getDate() - 14);
         var cut = cutD.toISOString().slice(0, 10);
         var notices = (j.notices || []).slice();
         var newestDigest = "";
@@ -22233,8 +22252,11 @@ function paint() {
           if (/friday weekly|weekly community update/i.test(r.title || "") && commDay(r.posted) > newestDigest) newestDigest = commDay(r.posted);
         });
         notices = notices.filter(function (r) {
-          if (!/friday weekly|weekly community update/i.test(r.title || "")) return true;
-          return !newestDigest || commDay(r.posted) === newestDigest;
+          if (/friday weekly|weekly community update/i.test(r.title || "")) {
+            return !newestDigest || commDay(r.posted) === newestDigest;
+          }
+          var until = keepUntil(r);
+          return !until || until >= cut;
         });
         var upcoming = [];
         var justPast = [];
