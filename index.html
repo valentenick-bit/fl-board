@@ -3747,7 +3747,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1610</span>
+      <span class="hdr-ver" id="hdr-ver">v1611</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5964,7 +5964,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1610;
+    window.BOARD_VER = 1611;
 
     
     function communityShort() {
@@ -26447,14 +26447,10 @@ function mustEatsFL() {
         }
         if (win) break;
       }
-      if (!win) {
-        var nextRise = rises.filter(function (n) { return n > now; })[0];
-        var nextSet = sets.filter(function (n) { return n > now; })[0];
-        if (nextRise && nextSet && nextSet > nextRise) win = { rise: nextRise, set: nextSet };
-        else if (nextRise) {
-          var after = sets.filter(function (n) { return n > nextRise; })[0];
-          if (after) win = { rise: nextRise, set: after };
-        }
+      if (!win && rises.length && sets.length) {
+        var nextRise = rises.filter(function (n) { return n > now; })[0] || rises[rises.length - 1];
+        var nextSet = sets.filter(function (n) { return n > nextRise; })[0] || sets[sets.length - 1];
+        if (nextRise && nextSet) win = { rise: nextRise, set: nextSet };
       }
       if (typeof paintMoonFace === "function") {
         paintMoonFace(document.getElementById("sky-moon-face"));
@@ -27362,22 +27358,6 @@ function drawSurgeChart(points) {
             drawSunChart(rise, set);
           }
           if (typeof drawMoonChart === "function") drawMoonChart();
-          (function setMoonLabel() {
-            var lab = document.getElementById("live-moon-label");
-            if (!lab) return;
-            var rises = (window.__bwCharts && window.__bwCharts.moonRises) || [];
-            var sets = (window.__bwCharts && window.__bwCharts.moonSets) || [];
-            if (!rises.length || !sets.length) return;
-            function hh(t) {
-              return new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
-            }
-            var nowMs = Date.now();
-            var rMs = rises.map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-            var sMs = sets.map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-            var nextRise = rMs.filter(function (n) { return n > nowMs; })[0] || rMs[rMs.length - 1];
-            var nextSet = sMs.filter(function (n) { return n > nowMs; })[0] || sMs[sMs.length - 1];
-            if (nextRise && nextSet) lab.textContent = hh(nextRise) + " to " + hh(nextSet);
-          })();
           if (typeof paintSkyHeader === "function") paintSkyHeader();
           if (typeof placeSkyBodies === "function") placeSkyBodies();
           var hdrMoon = document.getElementById("hdr-moon");
