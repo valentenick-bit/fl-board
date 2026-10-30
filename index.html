@@ -3747,7 +3747,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1612</span>
+      <span class="hdr-ver" id="hdr-ver">v1613</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5964,7 +5964,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1612;
+    window.BOARD_VER = 1613;
 
     
     function communityShort() {
@@ -27337,8 +27337,15 @@ function drawSurgeChart(points) {
         }
         tryS(0);
       })();
+      function applyMoon(rises, sets) {
+        window.__bwCharts = window.__bwCharts || {};
+        window.__bwCharts.moonRises = rises || [];
+        window.__bwCharts.moonSets = sets || [];
+        try { localStorage.setItem("bw-moon", JSON.stringify({ t: Date.now(), rises: window.__bwCharts.moonRises, sets: window.__bwCharts.moonSets })); } catch (e) {}
+        if (typeof drawMoonChart === "function") drawMoonChart();
+      }
       fetch("https://api.open-meteo.com/v1/forecast?latitude=" + homeLat() + "&longitude=" + homeLon() + "&daily=sunrise,sunset,moonrise,moonset&forecast_days=3&past_days=1&timezone=America%2FNew_York")
-        .then(function (r) { return r.json(); })
+        .then(function (r) { if (!r.ok) throw new Error("om " + r.status); return r.json(); })
         .then(function (d) {
           function todayIdx(daily) {
             var times = (daily && daily.time) || [];
@@ -27375,7 +27382,14 @@ function drawSurgeChart(points) {
             if (!hdrMoon.innerHTML && typeof paintMoonFace === "function") paintMoonFace(hdrMoon);
             if (typeof placeSunMoonArc === "function") placeSunMoonArc();
           }
-        }).catch(function () {});
+        }).catch(function () {
+          fetch("https://api.sunrise-sunset.org/json?lat=" + homeLat() + "&lng=" + homeLon() + "&formatted=0&date=today")
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+              var res = (j && j.results) || {};
+              if (res.moonrise && res.moonset) applyMoon([res.moonrise], [res.moonset]);
+            }).catch(function () {});
+        });
       fetch("https://api.sunrise-sunset.org/json?lat=" + homeLat() + "&lng=" + homeLon() + "&formatted=0")
         .then(function (r) { return r.json(); })
         .then(function (j) {
