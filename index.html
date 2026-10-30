@@ -3742,7 +3742,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1598</span>
+      <span class="hdr-ver" id="hdr-ver">v1599</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5959,7 +5959,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1598;
+    window.BOARD_VER = 1599;
 
     
     function communityShort() {
@@ -32551,14 +32551,20 @@ function homeCountyGuess() {
       var lon = typeof homeLon === "function" ? homeLon() : 0;
       var st = (typeof homeState === "function" && homeState()) || "";
       var marineZones = {
-        FL: ["GMZ830","GMZ850","GMZ870","GMZ872","GMZ873","GMZ874","GMZ875","GMZ876","AMZ630","AMZ651","AMZ671"],
+        FL: { gulf: ["GMZ830","GMZ850","GMZ870","GMZ872","GMZ873","GMZ874","GMZ875","GMZ876"], atl: ["AMZ630","AMZ651","AMZ671","AMZ610","AMZ650","AMZ670"] },
         CT: ["ANZ330","ANZ335"],
         NY: ["ANZ330","ANZ335","ANZ338"],
         NJ: ["ANZ450","ANZ451"],
         MA: ["ANZ230","ANZ231"],
         RI: ["ANZ235","ANZ236"]
       };
-      var zones = marineZones[st] || [];
+      var zones = [];
+      if (st === "FL") {
+        var lon = typeof homeLon === "function" ? homeLon() : 0;
+        zones = lon < -82 ? marineZones.FL.gulf : marineZones.FL.atl;
+      } else {
+        zones = marineZones[st] || [];
+      }
       if (!zones.length) return Promise.resolve({ features: [] });
       return fetch("https://api.weather.gov/alerts/active?zone=" + zones.join(","), { headers: { Accept: "application/geo+json" } })
         .then(function (r) { return r.json(); })
