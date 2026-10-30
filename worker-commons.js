@@ -556,6 +556,21 @@ export default {
 
     if (url.pathname === "/adsb") {
       const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
+      const lat = url.searchParams.get("lat");
+      const lon = url.searchParams.get("lon");
+      const dist = url.searchParams.get("dist") || "100";
+      if (lat && lon) {
+        try {
+          const r = await fetch("https://api.adsb.lol/v2/lat/" + lat + "/lon/" + lon + "/dist/" + dist, {
+            headers: { "User-Agent": "Mozilla/5.0 Commons/1.0", Accept: "application/json" }
+          });
+          if (r.ok) {
+            const d = await r.json();
+            return new Response(JSON.stringify(d), { status: 200, headers: hdr });
+          }
+        } catch (e) {}
+        return new Response(JSON.stringify({ ac: [] }), { status: 200, headers: hdr });
+      }
       const call = String(url.searchParams.get("c") || "").replace(/\s+/g, "").toUpperCase();
       const hexQ = String(url.searchParams.get("hex") || "").replace(/\s+/g, "").toLowerCase();
       const known = { MXY537: "a25b66", MX537: "a25b66" };
