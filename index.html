@@ -3095,8 +3095,40 @@
     .daily-bits { display:grid; grid-template-columns:1fr; gap:12px; margin:12px 0 4px; }
     .joke-card span { display:block; line-height:1.45; }
     .dist-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#e7f3f1; color:#1f6f64; font-size:11px; font-weight:800; letter-spacing:.02em; }
+    
+    #ent .page-split, #eats .page-split, #golf .page-split {
+      display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,42%); gap:12px 16px; align-items:start;
+    }
+    #ent .page-list, #eats .page-list, #golf .page-list { min-width:0; max-height:62vh; overflow-y:auto; }
+    #ent .page-map, #eats .page-map, #golf .page-map {
+      position:sticky; top:8px; border-radius:16px; overflow:hidden; background:rgba(27,42,74,.06); min-height:280px;
+    }
+    #ent .page-map iframe, #eats .page-map iframe, #golf .page-map iframe {
+      width:100%; height:320px; border:0; border-radius:16px; display:block;
+    }
+    #ent .card.selected, #eats .card.selected, #golf .card.selected { outline:2px solid var(--gold,#c4a35a); outline-offset:2px; }
+    @media (orientation:portrait) {
+      #ent .page-split, #eats .page-split, #golf .page-split { grid-template-columns:1fr; }
+      #ent .page-map, #eats .page-map, #golf .page-map { position:static; }
+    }
     .worth-tag { display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px; background:#f2c14e; color:#3a2a10; font-size:11px; font-weight:800; }
-    html.dark .worth-tag { background:#c4a35a; color:#1a1408; }
+    html.dark 
+    #ent .page-split, #eats .page-split, #golf .page-split {
+      display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,42%); gap:12px 16px; align-items:start;
+    }
+    #ent .page-list, #eats .page-list, #golf .page-list { min-width:0; max-height:62vh; overflow-y:auto; }
+    #ent .page-map, #eats .page-map, #golf .page-map {
+      position:sticky; top:8px; border-radius:16px; overflow:hidden; background:rgba(27,42,74,.06); min-height:280px;
+    }
+    #ent .page-map iframe, #eats .page-map iframe, #golf .page-map iframe {
+      width:100%; height:320px; border:0; border-radius:16px; display:block;
+    }
+    #ent .card.selected, #eats .card.selected, #golf .card.selected { outline:2px solid var(--gold,#c4a35a); outline-offset:2px; }
+    @media (orientation:portrait) {
+      #ent .page-split, #eats .page-split, #golf .page-split { grid-template-columns:1fr; }
+      #ent .page-map, #eats .page-map, #golf .page-map { position:static; }
+    }
+    .worth-tag { background:#c4a35a; color:#1a1408; }
     .ev-day-hdr { font:700 15px Source Sans 3,sans-serif; color:#1b2a4a; padding:14px 4px 6px; border-bottom:2px solid var(--gold,#c4a35a); margin:16px 0 8px; background:rgba(196,163,90,.08); border-radius:4px; }
     html.dark .ev-day-hdr { color:#d4c9ae; border-color:#3a3428; }
     .dock-badge { position:absolute; top:2px; right:4px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#e07a5f; color:#fff; font:700 10px Source Sans 3,sans-serif; line-height:16px; text-align:center; }
@@ -4470,7 +4502,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <button type="button" data-ev-filter="food">Food</button>
           <button type="button" data-ev-filter="ticket">Paid</button>
         </div>
-        <div id="ent-list"></div>
+        <div class="page-split">
+          <div class="page-list" id="ent-list"></div>
+          <div class="page-map"><iframe id="ent-map" title="Event location" src="about:blank"></iframe></div>
+        </div>
         <p class="pill-key" id="ent-refs">
           <a href="https://calendar.google.com/calendar/embed?src=605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947%40group.calendar.google.com&ctz=America/New_York" target="_blank" rel="noopener">BeachWalk calendar</a>
           ·
@@ -4496,7 +4531,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <button type="button" data-eat-filter="Coffee">Coffee</button>
           <button type="button" data-eat-filter="Cafe">Cafe</button>
         </div>
-        <div class="split-list" id="eat-list"></div>
+        <div class="page-split">
+          <div class="page-list split-list" id="eat-list"></div>
+          <div class="page-map"><iframe id="eat-map" title="Restaurant location" src="about:blank"></iframe></div>
+        </div>
       </section>
       <section id="golf" class="page">
         <h2 data-k="Near this pin">Golf</h2>
@@ -4509,7 +4547,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <button type="button" data-golf-kind="Executive">Executive</button>
         </div>
         <p class="pill-key" id="golf-count">Courses near home…</p>
-        <div class="split-list" id="golf-list"></div>
+        <div class="page-split">
+          <div class="page-list split-list" id="golf-list"></div>
+          <div class="page-map"><iframe id="golf-map" title="Course location" src="about:blank"></iframe></div>
+        </div>
       </section>
 
       <section id="sports" class="page">
@@ -5965,7 +6006,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1620;
+    window.BOARD_VER = 1621;
 
     
     function communityShort() {
@@ -19926,6 +19967,8 @@ function paintObservatories() { paintObsTable(); }
       var link = venueMapLink(row.name, row.addr, row.lat, row.lon, row.inside, row.placeId);
       window.__mapPopPin = { lat: row.lat, lon: row.lon, name: row.name, addr: row.addr || "", placeId: row.placeId };
       var note = row.placeId ? "" : (row.lat ? "Dropped on coordinates — Place ID not on this card." : "");
+      var page = row.kind === "event" ? "ent" : (row.kind === "golf" || /golf/i.test(row.kind || "")) ? "golf" : "eat";
+      if (typeof pageMap === "function") pageMap(page, row);
       if (typeof openMapPop === "function") {
         openMapPop(row.name || "Map", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>', note);
       }
@@ -20031,6 +20074,22 @@ function paintObservatories() { paintObsTable(); }
     function googleDestLink(addr, lat, lon) {
       var q = addr || ((isFinite(Number(lat)) && isFinite(Number(lon))) ? (Number(lat) + "," + Number(lon)) : "");
       return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(q);
+    }
+    function pageMap(page, row) {
+      if (!row) return;
+      var frame = document.getElementById(page + "-map");
+      if (!frame) return;
+      var src = typeof venueMapSrc === "function" ? venueMapSrc(row.name, row.addr, row.lat, row.lon, row.placeId) : "";
+      if (src) frame.src = src;
+      var list = document.getElementById(page === "eat" ? "eat-list" : page === "golf" ? "golf-list" : "ent-list");
+      if (list) list.querySelectorAll(".card").forEach(function (c) { c.classList.remove("selected"); });
+      var name = String(row.name || "").toLowerCase();
+      if (list) {
+        var cards = list.querySelectorAll(".card");
+        for (var i = 0; i < cards.length; i++) {
+          if ((cards[i].textContent || "").toLowerCase().indexOf(name) >= 0) { cards[i].classList.add("selected"); break; }
+        }
+      }
     }
     function openMapPop(title, src, links, note) {
       var pop = document.getElementById("map-pop");
@@ -21670,6 +21729,7 @@ function paintTakeoutDeals() {
         });
         box.innerHTML = html;
         if (typeof stampLocPills === "function") stampLocPills(box);
+        if (sorted[0] && typeof pageMap === "function") pageMap("ent", { name: sorted[0].sum || sorted[0].loc, addr: sorted[0].loc || sorted[0].addr, lat: sorted[0].lat, lon: sorted[0].lon, kind: "event" });
       }
       document.addEventListener("click", function (e) {
         var btn = e.target.closest && e.target.closest("#ent-filters button");
@@ -22768,6 +22828,7 @@ function paint() {
         if (!window.__onebitePainting && typeof loadPortnoyNear === "function") loadPortnoyNear();
         if (typeof window.paintEatPick === "function") window.paintEatPick();
         if (list && list[0] && typeof selectEat === "function") selectEat(window.__eatPick && list.some(function (x) { return x.name === window.__eatPick.name; }) ? window.__eatPick : list[0]);
+        if (list && list[0] && typeof pageMap === "function") pageMap("eat", list[0]);
       }
       function paint(list) {
         if (window.__eatEnrichActive && window.__eatPool && window.__eatPool.length) {
@@ -23531,6 +23592,7 @@ function mustEatsFL() {
           noteFeed("golf", !!list.length, list.length ? (list.length + " · " + gbit) : "none");
         }
         if (list[0] && typeof selectGolf === "function") selectGolf(list[0]);
+        if (list[0] && typeof pageMap === "function") pageMap("golf", list[0]);
         if (typeof window.stampLocPills === "function") window.stampLocPills(box || document);
       }
       function placesKey() {
