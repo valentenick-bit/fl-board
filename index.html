@@ -3742,7 +3742,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1597</span>
+      <span class="hdr-ver" id="hdr-ver">v1598</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5959,7 +5959,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1597;
+    window.BOARD_VER = 1598;
 
     
     function communityShort() {
@@ -32193,6 +32193,13 @@ function cardBits(id) {
         var bit = sents.slice(0, 2).join(" ");
         if (bit.length > 280) bit = sents[0] || bit.slice(0, 200);
         body = (fire ? "Elevated fire risk. " : "") + bit;
+      } else if (desc && /\*\s*(WHAT|WHERE|WHEN|IMPACTS)/i.test(desc)) {
+        var what = (desc.match(/\*\s*WHAT\.\.\.([^\*]+)/i) || [])[1] || "";
+        var when = (desc.match(/\*\s*WHEN\.\.\.([^\*]+)/i) || [])[1] || "";
+        var impact = (desc.match(/\*\s*IMPACTS\.\.\.([^\*]+)/i) || [])[1] || "";
+        var bits = [what, when, impact].map(function (s) { return String(s || "").replace(/\s+/g, " ").trim(); }).filter(Boolean);
+        body = bits.join(" ").replace(/\s+/g, " ").trim();
+        if (body.length > 300) body = body.slice(0, 297).replace(/\s+\S*$/, "") + ".";
       } else if (desc && desc.length > head.length) {
         var sents = desc.split(/(?<=[.!?])\s+/).filter(Boolean);
         body = sents.slice(0, 2).join(" ");
