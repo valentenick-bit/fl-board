@@ -3747,7 +3747,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1609</span>
+      <span class="hdr-ver" id="hdr-ver">v1610</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5964,7 +5964,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1609;
+    window.BOARD_VER = 1610;
 
     
     function communityShort() {
@@ -26437,20 +26437,23 @@ function mustEatsFL() {
         return new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).toLowerCase();
       }
       var now = Date.now();
-      var list = typeof moonWindows === "function" ? moonWindows() : [];
-      var win = typeof moonNowWindow === "function" ? moonNowWindow() : null;
-      if (!win && list.length) {
-        for (var i = 0; i < list.length; i++) { if (list[i].rise > now) { win = list[i]; break; } }
-        if (!win) win = list[list.length - 1];
+      var c = window.__bwCharts || {};
+      var rises = (c.moonRises || []).map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
+      var sets = (c.moonSets || []).map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
+      var win = null;
+      for (var i = 0; i < rises.length; i++) {
+        for (var j = 0; j < sets.length; j++) {
+          if (sets[j] > rises[i] && now >= rises[i] && now < sets[j]) { win = { rise: rises[i], set: sets[j] }; break; }
+        }
+        if (win) break;
       }
-      if (!win && window.__bwCharts && window.__bwCharts.moonRises && window.__bwCharts.moonRises.length) {
-        var rises = window.__bwCharts.moonRises.map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-        var sets = window.__bwCharts.moonSets.map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-        for (var i = 0; i < rises.length; i++) {
-          for (var j = 0; j < sets.length; j++) {
-            if (sets[j] > rises[i] && now >= rises[i] && now < sets[j]) { win = { rise: rises[i], set: sets[j] }; break; }
-          }
-          if (win) break;
+      if (!win) {
+        var nextRise = rises.filter(function (n) { return n > now; })[0];
+        var nextSet = sets.filter(function (n) { return n > now; })[0];
+        if (nextRise && nextSet && nextSet > nextRise) win = { rise: nextRise, set: nextSet };
+        else if (nextRise) {
+          var after = sets.filter(function (n) { return n > nextRise; })[0];
+          if (after) win = { rise: nextRise, set: after };
         }
       }
       if (typeof paintMoonFace === "function") {
@@ -26458,38 +26461,20 @@ function mustEatsFL() {
       }
       var lab = document.getElementById("live-moon-label");
       if (lab) {
-        var times = "";
-        var rises = (window.__bwCharts && window.__bwCharts.moonRises) || [];
-        var sets = (window.__bwCharts && window.__bwCharts.moonSets) || [];
-        if (rises.length && sets.length) {
-          var nowMs = Date.now();
-          var rMs = rises.map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-          var sMs = sets.map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-          var up = null;
-          for (var i = 0; i < rMs.length; i++) {
-            for (var j = 0; j < sMs.length; j++) {
-              if (sMs[j] > rMs[i] && nowMs >= rMs[i] && nowMs < sMs[j]) { up = { rise: rMs[i], set: sMs[j] }; break; }
-            }
-            if (up) break;
-          }
-          if (up) times = "Up " + hh(up.rise) + " to " + hh(up.set);
-          else {
-            var nextRise = rMs.filter(function (n) { return n > nowMs; })[0];
-            var nextSet = sMs.filter(function (n) { return n > nowMs; })[0];
-            if (nextRise) times = "Rises " + hh(nextRise);
-            else if (nextSet) times = "Sets " + hh(nextSet);
-          }
-        }
-        if (!times) times = "Times unavailable";
         var illum = typeof moonIllumPct === "function" ? moonIllumPct() : null;
         var bit = kind + (illum != null ? " · " + illum + "%" : "");
+        var times = "";
+        if (win) {
+          var up = now >= win.rise && now < win.set;
+          times = (up ? "Up " : "Rises ") + hh(win.rise) + " · Sets " + hh(win.set);
+        }
         lab.textContent = times ? bit + " · " + times : (bit || "Rise and set at the house");
         lab.title = bit;
       }
       var riseTxt = win ? hh(win.rise) : "";
       var setTxt = win ? hh(win.set) : "";
       var nowDot = "";
-      if (win) {
+      if (win && now >= win.rise && now < win.set) {
         var t = (now - win.rise) / Math.max(1, win.set - win.rise);
         t = Math.max(0, Math.min(1, t));
         var x = 20 + t * 180;
