@@ -3747,7 +3747,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1611</span>
+      <span class="hdr-ver" id="hdr-ver">v1612</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5964,7 +5964,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1611;
+    window.BOARD_VER = 1612;
 
     
     function communityShort() {
@@ -26438,8 +26438,16 @@ function mustEatsFL() {
       }
       var now = Date.now();
       var c = window.__bwCharts || {};
-      var rises = (c.moonRises || []).map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-      var sets = (c.moonSets || []).map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
+      function parseMoon(s) {
+        if (!s) return NaN;
+        var n = Date.parse(s);
+        if (n && isFinite(n)) return n;
+        var m = String(s).match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+        if (m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[4]), Number(m[5])).getTime();
+        return NaN;
+      }
+      var rises = (c.moonRises || []).map(parseMoon).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
+      var sets = (c.moonSets || []).map(parseMoon).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
       var win = null;
       for (var i = 0; i < rises.length; i++) {
         for (var j = 0; j < sets.length; j++) {
@@ -26447,10 +26455,10 @@ function mustEatsFL() {
         }
         if (win) break;
       }
-      if (!win && rises.length && sets.length) {
-        var nextRise = rises.filter(function (n) { return n > now; })[0] || rises[rises.length - 1];
-        var nextSet = sets.filter(function (n) { return n > nextRise; })[0] || sets[sets.length - 1];
-        if (nextRise && nextSet) win = { rise: nextRise, set: nextSet };
+      if (!win && rises.length) {
+        var nextRise = rises.filter(function (n) { return n > now; })[0] || rises[0];
+        var nextSet = sets.filter(function (n) { return n > nextRise; })[0] || (sets.length ? sets[0] : null);
+        if (nextRise) win = { rise: nextRise, set: nextSet };
       }
       if (typeof paintMoonFace === "function") {
         paintMoonFace(document.getElementById("sky-moon-face"));
@@ -26467,8 +26475,8 @@ function mustEatsFL() {
         lab.textContent = times ? bit + " · " + times : (bit || "Rise and set at the house");
         lab.title = bit;
       }
-      var riseTxt = win ? hh(win.rise) : "";
-      var setTxt = win ? hh(win.set) : "";
+      var riseTxt = win && win.rise ? hh(win.rise) : "";
+      var setTxt = win && win.set ? hh(win.set) : "";
       var nowDot = "";
       if (win && now >= win.rise && now < win.set) {
         var t = (now - win.rise) / Math.max(1, win.set - win.rise);
