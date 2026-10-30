@@ -5964,7 +5964,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1617;
+    window.BOARD_VER = 1618;
 
     
     function communityShort() {
@@ -13582,19 +13582,18 @@ function currentRotation() {
       var sets = (c.moonSets || []).map(moonParse).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
       return rises.map(function (r) {
         var s = null;
-        for (var i = 0; i < sets.length; i++) { if (sets[i] > r) { s = sets[i]; break; } }
+        for (var i = 0; i < sets.length; i++) {
+          if (sets[i] > r && (sets[i] - r) < 18 * 3600 * 1000) { s = sets[i]; break; }
+        }
         return s ? { rise: r, set: s } : null;
       }).filter(Boolean);
     }
     function moonNowWindow() {
       var now = Date.now();
-      var c = window.__bwCharts || {};
-      var rises = (c.moonRises || []).map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-      var sets = (c.moonSets || []).map(function (s) { return Date.parse(s); }).filter(function (n) { return n && isFinite(n); }).sort(function (a, b) { return a - b; });
-      for (var i = 0; i < rises.length; i++) {
-        for (var j = 0; j < sets.length; j++) {
-          if (sets[j] > rises[i] && now >= rises[i] && now < sets[j]) return { rise: rises[i], set: sets[j] };
-        }
+      var wins = moonWindows();
+      for (var i = 0; i < wins.length; i++) {
+        var w = wins[i];
+        if (now >= w.rise && now < w.set && (w.set - w.rise) < 18 * 3600 * 1000) return w;
       }
       return null;
     }
