@@ -1797,6 +1797,10 @@
       font-feature-settings:"tnum" 1;
       color:var(--navy);
     }
+        .rate-up { color:#1b6b62; font-weight:800; }
+    .rate-down { color:#b3261e; font-weight:800; }
+    html.dark .rate-up { color:#7dcea0; }
+    html.dark .rate-down { color:#f4a261; }
     .ev-rail .ev-ico { width:44px; height:44px; display:grid; place-items:center; margin-top:4px; }
     .ev-rail .ev-ico svg { width:40px; height:40px; display:block; }
     .ev-body { min-width:0; flex:1; padding-top:2px; }
@@ -3742,7 +3746,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   <div class="frame">
     <header>
       <span class="hdr-citystate" id="hdr-citystate"></span>
-      <span class="hdr-ver" id="hdr-ver">v1602</span>
+      <span class="hdr-ver" id="hdr-ver">v1603</span>
       <div class="sky-fade" id="sky-fade" aria-hidden="true"></div>
       <div class="sky-scene" aria-hidden="true">
         <svg class="hdr-cloud-svg c1" viewBox="0 0 160 70" aria-hidden="true"><ellipse cx="48" cy="42" rx="30" ry="18"/><ellipse cx="78" cy="34" rx="28" ry="20"/><ellipse cx="108" cy="42" rx="26" ry="16"/><ellipse cx="70" cy="48" rx="36" ry="14"/><ellipse cx="92" cy="28" rx="16" ry="12"/></svg>
@@ -5959,7 +5963,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1602;
+    window.BOARD_VER = 1603;
 
     
     function communityShort() {
@@ -22521,7 +22525,7 @@ function paint() {
         var stars = r.rating != null && r.rating !== "" ? Number(r.rating).toFixed(1) : "—";
         var delta = "";
         if (r.prevRating != null && r.rating != null && Number(r.prevRating) !== Number(r.rating)) {
-          delta = Number(r.rating) > Number(r.prevRating) ? " ↑" : " ↓";
+          delta = Number(r.rating) > Number(r.prevRating) ? ' <span class="rate-up">↑</span>' : ' <span class="rate-down">↓</span>';
         }
         var portnoy = portnoyScore(r.name);
         var obId = "ob" + Math.floor(Math.random() * 99999);
@@ -23495,9 +23499,13 @@ function mustEatsFL() {
         pills += (typeof window.locPillHtml === "function" ? window.locPillHtml(r) : "");
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null ? Number(r.rating).toFixed(1) : "—";
+        var delta = "";
+        if (r.prevRating != null && r.rating != null && Number(r.prevRating) !== Number(r.rating)) {
+          delta = Number(r.rating) > Number(r.prevRating) ? ' <span class="rate-up">↑</span>' : ' <span class="rate-down">↓</span>';
+        }
         var stats = [r.slope ? ("Slope " + r.slope) : "", r.cr ? ("Rating " + r.cr) : "", r.par ? ("Par " + r.par) : ""].filter(Boolean).join(" · ");
         return '<div class="card ev-card eat-card map-hit" ' + (typeof venueDataAttrs === "function" ? venueDataAttrs(r, r.kind || "golf", { golf: r.name, busy: r.name }) : "") + '>' +
-          '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + '</span><span class="ev-ico" aria-hidden="true">⛳</span></div>' +
+          '<div class="ev-rail"><span class="ev-dow">Rating</span><span class="ev-num">' + stars + delta + '</span><span class="ev-ico" aria-hidden="true">⛳</span></div>' +
           '<div class="ev-body"><div class="ev-pills">' + pills + "</div>" +
           "<b>" + String(r.name || "Golf").replace(/</g, "") + "</b>" +
           (addr ? '<span class="ev-when">' + String(addr).replace(/</g, "") + "</span>" : "") +
@@ -23509,8 +23517,16 @@ function mustEatsFL() {
         var box = document.getElementById("golf-list");
         var note = document.getElementById("golf-count");
         var miles = golfMiles();
+        var prev = {};
+        try { prev = JSON.parse(localStorage.getItem("bw-golf-ratings") || "{}") || {}; } catch (eP) { prev = {}; }
         list = rank(list || window.__golfPool || []);
         if (golfKind !== "all") list = list.filter(function (r) { return String(r.kind || "").toLowerCase() === golfKind.toLowerCase(); });
+        list.forEach(function (r) {
+          var old = prev[r.name];
+          if (old && old.rating != null) r.prevRating = old.rating;
+          if (r.name && r.rating != null) prev[r.name] = { rating: r.rating, at: Date.now() };
+        });
+        try { localStorage.setItem("bw-golf-ratings", JSON.stringify(prev)); } catch (eS) {}
         window.__golfs = list;
         if (box) box.innerHTML = list.length ? list.map(card).join("") : '<div class="card quiet"><b>No courses in range</b><span>Nothing golf-shaped inside ' + miles + " miles of the pin.</span></div>";
         if (note) note.textContent = list.length ? (list.length + " courses in " + miles + " mi · nearest first") : ("No courses in " + miles + " mi");
