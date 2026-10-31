@@ -3839,7 +3839,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     .tel-link:hover { text-decoration:underline; }
     html.dark .tel-link { color:#7ec8c0; }
 
-    .ev-rail .ev-time { display:block; font-size:11px; font-weight:700; color:var(--teal); margin-top:2px; }
+    .ev-rail .ev-time { display:block; font-size:14px; font-weight:800; color:var(--teal); margin-top:3px; letter-spacing:.02em; }
     html.dark .ev-rail .ev-time { color:#7ec8c0; }
 </style>
 </head>
@@ -6074,7 +6074,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1648;
+    window.BOARD_VER = 1649;
 
     
     function communityShort() {
@@ -23757,27 +23757,37 @@ function mustEatsFL() {
       }
       function enrichGolfPhones(list) {
         if (!list || !list.length) return;
-        var need = list.filter(function (r) { return !r.phone; }).slice(0, 12);
+        var need = list.filter(function (r) { return !r.phone; }).slice(0, 10);
         if (!need.length) return;
-        var key = (typeof placesKey === "function") ? placesKey() : "";
-        if (!key) return;
-        var left = need.length;
-        function doneOne() { if (--left <= 0) draw(window.__golfs || list); }
-        need.forEach(function (r) {
-          var q = encodeURIComponent((r.name || "") + " golf course " + (r.addr || ""));
-          fetch("https://places.googleapis.com/v1/places:searchText", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.nationalPhoneNumber,places.internationalPhoneNumber" },
-            body: JSON.stringify({ textQuery: (r.name || "") + " golf " + (r.addr || ""), pageSize: 1 })
-          }).then(function (res) { return res.json(); }).then(function (j) {
-            var p = (j && j.places && j.places[0]) || null;
-            if (p) {
-              var ph = p.nationalPhoneNumber || p.internationalPhoneNumber || "";
-              if (ph) r.phone = ph;
-              if (p.id && !r.placeId) r.placeId = String(p.id).replace(/^places\//, "");
+        if (typeof loadGmaps !== "function") return;
+        loadGmaps(function (ok) {
+          if (!ok || !window.google || !google.maps || !google.maps.places) return;
+          var svc = new google.maps.places.PlacesService(document.createElement("div"));
+          var left = need.length;
+          function finish() { if (--left <= 0) draw(window.__golfs || list); }
+          need.forEach(function (r) {
+            function applyPhone(pid) {
+              svc.getDetails({ placeId: pid, fields: ["formatted_phone_number", "international_phone_number"] }, function (d, st) {
+                if (st === google.maps.places.PlacesServiceStatus.OK && d) {
+                  r.phone = d.formatted_phone_number || d.international_phone_number || r.phone || "";
+                }
+                finish();
+              });
             }
-            doneOne();
-          }).catch(function () { doneOne(); });
+            if (r.placeId) {
+              applyPhone(r.placeId);
+            } else {
+              var q = (r.name || "") + " golf course " + (r.addr || "");
+              svc.findPlaceFromQuery({ query: q, fields: ["place_id"] }, function (res, st) {
+                if (st === google.maps.places.PlacesServiceStatus.OK && res && res[0] && res[0].place_id) {
+                  r.placeId = res[0].place_id;
+                  applyPhone(res[0].place_id);
+                } else {
+                  finish();
+                }
+              });
+            }
+          });
         });
       }
       function placesKey() {
