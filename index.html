@@ -6067,7 +6067,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1642;
+    window.BOARD_VER = 1643;
 
     
     function communityShort() {
@@ -21778,17 +21778,13 @@ function paintTakeoutDeals() {
         var driveKey = String(e.sum || "") + "|" + (e.when && e.when.toISOString ? e.when.toISOString() : "");
         var locLine = title || place || "";
         var placeLabel = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : place;
-        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + worthHtml + distHtml + '</div><b>' + locLine + '</b><span class="ev-when">' + whenLine +
-          (e.opens ? " · opens " + e.opens : "") +
-          (function () {
-            if (!e.when || e.inside) return "";
-            var leave = typeof eventLeaveMs === "function" ? eventLeaveMs(e) : 0;
-            if (!leave) return "";
-            var dt = new Date(leave);
-            var lab = (typeof fmtClockTime === "function" ? fmtClockTime(dt) : dt.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}));
-            return " · leave by " + lab;
-          })() +
-          "</span></div></div>";
+        var addrLine = e.addr || e.loc || "";
+        var phoneLine = e.phone || "";
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + worthHtml + distHtml + '</div><b>' + locLine + '</b>' +
+          (whenLine ? '<span class="ev-when">' + whenLine + (e.opens ? " · opens " + e.opens : "") + "</span>" : "") +
+          (addrLine ? '<span class="ev-when">' + String(addrLine).replace(/</g, "") + "</span>" : "") +
+          (phoneLine ? '<span class="ev-when">' + String(phoneLine).replace(/</g, "") + "</span>" : "") +
+          "</div></div>";
       };
       function render(id, events) {
         var box = document.getElementById(id);
