@@ -3551,6 +3551,8 @@
 
     .comm-off { margin:0 0 12px; padding:10px 12px; border-radius:10px; background:rgba(196,163,90,.18); color:var(--navy); }
     .comm-row { display:flex; flex-direction:column; gap:3px; padding:10px 0; border-bottom:1px solid var(--hair); }
+    .comm-imgs { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+    .comm-imgs img { max-width:180px; max-height:140px; border-radius:8px; object-fit:cover; }
     .comm-row:last-child { border-bottom:0; }
     .comm-row .comm-kicker { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .comm-row .kind-chip { display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; padding:2px 7px; border-radius:999px; background:rgba(27,107,98,.12); color:var(--teal); }
@@ -6028,7 +6030,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1627;
+    window.BOARD_VER = 1628;
 
     
     function communityShort() {
@@ -22256,8 +22258,12 @@ function paint() {
           whenTxt = isNaN(dt.getTime()) ? String(when) : dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         }
         var body = r.body || r.summary || r.desc || r.details || r.detail || "";
+        var imgs = (r.images || r.imgs || []).slice(0, 3);
+        var imgHtml = imgs.length ? "<div class=\"comm-imgs\">" + imgs.map(function (u) {
+          return "<img src=\"" + String(u).replace(/"/g, "") + "\" alt=\"\" loading=\"lazy\">";
+        }).join("") + "</div>" : "";
         return "<div class=\"comm-row\"><div class=\"comm-kicker\"><span class=\"kind-chip " + kind + "\">" + label + "</span>" +
-          (whenTxt ? "<em>" + whenTxt + "</em>" : "") + "</div><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(body).replace(/</g,"") + "</span></div>";
+          (whenTxt ? "<em>" + whenTxt + "</em>" : "") + "</div><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(body).replace(/</g,"") + "</span>" + imgHtml + "</div>";
       }).join("");
     }
     function paintCommWeek() {
