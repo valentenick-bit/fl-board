@@ -3550,9 +3550,15 @@
 
 
     .comm-off { margin:0 0 12px; padding:10px 12px; border-radius:10px; background:rgba(196,163,90,.18); color:var(--navy); }
-    .comm-row { display:flex; flex-direction:column; gap:3px; padding:10px 0; border-bottom:1px solid var(--hair); }
+    .comm-row { display:flex; flex-direction:column; gap:4px; padding:12px 0; border-bottom:1px solid var(--hair); }
+    .comm-row.past { opacity:0.65; }
     .comm-imgs { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
-    .comm-imgs img { max-width:180px; max-height:140px; border-radius:8px; object-fit:cover; }
+    .comm-imgs img { max-width:200px; max-height:150px; border-radius:10px; object-fit:cover; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+    .comm-filter { margin:8px 0 12px; }
+    .comm-filter input { width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--hair); font-size:15px; background:var(--card); color:var(--ink); }
+    .comm-filter input:focus { outline:2px solid var(--teal); }
+    #comm-need-card.comm-urgent { border-left:4px solid #e07a5f; background:rgba(224,122,95,.06); }
+    html.dark #comm-need-card.comm-urgent { border-left-color:#f4a261; background:rgba(244,162,97,.08); }
     .comm-row:last-child { border-bottom:0; }
     .comm-row .comm-kicker { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .comm-row .kind-chip { display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; padding:2px 7px; border-radius:999px; background:rgba(27,107,98,.12); color:var(--teal); }
@@ -4587,15 +4593,16 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         <p class="pill-key" id="comm-note">Official notices from the association to residents.</p>
         <p class="comm-off" id="comm-off" hidden>Set Account community to BeachWalk by Manasota Key to see HOA mail from TownSq.</p>
         <div class="comm-board" id="comm-board">
+          <div class="comm-filter"><input type="search" id="comm-filter" placeholder="Search notices, announcements, newsletters…" aria-label="Filter HOA content"></div>
           <div class="card comm-urgent" id="comm-need-card" hidden>
-            <b>Action from the association</b>
+            <b>Action required</b>
             <div id="comm-need"></div>
           </div>
           <div class="comm-grid">
             <div class="comm-main">
               <div class="card" id="comm-feed-card">
-                <b>Official board</b>
-                <div id="comm-feed">Loading TownSq…</div>
+                <b>Latest from the association</b>
+                <div id="comm-feed">Checking TownSq…</div>
               </div>
               <div class="card" id="comm-announce-card" hidden>
                 <b>Announcements</b>
@@ -6030,7 +6037,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1628;
+    window.BOARD_VER = 1629;
 
     
     function communityShort() {
@@ -22251,19 +22258,30 @@ function paint() {
           else kind = "notice";
         }
         var label = kind === "event-note" ? "event" : kind === "save-the-date" ? "save the date" : kind === "sold-out" ? "sold out" : kind;
-        var when = r.posted || r.when || "";
+        var when = r.posted || r.when || r.date || "";
         var whenTxt = "";
+        var isPast = false;
         if (when) {
           var dt = new Date(String(when).length <= 10 ? when + "T12:00:00" : when);
-          whenTxt = isNaN(dt.getTime()) ? String(when) : dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          if (!isNaN(dt.getTime())) {
+            var days = Math.round((dt - new Date()) / 86400000);
+            if (days === 0) whenTxt = "today";
+            else if (days === 1) whenTxt = "tomorrow";
+            else if (days === -1) whenTxt = "yesterday";
+            else if (days > 1 && days < 14) whenTxt = "in " + days + "d";
+            else if (days < -1 && days > -14) whenTxt = Math.abs(days) + "d ago";
+            else whenTxt = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            if (days < -1) isPast = true;
+          } else whenTxt = String(when);
         }
         var body = r.body || r.summary || r.desc || r.details || r.detail || "";
         var imgs = (r.images || r.imgs || []).slice(0, 3);
         var imgHtml = imgs.length ? "<div class=\"comm-imgs\">" + imgs.map(function (u) {
           return "<img src=\"" + String(u).replace(/"/g, "") + "\" alt=\"\" loading=\"lazy\">";
         }).join("") + "</div>" : "";
-        return "<div class=\"comm-row\"><div class=\"comm-kicker\"><span class=\"kind-chip " + kind + "\">" + label + "</span>" +
-          (whenTxt ? "<em>" + whenTxt + "</em>" : "") + "</div><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(body).replace(/</g,"") + "</span>" + imgHtml + "</div>";
+        var photoNote = (r.photos || r.hasPhotos) ? " <small>📷 Photos in announcement</small>" : "";
+        return "<div class=\"comm-row" + (isPast ? " past" : "") + "\"><div class=\"comm-kicker\"><span class=\"kind-chip " + kind + "\">" + label + "</span>" +
+          (whenTxt ? "<em>" + whenTxt + "</em>" : "") + "</div><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(body).replace(/</g,"") + photoNote + "</span>" + imgHtml + "</div>";
       }).join("");
     }
     function paintCommWeek() {
@@ -22378,6 +22396,18 @@ function paint() {
         paintCommList("comm-survey", surveys, "");
         var surveyCard = document.getElementById("comm-survey-card");
         if (surveyCard) surveyCard.hidden = !surveys.length;
+        // simple client filter
+        var filt = document.getElementById("comm-filter");
+        if (filt && !filt.__wired) {
+          filt.__wired = true;
+          filt.addEventListener("input", function () {
+            var q = (filt.value || "").toLowerCase().trim();
+            document.querySelectorAll("#comm-board .comm-row").forEach(function (row) {
+              var txt = (row.textContent || "").toLowerCase();
+              row.style.display = (!q || txt.indexOf(q) >= 0) ? "" : "none";
+            });
+          });
+        }
         paintCommList("comm-archive", j.archive || [], "");
         var archCard = document.getElementById("comm-archive-card");
         if (archCard) archCard.hidden = !((j.archive || []).length);
