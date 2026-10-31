@@ -6074,7 +6074,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1650;
+    window.BOARD_VER = 1651;
 
     
     function communityShort() {
@@ -21788,11 +21788,20 @@ function paintTakeoutDeals() {
         var placeLabel = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : place;
         var addrLine = e.addr || e.loc || "";
         var phoneLine = e.phone || "";
+        if (!phoneLine && place) {
+          var pools = [].concat(window.__eats || [], window.__golfs || []);
+          var hit = pools.filter(function (r) { return r && r.phone && String(r.name || "").toLowerCase().indexOf(String(place).toLowerCase().slice(0, 12)) >= 0; })[0];
+          if (hit) phoneLine = hit.phone;
+        }
         return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span>' + timeBit + '<span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + worthHtml + distHtml + '</div><b>' + locLine + '</b>' +
           (function () {
             var a = String(addrLine || mapQ || "");
+            if (!a) return "";
+            var at = a.split(/\s@\s|\s@/);
+            if (at.length > 1) a = at[at.length - 1];
+            a = a.replace(/^[^,]*@\s*/, "").trim();
             if (!a || a.length < 4) return "";
-            if (/^(near|around|venue|location|tbd|tba)$/i.test(a.trim())) return "";
+            if (/^(near|around|venue|location|tbd|tba)$/i.test(a)) return "";
             return '<span class="ev-when">' + a.replace(/</g, "") + "</span>";
           })() +
           (phoneLine ? '<span class="ev-when"><a href="tel:' + String(phoneLine).replace(/[^\d+]/g, "") + '" class="tel-link">' + String(phoneLine).replace(/</g, "") + "</a></span>" : "") +
