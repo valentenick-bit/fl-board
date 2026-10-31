@@ -6039,7 +6039,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1632;
+    window.BOARD_VER = 1633;
 
     
     function communityShort() {
@@ -22415,11 +22415,19 @@ function paint() {
         var needCard = document.getElementById("comm-need-card");
         if (needCard) needCard.hidden = !need.length;
         paintCommList("comm-need", need, "");
+        function normTitle(r) { return String(r.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
         var recentArch = (j.archive || []).filter(function (r) {
           var d = commDay(r.date) || commDay(r.posted) || commDay(r.when);
           return d && d >= recentCutStr;
         });
-        var feed = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch).sort(function (a, b) {
+        var feedRaw = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch);
+        var seenFeed = {};
+        var feed = feedRaw.filter(function (r) {
+          var k = normTitle(r);
+          if (!k || seenFeed[k]) return false;
+          seenFeed[k] = 1;
+          return true;
+        }).sort(function (a, b) {
           return String(b.posted || b.when || b.date || "").localeCompare(String(a.posted || a.when || a.date || ""));
         });
         paintCommList("comm-feed", feed, "No official notices on file.");
@@ -22431,9 +22439,13 @@ function paint() {
         var surveyCard = document.getElementById("comm-survey-card");
         if (surveyCard) surveyCard.hidden = !surveys.length;
 
-        paintCommList("comm-archive", j.archive || [], "");
+        // Archive card shows only items not already in the main feed
+        var olderArch = (j.archive || []).filter(function (r) {
+          return !seenFeed[normTitle(r)];
+        });
+        paintCommList("comm-archive", olderArch, "");
         var archCard = document.getElementById("comm-archive-card");
-        if (archCard) archCard.hidden = !((j.archive || []).length);
+        if (archCard) archCard.hidden = !olderArch.length;
         paintCommWeek();
         if (typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity() && Array.isArray(j.events) && j.events.length && window.__entBag) {
           var extra = j.events.map(function (e) {
