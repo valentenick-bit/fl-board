@@ -3553,7 +3553,7 @@
     .comm-row { display:flex; flex-direction:column; gap:4px; padding:12px 0; border-bottom:1px solid var(--hair); }
     .comm-row.past { opacity:0.65; }
     .comm-imgs { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; clear:both; }
-    .comm-imgs img { width:160px; height:120px; border-radius:10px; object-fit:cover; box-shadow:0 1px 4px rgba(0,0,0,.12); cursor:pointer; transition:transform .15s ease; }
+    .comm-imgs img { width:120px; height:90px; border-radius:8px; object-fit:cover; box-shadow:0 1px 3px rgba(0,0,0,.1); cursor:pointer; }
     .comm-imgs img:hover { transform:scale(1.04); }
     .comm-row span { word-break:break-word; overflow-wrap:anywhere; }
     .comm-lightbox { position:fixed; inset:0; background:rgba(0,0,0,.82); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -6039,7 +6039,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1635;
+    window.BOARD_VER = 1636;
 
     
     function communityShort() {
@@ -22277,10 +22277,10 @@ function paint() {
           } else whenTxt = String(when);
         }
         var body = r.body || r.summary || r.desc || r.details || r.detail || "";
-        var imgs = (r.images || r.imgs || []).slice(0, 3);
+        var imgs = (r.images || r.imgs || []).slice(0, 2);
         var imgHtml = imgs.length ? "<div class=\"comm-imgs\">" + imgs.map(function (u) {
           var src = String(u).replace(/"/g, "");
-          return "<img src=\"" + src + "\" alt=\"\" loading=\"lazy\" data-lb=\"" + src + "\">";
+          return "<img src=\"" + src + "\" alt=\"\" loading=\"lazy\" decoding=\"async\" data-lb=\"" + src + "\">";
         }).join("") + "</div>" : "";
         var photoNote = (r.photos || r.hasPhotos) ? " <small>📷 Photos in announcement</small>" : "";
         return "<div class=\"comm-row" + (isPast ? " past" : "") + "\"><div class=\"comm-kicker\"><span class=\"kind-chip " + kind + "\">" + label + "</span>" +
@@ -22415,11 +22415,19 @@ function paint() {
         var needCard = document.getElementById("comm-need-card");
         if (needCard) needCard.hidden = !need.length;
         paintCommList("comm-need", need, "");
+        function normTitle(r) { return String(r.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
         var recentArch = (j.archive || []).filter(function (r) {
           var d = commDay(r.date) || commDay(r.posted) || commDay(r.when);
           return d && d >= recentCutStr;
         });
-        var feed = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch).sort(function (a, b) {
+        var feedRaw = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch);
+        var seenFeed = {};
+        var feed = feedRaw.filter(function (r) {
+          var k = normTitle(r);
+          if (!k || seenFeed[k]) return false;
+          seenFeed[k] = 1;
+          return true;
+        }).sort(function (a, b) {
           return String(b.posted || b.when || b.date || "").localeCompare(String(a.posted || a.when || a.date || ""));
         });
         paintCommList("comm-feed", feed, "No official notices on file.");
@@ -22431,9 +22439,10 @@ function paint() {
         var surveyCard = document.getElementById("comm-survey-card");
         if (surveyCard) surveyCard.hidden = !surveys.length;
 
-        paintCommList("comm-archive", j.archive || [], "");
+        var olderArch = (j.archive || []).filter(function (r) { return !seenFeed[normTitle(r)]; });
+        paintCommList("comm-archive", olderArch, "");
         var archCard = document.getElementById("comm-archive-card");
-        if (archCard) archCard.hidden = !((j.archive || []).length);
+        if (archCard) archCard.hidden = !olderArch.length;
         paintCommWeek();
         if (typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity() && Array.isArray(j.events) && j.events.length && window.__entBag) {
           var extra = j.events.map(function (e) {
