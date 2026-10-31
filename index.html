@@ -6071,7 +6071,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1646;
+    window.BOARD_VER = 1647;
 
     
     function communityShort() {
@@ -23671,8 +23671,16 @@ function mustEatsFL() {
         var seen = {}, out = [];
         (list || []).forEach(function (r) {
           var k = golfKey(r.name);
-          if (!k || seen[k]) return;
-          seen[k] = true;
+          var pid = r.placeId || "";
+          var loc = (r.lat && r.lon) ? (Math.round(r.lat * 100) + "," + Math.round(r.lon * 100)) : "";
+          var key = pid || k || loc;
+          if (!key || seen[key]) return;
+          // also skip if name key already seen
+          if (k && seen["n:" + k]) return;
+          if (loc && seen["l:" + loc]) return;
+          seen[key] = true;
+          if (k) seen["n:" + k] = true;
+          if (loc) seen["l:" + loc] = true;
           out.push(r);
         });
         return out;
@@ -23786,6 +23794,7 @@ function mustEatsFL() {
         var loc = pl.location || {};
         var name = (pl.displayName && (pl.displayName.text || pl.displayName)) || pl.name || "";
         if (!isGolfName(name, null, pl.types)) return null;
+        var phone = pl.nationalPhoneNumber || pl.internationalPhoneNumber || "";
         return {
           name: name,
           kind: /private|country club/i.test(name) ? "Private" : "Course",
@@ -23795,6 +23804,7 @@ function mustEatsFL() {
           miles: milesOf(loc.latitude, loc.longitude),
           lat: loc.latitude, lon: loc.longitude,
           addr: pl.formattedAddress || pl.shortFormattedAddress || "",
+          phone: phone,
           placeId: String(pl.id || "").replace(/^places\//, ""),
           types: pl.types || ["golf_course"]
         };
@@ -23805,7 +23815,7 @@ function mustEatsFL() {
         var miles = golfMiles();
         fetch("https://places.googleapis.com/v1/places:searchNearby", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.location,places.types" },
+          headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.location,places.types,places.nationalPhoneNumber" },
           body: JSON.stringify({
             includedTypes: ["golf_course"],
             maxResultCount: 20,
@@ -23826,7 +23836,7 @@ function mustEatsFL() {
         queries.forEach(function (q) {
           fetch("https://places.googleapis.com/v1/places:searchText", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.location,places.types" },
+            headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.rating,places.userRatingCount,places.location,places.types,places.nationalPhoneNumber" },
             body: JSON.stringify({
               textQuery: q,
               pageSize: 20,
