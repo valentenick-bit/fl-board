@@ -6067,7 +6067,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1640;
+    window.BOARD_VER = 1641;
 
     
     function communityShort() {
@@ -20127,6 +20127,15 @@ function paintObservatories() { paintObsTable(); }
         if (live.addr) row.addr = live.addr;
         if (live.name) row.name = live.name;
       }
+      var isListPage = row.kind === "event" || row.kind === "golf" || /golf/i.test(row.kind || "") || (!row.kind && (row.addr || row.name));
+      // For restaurant/golf/events pages, only update the inline map — never open the popup
+      var onListPage = document.getElementById("eat-list") && document.getElementById("eat-list").contains && false;
+      var pageKind = row.kind === "event" ? "ent" : (row.kind === "golf" || /golf/i.test(String(row.kind||""))) ? "golf" : "eat";
+      if (pageKind === "eat" || pageKind === "golf" || pageKind === "ent") {
+        if (typeof pageMap === "function") pageMap(pageKind, row);
+        resolveGooglePlace(row, function (ready) { if (typeof pageMap === "function") pageMap(pageKind, ready || row); });
+        return;
+      }
       if (typeof openMapPop === "function") openMapPop(row.name || "Map", "about:blank", "Finding the Google Place…");
       resolveGooglePlace(row, function (ready) { showVenueMap(ready || row); });
     }
@@ -20260,7 +20269,7 @@ function paintObservatories() { paintObsTable(); }
       if (venueEl) {
         if (typeof openVenueMap === "function") { openVenueMap(venueEl); return; }
       }
-      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-hh .card, #ent-list .card");
+      var evCard = e.target.closest && e.target.closest("#today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-shop .card, #today-hh .card");
       if (evCard) {
         var lat = Number(evCard.getAttribute("data-lat"));
         var lon = Number(evCard.getAttribute("data-lon"));
@@ -22450,11 +22459,13 @@ function paint() {
           var d = commDay(r.date) || commDay(r.posted) || commDay(r.when);
           return d && d >= recentCutStr;
         });
+        var needTitles = {};
+        (need || []).forEach(function (r) { needTitles[normTitle(r)] = 1; });
         var feedRaw = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch);
         var seenFeed = {};
         var feed = feedRaw.filter(function (r) {
           var k = normTitle(r);
-          if (!k || seenFeed[k]) return false;
+          if (!k || seenFeed[k] || needTitles[k]) return false;
           seenFeed[k] = 1;
           return true;
         }).sort(function (a, b) {
@@ -22469,7 +22480,7 @@ function paint() {
         var surveyCard = document.getElementById("comm-survey-card");
         if (surveyCard) surveyCard.hidden = !surveys.length;
 
-        var olderArch = (j.archive || []).filter(function (r) { return !seenFeed[normTitle(r)]; });
+        var olderArch = (j.archive || []).filter(function (r) { return !seenFeed[normTitle(r)] && !needTitles[normTitle(r)]; });
         paintCommList("comm-archive", olderArch, "");
         var archCard = document.getElementById("comm-archive-card");
         if (archCard) archCard.hidden = !olderArch.length;
