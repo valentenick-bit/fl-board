@@ -1,4 +1,4 @@
-const SOURCE = "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/index.html";
+const SOURCE = "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/index.html";
 
 const BW = "605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947@group.calendar.google.com";
 const ENG = "a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6@group.calendar.google.com";
@@ -44,8 +44,8 @@ async function driveJson(id, name, fallback) {
   const hdr = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
   const urls = (id ? driveUrls(id) : []).concat([
     githubSibling(name),
-    "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/" + name,
-    "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/" + name
+    "https://raw.githubusercontent.com/valentenick-bit/fl-board/main/" + name,
+    "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/" + name
   ]).filter(Boolean);
   for (const src of urls) {
     try {
@@ -153,7 +153,7 @@ async function readPinRoster(env) {
   }
   if (PIN_MEM && Array.isArray(PIN_MEM.pins) && PIN_MEM.pins.length) return PIN_MEM;
   try {
-    const r = await fetch("https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/pins.json?cb=" + Date.now(), {
+    const r = await fetch("https://raw.githubusercontent.com/valentenick-bit/fl-board/main/pins.json?cb=" + Date.now(), {
       headers: { "User-Agent": "Commons/1.0" },
       cf: { cacheTtl: 0, cacheEverything: false }
     });
