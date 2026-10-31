@@ -6074,7 +6074,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1653;
+    window.BOARD_VER = 1654;
 
     
     function communityShort() {
@@ -20175,12 +20175,18 @@ function paintObservatories() { paintObsTable(); }
       var list = document.getElementById(page === "eat" ? "eat-list" : page === "golf" ? "golf-list" : "ent-list");
       if (list) list.querySelectorAll(".card").forEach(function (c) { c.classList.remove("selected"); });
       var name = String(row.name || "").toLowerCase();
-      if (list) {
+      var picked = null;
+      if (list && name) {
         var cards = list.querySelectorAll(".card");
         for (var i = 0; i < cards.length; i++) {
-          if ((cards[i].textContent || "").toLowerCase().indexOf(name) >= 0) { cards[i].classList.add("selected"); break; }
+          var c = cards[i];
+          var dn = (c.getAttribute("data-name") || c.getAttribute("data-eat") || c.getAttribute("data-golf") || c.getAttribute("data-buzz") || "").toLowerCase();
+          if (dn && (dn === name || dn.indexOf(name) >= 0 || name.indexOf(dn) >= 0)) { picked = c; break; }
+          if ((c.textContent || "").toLowerCase().indexOf(name) >= 0) { picked = c; break; }
         }
       }
+      if (!picked && list) picked = list.querySelector(".card");
+      if (picked) picked.classList.add("selected");
     }
     function openMapPop(title, src, links, note) {
       var pop = document.getElementById("map-pop");
@@ -20279,9 +20285,12 @@ function paintObservatories() { paintObsTable(); }
         openMapPop(pin.name || saddr || "Store", src, '<a href="' + link + '" target="_blank" rel="noopener">Open in Google Maps</a>');
         return;
       }
-      var eatCard = e.target.closest && e.target.closest("#eat-list .eat-card, #eat-list .map-hit, #golf-list .eat-card, #golf-list .map-hit, #golf-list .card");
-      if (eatCard && typeof openVenueMap === "function") {
-        openVenueMap(eatCard);
+      var eatCard = e.target.closest && e.target.closest("#eat-list .eat-card, #eat-list .map-hit, #golf-list .eat-card, #golf-list .map-hit, #golf-list .card, #ent-list .card");
+      if (eatCard) {
+        var list = eatCard.closest("#eat-list, #golf-list, #ent-list");
+        if (list) list.querySelectorAll(".card").forEach(function (c) { c.classList.remove("selected"); });
+        eatCard.classList.add("selected");
+        if (typeof openVenueMap === "function") openVenueMap(eatCard);
         return;
       }
       var venueEl = e.target.closest && e.target.closest(".map-hit[data-venue], #today-do .card, #today-eat-pick .card, #today-hot .card, #today-deal .card, #today-coupons .card, #today-shop .card, #today-hh .card, #ent-list .card");
