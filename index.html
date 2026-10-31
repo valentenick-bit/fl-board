@@ -3838,6 +3838,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     .tel-link { color:var(--teal); text-decoration:none; font-weight:600; }
     .tel-link:hover { text-decoration:underline; }
     html.dark .tel-link { color:#7ec8c0; }
+
+    .ev-rail .ev-time { display:block; font-size:11px; font-weight:700; color:var(--teal); margin-top:2px; }
+    html.dark .ev-rail .ev-time { color:#7ec8c0; }
 </style>
 </head>
 <body>
@@ -6071,7 +6074,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1647;
+    window.BOARD_VER = 1648;
 
     
     function communityShort() {
@@ -21775,6 +21778,7 @@ function paintTakeoutDeals() {
         var rd = typeof railDateParts === "function" ? railDateParts(e.when) : { dow: "—", num: "—" };
         var dow = rd.dow;
         var num = rd.num;
+        var timeBit = whenLine ? '<span class="ev-time">' + whenLine + "</span>" : "";
         var artMap = { concert: "music", theater: "ticket", sports: "sport", comedy: "comedy", eat: "food" };
         var artKey = (kind && kind.cls) || (live ? "music" : "fun");
         if (artMap[artKey]) artKey = artMap[artKey];
@@ -21784,9 +21788,12 @@ function paintTakeoutDeals() {
         var placeLabel = e.inside ? (typeof communityLabel === "function" ? communityLabel() : "BeachWalk") : place;
         var addrLine = e.addr || e.loc || "";
         var phoneLine = e.phone || "";
-        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span><span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + worthHtml + distHtml + '</div><b>' + locLine + '</b>' +
-          (whenLine ? '<span class="ev-when">' + whenLine + (e.opens ? " · opens " + e.opens : "") + "</span>" : "") +
-          (addrLine ? '<span class="ev-when">' + String(addrLine).replace(/</g, "") + "</span>" : "") +
+        return '<div class="card ev-card map-hit" ' + venueDataAttrs({ name: e.inside ? placeLabel : (place || e.loc || title), addr: e.addr || mapQ, lat: e.lat, lon: e.lon, kind: "event", inside: e.inside, onSite: e.inside }, "event", { busy: mapQ, drive: driveKey }) + '>' + '<div class="ev-rail"><span class="ev-dow">' + dow + '</span><span class="ev-num">' + num + '</span>' + timeBit + '<span class="ev-ico" aria-hidden="true">' + ico + '</span></div><div class="ev-body"><div class="ev-pills"><span class="' + pclass + '">' + (placeLabel || place || "Near home") + "</span>" + kindHtml + worthHtml + distHtml + '</div><b>' + locLine + '</b>' +
+          (function () {
+            var a = String(addrLine || "");
+            if (!/\d/.test(a) || a.length < 8 || /^(near|around|at |venue|location)/i.test(a)) return "";
+            return '<span class="ev-when">' + a.replace(/</g, "") + "</span>";
+          })() +
           (phoneLine ? '<span class="ev-when"><a href="tel:' + String(phoneLine).replace(/[^\d+]/g, "") + '" class="tel-link">' + String(phoneLine).replace(/</g, "") + "</a></span>" : "") +
           "</div></div>";
       };
@@ -23750,39 +23757,27 @@ function mustEatsFL() {
       }
       function enrichGolfPhones(list) {
         if (!list || !list.length) return;
-        if (typeof loadGmaps !== "function") return;
-        var need = list.filter(function (r) { return !r.phone; }).slice(0, 15);
+        var need = list.filter(function (r) { return !r.phone; }).slice(0, 12);
         if (!need.length) return;
-        loadGmaps(function (ok) {
-          if (!ok || !window.google || !google.maps || !google.maps.places) return;
-          var svc = new google.maps.places.PlacesService(document.createElement("div"));
-          var left = need.length;
-          function doneOne() { if (--left <= 0) draw(window.__golfs || list); }
-          need.forEach(function (r) {
-            if (r.placeId) {
-              svc.getDetails({ placeId: r.placeId, fields: ["formatted_phone_number"] }, function (d, st) {
-                if (st === "OK" && d && d.formatted_phone_number) r.phone = d.formatted_phone_number;
-                doneOne();
-              });
-            } else {
-              var q = (r.name || "") + " golf " + (r.addr || "");
-              svc.findPlaceFromQuery({ query: q, fields: ["place_id", "formatted_phone_number"] }, function (res, st) {
-                if (st === "OK" && res && res[0]) {
-                  var pid = res[0].place_id;
-                  if (pid) r.placeId = pid;
-                  if (res[0].formatted_phone_number) { r.phone = res[0].formatted_phone_number; doneOne(); return; }
-                  if (pid) {
-                    svc.getDetails({ placeId: pid, fields: ["formatted_phone_number"] }, function (d, st2) {
-                      if (st2 === "OK" && d && d.formatted_phone_number) r.phone = d.formatted_phone_number;
-                      doneOne();
-                    });
-                    return;
-                  }
-                }
-                doneOne();
-              });
+        var key = (typeof placesKey === "function") ? placesKey() : "";
+        if (!key) return;
+        var left = need.length;
+        function doneOne() { if (--left <= 0) draw(window.__golfs || list); }
+        need.forEach(function (r) {
+          var q = encodeURIComponent((r.name || "") + " golf course " + (r.addr || ""));
+          fetch("https://places.googleapis.com/v1/places:searchText", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.nationalPhoneNumber,places.internationalPhoneNumber" },
+            body: JSON.stringify({ textQuery: (r.name || "") + " golf " + (r.addr || ""), pageSize: 1 })
+          }).then(function (res) { return res.json(); }).then(function (j) {
+            var p = (j && j.places && j.places[0]) || null;
+            if (p) {
+              var ph = p.nationalPhoneNumber || p.internationalPhoneNumber || "";
+              if (ph) r.phone = ph;
+              if (p.id && !r.placeId) r.placeId = String(p.id).replace(/^places\//, "");
             }
-          });
+            doneOne();
+          }).catch(function () { doneOne(); });
         });
       }
       function placesKey() {
@@ -23915,7 +23910,7 @@ function mustEatsFL() {
         next();
       }
       function fromPlaces(cb) {
-        var gkey = "golf-v3:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : homeLat());
+        var gkey = "golf-v4:" + (typeof eatsNearCacheKey === "function" ? eatsNearCacheKey() : homeLat());
         var paid = typeof mapsPaidOn === "function" ? mapsPaidOn() : true;
         if (typeof gCacheGet === "function") {
           var cached = gCacheGet("golf-near", gkey, paid ? 12 * 3600 * 1000 : 90 * 86400000);
