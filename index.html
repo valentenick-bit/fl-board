@@ -6034,7 +6034,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1630;
+    window.BOARD_VER = 1631;
 
     
     function communityShort() {
@@ -22372,9 +22372,23 @@ function paint() {
         });
         var histCut = new Date(today + "T12:00:00"); histCut.setDate(histCut.getDate() - 30);
         var histCutStr = histCut.toISOString().slice(0, 10);
-        var arch = (j.notices || []).concat(j.announce || []).filter(function (r) {
-          var eventDay = parseEventDate(r.title || "") || parseEventDate(r.body || "") || commDay(r.posted) || commDay(r.when);
+        var recentCut = new Date(today + "T12:00:00"); recentCut.setDate(recentCut.getDate() - 7);
+        var recentCutStr = recentCut.toISOString().slice(0, 10);
+        var builtArch = (j.notices || []).concat(j.announce || []).filter(function (r) {
+          var eventDay = parseEventDate(r.title || "") || parseEventDate(r.body || "") || commDay(r.posted) || commDay(r.when) || commDay(r.date);
           return eventDay && eventDay < today && eventDay >= histCutStr;
+        });
+        var jsonArch = (j.archive || []).filter(function (r) {
+          var d = commDay(r.date) || commDay(r.posted) || commDay(r.when);
+          return !d || d >= histCutStr;
+        });
+        var seen = {};
+        var arch = [];
+        jsonArch.concat(builtArch).forEach(function (r) {
+          var k = (r.title || "") + "|" + (r.date || r.posted || r.when || "");
+          if (seen[k]) return;
+          seen[k] = 1;
+          arch.push(r);
         });
         j = Object.assign({}, j, { notices: notices, announce: upcoming, newsletters: news, archive: arch });
         var need = j.need || [];
@@ -22382,8 +22396,12 @@ function paint() {
         var needCard = document.getElementById("comm-need-card");
         if (needCard) needCard.hidden = !need.length;
         paintCommList("comm-need", need, "");
-        var feed = [].concat(j.notices || j.notifications || [], j.announce || []).sort(function (a, b) {
-          return String(b.posted || b.when || "").localeCompare(String(a.posted || a.when || ""));
+        var recentArch = (j.archive || []).filter(function (r) {
+          var d = commDay(r.date) || commDay(r.posted) || commDay(r.when);
+          return d && d >= recentCutStr;
+        });
+        var feed = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch).sort(function (a, b) {
+          return String(b.posted || b.when || b.date || "").localeCompare(String(a.posted || a.when || a.date || ""));
         });
         paintCommList("comm-feed", feed, "No official notices on file.");
         paintCommList("comm-announce", [], "");
