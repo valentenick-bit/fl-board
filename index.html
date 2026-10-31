@@ -6039,7 +6039,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1633;
+    window.BOARD_VER = 1634;
 
     
     function communityShort() {
@@ -22415,19 +22415,11 @@ function paint() {
         var needCard = document.getElementById("comm-need-card");
         if (needCard) needCard.hidden = !need.length;
         paintCommList("comm-need", need, "");
-        function normTitle(r) { return String(r.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
         var recentArch = (j.archive || []).filter(function (r) {
           var d = commDay(r.date) || commDay(r.posted) || commDay(r.when);
           return d && d >= recentCutStr;
         });
-        var feedRaw = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch);
-        var seenFeed = {};
-        var feed = feedRaw.filter(function (r) {
-          var k = normTitle(r);
-          if (!k || seenFeed[k]) return false;
-          seenFeed[k] = 1;
-          return true;
-        }).sort(function (a, b) {
+        var feed = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch).sort(function (a, b) {
           return String(b.posted || b.when || b.date || "").localeCompare(String(a.posted || a.when || a.date || ""));
         });
         paintCommList("comm-feed", feed, "No official notices on file.");
@@ -22439,13 +22431,9 @@ function paint() {
         var surveyCard = document.getElementById("comm-survey-card");
         if (surveyCard) surveyCard.hidden = !surveys.length;
 
-        // Archive card shows only items not already in the main feed
-        var olderArch = (j.archive || []).filter(function (r) {
-          return !seenFeed[normTitle(r)];
-        });
-        paintCommList("comm-archive", olderArch, "");
+        paintCommList("comm-archive", j.archive || [], "");
         var archCard = document.getElementById("comm-archive-card");
-        if (archCard) archCard.hidden = !olderArch.length;
+        if (archCard) archCard.hidden = !((j.archive || []).length);
         paintCommWeek();
         if (typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity() && Array.isArray(j.events) && j.events.length && window.__entBag) {
           var extra = j.events.map(function (e) {
@@ -26541,31 +26529,54 @@ function mustEatsFL() {
         el.textContent = moonGlyph(ph);
         return;
       }
-      var lit = "#fff8e0";
-      if (illum < 0.03) { el.innerHTML = ""; return; }
-      if (illum > 0.97) {
-        el.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="' + lit + '" stroke="#1a1a1a" stroke-width="1.5"/></svg>';
-        return;
-      }
+      if (illum < 0.02) { el.innerHTML = ""; return; }
       var waxing = ph < 0.5;
-      var C = 20, R = 16;
-      var uid = "hdr-moon-" + Math.round(ph * 1000);
-      var rx = Math.max(0.35, R * Math.abs(Math.cos(ph * Math.PI * 2)));
-      var halfX = waxing ? C : C - R;
-      var half = '<rect x="' + halfX + '" y="' + (C - R) + '" width="' + R + '" height="' + (2 * R) + '" fill="' + lit + '"/>';
-      var ell = '<ellipse cx="' + C + '" cy="' + C + '" rx="' + rx.toFixed(2) + '" ry="' + R + '" fill="' + lit + '"/>';
-      var inner;
+      var C = 20, R = 15.5;
+      var uid = "hm" + Math.round(ph * 1000);
+      var rx = Math.max(0.4, R * Math.abs(Math.cos(ph * Math.PI * 2)));
+      // Phase mask: lit portion of the disk
+      var maskInner;
       if (illum >= 0.5) {
-        inner = half + ell;
+        // More than half lit: full disk minus a dark ellipse on the unlit side
+        var darkX = waxing ? (C - rx) : C;
+        maskInner = '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="#fff"/>' +
+          '<ellipse cx="' + (waxing ? C - R + rx : C + R - rx) + '" cy="' + C + '" rx="' + rx.toFixed(2) + '" ry="' + R + '" fill="#000"/>';
       } else {
-        inner = '<defs><mask id="' + uid + '" maskUnits="userSpaceOnUse">' +
-          '<rect x="' + halfX + '" y="' + (C - R) + '" width="' + R + '" height="' + (2 * R) + '" fill="#fff"/>' +
-          '<ellipse cx="' + C + '" cy="' + C + '" rx="' + rx.toFixed(2) + '" ry="' + R + '" fill="#000"/>' +
-          '</mask></defs>' +
-          '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="' + lit + '" mask="url(#' + uid + ')"/>';
+        // Less than half lit: only a lit ellipse on one side
+        var litX = waxing ? C : (C - rx);
+        maskInner = '<ellipse cx="' + (waxing ? (C - R + rx) : (C + R - rx)) + '" cy="' + C + '" rx="' + rx.toFixed(2) + '" ry="' + R + '" fill="#fff"/>';
       }
-      el.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><defs><clipPath id="' + uid + 'd"><circle cx="' + C + '" cy="' + C + '" r="' + R + '"/></clipPath></defs>' +
-        '<g clip-path="url(#' + uid + 'd)">' + inner + '</g><circle cx="20" cy="20" r="16" fill="none" stroke="#1a1a1a" stroke-width="1.5"/></svg>';
+      // Subtle crater / maria texture (only shows on lit part via mask)
+      var craters = [
+        [14,16,2.2],[24,14,1.6],[18,24,2.8],[26,22,1.4],[12,22,1.2],[22,18,1.8],[16,12,1.0]
+      ].map(function (c) {
+        return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + c[2] + '" fill="rgba(180,170,140,.35)"/>';
+      }).join("");
+      el.innerHTML =
+        '<svg viewBox="0 0 40 40" aria-hidden="true">' +
+          '<defs>' +
+            '<radialGradient id="' + uid + 'g" cx="38%" cy="35%" r="65%">' +
+              '<stop offset="0%" stop-color="#fffdf5"/>' +
+              '<stop offset="55%" stop-color="#f4ead0"/>' +
+              '<stop offset="100%" stop-color="#d8cbb0"/>' +
+            '</radialGradient>' +
+            '<mask id="' + uid + 'm" maskUnits="userSpaceOnUse">' + maskInner + '</mask>' +
+            '<filter id="' + uid + 'f" x="-20%" y="-20%" width="140%" height="140%">' +
+              '<feGaussianBlur stdDeviation="0.4"/>' +
+            '</filter>' +
+          '</defs>' +
+          // faint full disk for limb reference
+          '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="#2a2418" opacity="0.35"/>' +
+          // lit surface
+          '<g mask="url(#' + uid + 'm)">' +
+            '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="url(#' + uid + 'g)"/>' +
+            craters +
+          '</g>' +
+          // soft rim
+          '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="none" stroke="rgba(255,248,220,.55)" stroke-width="0.6"/>' +
+          // gentle glow
+          '<circle cx="' + C + '" cy="' + C + '" r="' + (R + 1.2) + '" fill="none" stroke="rgba(255,240,200,.25)" stroke-width="1.5" filter="url(#' + uid + 'f)"/>' +
+        '</svg>';
     }
     function seedStars() {
       var box = document.getElementById("hdr-stars");
