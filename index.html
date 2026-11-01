@@ -6359,7 +6359,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1710;
+    window.BOARD_VER = 1711;
 
     
     function communityShort() {
@@ -9701,7 +9701,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (typeof paintListings === "function") setTimeout(paintListings, 0);
       var oldEl = document.getElementById("re-pop");
       if (oldEl) oldEl.remove();
-      var redfin = h.mls ? "https://www.redfin.com/search?q=" + encodeURIComponent(h.mls) : "";
       var photos = (h.photos && h.photos.length) ? h.photos.slice() : (h.img ? [h.img] : []);
       var idx = 0;
       var pop = document.createElement("div");
@@ -9725,7 +9724,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       function render() {
         var src = photos[idx] || "";
         var counter = photos.length > 1 ? ('<div class="re-count">' + (idx+1) + ' of ' + photos.length + ' · click photo for next</div>') : '';
-        var imgHtml = src ? ('<img id="re-main-img" src="' + src + '" alt="">') : '';
+        var imgHtml = src ? ('<img id="re-main-img" src="' + src + '" alt="" style="width:100%;max-height:480px;object-fit:cover;cursor:pointer;border-radius:10px;display:block">') : '';
         var tagHtml = tags.length ? ('<div class="re-tags">' + tags.map(function (t) { return '<span>' + t + '</span>'; }).join('') + '</div>') : '';
         var facts = [
           [h.beds || '—', 'Bedrooms'],
@@ -9734,12 +9733,20 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           [h.year || '—', 'Year built'],
           [h.hoa ? ('$' + Number(h.hoa).toLocaleString()) : '—', 'HOA / mo'],
           [priceSq ? ('$' + priceSq.toLocaleString()) : '—', 'Price / sqft'],
-          [h.mls || '—', 'MLS'],
-          [photos.length ? String(photos.length) : '—', 'Photos']
+          [h.dom != null ? String(h.dom) : '—', 'Days on market'],
+          [h.mls || '—', 'MLS']
         ];
         var factHtml = '<div class="re-facts">' + facts.map(function (f) {
           return '<span><b>' + f[0] + '</b><em>' + f[1] + '</em></span>';
         }).join('') + '</div>';
+        var histHtml = '';
+        if (h.history && h.history.length) {
+          histHtml = '<table class="re-hist" style="width:100%;margin-top:14px;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px">Date</th><th style="text-align:left;padding:4px 6px">Event</th><th style="text-align:right;padding:4px 6px">Price</th></tr></thead><tbody>' +
+            h.history.map(function (ev) {
+              var pr = ev.price ? ('$' + Number(ev.price).toLocaleString()) : '—';
+              return '<tr><td style="padding:4px 6px">' + (ev.date || '') + '</td><td style="padding:4px 6px">' + (ev.event || '') + '</td><td style="text-align:right;padding:4px 6px">' + pr + '</td></tr>';
+            }).join('') + '</tbody></table>';
+        }
         pop.innerHTML = '<div class="re-pop-card">' +
           '<button type="button" class="re-x" id="re-x" aria-label="Close">×</button>' +
           imgHtml +
@@ -9748,9 +9755,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           '<h3>' + h.addr + '</h3>' +
           tagHtml +
           factHtml +
+          histHtml +
           (desc ? '<p class="re-desc">' + desc + '</p>' : '') +
           '<p class="pill-key">BeachWalk by Manasota Key · Englewood, FL 34223 · gated, no CDD</p>' +
-          (redfin ? '<div class="ask-row" style="margin-top:12px"><a class="go" href="' + redfin + '" target="_blank" rel="noopener">View on Redfin</a></div>' : '') +
           '</div>';
         var img = document.getElementById("re-main-img");
         if (img && photos.length > 1) {
@@ -9770,6 +9777,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       });
       render();
     }
+
     function paintCommunity() {
       var name = communityName();
       var hdr = document.getElementById("hdr-place");
