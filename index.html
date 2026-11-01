@@ -3874,6 +3874,20 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     .ap-board th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:4px 6px; border-bottom:1px solid var(--hair); }
     .ap-board td { padding:6px; border-bottom:1px solid rgba(196,163,90,.2); }
     .ap-board tr:hover td { background:rgba(42,157,143,.06); }
+
+    .re-card { display:grid; grid-template-columns:120px 1fr; gap:10px; padding:8px 0; border-bottom:1px solid var(--hair); cursor:pointer; }
+    .re-card:last-child { border-bottom:0; }
+    .re-card img { width:120px; height:90px; object-fit:cover; border-radius:8px; background:#ddd; }
+    .re-card b { font-size:15px; }
+    .re-card .re-price { color:var(--teal); font-weight:800; font-size:16px; }
+    .re-card .re-meta { font-size:12px; color:var(--muted); }
+    .re-pop { position:fixed; inset:0; z-index:90; background:rgba(15,18,30,.6); display:flex; align-items:center; justify-content:center; }
+    .re-pop-card { background:var(--card,#f7f2e8); border-radius:16px; max-width:520px; width:92vw; max-height:85vh; overflow:auto; padding:16px; }
+    .re-pop-card img { width:100%; height:200px; object-fit:cover; border-radius:12px; }
+    .re-pop-card h3 { margin:10px 0 4px; }
+    .re-pop-card .re-facts { display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:13px; margin:10px 0; }
+    .re-pop-card .re-facts span { background:rgba(42,157,143,.08); padding:6px 8px; border-radius:8px; }
+    html.dark .re-pop-card { background:#1e2428; color:#efe4c8; }
 </style>
 </head>
 <body>
@@ -4701,6 +4715,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
               <div class="card" id="comm-survey-card" hidden>
                 <b>Needs a reply</b>
                 <div id="comm-survey"></div>
+              </div>
+              <div class="card" id="comm-re-card">
+                <b>Homes for sale</b>
+                <div id="comm-re"></div>
               </div>
               <div class="card" id="comm-news-card">
                 <b>Newsletters</b>
@@ -6131,7 +6149,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1680;
+    window.BOARD_VER = 1681;
 
     
     function communityShort() {
@@ -9381,6 +9399,56 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         if (n) n.textContent = "County EM / 311: 941-861-5000. Red Cross Sarasota 941-379-9300. Animal Services 941-861-9500. Medical Needs evac registration 311. FEMA 800-621-3362. Poison Control 800-222-1222. Florida 511 for roads. Coast Guard marine Channel 16.";
       }
       if (typeof noteFeed === "function") noteFeed("bw-prep", true, on ? "BeachWalk guide cards on" : "hidden · other pin");
+    }
+    var BW_LISTINGS = [
+      { addr:"10470 Abaco Falls Dr", price:494900, beds:3, baths:2, sqft:1394, year:2024, mls:"A4710817", hoa:379, img:"https://cdn.listingphotos.sierrastatic.com/large/v1793376226/240/240_A4710817_01.jpg", desc:"Hallmark model on a private preserve homesite. Upgraded landscaping, paver driveway, nature views. No CDD fees." },
+      { addr:"26110 Seastone Dr", price:590050, beds:3, baths:2, sqft:1735, year:2023, mls:"TB8561695", hoa:379, img:"https://cdn.listingphotos.sierrastatic.com/large/v1793360842/240/240_TB8561695_01.jpg", desc:"Water-view home on a quiet cul-de-sac. Stone exterior, extended lanai, fenced yard, pond and preserve views." },
+      { addr:"10088 Coral Shore Dr", price:649000, beds:3, baths:2, sqft:1902, year:2023, mls:"N6145902", hoa:379, img:"", desc:"Single family home in BeachWalk by Manasota Key." },
+      { addr:"9897 Bright Water Dr", price:409000, beds:2, baths:2, sqft:1410, year:2023, mls:"TB8542030", hoa:367, img:"", desc:"Villa-style home in BeachWalk." },
+      { addr:"9982 Bright Water Dr", price:1099000, beds:3, baths:4, sqft:2797, year:2024, mls:"", hoa:401, img:"", desc:"Larger home with pool potential in BeachWalk." },
+      { addr:"26209 Coral Harbour Dr", price:1121649, beds:3, baths:3.5, sqft:2808, year:2026, mls:"TB8559403", hoa:401, img:"", desc:"New construction by DiVosta. Under construction." }
+    ];
+    function paintListings() {
+      var box = document.getElementById("comm-re");
+      if (!box) return;
+      box.innerHTML = BW_LISTINGS.map(function (h, i) {
+        var img = h.img ? '<img src="' + h.img + '" alt="" loading="lazy">' : '<img src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'90\'%3E%3Crect fill=\'%23ddd\' width=\'120\' height=\'90\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' fill=\'%23999\' font-size=\'12\'%3ENo photo%3C/text%3E%3C/svg%3E" alt="">';
+        return '<div class="re-card" data-re="' + i + '">' + img + '<div><div class="re-price">$' + h.price.toLocaleString() + '</div><b>' + h.addr + '</b><div class="re-meta">' + h.beds + ' bd · ' + h.baths + ' ba · ' + h.sqft.toLocaleString() + ' sqft · ' + h.year + '</div></div></div>';
+      }).join("");
+      box.querySelectorAll(".re-card").forEach(function (c) {
+        c.addEventListener("click", function () { openListing(Number(c.getAttribute("data-re"))); });
+      });
+    }
+    function openListing(i) {
+      var h = BW_LISTINGS[i];
+      if (!h) return;
+      var old = document.getElementById("re-pop");
+      if (old) old.remove();
+      var zillow = "https://www.zillow.com/homes/" + encodeURIComponent(h.addr + " Englewood FL 34223") + "_rb/";
+      var pop = document.createElement("div");
+      pop.id = "re-pop";
+      pop.className = "re-pop";
+      pop.innerHTML = '<div class="re-pop-card">' +
+        (h.img ? '<img src="' + h.img + '" alt="">' : '') +
+        '<h3>' + h.addr + '</h3>' +
+        '<div class="re-price">$' + h.price.toLocaleString() + '</div>' +
+        '<div class="re-facts">' +
+          '<span>' + h.beds + ' bedrooms</span>' +
+          '<span>' + h.baths + ' bathrooms</span>' +
+          '<span>' + h.sqft.toLocaleString() + ' sqft</span>' +
+          '<span>Built ' + h.year + '</span>' +
+          '<span>HOA $' + h.hoa + '/mo</span>' +
+          (h.mls ? '<span>MLS ' + h.mls + '</span>' : '') +
+        '</div>' +
+        '<p>' + h.desc + '</p>' +
+        '<p class="pill-key">Englewood, FL 34223 · BeachWalk by Manasota Key</p>' +
+        '<div class="ask-row" style="margin-top:12px">' +
+          '<a class="go" href="' + zillow + '" target="_blank" rel="noopener">View on Zillow</a>' +
+          '<button type="button" class="ghost" id="re-close">Close</button>' +
+        '</div></div>';
+      document.body.appendChild(pop);
+      pop.addEventListener("click", function (e) { if (e.target === pop) pop.remove(); });
+      document.getElementById("re-close").addEventListener("click", function () { pop.remove(); });
     }
     function paintCommunity() {
       var name = communityName();
@@ -22747,6 +22815,7 @@ function paint() {
         var annCard = document.getElementById("comm-announce-card");
         if (annCard) annCard.hidden = true;
         paintCommList("comm-news", j.newsletters || [], "No newsletter on file.");
+        if (typeof paintListings === "function") paintListings();
         paintCommList("comm-survey", surveys, "");
         var surveyCard = document.getElementById("comm-survey-card");
         if (surveyCard) surveyCard.hidden = !surveys.length;
