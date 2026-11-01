@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1721;
+    window.BOARD_VER = 1722;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26050,10 +26050,10 @@ function mustEatsFL() {
       }
       function pull(url) {
         var tries = [
-          url,
+          "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(url),
           "https://api.allorigins.win/get?url=" + encodeURIComponent(url),
-          "https://corsproxy.io/?" + encodeURIComponent(url),
-          "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(url)
+          "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+          url
         ];
         function one(i) {
           if (i >= tries.length) return Promise.resolve([]);
@@ -26066,7 +26066,13 @@ function mustEatsFL() {
               var j = JSON.parse(t);
               if (j && j.contents) items = parseRss(j.contents);
               else if (j && j.items) items = j.items.map(function (it) {
-                return { title: it.title, link: it.link || it.url, pubDate: it.pubDate || it.published };
+                return {
+                  title: it.title,
+                  link: it.link || it.url,
+                  pubDate: it.pubDate || it.published,
+                  description: it.description || it.content || "",
+                  img: it.thumbnail || (it.enclosure && it.enclosure.link) || ""
+                };
               });
             } catch (e) {
               items = parseRss(t);
