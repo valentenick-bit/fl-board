@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1718;
+    window.BOARD_VER = 1719;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26077,14 +26077,39 @@ function mustEatsFL() {
         }
         return one(0);
       }
+      function loadFromApi() {
+        var place = (typeof homePlace === "function" ? homePlace() : "") || "";
+        var q = place || "local news";
+        var api = "/news?q=" + encodeURIComponent(q) + "&place=" + encodeURIComponent(place);
+        return fetch(api).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+          if (!data || !data.articles || !data.articles.length) return null;
+          return data.articles.map(function (a) {
+            return {
+              title: a.title || "",
+              link: a.url || "#",
+              pubDate: a.publishedAt || "",
+              description: a.description || "",
+              img: a.image || "",
+              src: a.source || "Local"
+            };
+          });
+        }).catch(function () { return null; });
+      }
       function load() {
-        Promise.all(feeds().map(pull)).then(function (lists) {
-          render([].concat.apply([], lists));
+        loadFromApi().then(function (items) {
+          if (items && items.length) {
+            render(items);
+            return;
+          }
+          // Fallback to Google News RSS if the API key is not set or returns nothing
+          Promise.all(feeds().map(pull)).then(function (lists) {
+            render([].concat.apply([], lists));
+          });
         });
       }
       window.__reloadLocalNews = load;
       load();
-      setInterval(load, 10 * 60 * 1000);
+      setInterval(load, 30 * 60 * 1000); // 30 min to stay under free API limits
     })();
 
     function populateNewsGuides() {
