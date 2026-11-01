@@ -623,8 +623,8 @@ export default {
     return new Response(text, {
       headers: {
         "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-store",
-        "cdn-cache-control": "no-store"
+        "cache-control": "public, max-age=30, stale-while-revalidate=60",
+        "cdn-cache-control": "public, max-age=30"
       }
     });
   }
