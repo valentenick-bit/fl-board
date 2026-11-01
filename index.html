@@ -6129,7 +6129,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1672;
+    window.BOARD_VER = 1673;
 
     
     function communityShort() {
@@ -20483,7 +20483,7 @@ function paintObservatories() { paintObsTable(); }
       if (map && ap) {
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
       }
-      body.innerHTML = "<p class=\"pill-key\">Loading aircraft within 200 mi of " + ap.code + "…</p>";
+      body.innerHTML = "<p class=\"pill-key\">Loading aircraft near " + ap.code + "…</p>";
       var url = "/adsb?lat=" + ap.lat.toFixed(3) + "&lon=" + ap.lon.toFixed(3) + "&dist=200";
       fetch(url).then(function (r) { return r.json(); }).then(function (j) {
         var ac = (j && j.ac) || [];
@@ -20504,6 +20504,11 @@ function paintObservatories() { paintObsTable(); }
           if (!ms || isNaN(ms)) return "—";
           return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
         }
+        var metric = typeof useMetric === "function" && useMetric();
+        var altUnit = metric ? "m" : "ft";
+        var spdUnit = metric ? "km/h" : "kt";
+        var distUnit = metric ? "km" : "mi";
+        var distCap = metric ? 320 : 200;
         var rows = ac.map(function (a) {
           var lat = Number(a.lat), lon = Number(a.lon);
           if (!isFinite(lat) || !isFinite(lon)) return null;
@@ -20513,24 +20518,27 @@ function paintObservatories() { paintObsTable(); }
           var brg = bearing(lat, lon, ap.lat, ap.lon);
           var diff = Math.abs(((hdg - brg + 540) % 360) - 180);
           var inbound = diff < 60;
-          var spd = Number(a.gs || 0);
-          var eta = (inbound && spd > 30) ? (Date.now() + (d / spd) * 3600000) : null;
-          var depEst = (!inbound && spd > 30) ? (Date.now() - (d / spd) * 3600000) : null;
+          var spdKt = Number(a.gs || 0);
+          var eta = (inbound && spdKt > 30) ? (Date.now() + (d / spdKt) * 3600000) : null;
+          var depEst = (!inbound && spdKt > 30) ? (Date.now() - (d / spdKt) * 3600000) : null;
+          var altFt = Number(a.alt_baro || a.alt_geom || 0);
+          var altShow = metric ? Math.round(altFt * 0.3048) : Math.round(altFt);
+          var spdShow = metric ? Math.round(spdKt * 1.852) : Math.round(spdKt);
           return {
             call: (a.flight || a.r || "").trim() || "—",
             dir: inbound ? "Arr" : "Dep",
             arr: inbound ? fmtTime(eta) : "—",
             dep: inbound ? "—" : fmtTime(depEst),
-            alt: a.alt_baro || a.alt_geom || 0,
-            spd: spd,
+            alt: altShow,
+            spd: spdShow,
             hdg: hdg,
             dist: d
           };
         }).filter(Boolean).sort(function (a, b) { return a.dist - b.dist; }).slice(0, 16);
-        if (!rows.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft within 200 mi of " + ap.code + ".</p>"; return; }
-        var th = "<tr><th>Flight</th><th></th><th>Arr</th><th>Dep</th><th>Alt</th><th>Spd</th><th>Dir</th></tr>";
+        if (!rows.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft within " + distCap + " " + distUnit + " of " + ap.code + ".</p>"; return; }
+        var th = "<tr><th>Flight</th><th>Type</th><th>Arr</th><th>Dep</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
         var tr = rows.map(function (r) {
-          return "<tr><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? Math.round(r.alt).toLocaleString() : "—") + "</td><td>" + (r.spd ? Math.round(r.spd) : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>";
+          return "<tr><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? r.alt.toLocaleString() : "—") + "</td><td>" + (r.spd ? r.spd : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>";
         }).join("");
         body.innerHTML = "<table class=\"ap-board\">" + th + tr + "</table>";
       }).catch(function () {
