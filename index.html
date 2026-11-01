@@ -6359,7 +6359,13 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1711;
+    window.BOARD_VER = 1712;
+
+    function defer(fn, ms) {
+      if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
+      else setTimeout(fn, ms || 400);
+    }
+
 
     
     function communityShort() {
@@ -23244,7 +23250,7 @@ function paint() {
         var annCard = document.getElementById("comm-announce-card");
         if (annCard) annCard.hidden = true;
         paintCommList("comm-news", j.newsletters || [], "No newsletter on file.");
-        if (typeof loadListings === "function") loadListings();
+        if (typeof loadListings === "function") setTimeout(loadListings, 800);
         paintCommList("comm-survey", surveys, "");
         var surveyCard = document.getElementById("comm-survey-card");
         if (surveyCard) surveyCard.hidden = !surveys.length;
@@ -23416,7 +23422,7 @@ function paint() {
       setInterval(function () { next(0); }, 30 * 60 * 1000);
     }
 
-    (function loadEats() {
+    defer(function loadEats() {
       function milesOf(lat, lon) {
         if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) return null;
         var R = 3958.8, toR = Math.PI / 180;
@@ -24393,7 +24399,7 @@ function mustEatsFL() {
       }
       window.reloadEats = startEats;
       setTimeout(startEats, 900);
-    })();
+    }, 600);
     (function loadGolf() {
       function milesOf(lat, lon) {
         if (typeof window.milesOf === "function") return window.milesOf(lat, lon);
@@ -24931,7 +24937,7 @@ function mustEatsFL() {
       }
       next(0);
     })();
-    (function loadFlights() {
+    defer(function loadFlights() {
       var el = document.getElementById("live-flights");
       if (typeof noteFeed === "function") noteFeed("flights", true, "loading scan");
       var urls = gitFileUrls("flights.json").concat(gitFileUrls("flights-keep.json"));
@@ -25032,7 +25038,7 @@ function mustEatsFL() {
       }
       load();
       setInterval(load, 30 * 60 * 1000);
-    })();
+    }, 400);
     (function fplCounts() {
       var body = document.getElementById("storm-power-body");
       var dials = document.getElementById("storm-power-dials");
