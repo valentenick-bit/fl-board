@@ -4955,9 +4955,15 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <button type="button" data-nf="local" class="on">Local</button>
           <button type="button" data-nf="weather">Weather</button>
           <button type="button" data-nf="traffic">Traffic</button>
+          <button type="button" data-nf="sports">Sports</button>
+          <button type="button" data-nf="community">Community</button>
         </div>
         <div id="wink-list">
           <div class="card"><b>Local headlines</b><span>Pulling local headlines</span></div>
+        </div>
+        <div class="card" id="news-guides-card" style="margin-top:14px">
+          <b>Local guides & resources</b>
+          <div id="news-guides" style="margin-top:10px;font-size:14px;line-height:1.55"></div>
         </div>
         <p class="pill-key" id="news-note">Headlines follow the home address.</p>
       </section>
@@ -6359,7 +6365,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1714;
+    window.BOARD_VER = 1715;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -25999,14 +26005,15 @@ function mustEatsFL() {
         var rest = rows.slice(1);
         function card(r, big) {
           var when = relTime(r.when) || homePlace();
-          var img = r.img ? '<img src="' + r.img + '" alt="" style="' + (big ? "width:100%;height:180px" : "width:92px;height:68px") + ';object-fit:cover;border-radius:10px;background:#ddd;flex:0 0 auto">' : "";
+          var imgStyle = big ? "width:100%;height:210px;object-fit:cover;border-radius:12px;background:#eee;display:block" : "width:108px;height:76px;object-fit:cover;border-radius:10px;background:#eee;flex:0 0 auto";
+          var img = r.img ? '<img src="' + (r.img || "").replace(/"/g, "") + '" alt="" style="' + imgStyle + '">' : '<div style="' + imgStyle + ';display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;border:1px solid #eee">No photo</div>';
           var src = '<span class="place-tag place-out" style="font-size:11px">' + (r.src || "Local") + "</span>";
           if (big) {
-            return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:block;text-decoration:none;color:inherit">' +
-              img + '<div style="margin-top:8px">' + src + ' <span class="pill-key">' + when + '</span></div><b style="font-size:18px;display:block;margin-top:4px">' + r.title + "</b></a>";
+            return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:block;text-decoration:none;color:inherit;padding:0;overflow:hidden;border-radius:14px">' +
+              img + '<div style="padding:12px 14px 16px"><div style="margin-bottom:6px">' + src + ' <span class="pill-key">' + when + '</span></div><b style="font-size:18px;line-height:1.3;display:block">' + r.title + "</b></div></a>";
           }
-          return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit">' +
-            img + '<div><div>' + src + ' <span class="pill-key">' + when + '</span></div><b>' + r.title + "</b></div></a>";
+          return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:flex;gap:12px;align-items:flex-start;text-decoration:none;color:inherit;padding:12px">' +
+            img + '<div style="flex:1"><div style="margin-bottom:4px">' + src + ' <span class="pill-key">' + when + '</span></div><b style="font-size:15px;line-height:1.3">' + r.title + "</b></div></a>";
         }
         box.innerHTML = card(lead, true) + rest.map(function (r) { return card(r, false); }).join("");
       }
@@ -26022,6 +26029,13 @@ function mustEatsFL() {
         } else if (mode === "traffic") {
           qs.push(place + " " + st + " traffic OR accident OR crash when:2d");
           qs.push(zip + " traffic when:2d");
+        } else if (mode === "sports") {
+          qs.push(place + " " + st + " sports OR high school OR UConn OR Yankees OR Giants when:7d");
+          qs.push(st + " high school football OR basketball OR baseball when:7d");
+        } else if (mode === "community") {
+          qs.push(place + " " + st + " community OR town OR meeting OR event OR festival when:14d");
+          if (st === "CT") qs.push("site:southwindsor-ct.gov OR site:windsorct.gov when:30d");
+          else qs.push("site:yoursun.com OR site:englewoodfl.org when:14d");
         } else {
           qs.push(place + " " + st + " when:7d");
           qs.push(zip + " when:7d");
@@ -26075,6 +26089,59 @@ function mustEatsFL() {
       load();
       setInterval(load, 10 * 60 * 1000);
     })();
+
+    function populateNewsGuides() {
+      var el = document.getElementById("news-guides");
+      if (!el) return;
+      var st = (typeof homeState === "function" ? homeState() : "FL");
+      var place = (typeof homePlace === "function" ? homePlace() : "");
+      var html = "";
+      if (st === "CT" || /south windsor|hartford|connecticut|windsor/i.test(place)) {
+        html = '<div style="margin-bottom:8px"><a href="https://www.southwindsor-ct.gov/" target="_blank" rel="noopener"><b>Town of South Windsor</b></a> — official meetings, news & documents</div>' +
+               '<div style="margin-bottom:8px"><a href="https://www.courant.com/local-news/" target="_blank" rel="noopener"><b>Hartford Courant · Local</b></a> — regional Connecticut headlines</div>' +
+               '<div style="margin-bottom:8px"><a href="https://portal.ct.gov/DEMHS" target="_blank" rel="noopener"><b>CT DEMHS Emergency Guide</b></a> — preparedness, alerts, resources</div>' +
+               '<div style="margin-bottom:8px"><a href="https://www.windsorct.gov/625/Stay-Connected" target="_blank" rel="noopener"><b>Windsor Community Guides</b></a> — seasonal magazines & town newsletters</div>' +
+               '<div><a href="https://patch.com/connecticut/southwindsor" target="_blank" rel="noopener"><b>South Windsor Patch</b></a> — community updates and local stories</div>';
+      } else {
+        html = '<div style="margin-bottom:8px"><a href="https://www.scgov.net/beprepared" target="_blank" rel="noopener"><b>Sarasota County Be Prepared</b></a> — official emergency preparedness guide</div>' +
+               '<div style="margin-bottom:8px"><a href="https://www.winknews.com/" target="_blank" rel="noopener"><b>WINK News</b></a> — Southwest Florida local coverage</div>' +
+               '<div style="margin-bottom:8px"><a href="https://www.yoursun.com/" target="_blank" rel="noopener"><b>Your Sun / Englewood</b></a> — community newspaper</div>' +
+               '<div><a href="https://www.englewoodfl.org/" target="_blank" rel="noopener"><b>Englewood area resources</b></a> — local community info</div>';
+      }
+      el.innerHTML = html;
+    }
+    setTimeout(populateNewsGuides, 800);
+    if (typeof window.__reloadLocalNews === "function") {
+      var _origNews = window.__reloadLocalNews;
+      window.__reloadLocalNews = function () { _origNews(); setTimeout(populateNewsGuides, 300); };
+    }
+
+    function populateNewsGuides() {
+      var el = document.getElementById("news-guides");
+      if (!el) return;
+      var st = (typeof homeState === "function" ? homeState() : "FL");
+      var place = (typeof homePlace === "function" ? homePlace() : "");
+      var html = "";
+      if (st === "CT" || /south windsor|hartford|connecticut|windsor/i.test(place)) {
+        html = '<div style="margin-bottom:8px"><a href="https://www.southwindsor-ct.gov/" target="_blank" rel="noopener"><b>Town of South Windsor</b></a> — official meetings, news & documents</div>' +
+               '<div style="margin-bottom:8px"><a href="https://www.courant.com/local-news/" target="_blank" rel="noopener"><b>Hartford Courant · Local</b></a> — regional Connecticut headlines</div>' +
+               '<div style="margin-bottom:8px"><a href="https://portal.ct.gov/DEMHS" target="_blank" rel="noopener"><b>CT DEMHS Emergency Guide</b></a> — preparedness, alerts, resources</div>' +
+               '<div style="margin-bottom:8px"><a href="https://www.windsorct.gov/625/Stay-Connected" target="_blank" rel="noopener"><b>Windsor Community Guides</b></a> — seasonal magazines & town newsletters</div>' +
+               '<div><a href="https://patch.com/connecticut/southwindsor" target="_blank" rel="noopener"><b>South Windsor Patch</b></a> — community updates and local stories</div>';
+      } else {
+        html = '<div style="margin-bottom:8px"><a href="https://www.scgov.net/beprepared" target="_blank" rel="noopener"><b>Sarasota County Be Prepared</b></a> — official emergency preparedness guide</div>' +
+               '<div style="margin-bottom:8px"><a href="https://www.winknews.com/" target="_blank" rel="noopener"><b>WINK News</b></a> — Southwest Florida local coverage</div>' +
+               '<div style="margin-bottom:8px"><a href="https://www.yoursun.com/" target="_blank" rel="noopener"><b>Your Sun / Englewood</b></a> — community newspaper</div>' +
+               '<div><a href="https://www.englewoodfl.org/" target="_blank" rel="noopener"><b>Englewood area resources</b></a> — local community info</div>';
+      }
+      el.innerHTML = html;
+    }
+    setTimeout(populateNewsGuides, 800);
+    if (typeof window.__reloadLocalNews === "function") {
+      var _origNews = window.__reloadLocalNews;
+      window.__reloadLocalNews = function () { _origNews(); setTimeout(populateNewsGuides, 300); };
+    }
+
         (function fishReport() {
       var el = document.getElementById("live-fish");
       var kindEl = document.getElementById("fish-kind");
