@@ -1,4 +1,4 @@
-const SOURCE = "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@6de7a095f4df781706b263ccc7dcf2b43e289489/index.html";
+const SOURCE = "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@main/index.html";
 
 const BW = "605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947@group.calendar.google.com";
 const ENG = "a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6@group.calendar.google.com";
@@ -610,7 +610,9 @@ export default {
       return new Response("Set SOURCE to the GitHub Raw URL of index.html.", { status: 500 });
     }
 
-    const r = await fetch(raw, {
+    const bust = Math.floor(Date.now() / 60000); // new URL every minute
+    const url = raw + (raw.indexOf("?") >= 0 ? "&" : "?") + "v=" + bust;
+    const r = await fetch(url, {
       headers: { "User-Agent": "Commons/1.0", "Accept": "text/html" },
       cf: { cacheTtl: 0, cacheEverything: false }
     });
