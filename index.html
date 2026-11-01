@@ -6339,7 +6339,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1699;
+    window.BOARD_VER = 1700;
 
     
     function communityShort() {
@@ -9631,7 +9631,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     function paintListings() {
       var box = document.getElementById("comm-re");
       if (!box) return;
-      if (!BW_LISTINGS.length) { box.innerHTML = "<p class=\"pill-key\">No listings on file.</p>"; return; }
+      var head = document.querySelector("#comm-re-card > b"); if (head) head.textContent = BW_LISTINGS.length ? ("Homes for sale · " + BW_LISTINGS.length) : "Homes for sale"; if (!BW_LISTINGS.length) { box.innerHTML = "<p class=\"pill-key\">No listings on file.</p>"; return; }
       var seen = reStore("bw-re-seen");
       var watch = reStore("bw-re-watch");
       // drop watches for listings that are gone
@@ -30050,19 +30050,55 @@ function wxSvg(kind, box) {
           }
           var td = document.querySelector(".tenday");
           if (td && days.length) {
-            var dayPeriods = days.filter(function (p) { return p.isDaytime; }).slice(0, 7);
+            var dayPeriods = days.filter(function (p) { return p.isDaytime; });
             var nightPeriods = days.filter(function (p) { return !p.isDaytime; });
-            td.innerHTML = dayPeriods.map(function (d, i) {
-              var name = i === 0 ? "Today" : d.name.slice(0, 3);
+            function paintDays(list) {
+              td.innerHTML = list.map(function (d, i) {
+                var name = d.label || (i === 0 ? "Today" : "");
+                var lo = d.lo != null && d.lo !== "" ? d.lo : "";
+                var pop = Number(d.pop) || 0;
+                var kind = typeof wxKind === "function" ? wxKind(d.shortForecast || d.fx || "", "day", pop) : "partly";
+                var icon = typeof wxSvg === "function" ? wxSvg(kind, 26) : "";
+                var popHtml = pop >= 10 ? '<span class="dpop">' + Math.round(pop) + '%</span>' : '';
+                return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + d.temperature + '&deg;</span>' + icon + (lo !== "" ? '<span class="lo">' + lo + '&deg;</span>' : '') + popHtml + '<span class="dname">' + name + '</span></div>';
+              }).join("");
+              if (typeof noteFeed === "function") noteFeed("10-day", true, list.length + " days");
+            }
+            var base = dayPeriods.map(function (d, i) {
               var night = nightPeriods[i];
-              var lo = night ? night.temperature : "";
-              var pop = (d.probabilityOfPrecipitation && d.probabilityOfPrecipitation.value) || 0;
-              var kind = typeof wxKind === "function" ? wxKind(d.shortForecast, "day", pop) : "partly";
-              var icon = typeof wxSvg === "function" ? wxSvg(kind, 26) : "";
-              var popHtml = pop >= 10 ? '<span class="dpop">' + Math.round(pop) + '%</span>' : '';
-              return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + d.temperature + '&deg;</span>' + icon + (lo ? '<span class="lo">' + lo + '&deg;</span>' : '') + popHtml + '<span class="dname">' + name + '</span></div>';
-            }).join("");
-            if (typeof noteFeed === "function") noteFeed("10-day", true, dayPeriods.length + " days");
+              return {
+                temperature: d.temperature,
+                lo: night ? night.temperature : "",
+                pop: (d.probabilityOfPrecipitation && d.probabilityOfPrecipitation.value) || 0,
+                shortForecast: d.shortForecast,
+                label: i === 0 ? "Today" : d.name.slice(0, 3)
+              };
+            });
+            paintDays(base.slice(0, 10));
+            if (base.length < 10) {
+              fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=auto")
+                .then(function (r) { return r.json(); })
+                .then(function (om) {
+                  var times = (om.daily && om.daily.time) || [];
+                  var his = (om.daily && om.daily.temperature_2m_max) || [];
+                  var los = (om.daily && om.daily.temperature_2m_min) || [];
+                  var pops = (om.daily && om.daily.precipitation_probability_max) || [];
+                  var codes = (om.daily && om.daily.weather_code) || [];
+                  function word(c) { return c >= 95 ? "Thunderstorms" : c >= 80 ? "Showers" : c >= 61 ? "Rain" : c >= 3 ? "Cloudy" : c >= 2 ? "Partly cloudy" : "Sunny"; }
+                  var extra = [];
+                  for (var i = base.length; i < Math.min(10, times.length); i++) {
+                    var dt = new Date(times[i] + "T12:00:00");
+                    extra.push({
+                      temperature: Math.round(his[i]),
+                      lo: Math.round(los[i]),
+                      pop: pops[i] || 0,
+                      fx: word(codes[i] || 0),
+                      label: dt.toLocaleDateString("en-US", { weekday: "short" })
+                    });
+                  }
+                  if (extra.length) paintDays(base.concat(extra).slice(0, 10));
+                }).catch(function () {});
+            }
           }
         }).catch(function () {});
     }
