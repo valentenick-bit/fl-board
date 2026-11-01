@@ -6342,7 +6342,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1702;
+    window.BOARD_VER = 1703;
 
     
     function communityShort() {
@@ -30111,44 +30111,42 @@ function wxSvg(kind, box) {
       if (!td) return;
       if (td.querySelectorAll(".day").length >= 10) return;
       var lat = typeof homeLat === "function" ? homeLat() : 26.96;
-      var lon = typeof homeLon === "function" ? homeLon() : -82.35;
-      fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=" + lat + "&lon=" + lon, {
-        headers: { "User-Agent": "CommonsBoard/1.0" }
-      }).then(function (r) { return r.json(); }).then(function (d) {
-        var series = (d.properties && d.properties.timeseries) || [];
-        if (!series.length) return;
-        var byDay = {};
-        series.forEach(function (p) {
-          var key = p.time.slice(0, 10);
-          var t = p.data && p.data.instant && p.data.instant.details && p.data.instant.details.air_temperature;
-          if (t == null) return;
-          if (!byDay[key]) byDay[key] = { hi: -99, lo: 99 };
-          if (t > byDay[key].hi) byDay[key].hi = t;
-          if (t < byDay[key].lo) byDay[key].lo = t;
-        });
-        var keys = Object.keys(byDay).sort().slice(0, 10);
-        if (keys.length < 8) return;
-        var rows = keys.map(function (key, i) {
-          var dt = new Date(key + "T12:00:00");
-          var c2f = function (c) { return Math.round(c * 9 / 5 + 32); };
-          return {
-            label: i === 0 ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" }),
-            date: (dt.getMonth() + 1) + "/" + dt.getDate(),
-            hi: c2f(byDay[key].hi),
-            lo: c2f(byDay[key].lo),
-            pop: 0,
-            fx: "",
-            today: i === 0
-          };
-        });
-        if (typeof paintTendayCapsules === "function") paintTendayCapsules(rows);
-        else {
-          td.innerHTML = rows.map(function (r, i) {
-            return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + r.hi + '&deg;</span><span class="lo">' + r.lo + '&deg;</span><span class="dname">' + r.label + '</span></div>';
-          }).join("");
-        }
-        if (typeof noteFeed === "function") noteFeed("10-day", true, rows.length + " days");
-      }).catch(function () {});
+      var urls = typeof gitFileUrls === "function" ? gitFileUrls("forecast10.json") : ["https://raw.githubusercontent.com/valentenick-bit/fl-board/main/forecast10.json"];
+      var i = 0;
+      function tryNext() {
+        if (i >= urls.length) return;
+        fetch(urls[i]).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+          if (!j || !j.pins) { i++; tryNext(); return; }
+          var best = null, bestD = 1e9;
+          Object.keys(j.pins).forEach(function (k) {
+            var p = j.pins[k];
+            var d = Math.abs(p.lat - lat);
+            if (d < bestD) { bestD = d; best = p; }
+          });
+          var days = (best && best.days) || [];
+          if (days.length < 8) { i++; tryNext(); return; }
+          var rows = days.slice(0, 10).map(function (r, n) {
+            var dt = new Date(r.date + "T12:00:00");
+            return {
+              label: n === 0 ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" }),
+              date: (dt.getMonth() + 1) + "/" + dt.getDate(),
+              hi: r.hi,
+              lo: r.lo,
+              pop: 0,
+              fx: "",
+              today: n === 0
+            };
+          });
+          if (typeof paintTendayCapsules === "function") paintTendayCapsules(rows);
+          else {
+            td.innerHTML = rows.map(function (r, n) {
+              return '<div class="day' + (n === 0 ? " today" : "") + '"><span class="hi">' + r.hi + '&deg;</span><span class="lo">' + r.lo + '&deg;</span><span class="dname">' + r.label + '</span></div>';
+            }).join("");
+          }
+          if (typeof noteFeed === "function") noteFeed("10-day", true, rows.length + " days");
+        }).catch(function () { i++; tryNext(); });
+      }
+      tryNext();
     }
     setTimeout(ensureTenDay, 1200);
     setTimeout(ensureTenDay, 5000);
