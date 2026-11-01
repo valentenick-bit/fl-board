@@ -1,0 +1,54 @@
+name: Refresh 10-day forecast
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build forecast10.json
+        run: |
+          python3 << 'PY'
+          import json, urllib.request
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          from collections import defaultdict
+          pins = {"fl": (26.96, -82.35), "ct": (41.85, -72.57)}
+          tz = ZoneInfo("America/New_York")
+          def fetch(lat, lon):
+              url = f"https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat}&lon={lon}"
+              req = urllib.request.Request(url, headers={"User-Agent": "CommonsBoard/1.0"})
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  return json.load(r)
+          out = {"updated": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "source": "met.no", "pins": {}}
+          for name, (lat, lon) in pins.items():
+              d = fetch(lat, lon)
+              series = d["properties"]["timeseries"]
+              by = defaultdict(list)
+              for p in series:
+                  t = p["data"]["instant"]["details"].get("air_temperature")
+                  if t is None: continue
+                  dt = datetime.fromisoformat(p["time"].replace("Z","+00:00")).astimezone(tz)
+                  by[dt.date().isoformat()].append(t)
+              days = []
+              for i, key in enumerate(sorted(by)[:10]):
+                  vals = by[key]
+                  dt = datetime.fromisoformat(key)
+                  days.append({"date": key, "label": "Today" if i == 0 else dt.strftime("%a"), "hi": round(max(vals)*9/5+32), "lo": round(min(vals)*9/5+32)})
+              out["pins"][name] = {"lat": lat, "lon": lon, "days": days}
+          open("forecast10.json","w").write(json.dumps(out, indent=2))
+          print("days", len(out["pins"]["fl"]["days"]))
+          PY
+      - name: Commit
+        run: |
+          git config user.name "commons-bot"
+          git config user.email "bot@commons.local"
+          git add forecast10.json
+          git diff --cached --quiet || git commit -m "forecast10.json: refresh" && git push
