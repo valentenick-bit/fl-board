@@ -6131,7 +6131,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1679;
+    window.BOARD_VER = 1680;
 
     
     function communityShort() {
@@ -22727,10 +22727,17 @@ function paint() {
         (need || []).forEach(function (r) { needTitles[normTitle(r)] = 1; });
         var feedRaw = [].concat(j.notices || j.notifications || [], j.announce || [], recentArch);
         var seenFeed = {};
+        var seenBody = {};
         var feed = feedRaw.filter(function (r) {
           var k = normTitle(r);
-          if (!k || seenFeed[k] || needTitles[k]) return false;
+          var bodyKey = String(r.body || r.summary || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 80);
+          var dateKey = String(r.posted || r.when || r.date || "").slice(0, 10);
+          var combo = k + "|" + dateKey;
+          if (!k || seenFeed[k] || seenFeed[combo] || needTitles[k]) return false;
+          if (bodyKey && bodyKey.length > 20 && seenBody[bodyKey]) return false;
           seenFeed[k] = 1;
+          seenFeed[combo] = 1;
+          if (bodyKey && bodyKey.length > 20) seenBody[bodyKey] = 1;
           return true;
         }).sort(function (a, b) {
           return String(b.posted || b.when || b.date || "").localeCompare(String(a.posted || a.when || a.date || ""));
