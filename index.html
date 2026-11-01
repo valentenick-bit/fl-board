@@ -6149,7 +6149,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1682;
+    window.BOARD_VER = 1683;
 
     
     function communityShort() {
@@ -9400,17 +9400,23 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       }
       if (typeof noteFeed === "function") noteFeed("bw-prep", true, on ? "BeachWalk guide cards on" : "hidden · other pin");
     }
-    var BW_LISTINGS = [
-      { addr:"10470 Abaco Falls Dr", price:494900, beds:3, baths:2, sqft:1394, year:2024, mls:"A4710817", hoa:379, img:"https://cdn.listingphotos.sierrastatic.com/large/v1793376226/240/240_A4710817_01.jpg", desc:"Hallmark model on a private preserve homesite. Upgraded landscaping, paver driveway, nature views. No CDD fees. Taxes $5,152." },
-      { addr:"26110 Seastone Dr", price:590050, beds:3, baths:2, sqft:1735, year:2023, mls:"TB8561695", hoa:379, img:"https://cdn.listingphotos.sierrastatic.com/large/v1793360842/240/240_TB8561695_01.jpg", desc:"Water-view home on a quiet cul-de-sac. Stone exterior, extended lanai, fenced yard, pond and preserve views. Taxes $5,334." },
-      { addr:"10088 Coral Shore Dr", price:649000, beds:3, baths:2, sqft:1902, year:2023, mls:"N6145902", hoa:386, img:"https://photos.zillowstatic.com/fp/396361f105039e9d5ef069860ff9936b-cc_ft_1536.jpg", desc:"Upgraded Mystique model. Whole-house generator, accordion storm shutters, quartz counters, open floor plan. Open house Nov 1. Price cut $10k." },
-      { addr:"9897 Bright Water Dr", price:409000, beds:2, baths:2, sqft:1410, year:2023, mls:"TB8542030", hoa:367, img:"https://cdn.listingphotos.sierrastatic.com/large/v1789229764/240/240_TB8542030_01.jpg", desc:"Waterfront villa. Tile throughout, upgraded kitchen with granite, extended lanai, epoxy garage. Price reduced $10k. Taxes $4,433." },
-      { addr:"9982 Bright Water Dr", price:1099000, beds:3, baths:3.5, sqft:2797, year:2024, mls:"N6145233", hoa:401, img:"https://images-listings.century21.com/MFRMLS/N6/14/52/33/_P/N6145233_P00.jpg", desc:"DiVosta Renown pool home. Saltwater pool, 3-car garage, impact glass, whole-house generator. All bedrooms ensuite. Taxes $7,967." },
-      { addr:"26209 Coral Harbour Dr", price:1121649, beds:3, baths:3.5, sqft:2808, year:2026, mls:"TB8559403", hoa:401, img:"", desc:"New construction by DiVosta. Under construction. Flood zone X." }
-    ];
+    var BW_LISTINGS = [];
+    function loadListings() {
+      var urls = typeof gitFileUrls === "function" ? gitFileUrls("listings.json") : ["listings.json"];
+      var i = 0;
+      function tryNext() {
+        if (i >= urls.length) { paintListings(); return; }
+        fetch(urls[i]).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+          if (j && j.listings && j.listings.length) { BW_LISTINGS = j.listings; paintListings(); }
+          else { i++; tryNext(); }
+        }).catch(function () { i++; tryNext(); });
+      }
+      tryNext();
+    }
     function paintListings() {
       var box = document.getElementById("comm-re");
       if (!box) return;
+      if (!BW_LISTINGS.length) { box.innerHTML = "<p class=\"pill-key\">No listings on file.</p>"; return; }
       box.innerHTML = BW_LISTINGS.map(function (h, i) {
         var img = h.img ? '<img src="' + h.img + '" alt="" loading="lazy">' : '<img src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'90\'%3E%3Crect fill=\'%23ddd\' width=\'120\' height=\'90\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' fill=\'%23999\' font-size=\'12\'%3ENo photo%3C/text%3E%3C/svg%3E" alt="">';
         return '<div class="re-card" data-re="' + i + '">' + img + '<div><div class="re-price">$' + h.price.toLocaleString() + '</div><b>' + h.addr + '</b><div class="re-meta">' + h.beds + ' bd · ' + h.baths + ' ba · ' + h.sqft.toLocaleString() + ' sqft · ' + h.year + '</div></div></div>';
@@ -22815,7 +22821,7 @@ function paint() {
         var annCard = document.getElementById("comm-announce-card");
         if (annCard) annCard.hidden = true;
         paintCommList("comm-news", j.newsletters || [], "No newsletter on file.");
-        if (typeof paintListings === "function") paintListings();
+        if (typeof loadListings === "function") loadListings();
         paintCommList("comm-survey", surveys, "");
         var surveyCard = document.getElementById("comm-survey-card");
         if (surveyCard) surveyCard.hidden = !surveys.length;
