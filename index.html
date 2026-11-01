@@ -6129,7 +6129,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1676;
+    window.BOARD_VER = 1677;
 
     
     function communityShort() {
@@ -20489,8 +20489,9 @@ function paintObservatories() { paintObsTable(); }
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
       }
       body.innerHTML = "<p class=\"pill-key\">Loading aircraft near " + ap.code + "…</p>";
-      var url = "/adsb?lat=" + ap.lat.toFixed(3) + "&lon=" + ap.lon.toFixed(3) + "&dist=200";
-      fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+      if (!ap || !isFinite(ap.lat) || !isFinite(ap.lon)) { body.innerHTML = "<p class=\"pill-key\">No airport position.</p>"; return; }
+      var url = "/adsb?lat=" + Number(ap.lat).toFixed(3) + "&lon=" + Number(ap.lon).toFixed(3) + "&dist=100";
+      fetch(url).then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); }).then(function (j) {
         var ac = (j && j.ac) || [];
         function distMi(lat1, lon1, lat2, lon2) {
           var R = 3958.8, toR = Math.PI / 180;
@@ -20547,8 +20548,8 @@ function paintObservatories() { paintObsTable(); }
           return "<tr><td>" + (r.airline || "—") + "</td><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? r.alt.toLocaleString() : "—") + "</td><td>" + (r.spd ? r.spd : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>";
         }).join("");
         body.innerHTML = "<table class=\"ap-board\">" + th + tr + "</table>";
-      }).catch(function () {
-        body.innerHTML = "<p class=\"pill-key\">Live aircraft feed did not answer.</p>";
+      }).catch(function (err) {
+        body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
       });
     }
     if (!window.__travelBoardTimer) {
