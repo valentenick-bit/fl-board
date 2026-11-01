@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1728;
+    window.BOARD_VER = 1729;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -9726,9 +9726,15 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (/impact/i.test(desc)) tags.push("Impact glass");
       if (/under construction|new construction/i.test(desc) || Number(h.year) >= 2025) tags.push("New construction");
       if (/price reduction/i.test(desc)) tags.push("Price reduced");
+      function updatePhoto() {
+        var img = document.getElementById("re-main-img");
+        var cnt = document.getElementById("re-count");
+        if (img && photos[idx]) img.src = photos[idx];
+        if (cnt) cnt.textContent = (idx + 1) + " of " + photos.length + " · click photo for next";
+      }
       function render() {
         var src = photos[idx] || "";
-        var counter = photos.length > 1 ? ('<div class="re-count">' + (idx+1) + ' of ' + photos.length + ' · click photo for next</div>') : '';
+        var counter = photos.length > 1 ? ('<div class="re-count" id="re-count">' + (idx+1) + ' of ' + photos.length + ' · click photo for next</div>') : '';
         var imgHtml = src ? ('<img id="re-main-img" src="' + src + '" alt="" style="width:100%;height:auto;max-height:520px;object-fit:contain;cursor:pointer;border-radius:10px;display:block;background:#111">') : '';
         var tagHtml = tags.length ? ('<div class="re-tags">' + tags.map(function (t) { return '<span>' + t + '</span>'; }).join('') + '</div>') : '';
         var facts = [
@@ -9769,7 +9775,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           img.addEventListener("click", function (e) {
             e.stopPropagation();
             idx = (idx + 1) % photos.length;
-            render();
+            updatePhoto();
           });
         }
         var x = document.getElementById("re-x");
