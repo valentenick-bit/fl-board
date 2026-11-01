@@ -3867,6 +3867,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       #travel .wx-top-right { grid-column:1; }
     }
 
+
+    .ap-board { width:100%; border-collapse:collapse; font-size:13px; }
+    .ap-board th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:4px 6px; border-bottom:1px solid var(--hair); }
+    .ap-board td { padding:6px; border-bottom:1px solid rgba(196,163,90,.2); }
+    .ap-board tr:hover td { background:rgba(42,157,143,.06); }
 </style>
 </head>
 <body>
@@ -6124,7 +6129,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1671;
+    window.BOARD_VER = 1672;
 
     
     function communityShort() {
@@ -20478,25 +20483,56 @@ function paintObservatories() { paintObsTable(); }
       if (map && ap) {
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
       }
-      body.innerHTML = "<p class=\"pill-key\">Loading live aircraft near " + ap.code + "…</p>";
-      var url = "/adsb?lat=" + ap.lat.toFixed(3) + "&lon=" + ap.lon.toFixed(3) + "&dist=25";
+      body.innerHTML = "<p class=\"pill-key\">Loading aircraft within 200 mi of " + ap.code + "…</p>";
+      var url = "/adsb?lat=" + ap.lat.toFixed(3) + "&lon=" + ap.lon.toFixed(3) + "&dist=200";
       fetch(url).then(function (r) { return r.json(); }).then(function (j) {
         var ac = (j && j.ac) || [];
-        if (!ac.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft in range of " + ap.code + " right now.</p>"; return; }
-        var rows = ac.slice(0, 12).map(function (a) {
-          var call = (a.flight || a.r || "").trim() || "—";
-          var alt = a.alt_baro || a.alt_geom || 0;
-          var spd = a.gs || 0;
-          var hdg = a.track || 0;
-          var from = a.dep || "";
-          var to = a.arr || "";
-          var route = (from && to) ? (from + " → " + to) : (from || to || "");
-          var altStr = alt ? (Math.round(alt).toLocaleString() + " ft") : "";
-          var spdStr = spd ? (Math.round(spd) + " kt") : "";
-          var bits = [route, altStr, spdStr, hdg ? (Math.round(hdg) + "°") : ""].filter(Boolean).join(" · ");
-          return "<div class=\"comm-row\"><b>" + call + "</b><span>" + bits + "</span></div>";
+        function distMi(lat1, lon1, lat2, lon2) {
+          var R = 3958.8, toR = Math.PI / 180;
+          var dLat = (lat2 - lat1) * toR, dLon = (lon2 - lon1) * toR;
+          var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*toR)*Math.cos(lat2*toR)*Math.sin(dLon/2)*Math.sin(dLon/2);
+          return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+        }
+        function bearing(lat1, lon1, lat2, lon2) {
+          var toR = Math.PI / 180;
+          var dLon = (lon2 - lon1) * toR;
+          var y = Math.sin(dLon) * Math.cos(lat2 * toR);
+          var x = Math.cos(lat1 * toR) * Math.sin(lat2 * toR) - Math.sin(lat1 * toR) * Math.cos(lat2 * toR) * Math.cos(dLon);
+          return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        }
+        function fmtTime(ms) {
+          if (!ms || isNaN(ms)) return "—";
+          return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+        }
+        var rows = ac.map(function (a) {
+          var lat = Number(a.lat), lon = Number(a.lon);
+          if (!isFinite(lat) || !isFinite(lon)) return null;
+          var d = distMi(lat, lon, ap.lat, ap.lon);
+          if (d > 200) return null;
+          var hdg = Number(a.track || 0);
+          var brg = bearing(lat, lon, ap.lat, ap.lon);
+          var diff = Math.abs(((hdg - brg + 540) % 360) - 180);
+          var inbound = diff < 60;
+          var spd = Number(a.gs || 0);
+          var eta = (inbound && spd > 30) ? (Date.now() + (d / spd) * 3600000) : null;
+          var depEst = (!inbound && spd > 30) ? (Date.now() - (d / spd) * 3600000) : null;
+          return {
+            call: (a.flight || a.r || "").trim() || "—",
+            dir: inbound ? "Arr" : "Dep",
+            arr: inbound ? fmtTime(eta) : "—",
+            dep: inbound ? "—" : fmtTime(depEst),
+            alt: a.alt_baro || a.alt_geom || 0,
+            spd: spd,
+            hdg: hdg,
+            dist: d
+          };
+        }).filter(Boolean).sort(function (a, b) { return a.dist - b.dist; }).slice(0, 16);
+        if (!rows.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft within 200 mi of " + ap.code + ".</p>"; return; }
+        var th = "<tr><th>Flight</th><th></th><th>Arr</th><th>Dep</th><th>Alt</th><th>Spd</th><th>Dir</th></tr>";
+        var tr = rows.map(function (r) {
+          return "<tr><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? Math.round(r.alt).toLocaleString() : "—") + "</td><td>" + (r.spd ? Math.round(r.spd) : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>";
         }).join("");
-        body.innerHTML = "<p class=\"sheet-kicker\">Live near " + ap.code + "</p>" + rows;
+        body.innerHTML = "<table class=\"ap-board\">" + th + tr + "</table>";
       }).catch(function () {
         body.innerHTML = "<p class=\"pill-key\">Live aircraft feed did not answer.</p>";
       });
