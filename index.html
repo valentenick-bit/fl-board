@@ -4650,7 +4650,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             </div>
             <div class="ev-filters" id="travel-ap-filters"></div>
             <div class="card" id="travel-board">
-              <b>Departures & Arrivals</b>
+              <b>Live aircraft</b>
               <div id="travel-board-body"><p class="pill-key">Pick an airport.</p></div>
             </div>
           </div>
@@ -6123,7 +6123,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1666;
+    window.BOARD_VER = 1667;
 
     
     function communityShort() {
@@ -20476,43 +20476,27 @@ function paintObservatories() { paintObsTable(); }
       if (map && ap) {
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
       }
-      var key = String((typeof getSet === "function" && getSet().flightApiKey) || "").trim();
-      var cacheKey = "bw-board-" + ap.code;
-      var cached = null;
-      try { cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null"); } catch (e) {}
-      if (cached && cached.at && (Date.now() - cached.at) < 30 * 60 * 1000) {
-        paintBoardRows(body, ap, cached.deps || [], cached.arrs || []);
-        return;
-      }
-      if (!key) {
-        var all = [].concat(window.__flights || [], window.__flightData || []);
-        var mine = all.filter(function (f) {
-          var from = String(f.from || "").toUpperCase();
-          var to = String(f.to || "").toUpperCase();
-          return from.indexOf(ap.code) >= 0 || to.indexOf(ap.code) >= 0;
-        });
-        if (!mine.length) {
-          body.innerHTML = "<p class=\"pill-key\">Add a Flight board key in Settings for live departures and arrivals.</p>";
-          return;
-        }
-        paintBoardRows(body, ap, mine.filter(function (f) { return String(f.from||"").toUpperCase().indexOf(ap.code)>=0; }), mine.filter(function (f) { return String(f.to||"").toUpperCase().indexOf(ap.code)>=0; }));
-        return;
-      }
-      body.innerHTML = "<p class=\"pill-key\">Loading " + ap.code + " board…</p>";
-      var depUrl = "https://api.aviationstack.com/v1/flights?access_key=" + encodeURIComponent(key) + "&dep_iata=" + ap.code + "&limit=8";
-      var arrUrl = "https://api.aviationstack.com/v1/flights?access_key=" + encodeURIComponent(key) + "&arr_iata=" + ap.code + "&limit=8";
-      Promise.all([
-        fetch(depUrl).then(function (r) { return r.json(); }).catch(function () { return {}; }),
-        fetch(arrUrl).then(function (r) { return r.json(); }).catch(function () { return {}; })
-      ]).then(function (res) {
-        var deps = ((res[0] && res[0].data) || []).map(function (f) {
-          return { flight: (f.flight && f.flight.iata) || "", to: (f.arrival && f.arrival.iata) || "", when: (f.departure && f.departure.scheduled) || "", status: f.flight_status || "" };
-        });
-        var arrs = ((res[1] && res[1].data) || []).map(function (f) {
-          return { flight: (f.flight && f.flight.iata) || "", from: (f.departure && f.departure.iata) || "", when: (f.arrival && f.arrival.scheduled) || "", status: f.flight_status || "" };
-        });
-        try { sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), deps: deps, arrs: arrs })); } catch (e) {}
-        paintBoardRows(body, ap, deps, arrs);
+      body.innerHTML = "<p class=\"pill-key\">Loading live aircraft near " + ap.code + "…</p>";
+      var url = "https://api.airplanes.live/v2/point/" + ap.lat.toFixed(3) + "/" + ap.lon.toFixed(3) + "/25";
+      fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+        var ac = (j && j.ac) || [];
+        if (!ac.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft in range of " + ap.code + " right now.</p>"; return; }
+        var rows = ac.slice(0, 12).map(function (a) {
+          var call = (a.flight || a.r || "").trim() || "—";
+          var alt = a.alt_baro || a.alt_geom || 0;
+          var spd = a.gs || 0;
+          var hdg = a.track || 0;
+          var from = a.dep || "";
+          var to = a.arr || "";
+          var route = (from && to) ? (from + " → " + to) : (from || to || "");
+          var altStr = alt ? (Math.round(alt).toLocaleString() + " ft") : "";
+          var spdStr = spd ? (Math.round(spd) + " kt") : "";
+          var bits = [route, altStr, spdStr, hdg ? (Math.round(hdg) + "°") : ""].filter(Boolean).join(" · ");
+          return "<div class=\"comm-row\"><b>" + call + "</b><span>" + bits + "</span></div>";
+        }).join("");
+        body.innerHTML = "<p class=\"sheet-kicker\">Live near " + ap.code + "</p>" + rows;
+      }).catch(function () {
+        body.innerHTML = "<p class=\"pill-key\">Live aircraft feed did not answer.</p>";
       });
     }
     function paintAirportStatus() {
