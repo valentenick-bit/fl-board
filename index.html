@@ -6359,7 +6359,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1712;
+    window.BOARD_VER = 1713;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -30851,9 +30851,12 @@ function wxSvg(kind, box) {
       function isBreak(it) {
         var title = String(it.title || "");
         var head = title.replace(/^\s*/, "");
-        if (!/^(BREAKING|Breaking|Just [Ii]n|JUST IN|Developing|DEVELOPING|Alert|ALERT|Urgent|URGENT)\b/.test(head) && title.indexOf("BREAKING") !== 0) return false;
+        var low = title.toLowerCase();
+        var starts = /^(BREAKING|Breaking|Just [Ii]n|JUST IN|Developing|DEVELOPING|Alert|ALERT|Urgent|URGENT|Live:|LIVE:|Update:|UPDATE:|Exclusive:)\b/.test(head);
+        var contains = /\bbreaking\b|\bjust in\b|\bdeveloping\b/.test(low);
+        if (!starts && !contains && title.indexOf("BREAKING") !== 0) return false;
         var when = Date.parse(it.pubDate || "");
-        if (when && Date.now() - when > 8 * 60 * 60 * 1000) return false;
+        if (when && Date.now() - when > 12 * 60 * 60 * 1000) return false;
         return true;
       }
       function keyOf(title) {
