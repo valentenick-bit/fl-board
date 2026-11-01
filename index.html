@@ -6107,7 +6107,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1663;
+    window.BOARD_VER = 1664;
 
     
     function communityShort() {
@@ -20139,13 +20139,15 @@ function paintObservatories() { paintObsTable(); }
       var onBw = !!(row.inside || (typeof isBeachWalkEvent === "function" && isBeachWalkEvent(row)));
       var isEventsPage = !!(document.getElementById("ent-list") && document.getElementById("ent-list").querySelector(".card"));
       if (onBw && isEventsPage) {
-        var bwRow = {
-          name: "BeachWalk by Manasota Key",
-          addr: "26061 Seastone Drive, Englewood, FL 34223",
-          lat: 27.0010, lon: -82.3680,
-          kind: "event"
-        };
-        if (typeof pageMap === "function") pageMap("ent", bwRow);
+        var frame = document.getElementById("ent-map");
+        if (frame) {
+          var q = "BeachWalk by Manasota Key, 26061 Seastone Drive, Englewood, FL 34223";
+          var key = String((typeof getSet === "function" && getSet() || {}).gmapsKey || "").trim();
+          var paid = typeof mapsPaidOn === "function" ? mapsPaidOn() : !!key;
+          frame.src = (paid && key)
+            ? ("https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(key) + "&q=" + encodeURIComponent(q))
+            : ("https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&hl=en&z=16&output=embed");
+        }
         return;
       }
       if (onBw) {
