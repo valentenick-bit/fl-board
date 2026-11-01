@@ -610,23 +610,19 @@ export default {
       return new Response("Set SOURCE to the GitHub Raw URL of index.html.", { status: 500 });
     }
 
-    const git = raw + (raw.indexOf("?") >= 0 ? "&" : "?") + "cb=" + Date.now();
-
-    const r = await fetch(git, {
-      headers: { "User-Agent": "Commons/1.0", "Accept": "text/html", "Cache-Control": "no-cache" },
-      cf: { cacheTtl: 0, cacheEverything: false }
+    const r = await fetch(raw, {
+      headers: { "User-Agent": "Commons/1.0", "Accept": "text/html" },
+      cf: { cacheTtl: 180, cacheEverything: true }
     });
     if (!r.ok) {
-      return new Response("GitHub " + r.status + " for " + git, { status: 502, headers: { "content-type": "text/plain" } });
+      return new Response("GitHub " + r.status + " for " + raw, { status: 502, headers: { "content-type": "text/plain" } });
     }
     const text = await r.text();
     return new Response(text, {
       headers: {
         "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
-        "pragma": "no-cache",
-        "cdn-cache-control": "no-store",
-        "cloudflare-cdn-cache-control": "no-store"
+        "cache-control": "public, max-age=120, stale-while-revalidate=300",
+        "cdn-cache-control": "public, max-age=180"
       }
     });
   }
