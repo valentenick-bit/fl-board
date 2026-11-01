@@ -287,6 +287,46 @@ export default {
       }
     }
 
+
+    if (url.pathname === "/news-rss") {
+      const hdr = {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=600",
+        "access-control-allow-origin": "*"
+      };
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
+      const q = String(url.searchParams.get("q") || "local news").slice(0, 200);
+      const rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
+      try {
+        const r = await fetch(rss, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Commons/1.0)", Accept: "application/rss+xml, application/xml, text/xml" },
+          cf: { cacheTtl: 600 }
+        });
+        if (!r.ok) return new Response(JSON.stringify({ items: [], error: "rss " + r.status }), { status: 200, headers: hdr });
+        const xml = await r.text();
+        const items = [];
+        const chunks = xml.split(/<item[\s>]/i);
+        for (let i = 1; i < chunks.length && items.length < 12; i++) {
+          const chunk = chunks[i];
+          const titleM = chunk.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+          const linkM = chunk.match(/<link[^>]*>([\s\S]*?)<\/link>/i);
+          const dateM = chunk.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i);
+          let title = titleM ? titleM[1] : "";
+          title = title.replace(/<[^>]+>/g, " ").replace(/&/g, "&").replace(/"/g, '"').replace(/\s+/g, " ").trim();
+          if (title) {
+            items.push({
+              title: title,
+              link: linkM ? linkM[1].trim() : "",
+              pubDate: dateM ? dateM[1].trim() : ""
+            });
+          }
+        }
+        return new Response(JSON.stringify({ items: items }), { status: 200, headers: hdr });
+      } catch (e) {
+        return new Response(JSON.stringify({ items: [], error: "fetch failed" }), { status: 200, headers: hdr });
+      }
+    }
+
     if (url.pathname === "/brief") {
       const hdr = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
       if (request.method === "OPTIONS") return new Response(null, { headers: hdr });
