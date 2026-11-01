@@ -611,8 +611,8 @@ export default {
     }
 
     const bust = Math.floor(Date.now() / 60000); // new URL every minute
-    const url = raw + (raw.indexOf("?") >= 0 ? "&" : "?") + "v=" + bust;
-    const r = await fetch(url, {
+    const srcUrl = raw + (raw.indexOf("?") >= 0 ? "&" : "?") + "v=" + bust;
+    const r = await fetch(srcUrl, {
       headers: { "User-Agent": "Commons/1.0", "Accept": "text/html" },
       cf: { cacheTtl: 0, cacheEverything: false }
     });
