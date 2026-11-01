@@ -6306,7 +6306,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1697;
+    window.BOARD_VER = 1698;
 
     
     function communityShort() {
@@ -27375,22 +27375,22 @@ function mustEatsFL() {
         return;
       }
       if (illum < 0.02) { el.innerHTML = ""; return; }
-      var waxing = ph < 0.5;
       var C = 20, R = 15.5;
       var uid = "hm" + Math.round(ph * 1000);
-      var rx = Math.max(0.4, R * Math.abs(Math.cos(ph * Math.PI * 2)));
-      // Phase mask: lit portion of the disk
-      var maskInner;
-      if (illum >= 0.5) {
-        // More than half lit: full disk minus a dark ellipse on the unlit side
-        var darkX = waxing ? (C - rx) : C;
-        maskInner = '<circle cx="' + C + '" cy="' + C + '" r="' + R + '" fill="#fff"/>' +
-          '<ellipse cx="' + (waxing ? C - R + rx : C + R - rx) + '" cy="' + C + '" rx="' + rx.toFixed(2) + '" ry="' + R + '" fill="#000"/>';
+      var rx = Math.max(0.35, R * Math.abs(Math.cos(ph * Math.PI * 2)));
+      // Northern hemisphere: waxing lit on the right, waning lit on the left
+      var large = (ph > 0.25 && ph < 0.75) ? 1 : 0;
+      var top = C + " " + (C - R);
+      var bot = C + " " + (C + R);
+      var lit;
+      if (ph < 0.5) {
+        lit = "M " + top + " A " + R + " " + R + " 0 " + large + " 1 " + bot +
+          " A " + rx.toFixed(2) + " " + R + " 0 " + large + " 0 " + top + " Z";
       } else {
-        // Less than half lit: only a lit ellipse on one side
-        var litX = waxing ? C : (C - rx);
-        maskInner = '<ellipse cx="' + (waxing ? (C - R + rx) : (C + R - rx)) + '" cy="' + C + '" rx="' + rx.toFixed(2) + '" ry="' + R + '" fill="#fff"/>';
+        lit = "M " + top + " A " + R + " " + R + " 0 " + large + " 0 " + bot +
+          " A " + rx.toFixed(2) + " " + R + " 0 " + large + " 1 " + top + " Z";
       }
+      var maskInner = '<path d="' + lit + '" fill="#fff"/>';
       // Subtle crater / maria texture (only shows on lit part via mask)
       var craters = [
         [14,16,2.2],[24,14,1.6],[18,24,2.8],[26,22,1.4],[12,22,1.2],[22,18,1.8],[16,12,1.0]
@@ -30017,56 +30017,19 @@ function wxSvg(kind, box) {
           }
           var td = document.querySelector(".tenday");
           if (td && days.length) {
-            var dayPeriods = days.filter(function (p) { return p.isDaytime; });
+            var dayPeriods = days.filter(function (p) { return p.isDaytime; }).slice(0, 7);
             var nightPeriods = days.filter(function (p) { return !p.isDaytime; });
-            function paintDays(list) {
-              td.innerHTML = list.map(function (d, i) {
-                var name = d.label || (i === 0 ? "Today" : (d.name || "").slice(0, 3));
-                var lo = d.lo != null ? d.lo : "";
-                var pop = d.pop || 0;
-                var kind = typeof wxKind === "function" ? wxKind(d.shortForecast || d.fx || "", "day", pop) : "partly";
-                var icon = typeof wxSvg === "function" ? wxSvg(kind, 26) : "";
-                var popHtml = pop >= 10 ? '<span class="dpop">' + Math.round(pop) + '%</span>' : '';
-                return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + d.temperature + '&deg;</span>' + icon + (lo ? '<span class="lo">' + lo + '&deg;</span>' : '') + popHtml + '<span class="dname">' + name + '</span></div>';
-              }).join("");
-              if (typeof noteFeed === "function") noteFeed("10-day", true, list.length + " days");
-            }
-            var base = dayPeriods.map(function (d, i) {
+            td.innerHTML = dayPeriods.map(function (d, i) {
+              var name = i === 0 ? "Today" : d.name.slice(0, 3);
               var night = nightPeriods[i];
-              return {
-                temperature: d.temperature,
-                lo: night ? night.temperature : "",
-                pop: (d.probabilityOfPrecipitation && d.probabilityOfPrecipitation.value) || 0,
-                shortForecast: d.shortForecast,
-                name: d.name,
-                label: i === 0 ? "Today" : d.name.slice(0, 3)
-              };
-            });
-            paintDays(base.slice(0, 10));
-            if (base.length < 10) {
-              fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=auto")
-                .then(function (r) { return r.json(); })
-                .then(function (om) {
-                  var times = (om.daily && om.daily.time) || [];
-                  var his = (om.daily && om.daily.temperature_2m_max) || [];
-                  var los = (om.daily && om.daily.temperature_2m_min) || [];
-                  var pops = (om.daily && om.daily.precipitation_probability_max) || [];
-                  var codes = (om.daily && om.daily.weather_code) || [];
-                  function word(c) { return c >= 95 ? "Thunderstorms" : c >= 80 ? "Showers" : c >= 61 ? "Rain" : c >= 3 ? "Cloudy" : c >= 2 ? "Partly cloudy" : "Sunny"; }
-                  var extra = [];
-                  for (var i = base.length; i < Math.min(10, times.length); i++) {
-                    var dt = new Date(times[i] + "T12:00:00");
-                    extra.push({
-                      temperature: Math.round(his[i]),
-                      lo: Math.round(los[i]),
-                      pop: pops[i] || 0,
-                      fx: word(codes[i] || 0),
-                      label: dt.toLocaleDateString("en-US", { weekday: "short" })
-                    });
-                  }
-                  if (extra.length) paintDays(base.concat(extra).slice(0, 10));
-                }).catch(function () {});
-            }
+              var lo = night ? night.temperature : "";
+              var pop = (d.probabilityOfPrecipitation && d.probabilityOfPrecipitation.value) || 0;
+              var kind = typeof wxKind === "function" ? wxKind(d.shortForecast, "day", pop) : "partly";
+              var icon = typeof wxSvg === "function" ? wxSvg(kind, 26) : "";
+              var popHtml = pop >= 10 ? '<span class="dpop">' + Math.round(pop) + '%</span>' : '';
+              return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + d.temperature + '&deg;</span>' + icon + (lo ? '<span class="lo">' + lo + '&deg;</span>' : '') + popHtml + '<span class="dname">' + name + '</span></div>';
+            }).join("");
+            if (typeof noteFeed === "function") noteFeed("10-day", true, dayPeriods.length + " days");
           }
         }).catch(function () {});
     }
