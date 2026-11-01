@@ -6192,7 +6192,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1692;
+    window.BOARD_VER = 1693;
 
     
     function communityShort() {
@@ -9472,21 +9472,58 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       }
       tryNext();
     }
+    function reKey(h) {
+      return String((h && (h.mls || h.addr)) || "").toLowerCase().replace(/\s+/g, " ").trim();
+    }
+    function reStore(name) {
+      try { return JSON.parse(localStorage.getItem(name) || "{}"); } catch (e) { return {}; }
+    }
+    function reSave(name, obj) {
+      try { localStorage.setItem(name, JSON.stringify(obj)); } catch (e) {}
+    }
     function paintListings() {
       var box = document.getElementById("comm-re");
       if (!box) return;
       if (!BW_LISTINGS.length) { box.innerHTML = "<p class=\"pill-key\">No listings on file.</p>"; return; }
+      var seen = reStore("bw-re-seen");
+      var watch = reStore("bw-re-watch");
+      // drop watches for listings that are gone
+      var live = {};
+      BW_LISTINGS.forEach(function (h) { live[reKey(h)] = true; });
+      Object.keys(watch).forEach(function (k) { if (!live[k]) delete watch[k]; });
+      reSave("bw-re-watch", watch);
       box.innerHTML = BW_LISTINGS.map(function (h, i) {
+        var key = reKey(h);
         var img = h.img ? '<img src="' + h.img + '" alt="" loading="lazy">' : '<img src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'90\'%3E%3Crect fill=\'%23ddd\' width=\'120\' height=\'90\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' fill=\'%23999\' font-size=\'12\'%3ENo photo%3C/text%3E%3C/svg%3E" alt="">';
-        return '<div class="re-card" data-re="' + i + '">' + img + '<div><div class="re-price">$' + h.price.toLocaleString() + '</div><b>' + h.addr + '</b><div class="re-meta">' + h.beds + ' bd · ' + h.baths + ' ba · ' + h.sqft.toLocaleString() + ' sqft · ' + h.year + '</div></div></div>';
+        var isNew = !seen[key];
+        var isWatch = !!watch[key];
+        var pill = isNew ? '<span class="place-tag place-bw" style="font-size:10px;margin-left:6px">New</span>' : "";
+        var chk = '<label class="re-watch" style="position:absolute;top:6px;right:6px;font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;z-index:2" onclick="event.stopPropagation()"><input type="checkbox" data-watch="' + i + '"' + (isWatch ? " checked" : "") + '> Watch</label>';
+        return '<div class="re-card" data-re="' + i + '" style="position:relative">' + chk + img + '<div><div class="re-price">$' + h.price.toLocaleString() + pill + '</div><b>' + h.addr + '</b><div class="re-meta">' + h.beds + ' bd · ' + h.baths + ' ba · ' + h.sqft.toLocaleString() + ' sqft · ' + h.year + '</div></div></div>';
       }).join("");
       box.querySelectorAll(".re-card").forEach(function (c) {
         c.addEventListener("click", function () { openListing(Number(c.getAttribute("data-re"))); });
+      });
+      box.querySelectorAll("[data-watch]").forEach(function (inp) {
+        inp.addEventListener("change", function (e) {
+          e.stopPropagation();
+          var i = Number(inp.getAttribute("data-watch"));
+          var h = BW_LISTINGS[i];
+          if (!h) return;
+          var w = reStore("bw-re-watch");
+          var k = reKey(h);
+          if (inp.checked) w[k] = 1; else delete w[k];
+          reSave("bw-re-watch", w);
+        });
       });
     }
     function openListing(i) {
       var h = BW_LISTINGS[i];
       if (!h) return;
+      var seen = reStore("bw-re-seen");
+      seen[reKey(h)] = 1;
+      reSave("bw-re-seen", seen);
+      if (typeof paintListings === "function") setTimeout(paintListings, 0);
       var oldEl = document.getElementById("re-pop");
       if (oldEl) oldEl.remove();
       var zillow = "https://www.zillow.com/homes/" + encodeURIComponent(h.addr) + "_rb/";
