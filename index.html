@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1729;
+    window.BOARD_VER = 1730;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -30300,24 +30300,41 @@ function wxSvg(kind, box) {
             fetch(p.forecast, { headers: hdr }).then(function (r) { return r.json(); }),
             fetch(p.forecastHourly, { headers: hdr }).then(function (r) { return r.json(); }),
             fetch(p.observationStations, { headers: hdr }).then(function (r) { return r.json(); }).then(function (st) {
-              var feats = (st && st.features) || [];
-              var pick = feats[0];
-              if (pick && pick.properties && pick.properties.stationIdentifier) {
-                window.__obsStation = pick.properties.stationIdentifier;
-                var geo = (pick.geometry && pick.geometry.coordinates) || [];
-                var slat = geo.length >= 2 ? Number(geo[1]) : null;
-                var slon = geo.length >= 2 ? Number(geo[0]) : null;
-                var mi = (isFinite(slat) && isFinite(slon) && typeof milesLatLon === "function") ? milesLatLon(slat, slon) : null;
-                window.__obsSite = {
-                  id: pick.properties.stationIdentifier,
-                  name: pick.properties.name || pick.properties.stationIdentifier,
-                  lat: slat,
-                  lon: slon,
-                  miles: (mi != null && isFinite(mi)) ? Math.round(mi * 10) / 10 : null
-                };
+              var feats = ((st && st.features) || []).slice(0, 6);
+              if (!feats.length) return {};
+              // Prefer a station whose latest observation is under 3 hours old.
+              // KVNC (Venice) has been silent for a day; fall through to KPGD / KSRQ etc.
+              function stationFresh(feat) {
+                return fetch(feat.id + "/observations/latest", { headers: hdr })
+                  .then(function (r) { return r.json(); })
+                  .then(function (obs) {
+                    var ts = (((obs || {}).properties || {}).timestamp) || "";
+                    var age = ts ? (Date.now() - new Date(ts).getTime()) : 9e15;
+                    return { feat: feat, obs: obs, age: age };
+                  })
+                  .catch(function () { return { feat: feat, obs: {}, age: 9e15 }; });
               }
-              if (!pick) return {};
-              return fetch(pick.id + "/observations/latest", { headers: hdr }).then(function (r) { return r.json(); });
+              return Promise.all(feats.map(stationFresh)).then(function (results) {
+                results.sort(function (a, b) { return a.age - b.age; });
+                var best = results[0];
+                // If the freshest is still over 3 hours, still use it but the stale banner will show.
+                var pick = best.feat;
+                if (pick && pick.properties && pick.properties.stationIdentifier) {
+                  window.__obsStation = pick.properties.stationIdentifier;
+                  var geo = (pick.geometry && pick.geometry.coordinates) || [];
+                  var slat = geo.length >= 2 ? Number(geo[1]) : null;
+                  var slon = geo.length >= 2 ? Number(geo[0]) : null;
+                  var mi = (isFinite(slat) && isFinite(slon) && typeof milesLatLon === "function") ? milesLatLon(slat, slon) : null;
+                  window.__obsSite = {
+                    id: pick.properties.stationIdentifier,
+                    name: pick.properties.name || pick.properties.stationIdentifier,
+                    lat: slat,
+                    lon: slon,
+                    miles: (mi != null && isFinite(mi)) ? Math.round(mi * 10) / 10 : null
+                  };
+                }
+                return best.obs || {};
+              });
             })
           ]);
         })
