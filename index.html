@@ -6149,7 +6149,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1685;
+    window.BOARD_VER = 1684;
 
     
     function communityShort() {
@@ -9428,54 +9428,40 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     function openListing(i) {
       var h = BW_LISTINGS[i];
       if (!h) return;
-      var oldEl = document.getElementById("re-pop");
-      if (oldEl) oldEl.remove();
-      var zillow = "https://www.zillow.com/homes/" + encodeURIComponent(h.addr) + "_rb/";
-      var redfin = h.mls ? "https://www.redfin.com/search?q=" + encodeURIComponent(h.mls) : "";
-      var photos = (h.photos && h.photos.length) ? h.photos.slice() : (h.img ? [h.img] : []);
-      var idx = 0;
+      var old = document.getElementById("re-pop");
+      if (old) old.remove();
+      var zillow = "https://www.zillow.com/homes/" + encodeURIComponent(h.addr + " Englewood FL 34223") + "_rb/";
+      var photos = (h.photos && h.photos.length) ? h.photos : (h.img ? [h.img] : []);
+      var gallery = '';
+      if (photos.length) {
+        gallery = '<div class="re-gallery" style="display:flex;gap:6px;overflow-x:auto;margin:8px 0;max-height:160px">' +
+          photos.map(function(src, idx){ return '<img src="' + src + '" alt="" style="height:140px;border-radius:8px;cursor:pointer;flex:0 0 auto" data-g="' + idx + '">'; }).join('') +
+          '</div>';
+      }
       var pop = document.createElement("div");
       pop.id = "re-pop";
       pop.className = "re-pop";
-      var priceSq = (h.price && h.sqft) ? Math.round(h.price / h.sqft) : 0;
-      function render() {
-        var src = photos[idx] || "";
-        var counter = photos.length > 1 ? ('<div style="text-align:center;font-size:13px;color:var(--muted);margin-top:4px">' + (idx+1) + ' of ' + photos.length + ' · click photo for next</div>') : '';
-        var imgHtml = src ? ('<img id="re-main-img" src="' + src + '" alt="" style="width:100%;height:320px;object-fit:cover;border-radius:12px;cursor:pointer;background:#ddd">') : '';
-        pop.innerHTML = '<div class="re-pop-card" style="max-width:640px">' +
-          imgHtml +
-          counter +
-          '<h3>' + h.addr + '</h3>' +
-          '<div class="re-price" style="font-size:22px">$' + (h.price||0).toLocaleString() + '</div>' +
-          '<div class="re-facts">' +
-            '<span>' + (h.beds||'—') + ' bedrooms</span>' +
-            '<span>' + (h.baths||'—') + ' bathrooms</span>' +
-            '<span>' + (h.sqft||0).toLocaleString() + ' sqft</span>' +
-            '<span>Built ' + (h.year||'—') + '</span>' +
-            '<span>HOA $' + (h.hoa||'—') + '/mo</span>' +
-            (priceSq ? '<span>$' + priceSq.toLocaleString() + '/sqft</span>' : '') +
-            (h.mls ? '<span>MLS ' + h.mls + '</span>' : '') +
-          '</div>' +
-          '<p>' + (h.desc || '') + '</p>' +
-          '<p class="pill-key">Englewood, FL 34223 · BeachWalk by Manasota Key</p>' +
-          '<div class="ask-row" style="margin-top:12px">' +
-            '<a class="go" href="' + zillow + '" target="_blank" rel="noopener">Zillow</a>' +
-            (redfin ? '<a class="go" href="' + redfin + '" target="_blank" rel="noopener">Redfin</a>' : '') +
-            '<button type="button" class="ghost" id="re-close">Close</button>' +
-          '</div></div>';
-        var img = document.getElementById("re-main-img");
-        if (img && photos.length > 1) {
-          img.addEventListener("click", function (e) {
-            e.stopPropagation();
-            idx = (idx + 1) % photos.length;
-            render();
-          });
-        }
-        document.getElementById("re-close").addEventListener("click", function () { pop.remove(); });
-      }
+      pop.innerHTML = '<div class="re-pop-card">' +
+        gallery +
+        '<h3>' + h.addr + '</h3>' +
+        '<div class="re-price">$' + h.price.toLocaleString() + '</div>' +
+        '<div class="re-facts">' +
+          '<span>' + h.beds + ' bedrooms</span>' +
+          '<span>' + h.baths + ' bathrooms</span>' +
+          '<span>' + h.sqft.toLocaleString() + ' sqft</span>' +
+          '<span>Built ' + h.year + '</span>' +
+          '<span>HOA $' + h.hoa + '/mo</span>' +
+          (h.mls ? '<span>MLS ' + h.mls + '</span>' : '') +
+        '</div>' +
+        '<p>' + h.desc + '</p>' +
+        '<p class="pill-key">Englewood, FL 34223 · BeachWalk by Manasota Key</p>' +
+        '<div class="ask-row" style="margin-top:12px">' +
+          '<a class="go" href="' + zillow + '" target="_blank" rel="noopener">View on Zillow</a>' +
+          '<button type="button" class="ghost" id="re-close">Close</button>' +
+        '</div></div>';
       document.body.appendChild(pop);
       pop.addEventListener("click", function (e) { if (e.target === pop) pop.remove(); });
-      render();
+      document.getElementById("re-close").addEventListener("click", function () { pop.remove(); });
     }
     function paintCommunity() {
       var name = communityName();
@@ -20625,11 +20611,22 @@ function paintObservatories() { paintObsTable(); }
           var hdg = Number(a.track || 0);
           var brg = bearing(lat, lon, ap.lat, ap.lon);
           var diff = Math.abs(((hdg - brg + 540) % 360) - 180);
-          var inbound = diff < 60;
+          var inbound = diff < 55;
           var spdKt = Number(a.gs || 0);
-          var eta = (inbound && spdKt > 30) ? (Date.now() + (d / spdKt) * 3600000) : null;
-          var depEst = (!inbound && spdKt > 30) ? (Date.now() - (d / spdKt) * 3600000) : null;
           var altFt = Number(a.alt_baro || a.alt_geom || 0);
+          // Only estimate times when they are plausible
+          var eta = null, depEst = null;
+          if (inbound && spdKt > 80 && d < 120 && altFt < 22000) {
+            // simple: distance / speed, plus a small descent allowance if high
+            var hours = d / Math.max(spdKt, 100);
+            if (altFt > 8000) hours += Math.min(0.25, (altFt - 8000) / 120000); // rough descent
+            eta = Date.now() + hours * 3600000;
+          }
+          if (!inbound && spdKt > 60 && d < 40 && altFt < 12000) {
+            // only estimate recent departure if still low and close
+            var hoursAgo = d / Math.max(spdKt, 80);
+            if (hoursAgo < 1.2) depEst = Date.now() - hoursAgo * 3600000;
+          }
           var altShow = metric ? Math.round(altFt * 0.3048) : Math.round(altFt);
           var spdShow = metric ? Math.round(spdKt * 1.852) : Math.round(spdKt);
           return {
@@ -20641,9 +20638,15 @@ function paintObservatories() { paintObsTable(); }
             alt: altShow,
             spd: spdShow,
             hdg: hdg,
-            dist: d
+            dist: d,
+            inbound: inbound
           };
-        }).filter(Boolean).sort(function (a, b) { return a.dist - b.dist; }).slice(0, 16);
+        }).filter(Boolean)
+          .sort(function (a, b) {
+            // arrivals first, then by distance
+            if (a.inbound !== b.inbound) return a.inbound ? -1 : 1;
+            return a.dist - b.dist;
+          }).slice(0, 16);
         if (!rows.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft within " + distCap + " " + distUnit + " of " + ap.code + ".</p>"; return; }
         var th = "<tr><th>Airline</th><th>Flight</th><th>Type</th><th>Arr</th><th>Dep</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
         var tr = rows.map(function (r) {
