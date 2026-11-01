@@ -6107,7 +6107,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1664;
+    window.BOARD_VER = 1665;
 
     
     function communityShort() {
@@ -20446,19 +20446,28 @@ function paintObservatories() { paintObsTable(); }
       if (map && ap) {
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
       }
-      var flights = (window.__flights || []).filter(function (f) {
-        return (f.from || "").indexOf(ap.code) >= 0 || (f.to || "").indexOf(ap.code) >= 0;
+      var all = [].concat(window.__flights || [], window.__flightData || []);
+      var flights = all.filter(function (f) {
+        var from = String(f.from || f.departure || "").toUpperCase();
+        var to = String(f.to || f.arrival || "").toUpperCase();
+        return from.indexOf(ap.code) >= 0 || to.indexOf(ap.code) >= 0;
       });
       if (!flights.length) {
-        body.innerHTML = "<p class=\"pill-key\">No tracked flights for " + ap.code + " right now.</p>";
+        body.innerHTML = "<p class=\"pill-key\">No flights on file for " + ap.code + ".</p><p class=\"pill-key\">Tracked trips appear here when they match this airport. A live airport board needs a flight data key.</p>";
         return;
       }
-      var rows = flights.slice(0, 12).map(function (f) {
-        var dir = (f.from || "").indexOf(ap.code) >= 0 ? "Dep" : "Arr";
-        var when = f.when || "";
-        return "<div class=\"comm-row\"><b>" + dir + " " + (f.flight || "") + "</b><span>" + (f.from || "") + " → " + (f.to || "") + (when ? " · " + when : "") + "</span></div>";
-      }).join("");
-      body.innerHTML = rows;
+      var deps = flights.filter(function (f) { return String(f.from || "").toUpperCase().indexOf(ap.code) >= 0; });
+      var arrs = flights.filter(function (f) { return String(f.to || "").toUpperCase().indexOf(ap.code) >= 0; });
+      function row(f, dir) {
+        var when = f.when || f.time || "";
+        var num = f.flight || f.number || "";
+        var other = dir === "Dep" ? (f.to || "") : (f.from || "");
+        return "<div class=\"comm-row\"><b>" + dir + " " + num + "</b><span>" + other + (when ? " · " + when : "") + "</span></div>";
+      }
+      var html = "";
+      if (deps.length) html += "<p class=\"sheet-kicker\">Departures</p>" + deps.slice(0, 8).map(function (f) { return row(f, "Dep"); }).join("");
+      if (arrs.length) html += "<p class=\"sheet-kicker\">Arrivals</p>" + arrs.slice(0, 8).map(function (f) { return row(f, "Arr"); }).join("");
+      body.innerHTML = html || "<p class=\"pill-key\">No flights for " + ap.code + ".</p>";
     }
     function paintAirportStatus() {
       var box = document.getElementById("airport-status");
