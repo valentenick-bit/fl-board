@@ -4775,6 +4775,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </section>
       <section id="wink" class="page">
         <h2 data-k="Near this pin">News</h2>
+        <div class="ev-filters" id="news-filters">
+          <button type="button" data-nf="local" class="on">Local</button>
+          <button type="button" data-nf="weather">Weather</button>
+          <button type="button" data-nf="traffic">Traffic</button>
+        </div>
         <div id="wink-list">
           <div class="card"><b>Local headlines</b><span>Pulling local headlines</span></div>
         </div>
@@ -6178,7 +6183,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1688;
+    window.BOARD_VER = 1689;
 
     
     function communityShort() {
@@ -7430,6 +7435,17 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (typeof paintCivic === "function") paintCivic();
       if (typeof refreshKeyCam === "function") refreshKeyCam(true);
       if (typeof window.__reloadLocalNews === "function") window.__reloadLocalNews();
+      var nf = document.getElementById("news-filters");
+      if (nf && !nf.__wired) {
+        nf.__wired = true;
+        nf.querySelectorAll("button").forEach(function (b) {
+          b.addEventListener("click", function () {
+            window.__newsFilter = b.getAttribute("data-nf");
+            nf.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+            if (typeof window.__reloadLocalNews === "function") window.__reloadLocalNews();
+          });
+        });
+      }
       if (typeof paintRed === "function") paintRed("");
     }
     function homeAddress() {
@@ -25638,43 +25654,101 @@ function mustEatsFL() {
           var title = tag("title");
           var link = tag("link") || tag("id");
           var when = tag("pubDate") || tag("updated") || tag("published");
-          if (title) out.push({ title: title, link: link, pubDate: when });
+          var desc = tag("description") || tag("summary") || tag("content") || "";
+          var img = "";
+          var media = chunk.match(/<media:content[^>]+url=["']([^"']+)["']/i) || chunk.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i) || desc.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (media) img = media[1];
+          if (title) out.push({ title: title, link: link, pubDate: when, description: desc, img: img });
         }
         return out;
       }
       function cleanTitle(s) {
-        return String(s || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News|Google News|YourSun).*$/i, "").trim();
+        var raw = String(s || "").replace(/\s+/g, " ").trim();
+        var src = "";
+        var m = raw.match(/\s*[-–|]\s*([^|–-]{2,40})$/);
+        if (m) src = m[1].replace(/Google News/i, "").trim();
+        var title = raw.replace(/\s*[-–|]\s*(WINK News|Fox News|Google News|YourSun|NBC|ABC|CBS|Local News).*$/i, "").trim();
+        return { title: title, src: src || "Local" };
+      }
+      function relTime(when) {
+        var t = when ? new Date(when) : null;
+        if (!t || isNaN(t)) return "";
+        var diff = Date.now() - t.getTime();
+        var mins = Math.round(diff / 60000);
+        if (mins < 1) return "just now";
+        if (mins < 60) return mins + "m ago";
+        var hrs = Math.round(mins / 60);
+        if (hrs < 24) return hrs + "h ago";
+        var days = Math.round(hrs / 24);
+        if (days === 1) return "yesterday";
+        if (days < 7) return days + "d ago";
+        return t.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       }
       function render(items) {
-        var seen = {}, rows = [];
+        var seen = {}, rows = [], breaks = [];
         items.forEach(function (it) {
-          var title = cleanTitle(it.title);
+          var cleaned = cleanTitle(it.title);
+          var title = cleaned.title;
           var key = title.toLowerCase().slice(0, 48);
           if (!title || /google news/i.test(title) || seen[key]) return;
           seen[key] = true;
-          rows.push({ title: title, link: it.link || "#", when: it.pubDate || "" });
+          var row = { title: title, link: it.link || "#", when: it.pubDate || "", src: cleaned.src, img: it.img || "" };
+          rows.push(row);
+          if (/^(BREAKING|Breaking|Just [Ii]n|JUST IN)\b/.test(title) || /\bBREAKING\b/.test(it.title || "")) {
+            var whenMs = Date.parse(it.pubDate || "");
+            if (!whenMs || Date.now() - whenMs < 8 * 60 * 60 * 1000) {
+              breaks.push({ src: cleaned.src || "Local", title: title });
+            }
+          }
         });
-        rows = rows.slice(0, 10);
+        if (breaks.length) {
+          window.__deskBreak = breaks.slice(0, 5);
+          if (typeof pollBreaking === "function") pollBreaking();
+        }
+        rows = rows.slice(0, 12);
         var note = document.getElementById("news-note");
         if (note) note.textContent = homePlace() + " " + (getSet().zip || "") + " · last 7 days";
         if (!rows.length) {
           box.innerHTML = '<div class="card"><b>No local headlines yet</b><span>The local news search came back empty. Try again in a few minutes.</span></div>';
           return;
         }
-        box.innerHTML = rows.map(function (r) {
-          var t = r.when ? new Date(r.when) : null;
-          var when = (t && !isNaN(t)) ? t.toLocaleString("en-US", { weekday:"short", hour:"numeric", minute:"2-digit", timeZone:"America/New_York" }) : homePlace();
-          return '<div class="card"><b><a href="' + r.link + '" target="_blank" rel="noopener">' + r.title + "</a></b><span>" + when + "</span></div>";
-        }).join("");
+        var lead = rows[0];
+        var rest = rows.slice(1);
+        function card(r, big) {
+          var when = relTime(r.when) || homePlace();
+          var img = r.img ? '<img src="' + r.img + '" alt="" style="' + (big ? "width:100%;height:180px" : "width:92px;height:68px") + ';object-fit:cover;border-radius:10px;background:#ddd;flex:0 0 auto">' : "";
+          var src = '<span class="place-tag place-out" style="font-size:11px">' + (r.src || "Local") + "</span>";
+          if (big) {
+            return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:block;text-decoration:none;color:inherit">' +
+              img + '<div style="margin-top:8px">' + src + ' <span class="pill-key">' + when + '</span></div><b style="font-size:18px;display:block;margin-top:4px">' + r.title + "</b></a>";
+          }
+          return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit">' +
+            img + '<div><div>' + src + ' <span class="pill-key">' + when + '</span></div><b>' + r.title + "</b></div></a>";
+        }
+        box.innerHTML = card(lead, true) + rest.map(function (r) { return card(r, false); }).join("");
       }
       function feeds() {
         var place = homePlace();
         var st = homeState();
         var zip = getSet().zip || "";
-        var qs = [place + " " + st + " when:7d", zip + " when:7d"];
-        if (st === "FL") {
-          qs.push("site:winknews.com (" + place + " OR " + zip + ") when:7d");
-          qs.push("site:yoursun.com " + place + " when:7d");
+        var mode = window.__newsFilter || "local";
+        var qs = [];
+        if (mode === "weather") {
+          qs.push(place + " " + st + " weather when:3d");
+          qs.push(zip + " weather when:3d");
+        } else if (mode === "traffic") {
+          qs.push(place + " " + st + " traffic OR accident OR crash when:2d");
+          qs.push(zip + " traffic when:2d");
+        } else {
+          qs.push(place + " " + st + " when:7d");
+          qs.push(zip + " when:7d");
+          if (st === "FL") {
+            qs.push("site:winknews.com (" + place + " OR " + zip + ") when:7d");
+            qs.push("site:yoursun.com " + place + " when:7d");
+          } else if (st === "CT") {
+            qs.push("site:courant.com " + place + " when:7d");
+            qs.push("site:nbcconnecticut.com " + place + " when:7d");
+          }
         }
         return qs.map(function (q) {
           return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
