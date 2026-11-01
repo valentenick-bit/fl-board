@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+window.__ensureLeaflet = function () {
+  if (window.L) return Promise.resolve(window.L);
+  if (window.__leafletP) return window.__leafletP;
+  window.__leafletP = new Promise(function (ok, fail) {
+    var css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(css);
+    var s = document.createElement("script");
+    s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    s.onload = function () { ok(window.L); };
+    s.onerror = fail;
+    document.head.appendChild(s);
+  });
+  return window.__leafletP;
+};
+</script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Commons</title>
@@ -6149,7 +6168,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1684;
+    window.BOARD_VER = 1687;
 
     
     function communityShort() {
@@ -7863,6 +7882,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
 
 
     function paintBuoyMap(el, latN, lonN, note) {
+      if (!window.L) { var args = arguments; window.__ensureLeaflet().then(function(){ paintBuoyMap.apply(null, args); }); return; }
       if (!el || typeof L === "undefined") return;
       var lat = Number(latN), lon = Number(lonN);
       if (!isFinite(lat) || !isFinite(lon)) return;
@@ -7911,6 +7931,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
 
     function paintClarityMap(el, latN, lonN, note) {
+      if (!window.L) { var args = arguments; window.__ensureLeaflet().then(function(){ paintClarityMap.apply(null, args); }); return; }
       if (!el || typeof L === "undefined") return;
       var lat = Number(latN), lon = Number(lonN);
       if (!isFinite(lat) || !isFinite(lon)) return;
@@ -7979,6 +8000,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     }
 
     function paintZonesMap(el, latN, lonN, note) {
+      if (!window.L) { var args = arguments; window.__ensureLeaflet().then(function(){ paintZonesMap.apply(null, args); }); return; }
       if (!el || typeof L === "undefined") return;
       var lat = Number(latN), lon = Number(lonN);
       if (!isFinite(lat) || !isFinite(lon)) return;
@@ -8009,6 +8031,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (note) note.textContent = "NWS marine zones · " + (typeof homePlace === "function" ? homePlace() : "home");
     }
     function paintRipMap(el, latN, lonN, note) {
+      if (!window.L) { var args = arguments; window.__ensureLeaflet().then(function(){ paintRipMap.apply(null, args); }); return; }
       if (!el || typeof L === "undefined") return;
       var lat = Number(latN), lon = Number(lonN);
       if (!isFinite(lat) || !isFinite(lon)) return;
@@ -8193,6 +8216,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
         .catch(function () { window.__routeCache[key] = "none"; });
     }
     function paintPlaneMap(el, latN, lonN, note) {
+      if (!window.L) { var args = arguments; window.__ensureLeaflet().then(function(){ paintPlaneMap.apply(null, args); }); return; }
       if (window.__planeBusy) return;
       window.__planeBusy = true;
       if (window.__planeTimer) { clearInterval(window.__planeTimer); window.__planeTimer = null; }
