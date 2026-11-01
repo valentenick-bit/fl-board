@@ -255,6 +255,67 @@ export default {
       return grokBrief(env, payload);
     }
 
+    if (url.pathname === "/news") {
+      const hdr = {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=1800",
+        "access-control-allow-origin": "*"
+      };
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
+      const key = env && (env.CURRENTS_KEY || env.GNEWS_KEY || env.NEWS_API_KEY);
+      if (!key) {
+        return new Response(JSON.stringify({ error: "no news API key set on worker", articles: [] }), { status: 200, headers: hdr });
+      }
+      const q = String(url.searchParams.get("q") || "local news").slice(0, 180);
+      const place = String(url.searchParams.get("place") || "").slice(0, 80);
+      const query = (place ? '"' + place + '" ' : "") + q;
+      // Prefer Currents if CURRENTS_KEY is present
+      const isCurrents = !!env.CURRENTS_KEY;
+      let apiUrl;
+      if (isCurrents) {
+        apiUrl = "https://api.currentsapi.services/v1/search?keywords=" + encodeURIComponent(query) + "&language=en&page_size=12";
+      } else {
+        apiUrl = "https://gnews.io/api/v4/search?q=" + encodeURIComponent(query) + "&lang=en&max=10&apikey=" + encodeURIComponent(key);
+      }
+      try {
+        const headers = isCurrents ? { Authorization: "Bearer " + key } : {};
+        const r = await fetch(apiUrl, { headers: headers, cf: { cacheTtl: 1800 } });
+        if (!r.ok) {
+          return new Response(JSON.stringify({ error: "news api " + r.status, articles: [] }), { status: 200, headers: hdr });
+        }
+        const data = await r.json();
+        let articles = [];
+        if (isCurrents && data.news) {
+          articles = data.news.map(function (a) {
+            return {
+              title: a.title || "",
+              description: a.description || "",
+              url: a.url || "",
+              image: a.image || "",
+              publishedAt: a.published || "",
+              source: (a.source || {}).name || a.author || "Local"
+            };
+          });
+        } else if (data.articles) {
+          articles = data.articles.map(function (a) {
+            return {
+              title: a.title || "",
+              description: a.description || "",
+              url: a.url || "",
+              image: a.image || "",
+              publishedAt: a.publishedAt || "",
+              source: (a.source || {}).name || "Local"
+            };
+          });
+        }
+        return new Response(JSON.stringify({ articles: articles.slice(0, 12) }), { status: 200, headers: hdr });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: "news fetch failed", articles: [] }), { status: 200, headers: hdr });
+      }
+    }
+
+
+
     if (url.pathname === "/nws-alerts") {
       const hdr = { "content-type": "application/geo+json; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
       const point = String(url.searchParams.get("point") || "").replace("%2C", ",").trim();
