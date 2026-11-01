@@ -3904,7 +3904,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     .ap-board tr:hover td { background:rgba(42,157,143,.06); }
 
     .re-card { display:grid; grid-template-columns:120px 1fr; gap:10px; padding:8px 0; border-bottom:1px solid var(--hair); cursor:pointer; }
-    .holiday-banner {
+    
+    #tenday-scroll .tenday { width:max-content !important; max-width:none !important; }
+    #tenday-scroll .tenday .day { flex:0 0 64px !important; }
+.holiday-banner {
       margin: 0 0 12px; padding: 16px 18px; border-radius: 16px;
       text-align: center; color: #fff; position: relative; overflow: hidden;
       box-shadow: 0 8px 24px rgba(16,38,60,.12);
@@ -6339,7 +6342,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1700;
+    window.BOARD_VER = 1701;
 
     
     function communityShort() {
@@ -30103,6 +30106,46 @@ function wxSvg(kind, box) {
         }).catch(function () {});
     }
     window.forceForecastStrips = forceForecastStrips;
+    function ensureTenDay() {
+      var td = document.querySelector(".tenday");
+      if (!td) return;
+      var have = td.querySelectorAll(".day").length;
+      if (have >= 10) return;
+      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + (typeof homeLat === "function" ? homeLat() : 27.0) +
+        "&longitude=" + (typeof homeLon === "function" ? homeLon() : -82.4) +
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=America%2FNew_York";
+      fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+        var times = (d.daily && d.daily.time) || [];
+        var his = (d.daily && d.daily.temperature_2m_max) || [];
+        var los = (d.daily && d.daily.temperature_2m_min) || [];
+        var pops = (d.daily && d.daily.precipitation_probability_max) || [];
+        var codes = (d.daily && d.daily.weather_code) || [];
+        if (times.length < 8) return;
+        function word(c) { return c >= 95 ? "Thunderstorms" : c >= 80 ? "Showers" : c >= 61 ? "Rain" : c >= 3 ? "Cloudy" : c >= 2 ? "Partly cloudy" : "Sunny"; }
+        var rows = times.slice(0, 10).map(function (day, i) {
+          var dt = new Date(day + "T12:00:00");
+          return {
+            label: i === 0 ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" }),
+            date: (dt.getMonth() + 1) + "/" + dt.getDate(),
+            hi: Math.round(his[i]),
+            lo: Math.round(los[i]),
+            pop: pops[i] || 0,
+            fx: word(codes[i] || 0),
+            today: i === 0
+          };
+        });
+        if (typeof paintTendayCapsules === "function") paintTendayCapsules(rows);
+        else {
+          td.innerHTML = rows.map(function (r, i) {
+            return '<div class="day' + (i === 0 ? " today" : "") + '"><span class="hi">' + r.hi + '&deg;</span><span class="lo">' + r.lo + '&deg;</span><span class="dname">' + r.label + '</span></div>';
+          }).join("");
+        }
+        if (typeof noteFeed === "function") noteFeed("10-day", true, rows.length + " days");
+      }).catch(function () {});
+    }
+    setTimeout(ensureTenDay, 1500);
+    setTimeout(ensureTenDay, 6000);
+
     function nthWeekday(year, month, weekday, n) {
       var d = new Date(year, month, 1);
       var add = (weekday - d.getDay() + 7) % 7;
@@ -30482,7 +30525,7 @@ function wxSvg(kind, box) {
                 var wid = Math.max(10, ((hi - lo) / (maxAll - minAll)) * 100);
                 return '<span class="tbar"><i style="left:' + left.toFixed(1) + "%;width:" + wid.toFixed(1) + '%"></i></span>';
               }
-              var caps = list.filter(function (r) { return r && r.row && r.row.hi != null; }).map(function (r) {
+              var caps = list.filter(function (r) { return r && r.row && r.row.hi != null; }).slice(0, 10).map(function (r) {
                 var parts = String(r.key || "").split("-");
                 var dateTxt = parts.length === 3 ? (Number(parts[1]) + "/" + Number(parts[2])) : r.label;
                 return {
