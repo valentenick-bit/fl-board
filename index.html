@@ -4125,6 +4125,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <article class="pulse today-chip launch" id="chip-launch" hidden></article>
         </div>
 
+<div id="today-fly-home" hidden>
+          <div id="today-fly-home-body"></div>
+        </div>
 <div class="card" id="today-sports" hidden>
           <b>Games</b>
           <div id="today-sports-body"></div>
@@ -6100,7 +6103,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1657;
+    window.BOARD_VER = 1658;
 
     
     function communityShort() {
@@ -20358,19 +20361,24 @@ function paintObservatories() { paintObsTable(); }
     function paintTodayFly() {
       var card = document.getElementById("today-fly");
       var body = document.getElementById("today-fly-body");
+      var homeCard = document.getElementById("today-fly-home");
+      var homeBody = document.getElementById("today-fly-home-body");
       if (!card || !body) return;
       var rows = flightsSoon(36, 12).filter(flightIsCurrent);
       if (!rows.length) {
         card.hidden = true;
         card.classList.remove("on");
         body.innerHTML = "";
+        if (homeCard) { homeCard.hidden = true; if (homeBody) homeBody.innerHTML = ""; }
         if (typeof paintFlyTrack === "function") paintFlyTrack(null);
         if (typeof noteFeed === "function") noteFeed("today-fly", true, window.__flightData ? "hidden · none current" : "loading");
         return;
       }
       card.hidden = false;
       card.classList.add("on");
-      body.innerHTML = rows.slice(0, 2).map(function (f) { return paintOneFlight(f); }).join("");
+      var html = rows.slice(0, 2).map(function (f) { return paintOneFlight(f); }).join("");
+      body.innerHTML = html;
+      if (homeCard && homeBody) { homeCard.hidden = false; homeBody.innerHTML = html; }
       if (typeof paintFlyTrack === "function") paintFlyTrack(rows[0]);
       if (typeof noteFeed === "function") noteFeed("today-fly", true, rows.length + " upcoming");
       rows.slice(0, 2).forEach(function (f, i) {
