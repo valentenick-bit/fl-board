@@ -2355,6 +2355,7 @@ window.__ensureLeaflet = function () {
       .ticker, .break-ticker { height:32px; font-size:13px; line-height:16px; padding:8px 0; }
     }
     .ticker { background:var(--navy); color:#f7f1e6; }
+    html.has-popup .ticker, html.has-popup .break-ticker, html.has-popup .alert-ticker { animation-play-state:paused; }
     .ticker.tick-advisory { background:#6b5a22; color:#fff6d8; }
     .ticker.tick-watch { background:#8a6a28; color:#fff6e4; }
     .ticker.tick-warning { background:#7a2418; color:#fff; }
@@ -6358,7 +6359,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1730;
+    window.BOARD_VER = 1731;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -9779,13 +9780,20 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           });
         }
         var x = document.getElementById("re-x");
-        if (x) x.addEventListener("click", function (e) { e.stopPropagation(); pop.remove(); });
+        if (x) x.addEventListener("click", function (e) { e.stopPropagation(); if (typeof closeListing === "function") closeListing(); else pop.remove(); });
       }
       document.body.appendChild(pop);
-      pop.addEventListener("click", function (e) { if (e.target === pop) pop.remove(); });
+      if (typeof pauseRotForPop === "function") pauseRotForPop();
+      function closeListing() {
+        pop.remove();
+        if (typeof resumeRotAfterPop === "function") resumeRotAfterPop();
+      }
+      pop.addEventListener("click", function (e) { if (e.target === pop) closeListing(); });
       document.addEventListener("keydown", function esc(e) {
-        if (e.key === "Escape") { pop.remove(); document.removeEventListener("keydown", esc); }
+        if (e.key === "Escape") { closeListing(); document.removeEventListener("keydown", esc); }
       });
+      var xBtn = document.getElementById("re-x");
+      if (xBtn) xBtn.addEventListener("click", function (e) { e.stopPropagation(); closeListing(); }, true);
       render();
     }
 
@@ -20130,9 +20138,15 @@ function paintObservatories() { paintObsTable(); }
       }, left);
     }
     function popIsOpen() {
-      var pop = document.getElementById("map-pop");
-      return !!(window.__popOpen || (pop && pop.classList.contains("on")));
+      var mapPop = document.getElementById("map-pop");
+      var rePop = document.getElementById("re-pop");
+      return !!(window.__popOpen || (mapPop && mapPop.classList.contains("on")) || rePop);
     }
+    setInterval(function () {
+      var open = typeof popIsOpen === "function" ? popIsOpen() : !!document.getElementById("re-pop");
+      document.documentElement.classList.toggle("has-popup", !!open);
+    }, 500);
+
     function pauseRotForPop() {
       window.__popOpen = true;
       window.__holdPage = true;
