@@ -1,0 +1,52 @@
+name: Refresh BeachWalk listings
+on:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch listings
+        run: |
+          python3 << 'PY'
+          import json, re, urllib.request
+          from datetime import datetime, timezone
+          urls = [
+            "https://www.gulfshoresrealty.com/community/beachwalk/",
+            "https://www.homesbymarco.com/subdivisions/beachwalk-by-manasota-key-in-englewood-fl",
+          ]
+          def fetch(u):
+            try:
+              req = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
+              with urllib.request.urlopen(req, timeout=20) as r:
+                return r.read().decode("utf-8", errors="ignore")
+            except Exception as e:
+              print(f"fail {u}: {e}")
+              return ""
+          listings, seen = [], set()
+          for u in urls:
+            html = fetch(u)
+            for m in re.finditer(r'\$([0-9,]{5,}).{0,400}?(\d+\s+[A-Za-z]+(?:\s+[A-Za-z]+){0,3}\s+(?:Dr|Drive|Ct|Court|Ln|Lane|Way|Rd|Road))', html, re.I|re.S):
+              price = int(m.group(1).replace(",",""))
+              addr = m.group(2).strip()
+              if price < 200000 or price > 3000000 or addr.lower() in seen:
+                continue
+              seen.add(addr.lower())
+              listings.append({"addr":addr,"price":price,"beds":0,"baths":0,"sqft":0,"year":0,"mls":"","hoa":0,"img":"","desc":"BeachWalk listing."})
+          out = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "source":"public pages", "listings": listings[:10]}
+          with open("listings.json","w") as f:
+            json.dump(out, f, indent=2)
+          print(f"wrote {len(listings)} listings")
+          PY
+      - name: Commit
+        run: |
+          git config user.name "listings-bot"
+          git config user.email "bot@local"
+          git add listings.json
+          git diff --cached --quiet || git commit -m "listings: daily refresh"
+          git push
