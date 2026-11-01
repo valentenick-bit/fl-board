@@ -6359,7 +6359,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1731;
+    window.BOARD_VER = 1732;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -25991,24 +25991,22 @@ function mustEatsFL() {
       }
 
       function fetchNews(q) {
+        // Prefer the worker proxy (no CORS issues). Fall back to rss2json.
+        var worker = "/news-rss?q=" + encodeURIComponent(q);
         var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
-        // allorigins wraps the XML and supports CORS
-        var url = "https://api.allorigins.win/get?url=" + encodeURIComponent(rss);
-        return fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-          var xml = (data && data.contents) || "";
-          if (!xml) return [];
-          var items = [];
-          var chunks = String(xml).split(/<item[\s>]/i);
-          for (var i = 1; i < chunks.length && items.length < 12; i++) {
-            var chunk = chunks[i];
-            var title = (chunk.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i) || [])[1] || "";
-            var link = (chunk.match(/<link[^>]*>([\s\S]*?)<\/link>/i) || [])[1] || "";
-            var when = (chunk.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i) || [])[1] || "";
-            title = title.replace(/<[^>]+>/g, " ").replace(/&/g, "&").replace(/\s+/g, " ").trim();
-            if (title) items.push({ title: title, link: link.trim(), pubDate: when.trim() });
-          }
-          return items;
-        }).catch(function () { return []; });
+        var fallback = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss);
+        function fromRss2json(data) {
+          var items = (data && data.items) || [];
+          return items.map(function (it) {
+            return { title: it.title || "", link: it.link || "", pubDate: it.pubDate || "" };
+          });
+        }
+        return fetch(worker).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+          if (data && data.items && data.items.length) return data.items;
+          return fetch(fallback).then(function (r) { return r.json(); }).then(fromRss2json);
+        }).catch(function () {
+          return fetch(fallback).then(function (r) { return r.json(); }).then(fromRss2json).catch(function () { return []; });
+        });
       }
       function load() {
         var place = "Englewood", st = "FL";
