@@ -5,7 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Commons</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    (function bindFlightKey() {
+      var inp = document.getElementById("set-flight-api");
+      if (!inp) return;
+      var s = typeof getSet === "function" ? getSet() : {};
+      if (s.flightApiKey) inp.value = s.flightApiKey;
+      inp.addEventListener("change", function () {
+        if (typeof putSet === "function") putSet({ flightApiKey: inp.value.trim() });
+      });
+    })();
+
+</script>
   <script>
     try {
       if (localStorage.getItem("bw-kiosk") === "1") document.documentElement.classList.add("kiosk");
@@ -5953,6 +5964,11 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           </div>
         </div>
         <p class="set-help">The Maps key lives in Drive <code>maps.json</code> only — never GitHub, never key.json, and not on this page. Off hides the key. On still bills only through <code>gmapsKey()</code>, and only until today’s cap. Weather is cached 30 minutes and counts as 1–3 calls. Places and drive times use the same cap. Open-Meteo and NWS always run.</p>
+        <div class="set-row" id="set-flightkey">
+          <label>Flight board key</label>
+          <input id="set-flight-api" type="password" placeholder="AviationStack access key" autocomplete="off" />
+        </div>
+        <p class="set-help">Free key from aviationstack.com. Powers the Travel page departure/arrival board. Cached 30 minutes per airport.</p>
         <div class="set-line"><label>Daily Google cap</label>
           <div class="set-row" id="set-gmapscap">
             <button type="button" data-v="20">20</button>
@@ -6107,7 +6123,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1665;
+    window.BOARD_VER = 1666;
 
     
     function communityShort() {
@@ -6411,7 +6427,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     var SET_DEFAULTS = {
       dark: "auto", kiosk: "0", quiet: "1", quietStart: "22:00", quietEnd: "07:00", text: "default", rotate: 30,
       station: "", vol: "whisper", noaa: "1", radioauto: "0", civicChime: "1", breakChime: "0", scanCivic: "0",
-      zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1", gmapsCap: "50",
+      zip: "", lat: "", lon: "", place: "", address: "", streetNum: "", gmapsKey: "", gmapsOn: "1", gmapsCap: "50", flightApiKey: "",
       community: "",
       camNight: "0", chipBolt: "1", chipCane: "1", chipTrash: "1", wxradar: "1", wxbolt: "1",
       brief: "1", briefWx: "1", briefSports: "1", briefToday: "1", briefBoard: "1", briefWxHold: "0", briefPrevMaster: "1", briefPrevWx: "1", briefPrevSports: "1", briefPrevToday: "1", briefPrevBoard: "1", breakPrevNat: "1", breakPrevLoc: "1", sportsOn: "", sportsPrev: {},
@@ -20421,6 +20437,20 @@ function paintObservatories() { paintObsTable(); }
       ["SLC","Salt Lake City",40.79,-111.98],["ABQ","Albuquerque",35.04,-106.61],["TUS","Tucson",32.12,-110.94],["ELP","El Paso",31.81,-106.38],["OKC","Oklahoma City",35.39,-97.60],
       ["TUL","Tulsa",36.20,-95.89],["OMA","Omaha",41.30,-95.89],["DSM","Des Moines",41.53,-93.66],["MKE","Milwaukee",42.95,-87.90],["GRR","Grand Rapids",42.88,-85.52]
     ];
+    function paintBoardRows(body, ap, deps, arrs) {
+      function row(f, dir) {
+        var when = f.when || "";
+        if (when && when.length > 16) when = when.slice(11, 16);
+        var num = f.flight || "";
+        var other = dir === "Dep" ? (f.to || "") : (f.from || "");
+        var st = f.status ? " · " + f.status : "";
+        return "<div class=\"comm-row\"><b>" + dir + " " + num + "</b><span>" + other + (when ? " · " + when : "") + st + "</span></div>";
+      }
+      var html = "";
+      if (deps && deps.length) html += "<p class=\"sheet-kicker\">Departures</p>" + deps.slice(0, 8).map(function (f) { return row(f, "Dep"); }).join("");
+      if (arrs && arrs.length) html += "<p class=\"sheet-kicker\">Arrivals</p>" + arrs.slice(0, 8).map(function (f) { return row(f, "Arr"); }).join("");
+      body.innerHTML = html || "<p class=\"pill-key\">No flights for " + ap.code + ".</p>";
+    }
     function paintTravelBoard() {
       var filters = document.getElementById("travel-ap-filters");
       var body = document.getElementById("travel-board-body");
@@ -20446,28 +20476,44 @@ function paintObservatories() { paintObsTable(); }
       if (map && ap) {
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
       }
-      var all = [].concat(window.__flights || [], window.__flightData || []);
-      var flights = all.filter(function (f) {
-        var from = String(f.from || f.departure || "").toUpperCase();
-        var to = String(f.to || f.arrival || "").toUpperCase();
-        return from.indexOf(ap.code) >= 0 || to.indexOf(ap.code) >= 0;
-      });
-      if (!flights.length) {
-        body.innerHTML = "<p class=\"pill-key\">No flights on file for " + ap.code + ".</p><p class=\"pill-key\">Tracked trips appear here when they match this airport. A live airport board needs a flight data key.</p>";
+      var key = String((typeof getSet === "function" && getSet().flightApiKey) || "").trim();
+      var cacheKey = "bw-board-" + ap.code;
+      var cached = null;
+      try { cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null"); } catch (e) {}
+      if (cached && cached.at && (Date.now() - cached.at) < 30 * 60 * 1000) {
+        paintBoardRows(body, ap, cached.deps || [], cached.arrs || []);
         return;
       }
-      var deps = flights.filter(function (f) { return String(f.from || "").toUpperCase().indexOf(ap.code) >= 0; });
-      var arrs = flights.filter(function (f) { return String(f.to || "").toUpperCase().indexOf(ap.code) >= 0; });
-      function row(f, dir) {
-        var when = f.when || f.time || "";
-        var num = f.flight || f.number || "";
-        var other = dir === "Dep" ? (f.to || "") : (f.from || "");
-        return "<div class=\"comm-row\"><b>" + dir + " " + num + "</b><span>" + other + (when ? " · " + when : "") + "</span></div>";
+      if (!key) {
+        var all = [].concat(window.__flights || [], window.__flightData || []);
+        var mine = all.filter(function (f) {
+          var from = String(f.from || "").toUpperCase();
+          var to = String(f.to || "").toUpperCase();
+          return from.indexOf(ap.code) >= 0 || to.indexOf(ap.code) >= 0;
+        });
+        if (!mine.length) {
+          body.innerHTML = "<p class=\"pill-key\">Add a Flight board key in Settings for live departures and arrivals.</p>";
+          return;
+        }
+        paintBoardRows(body, ap, mine.filter(function (f) { return String(f.from||"").toUpperCase().indexOf(ap.code)>=0; }), mine.filter(function (f) { return String(f.to||"").toUpperCase().indexOf(ap.code)>=0; }));
+        return;
       }
-      var html = "";
-      if (deps.length) html += "<p class=\"sheet-kicker\">Departures</p>" + deps.slice(0, 8).map(function (f) { return row(f, "Dep"); }).join("");
-      if (arrs.length) html += "<p class=\"sheet-kicker\">Arrivals</p>" + arrs.slice(0, 8).map(function (f) { return row(f, "Arr"); }).join("");
-      body.innerHTML = html || "<p class=\"pill-key\">No flights for " + ap.code + ".</p>";
+      body.innerHTML = "<p class=\"pill-key\">Loading " + ap.code + " board…</p>";
+      var depUrl = "https://api.aviationstack.com/v1/flights?access_key=" + encodeURIComponent(key) + "&dep_iata=" + ap.code + "&limit=8";
+      var arrUrl = "https://api.aviationstack.com/v1/flights?access_key=" + encodeURIComponent(key) + "&arr_iata=" + ap.code + "&limit=8";
+      Promise.all([
+        fetch(depUrl).then(function (r) { return r.json(); }).catch(function () { return {}; }),
+        fetch(arrUrl).then(function (r) { return r.json(); }).catch(function () { return {}; })
+      ]).then(function (res) {
+        var deps = ((res[0] && res[0].data) || []).map(function (f) {
+          return { flight: (f.flight && f.flight.iata) || "", to: (f.arrival && f.arrival.iata) || "", when: (f.departure && f.departure.scheduled) || "", status: f.flight_status || "" };
+        });
+        var arrs = ((res[1] && res[1].data) || []).map(function (f) {
+          return { flight: (f.flight && f.flight.iata) || "", from: (f.departure && f.departure.iata) || "", when: (f.arrival && f.arrival.scheduled) || "", status: f.flight_status || "" };
+        });
+        try { sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), deps: deps, arrs: arrs })); } catch (e) {}
+        paintBoardRows(body, ap, deps, arrs);
+      });
     }
     function paintAirportStatus() {
       var box = document.getElementById("airport-status");
