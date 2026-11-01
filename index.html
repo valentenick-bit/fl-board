@@ -19962,6 +19962,18 @@ function paintObservatories() { paintObsTable(); }
         if (typeof noteFeed === "function") noteFeed("fly-live", true, "idle · " + (st || "none"));
         return done(st || "");
       }
+      // Only do live ADS-B lookup when the flight is near its own scheduled departure
+      // (prevents tomorrow's card from inheriting today's same-number flight)
+      var dep = typeof flightWhenMs === "function" ? flightWhenMs(f) : NaN;
+      var now = Date.now();
+      if (!isNaN(dep)) {
+        var early = dep - 3 * 3600000;   // 3 hours before departure
+        var late  = dep + 6 * 3600000;   // 6 hours after departure
+        if (now < early || now > late) {
+          if (typeof noteFeed === "function") noteFeed("fly-live", true, "idle · outside live window");
+          return done(st || "");
+        }
+      }
       var parsed = parseFlightCode(f);
       var codes = parsed.codes;
       if (!codes.length) return done("");
