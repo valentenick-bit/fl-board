@@ -4951,21 +4951,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       </section>
       <section id="wink" class="page">
         <h2 data-k="Near this pin">News</h2>
-        <div class="ev-filters" id="news-filters">
-          <button type="button" data-nf="local" class="on">Local</button>
-          <button type="button" data-nf="weather">Weather</button>
-          <button type="button" data-nf="traffic">Traffic</button>
-          <button type="button" data-nf="sports">Sports</button>
-          <button type="button" data-nf="community">Community</button>
-        </div>
+        <p class="pill-key" id="news-note">Local headlines for the home pin.</p>
         <div id="wink-list">
-          <div class="card"><b>Local headlines</b><span>Pulling local headlines</span></div>
+          <div class="card"><b>Local headlines</b><span>Pulling local news…</span></div>
         </div>
-        <div class="card" id="news-guides-card" style="margin-top:14px">
+        <div class="card" id="news-guides-card" style="margin-top:18px">
           <b>Local guides & resources</b>
           <div id="news-guides" style="margin-top:10px;font-size:14px;line-height:1.55"></div>
         </div>
-        <p class="pill-key" id="news-note">Headlines follow the home address.</p>
       </section>
             <section id="storms" class="page sheet">
         <h2 data-k="Named storms">Storms</h2>
@@ -6365,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1715;
+    window.BOARD_VER = 1716;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -25974,78 +25967,66 @@ function mustEatsFL() {
         return t.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       }
       function render(items) {
-        var seen = {}, rows = [], breaks = [];
+        var seen = {}, rows = [];
         items.forEach(function (it) {
           var cleaned = cleanTitle(it.title);
           var title = cleaned.title;
-          var key = title.toLowerCase().slice(0, 48);
+          var key = title.toLowerCase().slice(0, 56);
           if (!title || /google news/i.test(title) || seen[key]) return;
           seen[key] = true;
-          var row = { title: title, link: it.link || "#", when: it.pubDate || "", src: cleaned.src, img: it.img || "" };
-          rows.push(row);
-          if (/^(BREAKING|Breaking|Just [Ii]n|JUST IN|Developing|DEVELOPING|Alert|ALERT|Urgent|URGENT)\b/.test(title) || /\bBREAKING\b/.test(it.title || "")) {
-            var whenMs = Date.parse(it.pubDate || "");
-            if (!whenMs || Date.now() - whenMs < 8 * 60 * 60 * 1000) {
-              breaks.push({ src: cleaned.src || "Local", title: title });
-            }
-          }
+          var desc = String(it.description || it.desc || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+          if (desc.length > 220) desc = desc.slice(0, 217).replace(/\s+\S*$/, "") + "…";
+          rows.push({
+            title: title,
+            link: it.link || "#",
+            when: it.pubDate || "",
+            src: cleaned.src || "Local",
+            img: it.img || "",
+            desc: desc
+          });
         });
-        if (breaks.length) {
-          window.__deskBreak = breaks.slice(0, 5);
-          if (typeof pollBreaking === "function") pollBreaking();
-        }
-        rows = rows.slice(0, 12);
+        rows = rows.slice(0, 10);
         var note = document.getElementById("news-note");
-        if (note) note.textContent = homePlace() + " " + (getSet().zip || "") + " · last 7 days";
+        if (note) note.textContent = (homePlace() || "Home pin") + " · local headlines";
         if (!rows.length) {
-          box.innerHTML = '<div class="card"><b>No local headlines yet</b><span>The local news search came back empty. Try again in a few minutes.</span></div>';
+          box.innerHTML = '<div class="card"><b>No local headlines yet</b><span>Nothing recent matched the home pin. Try again in a few minutes.</span></div>';
           return;
         }
-        var lead = rows[0];
-        var rest = rows.slice(1);
-        function card(r, big) {
-          var when = relTime(r.when) || homePlace();
-          var imgStyle = big ? "width:100%;height:210px;object-fit:cover;border-radius:12px;background:#eee;display:block" : "width:108px;height:76px;object-fit:cover;border-radius:10px;background:#eee;flex:0 0 auto";
-          var img = r.img ? '<img src="' + (r.img || "").replace(/"/g, "") + '" alt="" style="' + imgStyle + '">' : '<div style="' + imgStyle + ';display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;border:1px solid #eee">No photo</div>';
-          var src = '<span class="place-tag place-out" style="font-size:11px">' + (r.src || "Local") + "</span>";
-          if (big) {
-            return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:block;text-decoration:none;color:inherit;padding:0;overflow:hidden;border-radius:14px">' +
-              img + '<div style="padding:12px 14px 16px"><div style="margin-bottom:6px">' + src + ' <span class="pill-key">' + when + '</span></div><b style="font-size:18px;line-height:1.3;display:block">' + r.title + "</b></div></a>";
+        function card(r, lead) {
+          var when = relTime(r.when) || "";
+          var meta = '<span style="font-size:12px;opacity:.65">' + (r.src || "Local") + (when ? " · " + when : "") + "</span>";
+          var img = "";
+          if (r.img && lead) {
+            img = '<img src="' + r.img.replace(/"/g,"") + '" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:10px;background:#eee">';
+          } else if (r.img) {
+            img = '<img src="' + r.img.replace(/"/g,"") + '" alt="" style="width:88px;height:64px;object-fit:cover;border-radius:8px;float:right;margin:0 0 6px 12px;background:#eee">';
           }
-          return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:flex;gap:12px;align-items:flex-start;text-decoration:none;color:inherit;padding:12px">' +
-            img + '<div style="flex:1"><div style="margin-bottom:4px">' + src + ' <span class="pill-key">' + when + '</span></div><b style="font-size:15px;line-height:1.3">' + r.title + "</b></div></a>";
+          var summary = r.desc ? '<span style="display:block;margin-top:6px;font-size:14px;line-height:1.4;opacity:.85">' + r.desc + "</span>" : "";
+          var style = lead ? "display:block;padding:0 0 4px;text-decoration:none;color:inherit" : "display:block;padding:12px 14px;text-decoration:none;color:inherit";
+          return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="' + style + '">' +
+            (lead ? img : "") +
+            '<div style="' + (lead ? "padding:0 14px 14px" : "") + '">' +
+            '<b style="display:block;font-size:' + (lead ? "18px" : "15.5px") + ';line-height:1.3;margin:0 0 4px">' + r.title + "</b>" +
+            meta +
+            summary +
+            (lead ? "" : img) +
+            "</div></a>";
         }
-        box.innerHTML = card(lead, true) + rest.map(function (r) { return card(r, false); }).join("");
+        box.innerHTML = card(rows[0], true) + rows.slice(1).map(function (r) { return card(r, false); }).join("");
       }
       function feeds() {
         var place = homePlace();
         var st = homeState();
         var zip = getSet().zip || "";
-        var mode = window.__newsFilter || "local";
         var qs = [];
-        if (mode === "weather") {
-          qs.push(place + " " + st + " weather when:3d");
-          qs.push(zip + " weather when:3d");
-        } else if (mode === "traffic") {
-          qs.push(place + " " + st + " traffic OR accident OR crash when:2d");
-          qs.push(zip + " traffic when:2d");
-        } else if (mode === "sports") {
-          qs.push(place + " " + st + " sports OR high school OR UConn OR Yankees OR Giants when:7d");
-          qs.push(st + " high school football OR basketball OR baseball when:7d");
-        } else if (mode === "community") {
-          qs.push(place + " " + st + " community OR town OR meeting OR event OR festival when:14d");
-          if (st === "CT") qs.push("site:southwindsor-ct.gov OR site:windsorct.gov when:30d");
-          else qs.push("site:yoursun.com OR site:englewoodfl.org when:14d");
-        } else {
-          qs.push(place + " " + st + " when:7d");
-          qs.push(zip + " when:7d");
-          if (st === "FL") {
-            qs.push("site:winknews.com (" + place + " OR " + zip + ") when:7d");
-            qs.push("site:yoursun.com " + place + " when:7d");
-          } else if (st === "CT") {
-            qs.push("site:courant.com " + place + " when:7d");
-            qs.push("site:nbcconnecticut.com " + place + " when:7d");
-          }
+        qs.push('"' + place + '" ' + st + ' when:5d');
+        if (zip) qs.push(zip + " when:5d");
+        if (st === "FL") {
+          qs.push("site:winknews.com (" + place + " OR " + zip + ") when:5d");
+          qs.push("site:yoursun.com " + place + " when:5d");
+        } else if (st === "CT") {
+          qs.push("site:courant.com " + place + " when:5d");
+          qs.push("site:nbcconnecticut.com " + place + " when:5d");
         }
         return qs.map(function (q) {
           return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
