@@ -3904,6 +3904,38 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     .ap-board tr:hover td { background:rgba(42,157,143,.06); }
 
     .re-card { display:grid; grid-template-columns:120px 1fr; gap:10px; padding:8px 0; border-bottom:1px solid var(--hair); cursor:pointer; }
+    .holiday-banner {
+      margin: 0 0 12px; padding: 16px 18px; border-radius: 16px;
+      text-align: center; color: #fff; position: relative; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(16,38,60,.12);
+    }
+    .holiday-banner b { display: block; font-size: 28px; line-height: 1.1; letter-spacing: .01em; }
+    .holiday-banner span { display: block; margin-top: 4px; font-size: 15px; opacity: .95; }
+    .holiday-banner.eve b::after { content: " · tomorrow"; font-size: 14px; font-weight: 600; opacity: .85; }
+    .hb-election { background: linear-gradient(120deg, #0b1f4b 0%, #1b3a7a 55%, #8b1e2d 100%); }
+    .hb-election b { color: #f4d27a; }
+    .hb-thanks { background: linear-gradient(120deg, #c45c12 0%, #e07a3a 40%, #f2c14e 100%); color: #1b2a4a; }
+    .hb-thanks b { color: #1b2a4a; }
+    .hb-newyear { background: linear-gradient(120deg, #1b2a4a 0%, #2a9d8f 100%); }
+    .hb-nye { background: linear-gradient(120deg, #1b2a4a 0%, #c4a35a 100%); }
+    .hb-xmas { background: linear-gradient(120deg, #1a4d3a 0%, #c45c4a 100%); }
+    .hb-july { background: linear-gradient(120deg, #1b2a4a 0%, #c45c4a 50%, #f7f1e6 100%); color: #1b2a4a; }
+    .hb-july b { color: #1b2a4a; }
+    .hb-memorial, .hb-veterans { background: linear-gradient(120deg, #1b2a4a 0%, #4a5568 100%); }
+    .hb-labor { background: linear-gradient(120deg, #1b6b62 0%, #2a9d8f 100%); }
+    .hb-mlk, .hb-pres { background: linear-gradient(120deg, #1b2a4a 0%, #3d5a80 100%); }
+    .hb-val { background: linear-gradient(120deg, #8b1e2d 0%, #e07a5f 100%); }
+    .hb-pat { background: linear-gradient(120deg, #1a4d3a 0%, #2a9d8f 100%); }
+    .hb-easter { background: linear-gradient(120deg, #f7f1e6 0%, #e8d5a3 100%); color: #1b2a4a; }
+    .hb-easter b { color: #1b2a4a; }
+    .hb-mom, .hb-dad { background: linear-gradient(120deg, #5a2d6e 0%, #c4a35a 100%); }
+    .hb-june { background: linear-gradient(120deg, #1b2a4a 0%, #c45c4a 60%, #f2c14e 100%); }
+    .hb-halloween { background: linear-gradient(120deg, #2a1a0a 0%, #c45c12 70%, #1b2a4a 100%); }
+    @media (max-width: 720px) {
+      .holiday-banner b { font-size: 22px; }
+      .holiday-banner span { font-size: 13px; }
+    }
+
     /* events, restaurants, golf — phone fit */
     @media (max-width: 800px) {
       #ent .wx-top, #eats .wx-top, #golf .wx-top {
@@ -4221,6 +4253,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     <main>
       <section id="now" class="page on">
         <h2 data-k="At this pin">Today</h2>
+        <div id="holiday-banner" class="holiday-banner" hidden></div>
         <p class="today-stamp" id="today-stamp" hidden></p>
         <div class="today-shell" id="today-shell">
         <div class="today-main">
@@ -6306,7 +6339,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1698;
+    window.BOARD_VER = 1699;
 
     
     function communityShort() {
@@ -30034,6 +30067,75 @@ function wxSvg(kind, box) {
         }).catch(function () {});
     }
     window.forceForecastStrips = forceForecastStrips;
+    function nthWeekday(year, month, weekday, n) {
+      var d = new Date(year, month, 1);
+      var add = (weekday - d.getDay() + 7) % 7;
+      return new Date(year, month, 1 + add + (n - 1) * 7);
+    }
+    function lastWeekday(year, month, weekday) {
+      var d = new Date(year, month + 1, 0);
+      var sub = (d.getDay() - weekday + 7) % 7;
+      return new Date(year, month, d.getDate() - sub);
+    }
+    function easterDate(year) {
+      var a = year % 19, b = Math.floor(year / 100), c = year % 100;
+      var d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+      var g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+      var i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+      var m = Math.floor((a + 11 * h + 22 * l) / 451);
+      var month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+      var day = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(year, month, day);
+    }
+    function electionDay(year) {
+      var firstMonday = nthWeekday(year, 10, 1, 1);
+      return new Date(year, 10, firstMonday.getDate() + 1);
+    }
+    function holidayToday() {
+      var now = new Date();
+      var y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+      var today = new Date(y, m, d);
+      var list = [
+        { date: new Date(y, 0, 1), cls: "hb-newyear", title: "Happy New Year", line: "A fresh start. Make it a good one." },
+        { date: nthWeekday(y, 0, 1, 3), cls: "hb-mlk", title: "Martin Luther King Jr. Day", line: "A day to remember the dream and the work." },
+        { date: new Date(y, 1, 14), cls: "hb-val", title: "Happy Valentine's Day", line: "A little kindness goes a long way." },
+        { date: nthWeekday(y, 1, 1, 3), cls: "hb-pres", title: "Presidents Day", line: "A day for history, and a long weekend." },
+        { date: new Date(y, 2, 17), cls: "hb-pat", title: "Happy St. Patrick's Day", line: "Wear a little green and enjoy the day." },
+        { date: easterDate(y), cls: "hb-easter", title: "Happy Easter", line: "Spring is here. Enjoy the day." },
+        { date: nthWeekday(y, 4, 0, 2), cls: "hb-mom", title: "Happy Mother's Day", line: "A day to say thank you." },
+        { date: lastWeekday(y, 4, 1), cls: "hb-memorial", title: "Memorial Day", line: "With gratitude for those who served." },
+        { date: new Date(y, 5, 19), cls: "hb-june", title: "Juneteenth", line: "A day of freedom, history, and celebration." },
+        { date: nthWeekday(y, 5, 0, 3), cls: "hb-dad", title: "Happy Father's Day", line: "A day to say thank you." },
+        { date: new Date(y, 6, 4), cls: "hb-july", title: "Happy Fourth of July", line: "Enjoy the day and the fireworks." },
+        { date: nthWeekday(y, 8, 1, 1), cls: "hb-labor", title: "Happy Labor Day", line: "A well-earned long weekend." },
+        { date: new Date(y, 9, 31), cls: "hb-halloween", title: "Happy Halloween", line: "Have fun, stay safe, and enjoy the night." },
+        { date: electionDay(y), cls: "hb-election", title: "Election Day", line: "Go out and vote." },
+        { date: new Date(y, 10, 11), cls: "hb-veterans", title: "Veterans Day", line: "With thanks to all who served." },
+        { date: nthWeekday(y, 10, 4, 4), cls: "hb-thanks", title: "Happy Thanksgiving", line: "Grateful for this day and the people in it." },
+        { date: new Date(y, 11, 24), cls: "hb-xmas", title: "Christmas Eve", line: "Almost there. Enjoy the evening." },
+        { date: new Date(y, 11, 25), cls: "hb-xmas", title: "Merry Christmas", line: "Warm wishes for a happy day." },
+        { date: new Date(y, 11, 31), cls: "hb-nye", title: "Happy New Year's Eve", line: "See you next year." }
+      ];
+      for (var i = 0; i < list.length; i++) {
+        var h = list[i];
+        var diff = Math.round((h.date - today) / 86400000);
+        if (diff === 0) return { cls: h.cls, title: h.title, line: h.line, eve: false };
+        if (diff === 1) return { cls: h.cls, title: h.title, line: h.line, eve: true };
+      }
+      return null;
+    }
+    function paintHolidayBanner() {
+      var box = document.getElementById("holiday-banner");
+      if (!box) return;
+      var h = holidayToday();
+      if (!h) { box.hidden = true; box.innerHTML = ""; return; }
+      box.hidden = false;
+      box.className = "holiday-banner " + h.cls + (h.eve ? " eve" : "");
+      box.innerHTML = "<b>" + h.title + "</b><span>" + h.line + "</span>";
+    }
+    paintHolidayBanner();
+    setInterval(paintHolidayBanner, 30 * 60 * 1000);
+
 
     function refreshWeather() {
       if (!isFinite(homeLat()) || !isFinite(homeLon())) return;
