@@ -6342,7 +6342,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1701;
+    window.BOARD_VER = 1702;
 
     
     function communityShort() {
@@ -30109,28 +30109,35 @@ function wxSvg(kind, box) {
     function ensureTenDay() {
       var td = document.querySelector(".tenday");
       if (!td) return;
-      var have = td.querySelectorAll(".day").length;
-      if (have >= 10) return;
-      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + (typeof homeLat === "function" ? homeLat() : 27.0) +
-        "&longitude=" + (typeof homeLon === "function" ? homeLon() : -82.4) +
-        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=10&temperature_unit=fahrenheit&timezone=America%2FNew_York";
-      fetch(url).then(function (r) { return r.json(); }).then(function (d) {
-        var times = (d.daily && d.daily.time) || [];
-        var his = (d.daily && d.daily.temperature_2m_max) || [];
-        var los = (d.daily && d.daily.temperature_2m_min) || [];
-        var pops = (d.daily && d.daily.precipitation_probability_max) || [];
-        var codes = (d.daily && d.daily.weather_code) || [];
-        if (times.length < 8) return;
-        function word(c) { return c >= 95 ? "Thunderstorms" : c >= 80 ? "Showers" : c >= 61 ? "Rain" : c >= 3 ? "Cloudy" : c >= 2 ? "Partly cloudy" : "Sunny"; }
-        var rows = times.slice(0, 10).map(function (day, i) {
-          var dt = new Date(day + "T12:00:00");
+      if (td.querySelectorAll(".day").length >= 10) return;
+      var lat = typeof homeLat === "function" ? homeLat() : 26.96;
+      var lon = typeof homeLon === "function" ? homeLon() : -82.35;
+      fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=" + lat + "&lon=" + lon, {
+        headers: { "User-Agent": "CommonsBoard/1.0" }
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        var series = (d.properties && d.properties.timeseries) || [];
+        if (!series.length) return;
+        var byDay = {};
+        series.forEach(function (p) {
+          var key = p.time.slice(0, 10);
+          var t = p.data && p.data.instant && p.data.instant.details && p.data.instant.details.air_temperature;
+          if (t == null) return;
+          if (!byDay[key]) byDay[key] = { hi: -99, lo: 99 };
+          if (t > byDay[key].hi) byDay[key].hi = t;
+          if (t < byDay[key].lo) byDay[key].lo = t;
+        });
+        var keys = Object.keys(byDay).sort().slice(0, 10);
+        if (keys.length < 8) return;
+        var rows = keys.map(function (key, i) {
+          var dt = new Date(key + "T12:00:00");
+          var c2f = function (c) { return Math.round(c * 9 / 5 + 32); };
           return {
             label: i === 0 ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" }),
             date: (dt.getMonth() + 1) + "/" + dt.getDate(),
-            hi: Math.round(his[i]),
-            lo: Math.round(los[i]),
-            pop: pops[i] || 0,
-            fx: word(codes[i] || 0),
+            hi: c2f(byDay[key].hi),
+            lo: c2f(byDay[key].lo),
+            pop: 0,
+            fx: "",
             today: i === 0
           };
         });
@@ -30143,8 +30150,8 @@ function wxSvg(kind, box) {
         if (typeof noteFeed === "function") noteFeed("10-day", true, rows.length + " days");
       }).catch(function () {});
     }
-    setTimeout(ensureTenDay, 1500);
-    setTimeout(ensureTenDay, 6000);
+    setTimeout(ensureTenDay, 1200);
+    setTimeout(ensureTenDay, 5000);
 
     function nthWeekday(year, month, weekday, n) {
       var d = new Date(year, month, 1);
@@ -30525,7 +30532,7 @@ function wxSvg(kind, box) {
                 var wid = Math.max(10, ((hi - lo) / (maxAll - minAll)) * 100);
                 return '<span class="tbar"><i style="left:' + left.toFixed(1) + "%;width:" + wid.toFixed(1) + '%"></i></span>';
               }
-              var caps = list.filter(function (r) { return r && r.row && r.row.hi != null; }).slice(0, 10).map(function (r) {
+              var caps = list.filter(function (r) { return r && r.row && r.row.hi != null; }).map(function (r) {
                 var parts = String(r.key || "").split("-");
                 var dateTxt = parts.length === 3 ? (Number(parts[1]) + "/" + Number(parts[2])) : r.label;
                 return {
