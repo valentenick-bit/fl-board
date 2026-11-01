@@ -31541,7 +31541,11 @@ function wxSvg(kind, box) {
       if (typeof enrichLoc === "function") raw = enrichLoc(raw || name || "");
       var place = (typeof homePlace === "function" && homePlace()) || "";
       if (!hasCity && place && raw.toLowerCase().indexOf(String(place).toLowerCase()) < 0) raw += ", " + place;
-      if (!/fl\b|florida\b/i.test(raw)) raw += ", FL";
+      // Only append a state if none is already present. Use the home pin's real state.
+      if (!/\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/i.test(raw)) {
+        var st = (typeof homeState === "function" && homeState()) || "FL";
+        raw += ", " + st;
+      }
       return String(raw).replace(/\s+/g, " ").trim();
     }
     function railDateParts(when) {
@@ -31672,11 +31676,15 @@ function wxSvg(kind, box) {
     function enrichLoc(raw) {
       raw = String(raw || "").replace(/\s+/g, " ").trim();
       if (!raw) return "";
-      if (/\d/.test(raw) && /,/.test(raw) && /fl\b|florida\b|[a-z]/i.test(raw)) return raw;
+      if (/\d/.test(raw) && /,/.test(raw) && /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/i.test(raw)) return raw;
       var town = homeTownForLoc();
       var town0 = town.split(",")[0].trim().toLowerCase();
       if (town && town0 && raw.toLowerCase().indexOf(town0) < 0) raw = raw + ", " + town;
-      else if (!/fl\b|florida\b/i.test(raw)) raw = raw + ", FL";
+      // Only append a state if none is already present. Use the home pin's real state.
+      if (!/\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/i.test(raw)) {
+        var st = (typeof homeState === "function" && homeState()) || "FL";
+        raw = raw + ", " + st;
+      }
       return raw;
     }
     function locHasFix(lat, lon, loc) {
