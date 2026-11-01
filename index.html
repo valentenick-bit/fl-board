@@ -4059,7 +4059,28 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     .re-card .re-price { color:var(--teal); font-weight:800; font-size:16px; }
     .re-card .re-meta { font-size:12px; color:var(--muted); }
     .re-pop { position:fixed; inset:0; z-index:90; background:rgba(15,18,30,.6); display:flex; align-items:center; justify-content:center; }
-    .re-pop-card { background:var(--card,#f7f2e8); border-radius:16px; max-width:520px; width:92vw; max-height:85vh; overflow:auto; padding:16px; }
+    .re-pop-card { background:var(--card,#f7f2e8); border-radius:16px; max-width:680px; width:92vw; max-height:85vh; overflow:auto; padding:16px; }
+    .re-pop-card { position:relative; }
+    .re-x {
+      position:absolute; top:10px; right:10px; z-index:2;
+      width:36px; height:36px; border:0; border-radius:50%;
+      background:rgba(15,18,30,.72); color:#fff; font-size:22px; line-height:1;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+    }
+    .re-x:hover { background:rgba(15,18,30,.9); }
+    .re-pop-card img { width:100%; height:320px; object-fit:cover; border-radius:12px; cursor:pointer; background:#ddd; }
+    .re-count { text-align:center; font-size:13px; color:var(--muted); margin-top:6px; }
+    .re-pop-card .re-price { font-size:26px; font-weight:800; color:var(--teal); margin:10px 0 2px; }
+    .re-pop-card h3 { margin:0 0 8px; font-size:16px; }
+    .re-tags { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
+    .re-tags span { background:rgba(196,163,90,.18); color:var(--navy); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; }
+    .re-pop-card .re-facts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 12px; }
+    .re-pop-card .re-facts span { background:rgba(42,157,143,.08); padding:8px 10px; border-radius:10px; display:flex; flex-direction:column; gap:2px; }
+    .re-pop-card .re-facts b { font-size:15px; }
+    .re-pop-card .re-facts em { font-style:normal; font-size:11px; color:var(--muted); letter-spacing:.02em; }
+    .re-desc { margin:0 0 10px; line-height:1.45; }
+    html.dark .re-tags span { color:#efe4c8; }
+
     .re-pop-card img { width:100%; height:200px; object-fit:cover; border-radius:12px; }
     .re-pop-card h3 { margin:10px 0 4px; }
     .re-pop-card .re-facts { display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:13px; margin:10px 0; }
@@ -6342,7 +6363,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1705;
+    window.BOARD_VER = 1706;
 
     
     function communityShort() {
@@ -9684,7 +9705,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       if (typeof paintListings === "function") setTimeout(paintListings, 0);
       var oldEl = document.getElementById("re-pop");
       if (oldEl) oldEl.remove();
-      var zillow = "https://www.zillow.com/homes/" + encodeURIComponent(h.addr) + "_rb/";
       var redfin = h.mls ? "https://www.redfin.com/search?q=" + encodeURIComponent(h.mls) : "";
       var photos = (h.photos && h.photos.length) ? h.photos.slice() : (h.img ? [h.img] : []);
       var idx = 0;
@@ -9692,31 +9712,50 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       pop.id = "re-pop";
       pop.className = "re-pop";
       var priceSq = (h.price && h.sqft) ? Math.round(h.price / h.sqft) : 0;
+      var desc = String(h.desc || "");
+      var tags = [];
+      var model = (desc.match(/\b(Cascadia|Hallmark|Mystique|Renown|Contour|Stellar|Prestige|Seagrove)\b/i) || [])[1];
+      if (model) tags.push(model + " model");
+      if (/water\s*view|waterfront/i.test(desc)) tags.push("Water view");
+      if (/preserve/i.test(desc)) tags.push("Preserve view");
+      if (/end unit/i.test(desc)) tags.push("End unit");
+      if (/flex/i.test(desc)) tags.push("Flex room");
+      if (/cul-de-sac/i.test(desc)) tags.push("Cul-de-sac");
+      if (/pool/i.test(desc)) tags.push("Pool");
+      if (/generator/i.test(desc)) tags.push("Generator");
+      if (/impact/i.test(desc)) tags.push("Impact glass");
+      if (/under construction|new construction/i.test(desc) || Number(h.year) >= 2025) tags.push("New construction");
+      if (/price reduction/i.test(desc)) tags.push("Price reduced");
       function render() {
         var src = photos[idx] || "";
-        var counter = photos.length > 1 ? ('<div style="text-align:center;font-size:13px;color:var(--muted);margin-top:4px">' + (idx+1) + ' of ' + photos.length + ' · click photo for next</div>') : '';
-        var imgHtml = src ? ('<img id="re-main-img" src="' + src + '" alt="" style="width:100%;height:320px;object-fit:cover;border-radius:12px;cursor:pointer;background:#ddd">') : '';
-        pop.innerHTML = '<div class="re-pop-card" style="max-width:640px">' +
+        var counter = photos.length > 1 ? ('<div class="re-count">' + (idx+1) + ' of ' + photos.length + ' · click photo for next</div>') : '';
+        var imgHtml = src ? ('<img id="re-main-img" src="' + src + '" alt="">') : '';
+        var tagHtml = tags.length ? ('<div class="re-tags">' + tags.map(function (t) { return '<span>' + t + '</span>'; }).join('') + '</div>') : '';
+        var facts = [
+          [h.beds || '—', 'Bedrooms'],
+          [h.baths || '—', 'Bathrooms'],
+          [(h.sqft||0).toLocaleString(), 'Sq ft'],
+          [h.year || '—', 'Year built'],
+          [h.hoa ? ('$' + Number(h.hoa).toLocaleString()) : '—', 'HOA / mo'],
+          [priceSq ? ('$' + priceSq.toLocaleString()) : '—', 'Price / sqft'],
+          [h.mls || '—', 'MLS'],
+          [photos.length ? String(photos.length) : '—', 'Photos']
+        ];
+        var factHtml = '<div class="re-facts">' + facts.map(function (f) {
+          return '<span><b>' + f[0] + '</b><em>' + f[1] + '</em></span>';
+        }).join('') + '</div>';
+        pop.innerHTML = '<div class="re-pop-card">' +
+          '<button type="button" class="re-x" id="re-x" aria-label="Close">×</button>' +
           imgHtml +
           counter +
+          '<div class="re-price">$' + (h.price||0).toLocaleString() + '</div>' +
           '<h3>' + h.addr + '</h3>' +
-          '<div class="re-price" style="font-size:22px">$' + (h.price||0).toLocaleString() + '</div>' +
-          '<div class="re-facts">' +
-            '<span>' + (h.beds||'—') + ' bedrooms</span>' +
-            '<span>' + (h.baths||'—') + ' bathrooms</span>' +
-            '<span>' + (h.sqft||0).toLocaleString() + ' sqft</span>' +
-            '<span>Built ' + (h.year||'—') + '</span>' +
-            '<span>HOA $' + (h.hoa||'—') + '/mo</span>' +
-            (priceSq ? '<span>$' + priceSq.toLocaleString() + '/sqft</span>' : '') +
-            (h.mls ? '<span>MLS ' + h.mls + '</span>' : '') +
-          '</div>' +
-          '<p>' + (h.desc || '') + '</p>' +
-          '<p class="pill-key">Englewood, FL 34223 · BeachWalk by Manasota Key</p>' +
-          '<div class="ask-row" style="margin-top:12px">' +
-            '<a class="go" href="' + zillow + '" target="_blank" rel="noopener">Zillow</a>' +
-            (redfin ? '<a class="go" href="' + redfin + '" target="_blank" rel="noopener">Redfin</a>' : '') +
-            '<button type="button" class="ghost" id="re-close">Close</button>' +
-          '</div></div>';
+          tagHtml +
+          factHtml +
+          (desc ? '<p class="re-desc">' + desc + '</p>' : '') +
+          '<p class="pill-key">BeachWalk by Manasota Key · Englewood, FL 34223 · gated, no CDD</p>' +
+          (redfin ? '<div class="ask-row" style="margin-top:12px"><a class="go" href="' + redfin + '" target="_blank" rel="noopener">View on Redfin</a></div>' : '') +
+          '</div>';
         var img = document.getElementById("re-main-img");
         if (img && photos.length > 1) {
           img.addEventListener("click", function (e) {
@@ -9725,10 +9764,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
             render();
           });
         }
-        document.getElementById("re-close").addEventListener("click", function () { pop.remove(); });
+        var x = document.getElementById("re-x");
+        if (x) x.addEventListener("click", function (e) { e.stopPropagation(); pop.remove(); });
       }
       document.body.appendChild(pop);
       pop.addEventListener("click", function (e) { if (e.target === pop) pop.remove(); });
+      document.addEventListener("keydown", function esc(e) {
+        if (e.key === "Escape") { pop.remove(); document.removeEventListener("keydown", esc); }
+      });
       render();
     }
     function paintCommunity() {
