@@ -6342,7 +6342,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1704;
+    window.BOARD_VER = 1705;
 
     
     function communityShort() {
@@ -30109,8 +30109,8 @@ function wxSvg(kind, box) {
     function ensureTenDay() {
       var td = document.querySelector(".tenday");
       if (!td) return;
-      if (td.querySelectorAll(".day").length >= 10) return;
-      var lat = typeof homeLat === "function" ? homeLat() : 26.96;
+      var lat = typeof homeLat === "function" ? homeLat() : 41.85;
+      var lon = typeof homeLon === "function" ? homeLon() : -72.52;
       var urls = typeof gitFileUrls === "function" ? gitFileUrls("forecast10.json") : ["https://raw.githubusercontent.com/valentenick-bit/fl-board/main/forecast10.json"];
       var i = 0;
       function tryNext() {
@@ -30120,7 +30120,7 @@ function wxSvg(kind, box) {
           var best = null, bestD = 1e9;
           Object.keys(j.pins).forEach(function (k) {
             var p = j.pins[k];
-            var d = Math.abs(p.lat - lat);
+            var d = Math.abs(p.lat - lat) + Math.abs(p.lon - lon);
             if (d < bestD) { bestD = d; best = p; }
           });
           var days = (best && best.days) || [];
@@ -30148,8 +30148,9 @@ function wxSvg(kind, box) {
       }
       tryNext();
     }
-    setTimeout(ensureTenDay, 1200);
-    setTimeout(ensureTenDay, 5000);
+    setTimeout(ensureTenDay, 800);
+    setTimeout(ensureTenDay, 2500);
+    setTimeout(ensureTenDay, 7000);
 
     function nthWeekday(year, month, weekday, n) {
       var d = new Date(year, month, 1);
