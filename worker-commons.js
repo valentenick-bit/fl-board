@@ -247,6 +247,46 @@ export default {
       }
       return new Response("", { status: 502, headers: hdr });
     }
+
+    if (url.pathname === "/news-snippet") {
+      const hdr = {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=3600",
+        "access-control-allow-origin": "*"
+      };
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
+      const target = String(url.searchParams.get("url") || "").trim();
+      if (!/^https?:\/\//i.test(target) || target.length > 500) {
+        return new Response(JSON.stringify({ snippet: "" }), { status: 200, headers: hdr });
+      }
+      try {
+        const r = await fetch(target, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Commons/1.0)", Accept: "text/html" },
+          redirect: "follow",
+          cf: { cacheTtl: 3600 }
+        });
+        if (!r.ok) return new Response(JSON.stringify({ snippet: "" }), { status: 200, headers: hdr });
+        const html = await r.text();
+        let snippet = "";
+        // Prefer og:description or meta description
+        const og = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) ||
+                   html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i) ||
+                   html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i) ||
+                   html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
+        if (og && og[1]) snippet = og[1];
+        if (!snippet) {
+          // Fallback: first reasonably long <p>
+          const p = html.match(/<p[^>]*>([\s\S]{80,400}?)<\/p>/i);
+          if (p) snippet = p[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        }
+        snippet = snippet.replace(/&/g, "&").replace(/"/g, '"').replace(/&#39;/g, "'").replace(/</g, "<").replace(/>/g, ">").replace(/\s+/g, " ").trim();
+        if (snippet.length > 220) snippet = snippet.slice(0, 217).replace(/\s+\S*$/, "") + "…";
+        return new Response(JSON.stringify({ snippet: snippet }), { status: 200, headers: hdr });
+      } catch (e) {
+        return new Response(JSON.stringify({ snippet: "" }), { status: 200, headers: hdr });
+      }
+    }
+
     if (url.pathname === "/brief") {
       const hdr = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
       if (request.method === "OPTIONS") return new Response(null, { headers: hdr });
