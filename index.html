@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1725;
+    window.BOARD_VER = 1726;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -25972,9 +25972,22 @@ function mustEatsFL() {
 
       function fetchNews(q) {
         var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
-        var url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss);
+        // allorigins wraps the XML and supports CORS
+        var url = "https://api.allorigins.win/get?url=" + encodeURIComponent(rss);
         return fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-          return (data && data.items) || [];
+          var xml = (data && data.contents) || "";
+          if (!xml) return [];
+          var items = [];
+          var chunks = String(xml).split(/<item[\s>]/i);
+          for (var i = 1; i < chunks.length && items.length < 12; i++) {
+            var chunk = chunks[i];
+            var title = (chunk.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i) || [])[1] || "";
+            var link = (chunk.match(/<link[^>]*>([\s\S]*?)<\/link>/i) || [])[1] || "";
+            var when = (chunk.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i) || [])[1] || "";
+            title = title.replace(/<[^>]+>/g, " ").replace(/&/g, "&").replace(/\s+/g, " ").trim();
+            if (title) items.push({ title: title, link: link.trim(), pubDate: when.trim() });
+          }
+          return items;
         }).catch(function () { return []; });
       }
       function load() {
