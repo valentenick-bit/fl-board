@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1717;
+    window.BOARD_VER = 1718;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -25974,21 +25974,23 @@ function mustEatsFL() {
           var key = title.toLowerCase().slice(0, 56);
           if (!title || /google news/i.test(title) || seen[key]) return;
           seen[key] = true;
-          var rawDesc = String(it.description || it.desc || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-          // Google News often puts the title (or title + source) in the description.
-          // Strip the title if it appears at the start, then drop the result if it is still basically the same as the headline.
-          var desc = rawDesc;
-          var tLow = title.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-          var dLow = rawDesc.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-          if (dLow.indexOf(tLow) === 0) {
-            desc = rawDesc.slice(title.length).replace(/^[\s\-–|·]+/, "").trim();
-          }
-          // If the remaining text is very short or still almost identical to the title, hide it.
-          var dClean = desc.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-          if (!desc || dClean === tLow || dClean.length < 40 || dClean.indexOf(tLow) === 0) {
-            desc = "";
-          } else if (desc.length > 200) {
-            desc = desc.slice(0, 197).replace(/\s+\S*$/, "") + "…";
+          // Google News RSS descriptions are almost always just the title + source name.
+          // Only show a summary when there is clearly extra text beyond the headline.
+          var rawDesc = String(it.description || it.desc || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim();
+          var tNorm = title.toLowerCase().replace(/[^a-z0-9]/g, "");
+          var dNorm = rawDesc.toLowerCase().replace(/[^a-z0-9]/g, "");
+          var desc = "";
+          if (rawDesc && dNorm.length > tNorm.length + 60) {
+            // Remove the title if it is a prefix, then check remaining length
+            var rest = rawDesc;
+            if (rawDesc.toLowerCase().indexOf(title.toLowerCase()) === 0) {
+              rest = rawDesc.slice(title.length).replace(/^[\s\-–|·.,]+/, "").trim();
+            }
+            var restNorm = rest.toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (restNorm.length > 50 && restNorm.indexOf(tNorm) !== 0) {
+              desc = rest;
+              if (desc.length > 180) desc = desc.slice(0, 177).replace(/\s+\S*$/, "") + "…";
+            }
           }
           rows.push({
             title: title,
