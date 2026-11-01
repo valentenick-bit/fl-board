@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1716;
+    window.BOARD_VER = 1717;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -25974,8 +25974,22 @@ function mustEatsFL() {
           var key = title.toLowerCase().slice(0, 56);
           if (!title || /google news/i.test(title) || seen[key]) return;
           seen[key] = true;
-          var desc = String(it.description || it.desc || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-          if (desc.length > 220) desc = desc.slice(0, 217).replace(/\s+\S*$/, "") + "…";
+          var rawDesc = String(it.description || it.desc || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+          // Google News often puts the title (or title + source) in the description.
+          // Strip the title if it appears at the start, then drop the result if it is still basically the same as the headline.
+          var desc = rawDesc;
+          var tLow = title.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+          var dLow = rawDesc.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+          if (dLow.indexOf(tLow) === 0) {
+            desc = rawDesc.slice(title.length).replace(/^[\s\-–|·]+/, "").trim();
+          }
+          // If the remaining text is very short or still almost identical to the title, hide it.
+          var dClean = desc.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+          if (!desc || dClean === tLow || dClean.length < 40 || dClean.indexOf(tLow) === 0) {
+            desc = "";
+          } else if (desc.length > 200) {
+            desc = desc.slice(0, 197).replace(/\s+\S*$/, "") + "…";
+          }
           rows.push({
             title: title,
             link: it.link || "#",
