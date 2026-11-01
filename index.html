@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1724;
+    window.BOARD_VER = 1725;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -25970,6 +25970,13 @@ function mustEatsFL() {
         if (note) note.textContent = (typeof homePlace === "function" ? homePlace() : "Home") + " · local headlines";
       }
 
+      function fetchNews(q) {
+        var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
+        var url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss);
+        return fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+          return (data && data.items) || [];
+        }).catch(function () { return []; });
+      }
       function load() {
         var place = "Englewood", st = "FL";
         try {
@@ -25977,16 +25984,29 @@ function mustEatsFL() {
           if (typeof homeState === "function") st = homeState() || st;
         } catch (e) {}
         if (!place || place.length < 3) place = "local";
-        var q = '"' + place + '" ' + st + ' when:7d';
-        var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
-        var url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss);
         box.innerHTML = '<div class="card"><b>Local headlines</b><span>Loading…</span></div>';
-        fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-          render((data && data.items) || []);
-        }).catch(function (err) {
-          console.log("news error", err);
-          box.innerHTML = '<div class="card"><b>Could not load news</b><span>Try again in a minute.</span></div>';
-        });
+        // Try a few progressively broader queries
+        var queries = [
+          place + " " + st + " when:14d",
+          place + " " + st,
+          st + " local news when:7d"
+        ];
+        function tryNext(i) {
+          if (i >= queries.length) {
+            render([]);
+            return;
+          }
+          fetchNews(queries[i]).then(function (items) {
+            if (items && items.length) {
+              render(items);
+              var note = document.getElementById("news-note");
+              if (note) note.textContent = place + " · " + st;
+            } else {
+              tryNext(i + 1);
+            }
+          });
+        }
+        tryNext(0);
       }
 
       window.__reloadLocalNews = load;
