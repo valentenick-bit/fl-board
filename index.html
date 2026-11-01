@@ -4690,13 +4690,23 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
               <div class="airport-row" id="airport-status"></div>
             </div>
             <div class="ev-filters" id="travel-ap-filters"></div>
+            <div class="ev-filters" id="travel-dir-filters">
+              <button type="button" data-dir="all" class="on">All</button>
+              <button type="button" data-dir="arr">Arrivals</button>
+              <button type="button" data-dir="dep">Departures</button>
+            </div>
+            <div id="travel-delay-note" class="pill-key" style="margin:6px 0 4px"></div>
             <div class="card" id="travel-board">
-              <b>Live aircraft</b>
+              <b>Nearby traffic</b>
               <div id="travel-board-body"><p class="pill-key">Pick an airport.</p></div>
+            </div>
+            <div class="card" id="travel-tip-card" style="margin-top:10px">
+              <b>At the airport</b>
+              <div id="travel-tip" class="pill-key">—</div>
             </div>
           </div>
           <div class="wx-top-right" id="travel-flights">
-            <div class="card"><b>Flights</b><div id="live-flights">Loading the flight scan…</div></div>
+            <div class="card"><b>Your flights</b><div id="live-flights">Loading the flight scan…</div></div>
             <div id="today-fly">
               <div id="today-fly-body"></div>
               <div id="today-fly-track" hidden></div>
@@ -6168,7 +6178,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1687;
+    window.BOARD_VER = 1688;
 
     
     function communityShort() {
@@ -19664,6 +19674,14 @@ function paintObservatories() { paintObsTable(); }
       if (eta) pills += '<span class="place-tag place-bw">' + eta + "</span>";
       var title = [who, num].filter(Boolean).join(" · ") || "Flight";
       var whenLine = when || "";
+      if (!isNaN(tm)) {
+        var hrs = (tm - Date.now()) / 3600000;
+        if (hrs > 0 && hrs < 48) {
+          var h = Math.floor(hrs);
+          var m = Math.round((hrs - h) * 60);
+          whenLine += " · in " + (h ? h + "h " : "") + m + "m";
+        }
+      }
       var nextAct = typeof flyNextAction === "function" ? flyNextAction(f) : "";
       var detail = bits.join(" · ");
       var ico = '<svg viewBox="0 0 24 24" width="32" height="32" fill="#1b2a4a" stroke="#1b2a4a" stroke-width="1.2"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
@@ -20570,6 +20588,24 @@ function paintObservatories() { paintObsTable(); }
       if (arrs && arrs.length) html += "<p class=\"sheet-kicker\">Arrivals</p>" + arrs.slice(0, 8).map(function (f) { return row(f, "Arr"); }).join("");
       body.innerHTML = html || "<p class=\"pill-key\">No flights for " + ap.code + ".</p>";
     }
+    var AP_TIPS = {
+      BDL: "TSA PreCheck on the left. Short-term garage is closest to departures.",
+      SRQ: "Usually light. Short-term parking is a short walk. PreCheck is fast.",
+      RSW: "Allow extra time. Long-term is cheaper; shuttle is frequent.",
+      TPA: "SkyConnect or economy garage. PreCheck is in the main terminal.",
+      MCO: "Arrive early. Brightline or rental shuttles on the north side.",
+      PBI: "Small and easy. Short-term is fine for most trips.",
+      BOS: "Terminal A/B/C/E are separate. Check which one before you leave.",
+      JFK: "AirTrain from Jamaica. Allow buffer for security.",
+      EWR: "AirTrain from Newark. Terminal C is United.",
+      LGA: "No AirTrain. Taxi or rideshare is simplest."
+    };
+    function driveMin(mi) {
+      if (!mi || mi > 200) return "";
+      var min = Math.round(mi * 1.35);
+      if (min < 8) min = 8;
+      return min + " min";
+    }
     function paintTravelBoard() {
       var filters = document.getElementById("travel-ap-filters");
       var body = document.getElementById("travel-board-body");
@@ -20591,6 +20627,17 @@ function paintObservatories() { paintObsTable(); }
           paintTravelBoard();
         });
       });
+      var dirFilters = document.getElementById("travel-dir-filters");
+      if (dirFilters) {
+        var cur = window.__travelDir || "all";
+        dirFilters.querySelectorAll("button").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-dir") === cur);
+          b.onclick = function () {
+            window.__travelDir = b.getAttribute("data-dir");
+            paintTravelBoard();
+          };
+        });
+      }
       var ap = near.filter(function (a) { return a.code === sel; })[0] || near[0];
       if (map && ap) {
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
@@ -20671,12 +20718,33 @@ function paintObservatories() { paintObsTable(); }
             if (a.inbound !== b.inbound) return a.inbound ? -1 : 1;
             return a.dist - b.dist;
           }).slice(0, 16);
-        if (!rows.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft within " + distCap + " " + distUnit + " of " + ap.code + ".</p>"; return; }
+        var dirFilter = window.__travelDir || "all";
+        if (dirFilter === "arr") rows = rows.filter(function (r) { return r.inbound; });
+        if (dirFilter === "dep") rows = rows.filter(function (r) { return !r.inbound; });
+        var tipEl = document.getElementById("travel-tip");
+        if (tipEl) tipEl.textContent = (typeof AP_TIPS !== "undefined" && AP_TIPS[ap.code]) || "No special notes for this airport.";
+        var note = document.getElementById("travel-delay-note");
+        if (note) {
+          var faa = window.__faaBad && window.__faaBad[ap.code];
+          note.textContent = faa ? (ap.code + " · " + faa.status + (faa.reason ? " · " + faa.reason : "")) : "";
+        }
+        if (!rows.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft in this view near " + ap.code + ".</p>"; return; }
         var th = "<tr><th>Airline</th><th>Flight</th><th>Type</th><th>Arr</th><th>Dep</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
-        var tr = rows.map(function (r) {
-          return "<tr><td>" + (r.airline || "—") + "</td><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? r.alt.toLocaleString() : "—") + "</td><td>" + (r.spd ? r.spd : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>";
+        var tr = rows.map(function (r, i) {
+          var fa = "https://www.flightaware.com/live/flight/" + encodeURIComponent(r.call);
+          var adsb = "https://globe.adsbexchange.com/?callsign=" + encodeURIComponent(r.call);
+          return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (r.airline || "—") + "</td><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? r.alt.toLocaleString() : "—") + "</td><td>" + (r.spd ? r.spd : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>" +
+            "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"8\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" +
+            Math.round(r.dist) + " mi · " + (r.inbound ? "heading toward airport" : "heading away") +
+            " · <a href=\"" + fa + "\" target=\"_blank\" rel=\"noopener\">FlightAware</a> · <a href=\"" + adsb + "\" target=\"_blank\" rel=\"noopener\">ADS-B</a></td></tr>";
         }).join("");
         body.innerHTML = "<table class=\"ap-board\">" + th + tr + "</table>";
+        body.querySelectorAll(".ac-row").forEach(function (tr) {
+          tr.addEventListener("click", function () {
+            var d = document.getElementById("ac-d-" + tr.getAttribute("data-i"));
+            if (d) d.hidden = !d.hidden;
+          });
+        });
       }).catch(function (err) {
         body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
       });
@@ -20701,7 +20769,9 @@ function paintObservatories() { paintObsTable(); }
           var state = hit ? hit.status : (bad ? "Normal" : "Checking");
           var cls = hit ? (hit.status === "Closed" ? "closed" : (hit.status === "Ground stop" ? "stop" : "delay")) : (bad ? "ok" : "");
           var why = hit ? ((hit.avg ? hit.avg + " · " : "") + hit.reason) : "";
-          return '<div class="airport-pill ' + cls + '"><b>' + a.code + '</b><div class="ap-name">' + a.name + '</div><div class="ap-mi">' + Math.round(a.mi) + ' mi</div><div class="ap-state">' + state + '</div>' + (why ? '<div class="ap-mi">' + why + '</div>' : '') + '</div>';
+          var drive = (typeof driveMin === "function") ? driveMin(a.mi) : "";
+          var wx = (window.__apWx && window.__apWx[a.code]) || "";
+          return '<div class="airport-pill ' + cls + '"><b>' + a.code + '</b><div class="ap-name">' + a.name + '</div><div class="ap-mi">' + Math.round(a.mi) + ' mi' + (drive ? " · " + drive : "") + '</div>' + (wx ? '<div class="ap-mi">' + wx + '</div>' : '') + '<div class="ap-state">' + state + '</div>' + (why ? '<div class="ap-mi">' + why + '</div>' : '') + '</div>';
         }).join("");
         if (lead) {
           var trouble = bad ? near.filter(function (a) { return bad[a.code]; }) : [];
@@ -20709,6 +20779,18 @@ function paintObservatories() { paintObsTable(); }
         }
       }
       draw(null);
+      window.__apWx = window.__apWx || {};
+      near.forEach(function (a) {
+        if (window.__apWx[a.code]) return;
+        fetch("https://api.open-meteo.com/v1/forecast?latitude=" + a.lat + "&longitude=" + a.lon + "&current=temperature_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph")
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var c = j && j.current;
+            if (!c) return;
+            window.__apWx[a.code] = Math.round(c.temperature_2m) + "° · " + Math.round(c.wind_speed_10m) + " mph";
+            draw(window.__faaBad || null);
+          }).catch(function () {});
+      });
       fetch("/faa-status", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("http"); return r.text(); }).then(function (xml) {
         if (!xml || xml.indexOf("AIRPORT_STATUS") < 0 || xml.indexOf("<!DOCTYPE") >= 0) throw new Error("html");
         var doc = new DOMParser().parseFromString(xml, "text/xml");
@@ -20726,7 +20808,7 @@ function paintObservatories() { paintObsTable(); }
         take("Ground_Delay", "Delays");
         take("Delay", "Delays");
         take("Airport", "Closed");
-        draw(bad);
+        window.__faaBad = bad; draw(bad);
         if (typeof noteFeed === "function") noteFeed("airports", true, near.filter(function (a) { return bad[a.code]; }).length + " delayed");
       }).catch(function () { draw({}); if (lead) lead.textContent = "Four closest airports. FAA status did not answer."; });
     }
