@@ -6358,7 +6358,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1720;
+    window.BOARD_VER = 1721;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26077,61 +26077,12 @@ function mustEatsFL() {
         }
         return one(0);
       }
-      function loadFromApi() {
-        var place = (typeof homePlace === "function" ? homePlace() : "") || "";
-        var q = place || "local news";
-        var api = "/news?q=" + encodeURIComponent(q) + "&place=" + encodeURIComponent(place);
-        return fetch(api).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
-          if (!data || !data.articles || !data.articles.length) return null;
-          return data.articles.map(function (a) {
-            return {
-              title: a.title || "",
-              link: a.url || "#",
-              pubDate: a.publishedAt || "",
-              description: a.description || "",
-              img: a.image || "",
-              src: a.source || "Local"
-            };
-          });
-        }).catch(function () { return null; });
-      }
-      function enrichSnippets(rows) {
-        // Only try the first 4 to stay light
-        rows.slice(0, 4).forEach(function (r, i) {
-          if (!r.link || r.link === "#" || r.desc) return;
-          fetch("/news-snippet?url=" + encodeURIComponent(r.link))
-            .then(function (res) { return res.ok ? res.json() : null; })
-            .then(function (data) {
-              if (!data || !data.snippet || data.snippet.length < 40) return;
-              var cards = box.querySelectorAll("a.card");
-              if (cards[i]) {
-                var sum = cards[i].querySelector(".news-sum");
-                if (sum) sum.textContent = data.snippet;
-                else {
-                  var span = document.createElement("span");
-                  span.className = "news-sum";
-                  span.style.cssText = "display:block;margin-top:6px;font-size:14px;line-height:1.4;opacity:.85";
-                  span.textContent = data.snippet;
-                  var b = cards[i].querySelector("b");
-                  if (b && b.parentNode) b.parentNode.insertBefore(span, b.nextSibling);
-                }
-              }
-            }).catch(function () {});
-        });
-      }
       function load() {
-        loadFromApi().then(function (items) {
-          if (items && items.length) {
-            render(items);
-            enrichSnippets(items);
-            return;
-          }
-          // Fallback to Google News RSS
-          Promise.all(feeds().map(pull)).then(function (lists) {
-            var rows = [].concat.apply([], lists);
-            render(rows);
-            enrichSnippets(rows);
-          });
+        Promise.all(feeds().map(pull)).then(function (lists) {
+          var rows = [].concat.apply([], lists);
+          render(rows);
+        }).catch(function () {
+          box.innerHTML = '<div class="card"><b>Could not load news</b><span>Try again in a minute.</span></div>';
         });
       }
       window.__reloadLocalNews = load;
