@@ -6129,7 +6129,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1673;
+    window.BOARD_VER = 1674;
 
     
     function communityShort() {
@@ -15511,6 +15511,11 @@ function currentRotation() {
               return sortAsc ? va - vb : vb - va;
             });
             var metric = typeof useMetric === "function" && useMetric();
+        var airlines = { AAL:"American", DAL:"Delta", UAL:"United", SWA:"Southwest", JBU:"JetBlue", ASA:"Alaska", FFT:"Frontier", NKS:"Spirit", SKW:"SkyWest", RPA:"Republic", EDV:"Endeavor", JIA:"PSA", ASH:"Mesa", GJS:"GoJet", BWA:"Caribbean", VXP:"Avelo", MXY:"Breeze", HAL:"Hawaiian", FDX:"FedEx", UPS:"UPS", GTI:"Atlas", ABX:"ABX", ATN:"Air Transport", NCR:"National", SCX:"Sun Country", ROU:"Rouge", ACA:"Air Canada", WJA:"WestJet", BAW:"British", AFR:"Air France", DLH:"Lufthansa", KLM:"KLM", UAE:"Emirates", QFA:"Qantas", ANA:"ANA", JAL:"Japan", CCA:"Air China", CES:"China Eastern", CSN:"China Southern", SIA:"Singapore", THA:"Thai", AAR:"Asiana", KAL:"Korean", EVA:"EVA", CAL:"China Airlines", AMX:"Aeromexico", AVA:"Avianca", CMP:"Copa", TAM:"LATAM", LAN:"LATAM", GLO:"Gol", AZA:"ITA", IBE:"Iberia", SAS:"SAS", FIN:"Finnair", AEE:"Aegean", ELY:"El Al", ETH:"Ethiopian", SAA:"South African", QTR:"Qatar", ETD:"Etihad", SVA:"Saudia", GFA:"Gulf Air", OMA:"Oman", RJA:"Royal Jordanian", MEA:"MEA", IRA:"Iran Air", PIA:"PIA", AIC:"Air India", VTI:"Vistara", IGO:"IndiGo", SLI:"SpiceJet", TGW:"Scoot", JST:"Jetstar", VOZ:"Virgin Australia", ANZ:"Air NZ", PAL:"Philippine", CPA:"Cathay", HKE:"HK Express", CXA:"Xiamen", CHH:"Hainan", CSZ:"Shenzhen", CDC:"Loong", DK:"Sunclass", NAX:"Norwegian", WZZ:"Wizz", RYR:"Ryanair", EZY:"easyJet", VL:"Vueling", TOM:"TUI", EXS:"Jet2", TCX:"Thomas Cook" };
+        function airlineName(call) {
+          var c = String(call || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3);
+          return airlines[c] || "";
+        }
             var cols = [
               { k:"name", l:"Observatory" }, { k:"elev", l:"Elev" }, { k:"temp", l:"Temp" }, { k:"feels", l:"Feels" },
               { k:"wind", l:"Wind" }, { k:"dir", l:"Dir" }, { k:"gust", l:"Gust" },
@@ -20526,6 +20531,7 @@ function paintObservatories() { paintObsTable(); }
           var spdShow = metric ? Math.round(spdKt * 1.852) : Math.round(spdKt);
           return {
             call: (a.flight || a.r || "").trim() || "—",
+            airline: airlineName(a.flight || a.r || ""),
             dir: inbound ? "Arr" : "Dep",
             arr: inbound ? fmtTime(eta) : "—",
             dep: inbound ? "—" : fmtTime(depEst),
@@ -20536,9 +20542,9 @@ function paintObservatories() { paintObsTable(); }
           };
         }).filter(Boolean).sort(function (a, b) { return a.dist - b.dist; }).slice(0, 16);
         if (!rows.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft within " + distCap + " " + distUnit + " of " + ap.code + ".</p>"; return; }
-        var th = "<tr><th>Flight</th><th>Type</th><th>Arr</th><th>Dep</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
+        var th = "<tr><th>Airline</th><th>Flight</th><th>Type</th><th>Arr</th><th>Dep</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
         var tr = rows.map(function (r) {
-          return "<tr><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? r.alt.toLocaleString() : "—") + "</td><td>" + (r.spd ? r.spd : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>";
+          return "<tr><td>" + (r.airline || "—") + "</td><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? r.alt.toLocaleString() : "—") + "</td><td>" + (r.spd ? r.spd : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>";
         }).join("");
         body.innerHTML = "<table class=\"ap-board\">" + th + tr + "</table>";
       }).catch(function () {
