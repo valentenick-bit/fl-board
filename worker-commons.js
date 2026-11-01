@@ -612,7 +612,7 @@ export default {
 
     const r = await fetch(raw, {
       headers: { "User-Agent": "Commons/1.0", "Accept": "text/html" },
-      cf: { cacheTtl: 180, cacheEverything: true }
+      cf: { cacheTtl: 0, cacheEverything: false }
     });
     if (!r.ok) {
       return new Response("GitHub " + r.status + " for " + raw, { status: 502, headers: { "content-type": "text/plain" } });
@@ -621,8 +621,8 @@ export default {
     return new Response(text, {
       headers: {
         "content-type": "text/html; charset=utf-8",
-        "cache-control": "public, max-age=120, stale-while-revalidate=300",
-        "cdn-cache-control": "public, max-age=180"
+        "cache-control": "no-store",
+        "cdn-cache-control": "no-store"
       }
     });
   }
