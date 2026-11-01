@@ -1,4 +1,4 @@
-const SOURCE = "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@b0edc02c8acb22759971263c9d38fcea66886fe3/index.html";
+const SOURCE = "https://cdn.jsdelivr.net/gh/valentenick-bit/fl-board@cf7b26e45ee40691cae72a383d7d6db1b484a0c2/index.html";
 
 const BW = "605b2c9a38c8aaf67ecdb6dff209d34fa7ba97debfc814d7999323b41b640947@group.calendar.google.com";
 const ENG = "a4e440841faec3345147ad56ddeb185206306d8bb01d0262c2e1d7dfa3f6d3c6@group.calendar.google.com";
