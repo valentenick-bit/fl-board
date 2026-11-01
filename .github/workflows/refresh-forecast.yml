@@ -20,28 +20,60 @@ jobs:
           from datetime import datetime
           from zoneinfo import ZoneInfo
           from collections import defaultdict
-          pins = {"fl": (26.96, -82.35), "ct": (41.85, -72.57)}
-          tz = ZoneInfo("America/New_York")
-          def fetch(lat, lon):
-              url = f"https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat}&lon={lon}"
-              req = urllib.request.Request(url, headers={"User-Agent": "CommonsBoard/1.0"})
-              with urllib.request.urlopen(req, timeout=20) as r:
+          def get(url, headers=None):
+              req = urllib.request.Request(url, headers=headers or {"User-Agent": "CommonsBoard/1.0"})
+              with urllib.request.urlopen(req, timeout=25) as r:
                   return json.load(r)
-          out = {"updated": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "source": "met.no", "pins": {}}
+          tz = ZoneInfo("America/New_York")
+          def symbol_word(symbols, rain):
+              s = " ".join(symbols)
+              if "thunder" in s: return "Thunderstorms"
+              if "heavyrain" in s or rain >= 8: return "Rain"
+              if "rain" in s or "shower" in s or rain >= 1: return "Showers"
+              if "cloudy" in s and "partly" not in s: return "Cloudy"
+              if "partlycloudy" in s or "fair" in s: return "Partly cloudy"
+              if "clearsky" in s: return "Sunny"
+              return "Partly cloudy"
+          def pop_from(rain, word):
+              if word == "Thunderstorms": return 60
+              if word == "Rain": return 70
+              if word == "Showers": return 50 if rain >= 2 else 40
+              if rain >= 0.5: return 30
+              return 10 if "cloud" in word.lower() else 5
+          pins = {"fl": (26.96, -82.35), "ct": (41.85, -72.57)}
+          nws = get("https://api.weather.gov/gridpoints/TBW/77,56/forecast", {"User-Agent": "CommonsBoard/1.0", "Accept": "application/geo+json"})
+          nws_by = {}
+          for p in nws["properties"]["periods"]:
+              if not p.get("isDaytime"): continue
+              pop = (p.get("probabilityOfPrecipitation") or {}).get("value")
+              nws_by[p["startTime"][:10]] = {"pop": pop, "fx": p.get("shortForecast") or ""}
+          out = {"updated": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "source": "met.no + NWS", "pins": {}}
           for name, (lat, lon) in pins.items():
-              d = fetch(lat, lon)
-              series = d["properties"]["timeseries"]
-              by = defaultdict(list)
-              for p in series:
-                  t = p["data"]["instant"]["details"].get("air_temperature")
-                  if t is None: continue
+              d = get(f"https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat}&lon={lon}")
+              by = defaultdict(lambda: {"temps": [], "rain": 0.0, "symbols": []})
+              for p in d["properties"]["timeseries"]:
+                  det = p["data"]["instant"]["details"]
                   dt = datetime.fromisoformat(p["time"].replace("Z","+00:00")).astimezone(tz)
-                  by[dt.date().isoformat()].append(t)
+                  key = dt.date().isoformat()
+                  if det.get("air_temperature") is not None:
+                      by[key]["temps"].append(det["air_temperature"])
+                  for win in ("next_1_hours", "next_6_hours", "next_12_hours"):
+                      block = p["data"].get(win) or {}
+                      amt = (block.get("details") or {}).get("precipitation_amount") or 0
+                      sym = (block.get("summary") or {}).get("symbol_code") or ""
+                      if amt: by[key]["rain"] = max(by[key]["rain"], amt)
+                      if sym: by[key]["symbols"].append(sym)
               days = []
               for i, key in enumerate(sorted(by)[:10]):
-                  vals = by[key]
+                  v = by[key]
+                  word = symbol_word(v["symbols"], v["rain"])
+                  pop = pop_from(v["rain"], word)
+                  fx = word
+                  if name == "fl" and key in nws_by and nws_by[key]["pop"] is not None:
+                      pop = nws_by[key]["pop"]
+                      fx = nws_by[key]["fx"] or word
                   dt = datetime.fromisoformat(key)
-                  days.append({"date": key, "label": "Today" if i == 0 else dt.strftime("%a"), "hi": round(max(vals)*9/5+32), "lo": round(min(vals)*9/5+32)})
+                  days.append({"date": key, "label": "Today" if i == 0 else dt.strftime("%a"), "hi": round(max(v["temps"])*9/5+32), "lo": round(min(v["temps"])*9/5+32), "pop": int(pop), "fx": fx, "rain_mm": round(v["rain"], 1)})
               out["pins"][name] = {"lat": lat, "lon": lon, "days": days}
           open("forecast10.json","w").write(json.dumps(out, indent=2))
           print("days", len(out["pins"]["fl"]["days"]))
