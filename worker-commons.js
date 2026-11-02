@@ -373,6 +373,19 @@ export default {
           }
         }
         if (!blocks.length) return new Response(JSON.stringify({ call: call, found: false }), { status: 200, headers: hdr });
+        // Best-effort flight phase from FlightAware
+        var phase = "";
+        var fs = html.match(/"flightStatus":"([^"]*)"/);
+        if (fs && fs[1]) {
+          var map = { airborne: "En route", arrived: "Arrived", taxiing: "Taxiing", scheduled: "Scheduled", departed: "Departed", cancelled: "Cancelled", diverted: "Diverted" };
+          phase = map[fs[1].toLowerCase()] || fs[1];
+        }
+        if (!phase) {
+          if (/Taxiing/i.test(html)) phase = "Taxiing";
+          else if (/En Route|Enroute/i.test(html)) phase = "En route";
+          else if (/Arrived/i.test(html)) phase = "Arrived";
+          else if (/Scheduled/i.test(html)) phase = "Scheduled";
+        }
         // Prefer the block whose times are closest to now (current flight)
         const now = Date.now();
         blocks.sort(function (a, b) {
@@ -400,7 +413,8 @@ export default {
           depSched: depSched,
           arrSched: arrSched,
           depDelay: depDelay,
-          arrDelay: arrDelay
+          arrDelay: arrDelay,
+          phase: phase || ""
         }), { status: 200, headers: hdr });
       } catch (e) {
         return new Response(JSON.stringify({ error: "fetch failed", call: call }), { status: 200, headers: hdr });
