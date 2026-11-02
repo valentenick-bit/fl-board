@@ -6363,7 +6363,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1743;
+    window.BOARD_VER = 1744;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21055,23 +21055,12 @@ function paintObservatories() { paintObsTable(); }
           var faa = window.__faaBad && window.__faaBad[ap.code];
           note.textContent = faa ? (ap.code + " · " + faa.status + (faa.reason ? " · " + faa.reason : "")) : "";
         }
-        if (!rows.length) { body.innerHTML = "<p class=\"pill-key\">No aircraft in this view near " + ap.code + ".</p>"; return; }
-        var th = "<tr><th>Airline</th><th>Flight</th><th>Type</th><th>Arr</th><th>Dep</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
-        var tr = rows.map(function (r, i) {
-          var fa = "https://www.flightaware.com/live/flight/" + encodeURIComponent(r.call);
-          var adsb = "https://globe.adsbexchange.com/?callsign=" + encodeURIComponent(r.call);
-          return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (r.airline || "—") + "</td><td><b>" + r.call + "</b></td><td>" + r.dir + "</td><td>" + r.arr + "</td><td>" + r.dep + "</td><td>" + (r.alt ? r.alt.toLocaleString() : "—") + "</td><td>" + (r.spd ? r.spd : "—") + "</td><td>" + (r.hdg ? Math.round(r.hdg) + "°" : "—") + "</td></tr>" +
-            "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"8\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" +
-            Math.round(r.dist) + " mi · " + (r.inbound ? "heading toward airport" : "heading away") +
-            " · <a href=\"" + fa + "\" target=\"_blank\" rel=\"noopener\">FlightAware</a> · <a href=\"" + adsb + "\" target=\"_blank\" rel=\"noopener\">ADS-B</a></td></tr>";
-        }).join("");
-        body.innerHTML = "<table class=\"ap-board\">" + th + tr + "</table>";
-        body.querySelectorAll(".ac-row").forEach(function (tr) {
-          tr.addEventListener("click", function () {
-            var d = document.getElementById("ac-d-" + tr.getAttribute("data-i"));
-            if (d) d.hidden = !d.hidden;
-          });
-        });
+        if (!rows.length) {
+          if (!body.querySelector("table.ap-board")) {
+            body.innerHTML = "<p class=\"pill-key\">No aircraft in this view near " + ap.code + ".</p>";
+          }
+          return;
+        }
         // Only keep flights whose FlightAware origin or destination is the selected airport,
         // then fill real times and sort by arrival or departure time.
         var apCode = ap.code;
@@ -21087,8 +21076,10 @@ function paintObservatories() { paintObsTable(); }
             return true;
           });
           if (!show.length) {
-            var why = dirFilter === "arr" ? "arriving at" : (dirFilter === "dep" ? "departing" : "using");
-            body.innerHTML = "<p class=\"pill-key\">No flights " + why + " " + apCode + " right now.</p>";
+            if (!body.querySelector("table.ap-board")) {
+              var why = dirFilter === "arr" ? "arriving at" : (dirFilter === "dep" ? "departing" : "using");
+              body.innerHTML = "<p class=\"pill-key\">No flights " + why + " " + apCode + " right now.</p>";
+            }
             return;
           }
           show.sort(function (a, b) {
