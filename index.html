@@ -6359,7 +6359,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1732;
+    window.BOARD_VER = 1733;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21062,6 +21062,21 @@ function paintObservatories() { paintObsTable(); }
             var d = document.getElementById("ac-d-" + tr.getAttribute("data-i"));
             if (d) d.hidden = !d.hidden;
           });
+        });
+        // Fill real arrival/departure times from FlightAware for each visible flight
+        rows.forEach(function (r, i) {
+          if (!r.call || r.call === "—") return;
+          fetch("/fa-times?call=" + encodeURIComponent(r.call))
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (fa) {
+              if (!fa || !fa.found) return;
+              var row = body.querySelector(".ac-row[data-i=\"" + i + "\"]");
+              if (!row) return;
+              var cells = row.querySelectorAll("td");
+              if (cells.length < 5) return;
+              if (fa.arr) cells[3].textContent = fmtTime(fa.arr);
+              if (fa.dep) cells[4].textContent = fmtTime(fa.dep);
+            }).catch(function () {});
         });
       }).catch(function (err) {
         body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
