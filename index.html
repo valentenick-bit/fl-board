@@ -6363,7 +6363,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1749;
+    window.BOARD_VER = 1750;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -20958,8 +20958,10 @@ function paintObservatories() { paintObsTable(); }
           b.classList.toggle("on", b.getAttribute("data-dir") === cur);
           b.onclick = function () {
             window.__travelDir = b.getAttribute("data-dir");
-            if (typeof renderFidsFromCache === "function") renderFidsFromCache();
-            else paintTravelBoard();
+            dirFilters.querySelectorAll("button").forEach(function (x) {
+              x.classList.toggle("on", x.getAttribute("data-dir") === window.__travelDir);
+            });
+            if (typeof window.drawFids === "function") window.drawFids();
           };
         });
       }
@@ -21091,13 +21093,12 @@ function paintObservatories() { paintObsTable(); }
             var tb = b.dest === apCode ? (b.arr || 0) : (b.dep || 0);
             return ta - tb;
           });
-          var th2 = "<tr><th>Airline</th><th>Flight</th><th>Route</th><th>City</th><th>Phase</th><th>Status</th><th>Dep</th><th>Arr</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
+          var th2 = "<tr><th>Airline</th><th>Flight</th><th>Type</th><th>City</th><th>Status</th><th>Dep</th><th>Arr</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
           var tr2 = show.map(function (m, i) {
             var fa = "https://www.flightaware.com/live/flight/" + encodeURIComponent(m.call);
             var adsb = "https://globe.adsbexchange.com/?callsign=" + encodeURIComponent(m.call);
             var type = m.dest === apCode ? "Arr" : "Dep";
             var city = type === "Arr" ? (m.originCity || m.origin) : (m.destCity || m.dest);
-            var route = (m.origin || "—") + " → " + (m.dest || "—");
             var delay = type === "Arr" ? m.arrDelay : m.depDelay;
             var status = "—";
             var statusColor = "inherit";
@@ -21106,9 +21107,8 @@ function paintObservatories() { paintObsTable(); }
               else if (delay < -5) { status = "Early " + Math.abs(delay) + "m"; statusColor = "#d68910"; }
               else { status = "On time"; statusColor = "#1e8449"; }
             }
-            var phase = m.phase || "—";
-            return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td><b>" + m.call + "</b></td><td>" + route + "</td><td>" + city + "</td><td>" + phase + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd ? m.spd : "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
-              "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"11\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" +
+            return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td><b>" + m.call + "</b></td><td>" + type + "</td><td>" + city + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd ? m.spd : "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
+              "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"10\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" +
               m.origin + " → " + m.dest + " · " + Math.round(m.dist) + " mi · <a href=\"" + fa + "\" target=\"_blank\" rel=\"noopener\">FlightAware</a> · <a href=\"" + adsb + "\" target=\"_blank\" rel=\"noopener\">ADS-B</a></td></tr>";
           }).join("");
           body.innerHTML = "<table class=\"ap-board\">" + th2 + tr2 + "</table>";
@@ -21145,7 +21145,6 @@ function paintObservatories() { paintObsTable(); }
                   dep: fa.dep,
                   depDelay: fa.depDelay,
                   arrDelay: fa.arrDelay,
-                  phase: fa.phase || "",
                   alt: r.alt,
                   spd: r.spd,
                   hdg: r.hdg,
@@ -21159,6 +21158,55 @@ function paintObservatories() { paintObsTable(); }
         body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
       });
     }
+    window.drawFids = function () {
+      var body = document.getElementById("travel-board-body");
+      var cache = window.__fidsCache;
+      if (!body || !cache || !cache.rows) return;
+      var apCode = cache.ap;
+      var dirFilter = window.__travelDir || "all";
+      var show = cache.rows.filter(function (m) {
+        if (dirFilter === "arr") return m.dest === apCode;
+        if (dirFilter === "dep") return m.origin === apCode;
+        return true;
+      });
+      if (!show.length) {
+        body.innerHTML = "<p class=\"pill-key\">No flights " + (dirFilter === "arr" ? "arriving at" : dirFilter === "dep" ? "departing" : "for") + " " + apCode + " right now.</p>";
+        return;
+      }
+      show.sort(function (a, b) {
+        var ta = a.dest === apCode ? (a.arr || 0) : (a.dep || 0);
+        var tb = b.dest === apCode ? (b.arr || 0) : (b.dep || 0);
+        return ta - tb;
+      });
+      function fmtTime(ms) {
+        if (!ms || isNaN(ms)) return "—";
+        return new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+      }
+      var th = "<tr><th>Airline</th><th>Flight</th><th>Route</th><th>City</th><th>Phase</th><th>Status</th><th>Dep</th><th>Arr</th><th>Alt</th><th>Spd</th><th>Hdg</th></tr>";
+      var tr = show.map(function (m, i) {
+        var type = m.dest === apCode ? "Arr" : "Dep";
+        var city = type === "Arr" ? (m.originCity || m.origin) : (m.destCity || m.dest);
+        var route = (m.origin || "—") + " → " + (m.dest || "—");
+        var delay = type === "Arr" ? m.arrDelay : m.depDelay;
+        var status = "—", statusColor = "inherit";
+        if (delay != null) {
+          if (delay > 5) { status = "Delayed " + delay + "m"; statusColor = "#c0392b"; }
+          else if (delay < -5) { status = "Early " + Math.abs(delay) + "m"; statusColor = "#d68910"; }
+          else { status = "On time"; statusColor = "#1e8449"; }
+        }
+        var phase = m.phase || "—";
+        var fa = "https://www.flightaware.com/live/flight/" + encodeURIComponent(m.call);
+        return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td><b>" + m.call + "</b></td><td>" + route + "</td><td>" + city + "</td><td>" + phase + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd || "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
+          "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"11\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" + m.origin + " → " + m.dest + " · <a href=\"" + fa + "\" target=\"_blank\" rel=\"noopener\">FlightAware</a></td></tr>";
+      }).join("");
+      body.innerHTML = "<table class=\"ap-board\">" + th + tr + "</table>";
+      body.querySelectorAll(".ac-row").forEach(function (row) {
+        row.addEventListener("click", function () {
+          var d = document.getElementById("ac-d-" + row.getAttribute("data-i"));
+          if (d) d.hidden = !d.hidden;
+        });
+      });
+    };
     if (!window.__travelBoardTimer) {
       window.__travelBoardTimer = setInterval(function () {
         var on = document.querySelector(".page.on");
