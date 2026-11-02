@@ -6393,7 +6393,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1758;
+    window.BOARD_VER = 1760;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26136,7 +26136,7 @@ function mustEatsFL() {
 
       function render(items) {
         if (!items || !items.length) {
-          box.innerHTML = '<div class="card"><b>No local headlines yet</b><span>Nothing recent matched the home pin.</span></div>';
+          box.innerHTML = '<div class="card"><b>No related coverage yet</b><span>Nothing matched the active breaking story.</span></div>';
           return;
         }
         var seen = {}, rows = [];
@@ -26149,15 +26149,18 @@ function mustEatsFL() {
         });
         rows = rows.slice(0, 10);
         if (!rows.length) {
-          box.innerHTML = '<div class="card"><b>No local headlines yet</b><span>Feed returned nothing usable.</span></div>';
+          box.innerHTML = '<div class="card"><b>No related coverage yet</b><span>Feed returned nothing usable.</span></div>';
           return;
         }
         box.innerHTML = rows.map(function (r, i) {
           var when = relTime(r.when);
-          var meta = (r.src || "Local") + (when ? " · " + when : "");
+          var meta = (r.src || "Coverage") + (when ? " · " + when : "");
+          var img = r.image ? '<img src="' + r.image + '" alt="" style="width:100%;height:160px;object-fit:cover;border-radius:8px;margin:0 0 8px;display:block">' : "";
+          var vid = r.video ? '<div style="font-size:12px;margin-top:4px"><a href="' + r.video + '" target="_blank" rel="noopener">Watch video</a></div>' : "";
           return '<a href="' + r.link + '" target="_blank" rel="noopener" class="card" style="display:block;padding:12px 14px;text-decoration:none;color:inherit">' +
+            img +
             '<b style="display:block;font-size:' + (i === 0 ? "17px" : "15px") + ';line-height:1.3;margin:0 0 4px">' + r.title + "</b>" +
-            '<span style="font-size:12px;opacity:.65">' + meta + "</span></a>";
+            '<span style="font-size:12px;opacity:.65">' + meta + "</span>" + vid + "</a>";
         }).join("");
         var note = document.getElementById("news-note");
         if (note) note.textContent = (typeof homePlace === "function" ? homePlace() : "Home") + " · local headlines";
@@ -26171,7 +26174,8 @@ function mustEatsFL() {
         function fromRss2json(data) {
           var items = (data && data.items) || [];
           return items.map(function (it) {
-            return { title: it.title || "", link: it.link || "", pubDate: it.pubDate || "" };
+            var img = (it.enclosure && it.enclosure.link) || it.thumbnail || "";
+            return { title: it.title || "", link: it.link || "", pubDate: it.pubDate || "", image: img };
           });
         }
         return fetch(worker).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
@@ -26182,37 +26186,20 @@ function mustEatsFL() {
         });
       }
       function load() {
-        var place = "Englewood", st = "FL";
-        try {
-          if (typeof homePlace === "function") place = homePlace() || place;
-          if (typeof homeState === "function") st = homeState() || st;
-        } catch (e) {}
-        if (!place || place.length < 3) place = "local";
-        box.innerHTML = '<div class="card"><b>Local headlines</b><span>Loading…</span></div>';
-        // Try a few progressively broader queries
-        var queries = [
-          place + " " + st + " when:14d",
-          place + " " + st,
-          st + " local news when:7d"
-        ];
-        function tryNext(i) {
-          if (i >= queries.length) {
-            render([]);
-            return;
-          }
-          fetchNews(queries[i]).then(function (items) {
-            if (items && items.length) {
-              render(items);
-              var note = document.getElementById("news-note");
-              if (note) note.textContent = place + " · " + st;
-            } else {
-              tryNext(i + 1);
-            }
-          });
+        var hits = window.__breakingItems || [];
+        var note = document.getElementById("news-note");
+        if (!hits.length) {
+          box.innerHTML = '<div class="card"><b>No breaking news</b><span>The ticker is quiet. This page fills when a breaking item is active.</span></div>';
+          if (note) note.textContent = "Waiting for a breaking story.";
+          return;
         }
-        tryNext(0);
+        var title = String(hits[0].title || "");
+        var words = title.toLowerCase().replace(/breaking|just in|developing|alert|urgent|fox news|wink/g, " ").replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(function (w) { return w.length > 3; }).slice(0, 6);
+        var q = words.join(" ");
+        box.innerHTML = '<div class="card"><b>Breaking coverage</b><span>Pulling stories…</span></div>';
+        if (note) note.textContent = "Related to: " + q;
+        fetchNews(q + " when:2d").then(function (items) { render(items); });
       }
-
       window.__reloadLocalNews = load;
       load();
       setInterval(load, 15 * 60 * 1000);
