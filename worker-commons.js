@@ -381,6 +381,13 @@ export default {
           return Math.abs(aT - now) - Math.abs(bT - now);
         });
         const best = blocks[0];
+        const dep = best.takeoff.actual || best.takeoff.estimated || best.takeoff.scheduled || null;
+        const arr = best.landing.actual || best.landing.estimated || best.landing.scheduled || null;
+        const depSched = best.takeoff.scheduled || null;
+        const arrSched = best.landing.scheduled || null;
+        // Delay in minutes: positive = late, negative = early, 0 = on time
+        const depDelay = (dep && depSched) ? Math.round((dep - depSched) / 60000) : null;
+        const arrDelay = (arr && arrSched) ? Math.round((arr - arrSched) / 60000) : null;
         return new Response(JSON.stringify({
           call: call,
           found: true,
@@ -388,10 +395,12 @@ export default {
           originCity: best.originCity || "",
           dest: best.dest || "",
           destCity: best.destCity || "",
-          dep: best.takeoff.actual || best.takeoff.estimated || best.takeoff.scheduled || null,
-          arr: best.landing.actual || best.landing.estimated || best.landing.scheduled || null,
-          depSched: best.takeoff.scheduled || null,
-          arrSched: best.landing.scheduled || null
+          dep: dep,
+          arr: arr,
+          depSched: depSched,
+          arrSched: arrSched,
+          depDelay: depDelay,
+          arrDelay: arrDelay
         }), { status: 200, headers: hdr });
       } catch (e) {
         return new Response(JSON.stringify({ error: "fetch failed", call: call }), { status: 200, headers: hdr });
