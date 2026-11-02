@@ -220,7 +220,7 @@ export default {
       const hdr = { "content-type": "text/xml; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*" };
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
       try {
-        const r = await fetch("https://nasstatus.faa.gov/api/airport-status-information", { headers: { "User-Agent": "CommonsBoard/1.0" }, cf: { cacheTtl: 120 } });
+        const r = await fetch("https://nasstatus.faa.gov/api/airport-status-information", { headers: { "User-Agent": "CommonsBoard/1.0" }, cf: { cacheTtl: 60 } });
         const txt = await r.text();
         if (r.ok && txt.indexOf("AIRPORT_STATUS") >= 0) return new Response(txt, { status: 200, headers: hdr });
       } catch (e) {}
@@ -239,7 +239,7 @@ export default {
       ];
       for (const src of srcs) {
         try {
-          const r = await fetch(src, { headers: { "User-Agent": "CommonsBoard/1.0 (atcf)" }, cf: { cacheTtl: 120 } });
+          const r = await fetch(src, { headers: { "User-Agent": "CommonsBoard/1.0 (atcf)" }, cf: { cacheTtl: 60 } });
           if (!r.ok) continue;
           const txt = await r.text();
           if (txt && txt.length > 40 && !/<html/i.test(txt)) return new Response(txt, { status: 200, headers: hdr });
@@ -331,7 +331,7 @@ export default {
     if (url.pathname === "/fa-times") {
       const hdr = {
         "content-type": "application/json; charset=utf-8",
-        "cache-control": "public, max-age=120",
+        "cache-control": "public, max-age=60",
         "access-control-allow-origin": "*"
       };
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
@@ -340,7 +340,7 @@ export default {
       try {
         const r = await fetch("https://www.flightaware.com/live/flight/" + call, {
           headers: { "User-Agent": "Mozilla/5.0 (compatible; Commons/1.0)", Accept: "text/html" },
-          cf: { cacheTtl: 120 }
+          cf: { cacheTtl: 60 }
         });
         if (!r.ok) return new Response(JSON.stringify({ error: "fa " + r.status, call: call }), { status: 200, headers: hdr });
         const html = await r.text();
@@ -373,19 +373,6 @@ export default {
           }
         }
         if (!blocks.length) return new Response(JSON.stringify({ call: call, found: false }), { status: 200, headers: hdr });
-        // Best-effort flight phase from FlightAware
-        var phase = "";
-        var fs = html.match(/"flightStatus":"([^"]*)"/);
-        if (fs && fs[1]) {
-          var map = { airborne: "En route", arrived: "Arrived", taxiing: "Taxiing", scheduled: "Scheduled", departed: "Departed", cancelled: "Cancelled", diverted: "Diverted" };
-          phase = map[fs[1].toLowerCase()] || fs[1];
-        }
-        if (!phase) {
-          if (/Taxiing/i.test(html)) phase = "Taxiing";
-          else if (/En Route|Enroute/i.test(html)) phase = "En route";
-          else if (/Arrived/i.test(html)) phase = "Arrived";
-          else if (/Scheduled/i.test(html)) phase = "Scheduled";
-        }
         // Prefer the block whose times are closest to now (current flight)
         const now = Date.now();
         blocks.sort(function (a, b) {
@@ -394,6 +381,15 @@ export default {
           return Math.abs(aT - now) - Math.abs(bT - now);
         });
         const best = blocks[0];
+        // Derive phase from this flight's own times, not a page-wide scrape
+        let phase = "Scheduled";
+        const toAct = best.takeoff.actual;
+        const ldAct = best.landing.actual;
+        const toEst = best.takeoff.estimated || best.takeoff.scheduled;
+        if (ldAct && ldAct < now + 5 * 60000) phase = "Arrived";
+        else if (toAct && toAct < now) phase = "En route";
+        else if (toEst && toEst - now < 45 * 60000 && toEst > now - 15 * 60000) phase = "Taxiing";
+        else if (toEst && toEst < now) phase = "Departed";
         const dep = best.takeoff.actual || best.takeoff.estimated || best.takeoff.scheduled || null;
         const arr = best.landing.actual || best.landing.estimated || best.landing.scheduled || null;
         const depSched = best.takeoff.scheduled || null;
@@ -533,7 +529,7 @@ export default {
       try {
         const r = await fetch(target, {
           headers: { "User-Agent": "CommonsBoard/1.0 (valente.nick@gmail.com)", Accept: "application/geo+json, application/json" },
-          cf: { cacheTtl: 120 }
+          cf: { cacheTtl: 60 }
         });
         return new Response(await r.text(), { status: r.ok ? 200 : r.status, headers: hdr });
       } catch (e) {
@@ -708,7 +704,7 @@ export default {
         let text = await r.text();
         if (r.ok && text.indexOf('"places"') >= 0) return new Response(text, { status: 200, headers: hdr });
         const legacy = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + lat + "," + lon + "&radius=" + Math.round(Math.min(50000, miles * 1609.34)) + "&type=restaurant&key=" + encodeURIComponent(key);
-        r = await fetch(legacy, { cf: { cacheTtl: 120 } });
+        r = await fetch(legacy, { cf: { cacheTtl: 60 } });
         const old = await r.json();
         const rows = (old.results || []).map(function (pl) {
           return {
