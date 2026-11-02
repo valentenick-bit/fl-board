@@ -344,19 +344,31 @@ export default {
         });
         if (!r.ok) return new Response(JSON.stringify({ error: "fa " + r.status, call: call }), { status: 200, headers: hdr });
         const html = await r.text();
-        // Extract the most recent takeoffTimes / landingTimes block (current or next flight)
+        // Extract origin, destination, and times for the current flight
+        function parseTimes(s) {
+          const out = {};
+          const sm = s.match(/"scheduled":(\d+)/); if (sm) out.scheduled = Number(sm[1]) * 1000;
+          const em = s.match(/"estimated":(\d+)/); if (em) out.estimated = Number(em[1]) * 1000;
+          const am = s.match(/"actual":(\d+)/); if (am) out.actual = Number(am[1]) * 1000;
+          return out;
+        }
         const blocks = [];
-        const re = /"takeoffTimes":\{([^}]+)\}.*?"landingTimes":\{([^}]+)\}/g;
+        const re = /"origin":\{[^}]*"iata":"([A-Z]{3})"[^}]*\}.*?"destination":\{[^}]*"iata":"([A-Z]{3})"[^}]*\}.*?"takeoffTimes":\{([^}]+)\}.*?"landingTimes":\{([^}]+)\}/g;
         let m;
-        while ((m = re.exec(html)) !== null && blocks.length < 8) {
-          function parseTimes(s) {
-            const out = {};
-            const sm = s.match(/"scheduled":(\d+)/); if (sm) out.scheduled = Number(sm[1]) * 1000;
-            const em = s.match(/"estimated":(\d+)/); if (em) out.estimated = Number(em[1]) * 1000;
-            const am = s.match(/"actual":(\d+)/); if (am) out.actual = Number(am[1]) * 1000;
-            return out;
+        while ((m = re.exec(html)) !== null && blocks.length < 6) {
+          blocks.push({
+            origin: m[1],
+            dest: m[2],
+            takeoff: parseTimes(m[3]),
+            landing: parseTimes(m[4])
+          });
+        }
+        // Fallback: times only if the fuller pattern misses
+        if (!blocks.length) {
+          const re2 = /"takeoffTimes":\{([^}]+)\}.*?"landingTimes":\{([^}]+)\}/g;
+          while ((m = re2.exec(html)) !== null && blocks.length < 4) {
+            blocks.push({ origin: "", dest: "", takeoff: parseTimes(m[1]), landing: parseTimes(m[2]) });
           }
-          blocks.push({ takeoff: parseTimes(m[1]), landing: parseTimes(m[2]) });
         }
         if (!blocks.length) return new Response(JSON.stringify({ call: call, found: false }), { status: 200, headers: hdr });
         // Prefer the block whose times are closest to now (current flight)
@@ -370,6 +382,8 @@ export default {
         return new Response(JSON.stringify({
           call: call,
           found: true,
+          origin: best.origin || "",
+          dest: best.dest || "",
           dep: best.takeoff.actual || best.takeoff.estimated || best.takeoff.scheduled || null,
           arr: best.landing.actual || best.landing.estimated || best.landing.scheduled || null,
           depSched: best.takeoff.scheduled || null,
