@@ -6363,7 +6363,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1746;
+    window.BOARD_VER = 1747;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21087,12 +21087,13 @@ function paintObservatories() { paintObsTable(); }
             var tb = b.dest === apCode ? (b.arr || 0) : (b.dep || 0);
             return ta - tb;
           });
-          var th2 = "<tr><th>Airline</th><th>Flight</th><th>Type</th><th>City</th><th>Status</th><th>Dep</th><th>Arr</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
+          var th2 = "<tr><th>Airline</th><th>Flight</th><th>Route</th><th>City</th><th>Phase</th><th>Status</th><th>Dep</th><th>Arr</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
           var tr2 = show.map(function (m, i) {
             var fa = "https://www.flightaware.com/live/flight/" + encodeURIComponent(m.call);
             var adsb = "https://globe.adsbexchange.com/?callsign=" + encodeURIComponent(m.call);
             var type = m.dest === apCode ? "Arr" : "Dep";
             var city = type === "Arr" ? (m.originCity || m.origin) : (m.destCity || m.dest);
+            var route = (m.origin || "—") + " → " + (m.dest || "—");
             var delay = type === "Arr" ? m.arrDelay : m.depDelay;
             var status = "—";
             var statusColor = "inherit";
@@ -21101,8 +21102,9 @@ function paintObservatories() { paintObsTable(); }
               else if (delay < -5) { status = "Early " + Math.abs(delay) + "m"; statusColor = "#d68910"; }
               else { status = "On time"; statusColor = "#1e8449"; }
             }
-            return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td><b>" + m.call + "</b></td><td>" + type + "</td><td>" + city + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd ? m.spd : "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
-              "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"10\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" +
+            var phase = m.phase || "—";
+            return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td><b>" + m.call + "</b></td><td>" + route + "</td><td>" + city + "</td><td>" + phase + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd ? m.spd : "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
+              "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"11\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" +
               m.origin + " → " + m.dest + " · " + Math.round(m.dist) + " mi · <a href=\"" + fa + "\" target=\"_blank\" rel=\"noopener\">FlightAware</a> · <a href=\"" + adsb + "\" target=\"_blank\" rel=\"noopener\">ADS-B</a></td></tr>";
           }).join("");
           body.innerHTML = "<table class=\"ap-board\">" + th2 + tr2 + "</table>";
@@ -21131,6 +21133,7 @@ function paintObservatories() { paintObsTable(); }
                   dep: fa.dep,
                   depDelay: fa.depDelay,
                   arrDelay: fa.arrDelay,
+                  phase: fa.phase || "",
                   alt: r.alt,
                   spd: r.spd,
                   hdg: r.hdg,
