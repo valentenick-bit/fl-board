@@ -353,7 +353,7 @@ export default {
           return out;
         }
         const blocks = [];
-        const re = /"origin":\{[^}]*"iata":"([A-Z]{3})"[^}]*"friendlyName":"([^"]*)"[^}]*\}.*?"destination":\{[^}]*"iata":"([A-Z]{3})"[^}]*"friendlyName":"([^"]*)"[^}]*\}.*?"takeoffTimes":\{([^}]+)\}.*?"landingTimes":\{([^}]+)\}/g;
+        const re = /"origin":\{[^}]*"iata":"([A-Z]{3})"[^}]*"friendlyName":"([^"]*)"[^}]*\}.*?"destination":\{[^}]*"iata":"([A-Z]{3})"[^}]*"friendlyName":"([^"]*)"[^}]*\}.*?"takeoffTimes":\{([^}]+)\}.*?"landingTimes":\{([^}]+)\}.*?"flightStatus":"([^"]*)"/g;
         let m;
         while ((m = re.exec(html)) !== null && blocks.length < 6) {
           blocks.push({
@@ -362,7 +362,8 @@ export default {
             dest: m[3],
             destCity: m[4],
             takeoff: parseTimes(m[5]),
-            landing: parseTimes(m[6])
+            landing: parseTimes(m[6]),
+            flightStatus: m[7] || ""
           });
         }
         // Fallback: times only if the fuller pattern misses
@@ -381,15 +382,10 @@ export default {
           return Math.abs(aT - now) - Math.abs(bT - now);
         });
         const best = blocks[0];
-        // Derive phase from this flight's own times, not a page-wide scrape
-        let phase = "Scheduled";
-        const toAct = best.takeoff.actual;
-        const ldAct = best.landing.actual;
-        const toEst = best.takeoff.estimated || best.takeoff.scheduled;
-        if (ldAct && ldAct < now + 5 * 60000) phase = "Arrived";
-        else if (toAct && toAct < now) phase = "En route";
-        else if (toEst && toEst - now < 45 * 60000 && toEst > now - 15 * 60000) phase = "Taxiing";
-        else if (toEst && toEst < now) phase = "Departed";
+        // Use FlightAware's own flightStatus for this flight
+        const statusMap = { airborne: "En route", arrived: "Arrived", taxiing: "Taxiing", scheduled: "Scheduled", departed: "Departed", cancelled: "Cancelled", diverted: "Diverted", result: "Arrived" };
+        const raw = String(best.flightStatus || "").toLowerCase();
+        const phase = statusMap[raw] || (raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "");
         const dep = best.takeoff.actual || best.takeoff.estimated || best.takeoff.scheduled || null;
         const arr = best.landing.actual || best.landing.estimated || best.landing.scheduled || null;
         const depSched = best.takeoff.scheduled || null;
