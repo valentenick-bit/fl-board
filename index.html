@@ -6363,7 +6363,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1740;
+    window.BOARD_VER = 1741;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -20964,7 +20964,10 @@ function paintObservatories() { paintObsTable(); }
       if (map && ap) {
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
       }
-      body.innerHTML = "<p class=\"pill-key\">Loading aircraft near " + ap.code + "…</p>";
+      // Keep the existing table visible while we refresh. Only show loading on first paint.
+      if (!body.querySelector("table.ap-board")) {
+        body.innerHTML = "<p class=\"pill-key\">Loading aircraft near " + ap.code + "…</p>";
+      }
       if (!ap || !isFinite(ap.lat) || !isFinite(ap.lon)) { body.innerHTML = "<p class=\"pill-key\">No airport position.</p>"; return; }
       var url = "/adsb?lat=" + Number(ap.lat).toFixed(3) + "&lon=" + Number(ap.lon).toFixed(3) + "&dist=100";
       fetch(url).then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); }).then(function (j) {
