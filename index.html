@@ -6363,7 +6363,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1751;
+    window.BOARD_VER = 1752;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -20948,7 +20948,8 @@ function paintObservatories() { paintObsTable(); }
       filters.querySelectorAll("button").forEach(function (b) {
         b.addEventListener("click", function () {
           window.__travelAp = b.getAttribute("data-ap");
-          paintTravelBoard();
+          clearTimeout(window.__apClickT);
+          window.__apClickT = setTimeout(function () { paintTravelBoard(); }, 250);
         });
       });
       var dirFilters = document.getElementById("travel-dir-filters");
@@ -20975,9 +20976,13 @@ function paintObservatories() { paintObsTable(); }
       }
       if (!ap || !isFinite(ap.lat) || !isFinite(ap.lon)) { body.innerHTML = "<p class=\"pill-key\">No airport position.</p>"; return; }
       var url = "/adsb?lat=" + Number(ap.lat).toFixed(3) + "&lon=" + Number(ap.lon).toFixed(3) + "&dist=100";
+      if (window.__fidsBusy && window.__fidsBusyAp === ap.code) return;
+      window.__fidsBusy = true;
+      window.__fidsBusyAp = ap.code;
       window.__fidsGen = (window.__fidsGen || 0) + 1;
       var myGen = window.__fidsGen;
       fetch(url).then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); }).then(function (j) {
+        window.__fidsBusy = false;
         if (myGen !== window.__fidsGen) return;
         var ac = (j && j.ac) || [];
         function distMi(lat1, lon1, lat2, lon2) {
@@ -21158,7 +21163,10 @@ function paintObservatories() { paintObsTable(); }
             }).catch(function () { finish(); });
         });
       }).catch(function (err) {
-        body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
+        window.__fidsBusy = false;
+        if (!body.querySelector("table.ap-board")) {
+          body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
+        }
       });
     }
     window.drawFids = function () {
