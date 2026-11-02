@@ -6363,7 +6363,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1752;
+    window.BOARD_VER = 1753;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -20948,8 +20948,7 @@ function paintObservatories() { paintObsTable(); }
       filters.querySelectorAll("button").forEach(function (b) {
         b.addEventListener("click", function () {
           window.__travelAp = b.getAttribute("data-ap");
-          clearTimeout(window.__apClickT);
-          window.__apClickT = setTimeout(function () { paintTravelBoard(); }, 250);
+          paintTravelBoard();
         });
       });
       var dirFilters = document.getElementById("travel-dir-filters");
@@ -20976,13 +20975,9 @@ function paintObservatories() { paintObsTable(); }
       }
       if (!ap || !isFinite(ap.lat) || !isFinite(ap.lon)) { body.innerHTML = "<p class=\"pill-key\">No airport position.</p>"; return; }
       var url = "/adsb?lat=" + Number(ap.lat).toFixed(3) + "&lon=" + Number(ap.lon).toFixed(3) + "&dist=100";
-      if (window.__fidsBusy && window.__fidsBusyAp === ap.code) return;
-      window.__fidsBusy = true;
-      window.__fidsBusyAp = ap.code;
       window.__fidsGen = (window.__fidsGen || 0) + 1;
       var myGen = window.__fidsGen;
       fetch(url).then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); }).then(function (j) {
-        window.__fidsBusy = false;
         if (myGen !== window.__fidsGen) return;
         var ac = (j && j.ac) || [];
         function distMi(lat1, lon1, lat2, lon2) {
@@ -21114,7 +21109,7 @@ function paintObservatories() { paintObsTable(); }
               else { status = "On time"; statusColor = "#1e8449"; }
             }
             var phase = m.phase || "—";
-            return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td><b>" + m.call + "</b></td><td>" + route + "</td><td>" + city + "</td><td>" + phase + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd ? m.spd : "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
+            return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td>" + m.call + "</td><td>" + route + "</td><td>" + city + "</td><td>" + phase + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd ? m.spd : "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
               "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"10\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" +
               m.origin + " → " + m.dest + " · " + Math.round(m.dist) + " mi · <a href=\"" + fa + "\" target=\"_blank\" rel=\"noopener\">FlightAware</a> · <a href=\"" + adsb + "\" target=\"_blank\" rel=\"noopener\">ADS-B</a></td></tr>";
           }).join("");
@@ -21163,10 +21158,7 @@ function paintObservatories() { paintObsTable(); }
             }).catch(function () { finish(); });
         });
       }).catch(function (err) {
-        window.__fidsBusy = false;
-        if (!body.querySelector("table.ap-board")) {
-          body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
-        }
+        body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
       });
     }
     window.drawFids = function () {
@@ -21207,7 +21199,7 @@ function paintObservatories() { paintObsTable(); }
         }
         var phase = m.phase || "—";
         var fa = "https://www.flightaware.com/live/flight/" + encodeURIComponent(m.call);
-        return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td><b>" + m.call + "</b></td><td>" + route + "</td><td>" + city + "</td><td>" + phase + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd || "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
+        return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td>" + m.call + "</td><td>" + route + "</td><td>" + city + "</td><td>" + phase + "</td><td style=\"color:" + statusColor + ";font-weight:700\">" + status + "</td><td>" + fmtTime(m.dep) + "</td><td>" + fmtTime(m.arr) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd || "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
           "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"11\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" + m.origin + " → " + m.dest + " · <a href=\"" + fa + "\" target=\"_blank\" rel=\"noopener\">FlightAware</a></td></tr>";
       }).join("");
       body.innerHTML = "<table class=\"ap-board\">" + th + tr + "</table>";
