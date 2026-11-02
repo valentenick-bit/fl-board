@@ -353,14 +353,16 @@ export default {
           return out;
         }
         const blocks = [];
-        const re = /"origin":\{[^}]*"iata":"([A-Z]{3})"[^}]*\}.*?"destination":\{[^}]*"iata":"([A-Z]{3})"[^}]*\}.*?"takeoffTimes":\{([^}]+)\}.*?"landingTimes":\{([^}]+)\}/g;
+        const re = /"origin":\{[^}]*"iata":"([A-Z]{3})"[^}]*"friendlyName":"([^"]*)"[^}]*\}.*?"destination":\{[^}]*"iata":"([A-Z]{3})"[^}]*"friendlyName":"([^"]*)"[^}]*\}.*?"takeoffTimes":\{([^}]+)\}.*?"landingTimes":\{([^}]+)\}/g;
         let m;
         while ((m = re.exec(html)) !== null && blocks.length < 6) {
           blocks.push({
             origin: m[1],
-            dest: m[2],
-            takeoff: parseTimes(m[3]),
-            landing: parseTimes(m[4])
+            originCity: m[2],
+            dest: m[3],
+            destCity: m[4],
+            takeoff: parseTimes(m[5]),
+            landing: parseTimes(m[6])
           });
         }
         // Fallback: times only if the fuller pattern misses
@@ -383,7 +385,9 @@ export default {
           call: call,
           found: true,
           origin: best.origin || "",
+          originCity: best.originCity || "",
           dest: best.dest || "",
+          destCity: best.destCity || "",
           dep: best.takeoff.actual || best.takeoff.estimated || best.takeoff.scheduled || null,
           arr: best.landing.actual || best.landing.estimated || best.landing.scheduled || null,
           depSched: best.takeoff.scheduled || null,
