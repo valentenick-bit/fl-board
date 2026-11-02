@@ -19,10 +19,16 @@ jobs:
           import json, re, urllib.request
           from datetime import datetime, timezone
 
+          # BeachWalk streets only — avoids Englewood-wide matches
+          STREETS = (
+            "Bright Water", "Abaco Falls", "Seastone", "Bimini Sands",
+            "Coral Shore", "Coral Harbour", "Sea Breeze Ridge", "Clam Shell",
+            "Bering", "Sandy Hill", "Sandy Breeze", "Beach Dune", "Blue Runner",
+            "Sun Isle", "Beachwalk"
+          )
           SOURCES = [
             "https://www.ltrhomes.com/englewood-fl/beachwalk-by-manasota-key/listings",
             "https://www.davidliberatore.com/englewood/beach-walk-homes-for-sale/",
-            "https://www.programrealty.com/englewood/beachwalk-by-manasota-key/",
           ]
 
           def fetch(u):
@@ -37,10 +43,10 @@ jobs:
               print(f"fail {u}: {e}")
               return ""
 
-          def norm_addr(s):
+          def norm(s):
             s = re.sub(r"\s+", " ", s).strip()
-            s = re.sub(r"\b(Drive|Court|Lane|Road|Street)\b", lambda m: {"Drive":"Dr","Court":"Ct","Lane":"Ln","Road":"Rd","Street":"St"}.get(m.group(1), m.group(1)), s, flags=re.I)
-            if "Englewood" not in s and "FL" not in s:
+            s = re.sub(r"\b(Drive|Court)\b", lambda m: "Dr" if m.group(1).lower()=="drive" else "Ct", s, flags=re.I)
+            if "Englewood" not in s:
               s += ", Englewood, FL 34223"
             return s
 
@@ -49,24 +55,25 @@ jobs:
             html = fetch(u)
             if not html:
               continue
-            # price near an address pattern
+            # tighter window: price then address within 250 chars
             for m in re.finditer(
-              r'\$([0-9,]{5,}).{0,600}?(\d{3,5}\s+[A-Za-z]+(?:\s+[A-Za-z]+){0,4}\s+(?:Dr|Drive|Ct|Court|Ln|Lane|Way|Rd|Road))',
+              r'\$([0-9,]{5,}).{0,250}?(\d{3,5}\s+(?:' + "|".join(STREETS) + r')\s+(?:Dr|Drive|Ct|Court|Way|Ln))',
               html, re.I | re.S
             ):
               price = int(m.group(1).replace(",", ""))
-              if price < 200000 or price > 3000000:
+              if price < 200000 or price > 2500000:
                 continue
-              addr = norm_addr(m.group(2))
-              key = re.sub(r"[^a-z0-9]", "", addr.lower())[:30]
+              addr = norm(m.group(2))
+              key = re.sub(r"[^a-z0-9]", "", addr.lower())[:28]
               if key in seen:
                 continue
+              # skip if the nearby text says pending/sold/under contract
+              window = html[max(0, m.start()-80):m.end()+80].lower()
+              if re.search(r"\b(pending|sold|under contract|contingent)\b", window) and "active" not in window:
+                continue
               seen.add(key)
-              # try to grab beds/baths/sqft near the match
               chunk = m.group(0)
-              beds = 0
-              baths = 0
-              sqft = 0
+              beds = baths = sqft = 0
               bm = re.search(r"(\d)\s*(?:bd|bed)", chunk, re.I)
               if bm: beds = int(bm.group(1))
               ba = re.search(r"(\d(?:\.\d)?)\s*(?:ba|bath)", chunk, re.I)
@@ -74,39 +81,33 @@ jobs:
               sq = re.search(r"([\d,]{3,})\s*(?:sq|sqft)", chunk, re.I)
               if sq: sqft = int(sq.group(1).replace(",", ""))
               mls = ""
-              mm = re.search(r"MLS\s*#?\s*:?\s*([A-Z]?\d{6,})", chunk, re.I)
+              mm = re.search(r"([A-Z]\d{6,})", chunk)
               if mm: mls = mm.group(1)
               listings.append({
-                "addr": addr,
-                "price": price,
-                "beds": beds,
-                "baths": baths,
-                "sqft": sqft,
-                "year": 0,
-                "mls": mls,
-                "hoa": 0,
-                "img": "",
-                "photos": [],
-                "desc": "Active BeachWalk listing.",
-                "source": u.split("/")[2]
+                "addr": addr, "price": price, "beds": beds, "baths": baths,
+                "sqft": sqft, "year": 0, "mls": mls, "hoa": 0,
+                "img": "", "photos": [], "desc": "Active BeachWalk listing."
               })
             print(f"{u}: {len(listings)} so far")
 
-          # Keep existing good data if scrape is thin
+          # Safety: if scrape is thin, keep the prior good file
           try:
             with open("listings.json") as f:
               old = json.load(f)
             old_list = old.get("listings") or []
           except Exception:
             old_list = []
-
-          if len(listings) < 8 and len(old_list) >= 10:
+          if len(listings) < 10 and len(old_list) >= 10:
             print(f"scrape thin ({len(listings)}); keeping prior {len(old_list)}")
             listings = old_list
+          # Cap runaway matches
+          if len(listings) > 25:
+            print(f"capping {len(listings)} to 20")
+            listings = listings[:20]
 
           out = {
             "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "source": "LTR Homes, David Liberatore, Program Realty (active MLS)",
+            "source": "LTR Homes + David Liberatore (active MLS, BeachWalk streets)",
             "listings": listings
           }
           with open("listings.json", "w") as f:
