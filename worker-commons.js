@@ -327,6 +327,59 @@ export default {
       }
     }
 
+
+    if (url.pathname === "/fa-times") {
+      const hdr = {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=120",
+        "access-control-allow-origin": "*"
+      };
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: hdr });
+      const call = String(url.searchParams.get("call") || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 10);
+      if (!call || call.length < 3) return new Response(JSON.stringify({ error: "bad call" }), { status: 200, headers: hdr });
+      try {
+        const r = await fetch("https://www.flightaware.com/live/flight/" + call, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Commons/1.0)", Accept: "text/html" },
+          cf: { cacheTtl: 120 }
+        });
+        if (!r.ok) return new Response(JSON.stringify({ error: "fa " + r.status, call: call }), { status: 200, headers: hdr });
+        const html = await r.text();
+        // Extract the most recent takeoffTimes / landingTimes block (current or next flight)
+        const blocks = [];
+        const re = /"takeoffTimes":\{([^}]+)\}.*?"landingTimes":\{([^}]+)\}/g;
+        let m;
+        while ((m = re.exec(html)) !== null && blocks.length < 8) {
+          function parseTimes(s) {
+            const out = {};
+            const sm = s.match(/"scheduled":(\d+)/); if (sm) out.scheduled = Number(sm[1]) * 1000;
+            const em = s.match(/"estimated":(\d+)/); if (em) out.estimated = Number(em[1]) * 1000;
+            const am = s.match(/"actual":(\d+)/); if (am) out.actual = Number(am[1]) * 1000;
+            return out;
+          }
+          blocks.push({ takeoff: parseTimes(m[1]), landing: parseTimes(m[2]) });
+        }
+        if (!blocks.length) return new Response(JSON.stringify({ call: call, found: false }), { status: 200, headers: hdr });
+        // Prefer the block whose times are closest to now (current flight)
+        const now = Date.now();
+        blocks.sort(function (a, b) {
+          const aT = a.landing.actual || a.landing.estimated || a.takeoff.actual || a.takeoff.estimated || 0;
+          const bT = b.landing.actual || b.landing.estimated || b.takeoff.actual || b.takeoff.estimated || 0;
+          return Math.abs(aT - now) - Math.abs(bT - now);
+        });
+        const best = blocks[0];
+        return new Response(JSON.stringify({
+          call: call,
+          found: true,
+          dep: best.takeoff.actual || best.takeoff.estimated || best.takeoff.scheduled || null,
+          arr: best.landing.actual || best.landing.estimated || best.landing.scheduled || null,
+          depSched: best.takeoff.scheduled || null,
+          arrSched: best.landing.scheduled || null
+        }), { status: 200, headers: hdr });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: "fetch failed", call: call }), { status: 200, headers: hdr });
+      }
+    }
+
     if (url.pathname === "/brief") {
       const hdr = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
       if (request.method === "OPTIONS") return new Response(null, { headers: hdr });
