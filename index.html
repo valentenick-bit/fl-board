@@ -6359,7 +6359,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1733;
+    window.BOARD_VER = 1734;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21063,20 +21063,68 @@ function paintObservatories() { paintObsTable(); }
             if (d) d.hidden = !d.hidden;
           });
         });
-        // Fill real arrival/departure times from FlightAware for each visible flight
-        rows.forEach(function (r, i) {
-          if (!r.call || r.call === "—") return;
+        // Only keep flights whose FlightAware origin or destination is the selected airport,
+        // then fill real times and sort by arrival or departure time.
+        var apCode = ap.code;
+        var pending = rows.length;
+        var matched = [];
+        function finish() {
+          pending--;
+          if (pending > 0) return;
+          if (!matched.length) {
+            body.innerHTML = "<p class=\"pill-key\">No flights with " + apCode + " as origin or destination in this view.</p>";
+            return;
+          }
+          var dirFilter = window.__travelDir || "all";
+          var show = matched.filter(function (m) {
+            if (dirFilter === "arr") return m.dest === apCode;
+            if (dirFilter === "dep") return m.origin === apCode;
+            return true;
+          });
+          show.sort(function (a, b) {
+            var ta = a.dest === apCode ? (a.arr || 0) : (a.dep || 0);
+            var tb = b.dest === apCode ? (b.arr || 0) : (b.dep || 0);
+            return ta - tb;
+          });
+          var th2 = "<tr><th>Airline</th><th>Flight</th><th>Type</th><th>Arr</th><th>Dep</th><th>Alt (" + altUnit + ")</th><th>Spd (" + spdUnit + ")</th><th>Hdg</th></tr>";
+          var tr2 = show.map(function (m, i) {
+            var fa = "https://www.flightaware.com/live/flight/" + encodeURIComponent(m.call);
+            var adsb = "https://globe.adsbexchange.com/?callsign=" + encodeURIComponent(m.call);
+            var type = m.dest === apCode ? "Arr" : "Dep";
+            return "<tr class=\"ac-row\" data-i=\"" + i + "\" style=\"cursor:pointer\"><td>" + (m.airline || "—") + "</td><td><b>" + m.call + "</b></td><td>" + type + "</td><td>" + fmtTime(m.arr) + "</td><td>" + fmtTime(m.dep) + "</td><td>" + (m.alt ? m.alt.toLocaleString() : "—") + "</td><td>" + (m.spd ? m.spd : "—") + "</td><td>" + (m.hdg ? Math.round(m.hdg) + "°" : "—") + "</td></tr>" +
+              "<tr class=\"ac-detail\" id=\"ac-d-" + i + "\" hidden><td colspan=\"8\" style=\"font-size:13px;padding:8px 6px;background:rgba(42,157,143,.06)\">" +
+              m.origin + " → " + m.dest + " · " + Math.round(m.dist) + " mi · <a href=\"" + fa + "\" target=\"_blank\" rel=\"noopener\">FlightAware</a> · <a href=\"" + adsb + "\" target=\"_blank\" rel=\"noopener\">ADS-B</a></td></tr>";
+          }).join("");
+          body.innerHTML = "<table class=\"ap-board\">" + th2 + tr2 + "</table>";
+          body.querySelectorAll(".ac-row").forEach(function (tr) {
+            tr.addEventListener("click", function () {
+              var d = document.getElementById("ac-d-" + tr.getAttribute("data-i"));
+              if (d) d.hidden = !d.hidden;
+            });
+          });
+        }
+        if (!rows.length) { finish(); return; }
+        rows.forEach(function (r) {
+          if (!r.call || r.call === "—") { finish(); return; }
           fetch("/fa-times?call=" + encodeURIComponent(r.call))
             .then(function (res) { return res.ok ? res.json() : null; })
             .then(function (fa) {
-              if (!fa || !fa.found) return;
-              var row = body.querySelector(".ac-row[data-i=\"" + i + "\"]");
-              if (!row) return;
-              var cells = row.querySelectorAll("td");
-              if (cells.length < 5) return;
-              if (fa.arr) cells[3].textContent = fmtTime(fa.arr);
-              if (fa.dep) cells[4].textContent = fmtTime(fa.dep);
-            }).catch(function () {});
+              if (fa && fa.found && (fa.origin === apCode || fa.dest === apCode)) {
+                matched.push({
+                  call: r.call,
+                  airline: r.airline,
+                  origin: fa.origin,
+                  dest: fa.dest,
+                  arr: fa.arr,
+                  dep: fa.dep,
+                  alt: r.alt,
+                  spd: r.spd,
+                  hdg: r.hdg,
+                  dist: r.dist
+                });
+              }
+              finish();
+            }).catch(function () { finish(); });
         });
       }).catch(function (err) {
         body.innerHTML = "<p class=\"pill-key\">Feed error: " + String(err && err.message || err || "unknown") + "</p>";
