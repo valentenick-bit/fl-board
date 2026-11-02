@@ -6397,7 +6397,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1764;
+    window.BOARD_VER = 1765;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -23305,15 +23305,20 @@ function paint() {
     function paintCommWeek() {
       var box = document.getElementById("comm-week");
       if (!box) return;
-      var list = window.__events || window.__ent || [];
+      var list = (window.__events || window.__ent || []).slice();
+      var comm = window.__community || {};
+      (comm.announce || []).forEach(function (a) {
+        list.push({ sum: a.title || a.summary || "Event", loc: "BeachWalk", when: a.when || a.posted || a.date || "", inside: true });
+      });
       var now = Date.now();
-      var week = now + 7 * 86400000;
+      var week = now + 14 * 86400000;
       var rows = (list || []).filter(function (e) {
         var t = e && e.when ? +new Date(e.when) : 0;
-        if (!t || t < now || t > week) return false;
+        if (!t) return e && e.inside;
+        if (t < now - 86400000 || t > week) return false;
         var blob = String((e.loc || "") + " " + (e.sum || "") + " " + (e.inside ? "inside beachwalk" : "")).toLowerCase();
-        return e.inside || /beachwalk|capri|high tide|manasota/.test(blob);
-      }).slice(0, 8);
+        return e.inside || /beachwalk|capri|high tide|manasota|bingo|workshop|social/.test(blob);
+      }).slice(0, 12);
       if (!rows.length) { box.textContent = "Nothing dated on site in the next 7 days."; return; }
       box.innerHTML = rows.map(function (e) {
         var d = e.when && e.when.toLocaleDateString ? e.when.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "";
@@ -23442,9 +23447,10 @@ function paint() {
           return String(b.posted || b.when || b.date || "").localeCompare(String(a.posted || a.when || a.date || ""));
         });
         paintCommList("comm-feed", feed, "No official notices on file.");
-        paintCommList("comm-announce", [], "");
+        var ann = (j.announce || []).slice();
+        paintCommList("comm-announce", ann, "");
         var annCard = document.getElementById("comm-announce-card");
-        if (annCard) annCard.hidden = true;
+        if (annCard) annCard.hidden = !ann.length;
         paintCommList("comm-news", j.newsletters || [], "No newsletter on file.");
         if (typeof loadListings === "function") setTimeout(loadListings, 800);
         paintCommList("comm-survey", surveys, "");
