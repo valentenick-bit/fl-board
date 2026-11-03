@@ -6397,7 +6397,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1767;
+    window.BOARD_VER = 1766;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21250,11 +21250,30 @@ function paintObservatories() { paintObsTable(); }
         if (on && on.id === "travel" && typeof paintTravelBoard === "function") paintTravelBoard();
       }, 60000);
     }
-    function plainAirportReason(raw) {
+    function airportTzOffset(code) {
+      var a = (typeof AIRPORTS !== "undefined" ? AIRPORTS : []).filter(function (x) { return x[0] === code; })[0];
+      var lon = a ? a[3] : -75;
+      // rough US zone from longitude; Nov is standard time
+      if (lon > -85) return -5;
+      if (lon > -100) return -6;
+      if (lon > -115) return -7;
+      return -8;
+    }
+    function plainAirportReason(raw, code) {
       var s = String(raw || "").replace(/\s+/g, " ").trim();
       if (!s) return "";
-      // Strip the NOTAM header (!PVD 11/005 PVD ...)
       s = s.replace(/^!?[A-Z]{3}\s+\d+\/\d+\s+[A-Z]{3}\s+/i, "");
+      var off = airportTzOffset(code);
+      var tz = off === -5 ? "ET" : off === -6 ? "CT" : off === -7 ? "MT" : "PT";
+      function toLocal(hhmm) {
+        var h = parseInt(hhmm.slice(0, 2), 10) + off;
+        var m = hhmm.slice(2);
+        if (h < 0) h += 24;
+        if (h >= 24) h -= 24;
+        var ap = h >= 12 ? "PM" : "AM";
+        h = h % 12 || 12;
+        return h + ":" + m + " " + ap;
+      }
       var parts = [];
       if (/\bAD\s+AP\s+CLSD|\bAP\s+CLSD|\bCLSD\b/.test(s)) parts.push("Airport closed");
       else if (/\bGND\s+STOP|\bGROUND\s+STOP/.test(s)) parts.push("Ground stop");
@@ -21262,25 +21281,23 @@ function paintObservatories() { paintObsTable(); }
       if (/\bEXC\s+HEL/.test(s)) parts.push("except helicopters");
       if (/\bEXC\s+EMERG/.test(s)) parts.push("except emergency flights");
       var dly = s.match(/\bDLY\s+(\d{4})-(\d{4})/);
-      if (dly) {
-        function hm(t) {
-          var h = parseInt(t.slice(0, 2), 10), m = t.slice(2);
-          var ap = h >= 12 ? "PM" : "AM";
-          h = h % 12 || 12;
-          return h + ":" + m + " " + ap;
-        }
-        parts.push("daily " + hm(dly[1]) + " – " + hm(dly[2]));
-      }
+      if (dly) parts.push("daily " + toLocal(dly[1]) + " – " + toLocal(dly[2]) + " " + tz);
       var span = s.match(/(\d{10})-(\d{10})/);
       if (span) {
         function when(t) {
-          var mo = t.slice(2, 4), da = t.slice(4, 6), hh = t.slice(6, 8), mm = t.slice(8, 10);
-          var months = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-          var h = parseInt(hh, 10), ap = h >= 12 ? "PM" : "AM";
+          var yy = 2000 + parseInt(t.slice(0, 2), 10);
+          var mo = parseInt(t.slice(2, 4), 10) - 1;
+          var da = parseInt(t.slice(4, 6), 10);
+          var hh = parseInt(t.slice(6, 8), 10);
+          var mm = parseInt(t.slice(8, 10), 10);
+          var d = new Date(Date.UTC(yy, mo, da, hh, mm));
+          d.setUTCHours(d.getUTCHours() + off);
+          var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+          var h = d.getUTCHours(), ap = h >= 12 ? "PM" : "AM";
           h = h % 12 || 12;
-          return months[parseInt(mo, 10)] + " " + parseInt(da, 10) + ", " + h + ":" + mm + " " + ap;
+          return months[d.getUTCMonth()] + " " + d.getUTCDate() + ", " + h + ":" + String(d.getUTCMinutes()).padStart(2, "0") + " " + ap;
         }
-        parts.push(when(span[1]) + " through " + when(span[2]));
+        parts.push(when(span[1]) + " through " + when(span[2]) + " " + tz);
       }
       if (/\bRWY\s+CLSD/.test(s)) parts.push("runway closed");
       if (/\bTWY\s+CLSD/.test(s)) parts.push("taxiway closed");
@@ -21300,7 +21317,7 @@ function paintObservatories() { paintObsTable(); }
           var hit = bad && bad[a.code];
           var state = hit ? hit.status : (bad ? "Normal" : "Checking");
           var cls = hit ? (hit.status === "Closed" ? "closed" : (hit.status === "Ground stop" ? "stop" : "delay")) : (bad ? "ok" : "");
-          var why = hit ? ((hit.avg ? hit.avg + " · " : "") + plainAirportReason(hit.reason)) : "";
+          var why = hit ? ((hit.avg ? hit.avg + " · " : "") + plainAirportReason(hit.reason, a.code)) : "";
           var drive = (typeof driveMin === "function") ? driveMin(a.mi) : "";
           var wx = (window.__apWx && window.__apWx[a.code]) || "";
           return '<div class="airport-pill ' + cls + '"><b>' + a.code + '</b><div class="ap-name">' + a.name + '</div><div class="ap-mi">' + Math.round(a.mi) + ' mi' + (drive ? " · " + drive : "") + '</div>' + (wx ? '<div class="ap-mi">' + wx + '</div>' : '') + '<div class="ap-state">' + state + '</div>' + (why ? '<div class="ap-mi">' + why + '</div>' : '') + '</div>';
@@ -21327,40 +21344,11 @@ function paintObservatories() { paintObsTable(); }
         if (!xml || xml.indexOf("AIRPORT_STATUS") < 0 || xml.indexOf("<!DOCTYPE") >= 0) throw new Error("html");
         var doc = new DOMParser().parseFromString(xml, "text/xml");
         var bad = {};
-        function closureActiveNow(reason) {
-          var s = String(reason || "");
-          // DLY HHMM-HHMM means the closure only applies during that daily UTC window
-          var dly = s.match(/\bDLY\s+(\d{4})-(\d{4})/);
-          if (dly) {
-            var now = new Date();
-            var mins = now.getUTCHours() * 60 + now.getUTCMinutes();
-            var a = parseInt(dly[1].slice(0, 2), 10) * 60 + parseInt(dly[1].slice(2), 10);
-            var b = parseInt(dly[2].slice(0, 2), 10) * 60 + parseInt(dly[2].slice(2), 10);
-            var inWindow = a <= b ? (mins >= a && mins <= b) : (mins >= a || mins <= b);
-            if (!inWindow) return false;
-          }
-          // overall span YYMMDDHHMM-YYMMDDHHMM
-          var span = s.match(/(\d{10})-(\d{10})/);
-          if (span) {
-            function toMs(t) {
-              var yy = 2000 + parseInt(t.slice(0, 2), 10);
-              var mo = parseInt(t.slice(2, 4), 10) - 1;
-              var da = parseInt(t.slice(4, 6), 10);
-              var hh = parseInt(t.slice(6, 8), 10);
-              var mm = parseInt(t.slice(8, 10), 10);
-              return Date.UTC(yy, mo, da, hh, mm);
-            }
-            var nowMs = Date.now();
-            if (nowMs < toMs(span[1]) || nowMs > toMs(span[2])) return false;
-          }
-          return true;
-        }
         function take(tag, status) {
           Array.prototype.forEach.call(doc.getElementsByTagName(tag), function (node) {
             var code = (node.getElementsByTagName("ARPT")[0] || {}).textContent || "";
             var reason = (node.getElementsByTagName("Reason")[0] || {}).textContent || "";
             if (/GA ACFT|TRANSIENT|NON SKED/i.test(reason)) return;
-            if (status === "Closed" && !closureActiveNow(reason)) return;
             var avg = (node.getElementsByTagName("Avg")[0] || node.getElementsByTagName("Min")[0] || {}).textContent || "";
             bad[code] = { status: status, reason: reason, avg: avg };
           });
