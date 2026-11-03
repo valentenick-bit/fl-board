@@ -6397,7 +6397,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1765;
+    window.BOARD_VER = 1766;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21250,6 +21250,43 @@ function paintObservatories() { paintObsTable(); }
         if (on && on.id === "travel" && typeof paintTravelBoard === "function") paintTravelBoard();
       }, 60000);
     }
+    function plainAirportReason(raw) {
+      var s = String(raw || "").replace(/\s+/g, " ").trim();
+      if (!s) return "";
+      // Strip the NOTAM header (!PVD 11/005 PVD ...)
+      s = s.replace(/^!?[A-Z]{3}\s+\d+\/\d+\s+[A-Z]{3}\s+/i, "");
+      var parts = [];
+      if (/\bAD\s+AP\s+CLSD|\bAP\s+CLSD|\bCLSD\b/.test(s)) parts.push("Airport closed");
+      else if (/\bGND\s+STOP|\bGROUND\s+STOP/.test(s)) parts.push("Ground stop");
+      else if (/\bGND\s+DELAY|\bDELAY/.test(s)) parts.push("Delays");
+      if (/\bEXC\s+HEL/.test(s)) parts.push("except helicopters");
+      if (/\bEXC\s+EMERG/.test(s)) parts.push("except emergency flights");
+      var dly = s.match(/\bDLY\s+(\d{4})-(\d{4})/);
+      if (dly) {
+        function hm(t) {
+          var h = parseInt(t.slice(0, 2), 10), m = t.slice(2);
+          var ap = h >= 12 ? "PM" : "AM";
+          h = h % 12 || 12;
+          return h + ":" + m + " " + ap;
+        }
+        parts.push("daily " + hm(dly[1]) + " – " + hm(dly[2]));
+      }
+      var span = s.match(/(\d{10})-(\d{10})/);
+      if (span) {
+        function when(t) {
+          var mo = t.slice(2, 4), da = t.slice(4, 6), hh = t.slice(6, 8), mm = t.slice(8, 10);
+          var months = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+          var h = parseInt(hh, 10), ap = h >= 12 ? "PM" : "AM";
+          h = h % 12 || 12;
+          return months[parseInt(mo, 10)] + " " + parseInt(da, 10) + ", " + h + ":" + mm + " " + ap;
+        }
+        parts.push(when(span[1]) + " through " + when(span[2]));
+      }
+      if (/\bRWY\s+CLSD/.test(s)) parts.push("runway closed");
+      if (/\bTWY\s+CLSD/.test(s)) parts.push("taxiway closed");
+      if (!parts.length) return raw;
+      return parts.join(", ").replace(/\s+,/g, ",");
+    }
     function paintAirportStatus() {
       var box = document.getElementById("airport-status");
       var lead = document.getElementById("airport-lead");
@@ -21263,7 +21300,7 @@ function paintObservatories() { paintObsTable(); }
           var hit = bad && bad[a.code];
           var state = hit ? hit.status : (bad ? "Normal" : "Checking");
           var cls = hit ? (hit.status === "Closed" ? "closed" : (hit.status === "Ground stop" ? "stop" : "delay")) : (bad ? "ok" : "");
-          var why = hit ? ((hit.avg ? hit.avg + " · " : "") + hit.reason) : "";
+          var why = hit ? ((hit.avg ? hit.avg + " · " : "") + plainAirportReason(hit.reason)) : "";
           var drive = (typeof driveMin === "function") ? driveMin(a.mi) : "";
           var wx = (window.__apWx && window.__apWx[a.code]) || "";
           return '<div class="airport-pill ' + cls + '"><b>' + a.code + '</b><div class="ap-name">' + a.name + '</div><div class="ap-mi">' + Math.round(a.mi) + ' mi' + (drive ? " · " + drive : "") + '</div>' + (wx ? '<div class="ap-mi">' + wx + '</div>' : '') + '<div class="ap-state">' + state + '</div>' + (why ? '<div class="ap-mi">' + why + '</div>' : '') + '</div>';
