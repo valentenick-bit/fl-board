@@ -4403,6 +4403,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <p class="today-sec-h">Flights</p>
           <div id="today-fly-body"></div>
         </div>
+        <div id="today-space" hidden>
+          <p class="today-sec-h">Sky tonight</p>
+          <div id="today-space-body"></div>
+        </div>
         <div class="card" id="today-sports" hidden>
           <b>Games</b>
           <div id="today-sports-body"></div>
@@ -13308,6 +13312,7 @@ function currentRotation() {
         var a = document.getElementById("tropics-view");
         if (a) a.src = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/car/GEOCOLOR/1000x1000.jpg?t=" + Date.now();
       }
+      if (id === "now" && typeof paintTodaySpace === "function") paintTodaySpace();
     }
     function radioPinKey() {
       return typeof pinTrashKey === "function" ? pinTrashKey() : "default";
@@ -15633,7 +15638,7 @@ function currentRotation() {
     }
     if (typeof loadHealthAdv === "function") loadHealthAdv();
     writeTodayChips();
-    try { paintMeteorChip(); loadSpaceWeather(); loadKingTides(); loadIssPasses(); } catch (eBootSky) {}
+    try { paintMeteorChip(); if (typeof paintTodaySpace === "function") paintTodaySpace(); loadSpaceWeather(); loadKingTides(); loadIssPasses(); } catch (eBootSky) {}
     function writeHdrMeta() {
       var build = document.getElementById("health-build");
       var when = window.__bwUpdated
@@ -18394,6 +18399,43 @@ function paintObservatories() { paintObsTable(); }
       if (chip) chip.classList.toggle("on", !!name);
       if (el) el.textContent = name || "—";
       if (typeof noteFeed === "function") noteFeed("live-meteor", true, name || "none this week");
+    }
+    function paintTodaySpace() {
+      var box = document.getElementById("today-space");
+      var body = document.getElementById("today-space-body");
+      if (!box || !body) return;
+      var list = typeof skyEventList === "function" ? skyEventList() : [];
+      var now = new Date();
+      var today = now.getMonth() + 1 + "/" + now.getDate();
+      var peaks = list.filter(function (e) {
+        if (e.status === "peaking") return true;
+        if (e.status === "now" && /eclipse|opposition|conjunction|comet/.test(e.kind || "")) {
+          // single-day or peak-window events already marked now
+          return true;
+        }
+        return false;
+      });
+      // tighten showers to actual peak day(s)
+      peaks = peaks.filter(function (e) {
+        if (e.kind !== "meteor") return true;
+        var m = String(e.line || "").match(/Peak\s+([A-Za-z]+)\s+(\d{1,2})(?:[–-](\d{1,2}))?/);
+        if (!m) return e.status === "peaking";
+        var months = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+        var mo = months[m[1].slice(0,3).toLowerCase()];
+        var d1 = parseInt(m[2], 10), d2 = m[3] ? parseInt(m[3], 10) : d1;
+        var td = now.getDate(), tm = now.getMonth() + 1;
+        return tm === mo && td >= d1 && td <= d2;
+      });
+      if (!peaks.length) { box.hidden = true; body.innerHTML = ""; return; }
+      box.hidden = false;
+      body.innerHTML = peaks.slice(0, 3).map(function (e) {
+        var look = e.line || "";
+        var exp = e.kind === "meteor" ? "Expect streaks of light, some bright with short trails. Best from a dark spot away from streetlights."
+          : e.kind === "eclipse" ? "Watch the Moon or Sun change as the shadow crosses. No special gear for a lunar eclipse."
+          : e.kind === "comet" ? "A faint fuzzy patch. Binoculars help. Give your eyes 15 minutes to adjust."
+          : "A bright point that stands out from the stars. Steady light, no twinkle like a star.";
+        return '<div class="card"><b>' + (e.title || "Sky event") + '</b><span style="display:block;margin:6px 0 4px"><b>What to look for</b> · ' + look + '</span><span style="display:block;opacity:.8"><b>What you may see</b> · ' + exp + '</span></div>';
+      }).join("");
     }
     function paintTodayHazards(info) {
       info = info || {};
