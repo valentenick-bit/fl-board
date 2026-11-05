@@ -4847,8 +4847,15 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <button type="button" data-ev-filter="music">Music</button>
           <button type="button" data-ev-filter="trivia">Trivia</button>
           <button type="button" data-ev-filter="bingo">Bingo</button>
-          <button type="button" data-ev-filter="market">Markets</button>
+          <button type="button" data-ev-filter="workshop">Workshop</button>
           <button type="button" data-ev-filter="food">Food</button>
+          <button type="button" data-ev-filter="coffee">Coffee</button>
+          <button type="button" data-ev-filter="comedy">Comedy</button>
+          <button type="button" data-ev-filter="market">Markets</button>
+          <button type="button" data-ev-filter="gathering">Gathering</button>
+          <button type="button" data-ev-filter="raffle">Raffle</button>
+          <button type="button" data-ev-filter="cards">Cards</button>
+          <button type="button" data-ev-filter="dance">Dance</button>
           <button type="button" data-ev-filter="ticket">Paid</button>
         </div>
         <div class="wx-top">
@@ -6404,7 +6411,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1767;
+    window.BOARD_VER = 1768;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -22873,12 +22880,21 @@ function paintTakeoutDeals() {
         var all = window.__entAll || [];
         var filtered = all.filter(function (ev) {
           if (filter === "all") return true;
+          var kind = typeof eventKind === "function" ? eventKind(ev.sum, ev.loc, ev.desc) : null;
+          var cls = kind && kind.cls ? kind.cls : "";
           var blob = String(ev.sum || "") + " " + String(ev.loc || "") + " " + String(ev.desc || "");
-          if (filter === "music") return /live music|karaoke|band|acoustic|open mic|concert/i.test(blob);
-          if (filter === "trivia") return /trivia/i.test(blob);
-          if (filter === "bingo") return /bingo/i.test(blob);
-          if (filter === "market") return /market|fair|festival/i.test(blob);
-          if (filter === "food") return /dinner|brunch|tasting|food truck|elks|breakfast/i.test(blob);
+          if (filter === "music") return cls === "music" || /live music|karaoke|band|acoustic|open mic|concert/i.test(blob);
+          if (filter === "trivia") return cls === "trivia" || /trivia/i.test(blob);
+          if (filter === "bingo") return cls === "bingo" || /bingo/i.test(blob);
+          if (filter === "workshop") return cls === "workshop" || /workshop|art class|paint|academy of art/i.test(blob);
+          if (filter === "food") return cls === "food" || /food truck|lobster|dinner|brunch|tasting|breakfast|bakery|pastry/i.test(blob);
+          if (filter === "coffee") return cls === "coffee" || /coffee/i.test(blob);
+          if (filter === "comedy") return cls === "comedy" || /comedy|stand-?up|improv/i.test(blob);
+          if (filter === "market") return cls === "market" || cls === "craft" || /market|fair|festival|vendor/i.test(blob);
+          if (filter === "gathering") return cls === "market" || /mixer|meetup|social|happy hour|fundraiser|yard sale|tag sale|community/i.test(blob);
+          if (filter === "raffle") return cls === "raffle" || /raffle/i.test(blob);
+          if (filter === "cards") return cls === "cards" || /canasta|bridge|bunco|poker|cards|mah.?jong/i.test(blob);
+          if (filter === "dance") return cls === "dance" || /line danc|dance class|dancing/i.test(blob);
           if (filter === "ticket") return /ticket|ticketmaster|axs|playhouse|theater/i.test(blob);
           return true;
         });
