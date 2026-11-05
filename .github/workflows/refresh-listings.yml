@@ -29,60 +29,79 @@ jobs:
             with urllib.request.urlopen(req, timeout=25) as r:
               return r.read().decode("utf-8", errors="ignore")
 
+          def key_of(addr):
+            return re.sub(r"[^a-z0-9]", "", (addr or "").lower())[:28]
+
           html = fetch(URL)
-          # Addresses live in image alt text on this page
           alts = re.findall(r'alt="(\d{3,5}\s+[^"]{5,60})"', html)
-          prices = [int(p.replace(",","")) for p in re.findall(r'\$([0-9,]{5,})', html) if 200000 <= int(p.replace(",","")) <= 2500000]
+          prices = [int(p.replace(",", "")) for p in re.findall(r'\$([0-9,]{5,})', html) if 200000 <= int(p.replace(",", "")) <= 2500000]
+          # image urls that sit near listing cards
+          imgs = re.findall(r'(https://[^"\']+\.(?:jpg|jpeg|webp|png))', html, re.I)
 
-          listings, seen = [], set()
-          prior = {}
-          try:
-            with open("listings.json") as f: old = json.load(f)
-            for x in old.get("listings") or []:
-              k = "".join(ch for ch in (x.get("addr") or "").lower() if ch.isalnum())[:28]
-              if k: prior[k] = x
-          except Exception:
-            pass
-          for i, alt in enumerate(alts):
-            addr = alt.strip()
-            if "Englewood" not in addr:
-              addr += ", Englewood, FL 34223"
-            key = re.sub(r"[^a-z0-9]", "", addr.lower())[:28]
-            if key in seen:
-              continue
-            seen.add(key)
-            price = prices[i] if i < len(prices) else 0
-            prev = prior.get(key) or {}
-          listings.append({
-              "addr": addr, "price": price or prev.get("price") or 0,
-              "beds": prev.get("beds") or 0, "baths": prev.get("baths") or 0,
-              "sqft": prev.get("sqft") or 0, "year": prev.get("year") or 0,
-              "mls": prev.get("mls") or "", "hoa": prev.get("hoa") or 0,
-              "img": prev.get("img") or "", "photos": prev.get("photos") or [],
-              "desc": prev.get("desc") or "Active BeachWalk listing."
-            })
-
-          print(f"parsed {len(listings)} from LTR")
-
-          # Safety: if parse is thin, keep the prior good file
           try:
             with open("listings.json") as f:
               old = json.load(f)
             old_list = old.get("listings") or []
           except Exception:
             old_list = []
+          prior = {}
+          for x in old_list:
+            k = key_of(x.get("addr"))
+            if k:
+              prior[k] = x
+
+          listings, seen = [], set()
+          for i, alt in enumerate(alts):
+            addr = alt.strip()
+            if "Englewood" not in addr:
+              addr += ", Englewood, FL 34223"
+            key = key_of(addr)
+            if not key or key in seen:
+              continue
+            seen.add(key)
+            prev = prior.get(key) or {}
+            price = prices[i] if i < len(prices) else (prev.get("price") or 0)
+            img = prev.get("img") or ""
+            photos = prev.get("photos") or []
+            if not img and i < len(imgs):
+              img = imgs[i]
+              photos = [img]
+            listings.append({
+              "addr": addr,
+              "price": price or prev.get("price") or 0,
+              "beds": prev.get("beds") or 0,
+              "baths": prev.get("baths") or 0,
+              "sqft": prev.get("sqft") or 0,
+              "year": prev.get("year") or 0,
+              "mls": prev.get("mls") or "",
+              "hoa": prev.get("hoa") or 0,
+              "img": img,
+              "photos": photos,
+              "desc": prev.get("desc") or "Active BeachWalk listing.",
+              "dom": prev.get("dom") or 0,
+              "history": prev.get("history") or []
+            })
+
+          print(f"parsed {len(listings)} from LTR")
+
+          # Never replace a good file with a thin or imageless scrape
+          old_with_img = sum(1 for x in old_list if x.get("img"))
+          new_with_img = sum(1 for x in listings if x.get("img"))
           if len(listings) < 10 and len(old_list) >= 10:
             print(f"parse thin ({len(listings)}); keeping prior {len(old_list)}")
+            listings = old_list
+          elif new_with_img < old_with_img and old_with_img >= 8:
+            print(f"images dropped ({new_with_img} vs {old_with_img}); keeping prior")
             listings = old_list
 
           out = {
             "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "source": "LTR Homes active MLS (image alt addresses)",
+            "source": "LTR Homes active MLS (photos preserved)",
             "listings": listings
           }
           with open("listings.json", "w") as f:
             json.dump(out, f, indent=2)
-          print(f"wrote {len(listings)} listings")
+          print(f"wrote {len(listings)} listings, {sum(1 for x in listings if x.get('img'))} with photos")
           PY
       - name: Commit
         run: |
