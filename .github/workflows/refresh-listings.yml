@@ -23,20 +23,38 @@ jobs:
 
           def fetch(u):
             req = urllib.request.Request(u, headers={
-              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-              "Accept": "text/html,application/xhtml+xml"
+              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
             })
-            with urllib.request.urlopen(req, timeout=25) as r:
+            with urllib.request.urlopen(req, timeout=30) as r:
               return r.read().decode("utf-8", errors="ignore")
 
           def key_of(addr):
             return re.sub(r"[^a-z0-9]", "", (addr or "").lower())[:28]
 
+          def parse_number(s):
+            if not s: return 0
+            return int(re.sub(r"[^0-9]", "", s) or 0)
+
+          def parse_float(s):
+            if not s: return 0.0
+            try:
+              return float(re.sub(r"[^0-9.]", "", s) or 0)
+            except:
+              return 0.0
+
           html = fetch(URL)
-          alts = re.findall(r'alt="(\d{3,5}\s+[^"]{5,60})"', html)
-          prices = [int(p.replace(",", "")) for p in re.findall(r'\$([0-9,]{5,})', html) if 200000 <= int(p.replace(",", "")) <= 2500000]
-          # image urls that sit near listing cards
-          imgs = re.findall(r'(https://[^"\']+\.(?:jpg|jpeg|webp|png))', html, re.I)
+
+          # Better card parsing: look for listing blocks by address patterns and nearby fields
+          # Addresses appear as text near prices and bed/bath/sqft
+          addr_matches = re.findall(r'(\d{3,5}\s+[A-Za-z0-9\s]+(?:Dr|Ct|Ave|Rd|Way|St|Ln|Blvd|Pl),\s*Englewood,\s*FL\s*34223)', html)
+          # Fallback to alt texts
+          alts = re.findall(r'alt="(\d{3,5}\s+[^"]{5,80})"', html)
+          addresses = list(dict.fromkeys(addr_matches + [a.strip() for a in alts if "Englewood" in a or True]))
+
+          # Collect all image URLs from mlsgrid CDN
+          imgs = re.findall(r'(https://mlsgrid-ltrhomes\.b-cdn\.net/images/[^"\']+\.(?:jpg|jpeg|webp|png))', html, re.I)
+          imgs = list(dict.fromkeys(imgs))  # unique, preserve order
 
           try:
             with open("listings.json") as f:
@@ -44,64 +62,113 @@ jobs:
             old_list = old.get("listings") or []
           except Exception:
             old_list = []
-          prior = {}
-          for x in old_list:
-            k = key_of(x.get("addr"))
-            if k:
-              prior[k] = x
+          prior = {key_of(x.get("addr")): x for x in old_list if key_of(x.get("addr"))}
 
           listings, seen = [], set()
-          for i, alt in enumerate(alts):
-            addr = alt.strip()
-            if "Englewood" not in addr:
-              addr += ", Englewood, FL 34223"
+          img_idx = 0
+
+          # Scan for structured snippets around each address
+          for addr in addresses:
+            if not addr or "Englewood" not in addr:
+              continue
             key = key_of(addr)
             if not key or key in seen:
               continue
             seen.add(key)
+
+            # Find a window of text around this address
+            pos = html.find(addr)
+            window = html[max(0, pos-800):pos+800] if pos >= 0 else ""
+
             prev = prior.get(key) or {}
-            price = prices[i] if i < len(prices) else (prev.get("price") or 0)
+
+            # Extract fields from window
+            price_m = re.search(r'\$([0-9,]{5,})', window)
+            price = parse_number(price_m.group(1)) if price_m else (prev.get("price") or 0)
+
+            bb_m = re.search(r'(\d+(?:\.\d+)?)\s*bd\s*·\s*(\d+(?:\.\d+)?)\s*ba\s*·\s*([0-9,]+)\s*sqft', window)
+            beds = parse_float(bb_m.group(1)) if bb_m else (prev.get("beds") or 0)
+            baths = parse_float(bb_m.group(2)) if bb_m else (prev.get("baths") or 0)
+            sqft = parse_number(bb_m.group(3)) if bb_m else (prev.get("sqft") or 0)
+
+            dom_m = re.search(r'(\d+)\s*days? on market|Listed today', window, re.I)
+            if dom_m:
+              dom = 0 if "today" in (dom_m.group(0) or "").lower() else int(dom_m.group(1) or 0)
+            else:
+              dom = prev.get("dom") or 0
+
+            year_m = re.search(r'Built\s*(\d{4})', window)
+            year = int(year_m.group(1)) if year_m else (prev.get("year") or 0)
+
+            hoa_m = re.search(r'Fees\s*\$([0-9,]+)/mo', window)
+            hoa = parse_number(hoa_m.group(1)) if hoa_m else (prev.get("hoa") or 0)
+
+            mls_m = re.search(r'MLS#\s*([A-Z0-9]+)', window)
+            mls = mls_m.group(1) if mls_m else (prev.get("mls") or "")
+
+            # Images: prefer prior multi-photos, else take next available CDN image
             img = prev.get("img") or ""
-            photos = prev.get("photos") or []
-            if not img and i < len(imgs):
-              img = imgs[i]
+            photos = list(prev.get("photos") or [])
+            if not img and img_idx < len(imgs):
+              img = imgs[img_idx]
               photos = [img]
+              img_idx += 1
+            elif not photos and img:
+              photos = [img]
+
+            # Prefer richer prior data if new scrape is thin for this listing
+            if not beds and prev.get("beds"):
+              beds = prev["beds"]
+            if not baths and prev.get("baths"):
+              baths = prev["baths"]
+            if not sqft and prev.get("sqft"):
+              sqft = prev["sqft"]
+            if not year and prev.get("year"):
+              year = prev["year"]
+            if not mls and prev.get("mls"):
+              mls = prev["mls"]
+            if not hoa and prev.get("hoa"):
+              hoa = prev["hoa"]
+            if not dom and prev.get("dom"):
+              dom = prev["dom"]
+
             listings.append({
               "addr": addr,
               "price": price or prev.get("price") or 0,
-              "beds": prev.get("beds") or 0,
-              "baths": prev.get("baths") or 0,
-              "sqft": prev.get("sqft") or 0,
-              "year": prev.get("year") or 0,
-              "mls": prev.get("mls") or "",
-              "hoa": prev.get("hoa") or 0,
+              "beds": beds,
+              "baths": baths,
+              "sqft": sqft,
+              "year": year,
+              "mls": mls,
+              "hoa": hoa,
               "img": img,
               "photos": photos,
               "desc": prev.get("desc") or "Active BeachWalk listing.",
-              "dom": prev.get("dom") or 0,
+              "dom": dom,
               "history": prev.get("history") or []
             })
 
-          print(f"parsed {len(listings)} from LTR")
+          print(f"parsed {len(listings)} from LTR (addresses found: {len(addresses)})")
 
-          # Never replace a good file with a thin or imageless scrape
+          # Safety: if scrape is too thin, keep prior (but still remove ones that are clearly gone if we have a solid count)
           old_with_img = sum(1 for x in old_list if x.get("img"))
           new_with_img = sum(1 for x in listings if x.get("img"))
-          if len(listings) < 10 and len(old_list) >= 10:
+          if len(listings) < 8 and len(old_list) >= 10:
             print(f"parse thin ({len(listings)}); keeping prior {len(old_list)}")
             listings = old_list
-          elif new_with_img < old_with_img and old_with_img >= 8:
-            print(f"images dropped ({new_with_img} vs {old_with_img}); keeping prior")
+          elif new_with_img < old_with_img - 2 and old_with_img >= 8:
+            print(f"images dropped significantly; keeping prior")
             listings = old_list
 
+          # Always prefer the current scrape when it has a reasonable number, so sold/removed drop off
           out = {
             "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "source": "LTR Homes active MLS (photos preserved)",
+            "source": "LTR Homes active MLS (full card parse)",
             "listings": listings
           }
           with open("listings.json", "w") as f:
             json.dump(out, f, indent=2)
-          print(f"wrote {len(listings)} listings, {sum(1 for x in listings if x.get('img'))} with photos")
+          print(f"wrote {len(listings)} listings, {sum(1 for x in listings if x.get('img'))} with photos, {sum(1 for x in listings if x.get('beds'))} with bed/bath details")
           PY
       - name: Commit
         run: |
