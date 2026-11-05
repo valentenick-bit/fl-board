@@ -6411,7 +6411,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1768;
+    window.BOARD_VER = 1769;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -23260,7 +23260,16 @@ function paint() {
             if (fileZip && zipNow && fileZip !== zipNow) throw new Error("other pin");
             var rows = (d && d.events) || [];
             var parsed = rows.map(function (e) {
-              var when = new Date(e.when);
+              var when = e.when ? new Date(e.when) : null;
+              if (!when || isNaN(when.getTime())) {
+                var ds = String(e.date || "").trim();
+                var ts = String(e.time || "").trim();
+                if (ds) {
+                  var iso = ds + (ts ? " " + ts : " 12:00");
+                  when = new Date(iso);
+                  if (isNaN(when.getTime())) when = new Date(ds + "T12:00:00");
+                }
+              }
               var end = e.end ? new Date(e.end) : new Date(when.getTime() + 3 * 3600 * 1000);
               var blob = String(e.sum || e.title || "") + " " + String(e.loc || "") + " " + String(e.src || "");
               var inside = (e.src === "newsletter" || e.src === "townsq") || /beach\s*walk|capri club|high tide tiki|card room/i.test(blob);
