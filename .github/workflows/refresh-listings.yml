@@ -35,6 +35,14 @@ jobs:
           prices = [int(p.replace(",","")) for p in re.findall(r'\$([0-9,]{5,})', html) if 200000 <= int(p.replace(",","")) <= 2500000]
 
           listings, seen = [], set()
+          prior = {}
+          try:
+            with open("listings.json") as f: old = json.load(f)
+            for x in old.get("listings") or []:
+              k = "".join(ch for ch in (x.get("addr") or "").lower() if ch.isalnum())[:28]
+              if k: prior[k] = x
+          except Exception:
+            pass
           for i, alt in enumerate(alts):
             addr = alt.strip()
             if "Englewood" not in addr:
@@ -44,10 +52,14 @@ jobs:
               continue
             seen.add(key)
             price = prices[i] if i < len(prices) else 0
-            listings.append({
-              "addr": addr, "price": price, "beds": 0, "baths": 0,
-              "sqft": 0, "year": 0, "mls": "", "hoa": 0,
-              "img": "", "photos": [], "desc": "Active BeachWalk listing."
+            prev = prior.get(key) or {}
+          listings.append({
+              "addr": addr, "price": price or prev.get("price") or 0,
+              "beds": prev.get("beds") or 0, "baths": prev.get("baths") or 0,
+              "sqft": prev.get("sqft") or 0, "year": prev.get("year") or 0,
+              "mls": prev.get("mls") or "", "hoa": prev.get("hoa") or 0,
+              "img": prev.get("img") or "", "photos": prev.get("photos") or [],
+              "desc": prev.get("desc") or "Active BeachWalk listing."
             })
 
           print(f"parsed {len(listings)} from LTR")
