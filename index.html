@@ -6411,7 +6411,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1769;
+    window.BOARD_VER = 1776;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -15525,7 +15525,11 @@ function currentRotation() {
       var quakeBody = document.getElementById("today-quake-body");
       var quakeChip = document.getElementById("chip-quake");
       var quakeOn = !!(quake && quake.on);
-      if (quakeChip) quakeChip.classList.toggle("on", quakeOn);
+      if (quakeChip) {
+        quakeChip.classList.toggle("on", quakeOn);
+        quakeChip.hidden = !quakeOn;
+        if (quakeOn) quakeChip.innerHTML = "<b>Quake</b><span>" + (quake.title || "Nearby earthquake") + "</span>";
+      }
       if (quakeBox) quakeBox.hidden = !quakeOn;
       if (quakeOn && quakeBody && typeof stampTodayArt === "function") {
         quakeBody.innerHTML = stampTodayArt(
@@ -16205,7 +16209,9 @@ function paintObservatories() { paintObsTable(); }
             var depth = coords.length >= 3 ? Math.round(coords[2] * 0.621371) : null;
             var reports = felt.felt || 0;
             var cdi = felt.cdi;
-            var close = mi !== "" && ((mag >= 1.5 && mi <= 80) || (mag >= 2.5 && mi <= 120) || (mag >= 3 && mi <= 180) || (mag >= 4 && mi <= 220));
+            var qTime = (best.properties && best.properties.time) || 0;
+            var within24 = qTime && (Date.now() - qTime) < 24 * 3600000;
+            var close = within24 && mi !== "" && ((mag >= 1.5 && mi <= 80) || (mag >= 2.5 && mi <= 120) || (mag >= 3 && mi <= 180) || (mag >= 4 && mi <= 220));
             var felt = reports > 0 || (cdi && cdi >= 2);
             window.__quakeFelt = close ? {
               on: true,
