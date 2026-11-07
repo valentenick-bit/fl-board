@@ -4979,6 +4979,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="comm" class="page">
         <h2 id="comm-title">HOA</h2>
         <p class="pill-key" id="comm-note">Official notices from the association to residents.</p>
+        <div class="ev-filters" id="comm-filters" style="margin:6px 0 10px">
+          <button type="button" data-comm="all" class="on">All</button>
+          <button type="button" data-comm="action">Action</button>
+          <button type="button" data-comm="news">News</button>
+          <button type="button" data-comm="events">This week</button>
+          <button type="button" data-comm="homes">Homes</button>
+          <button type="button" data-comm="archive">Earlier</button>
+        </div>
         <p class="comm-off" id="comm-off" hidden>Set Account community to BeachWalk by Manasota Key to see HOA mail from TownSq.</p>
         <div class="comm-board" id="comm-board">
           <div class="comm-grid">
@@ -6438,7 +6446,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1786;
+    window.BOARD_VER = 1787;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -23642,6 +23650,32 @@ function paint() {
         var archCard = document.getElementById("comm-archive-card");
         if (archCard) archCard.hidden = !olderArch.length;
         paintCommWeek();
+        if (!window.__commFilterBound) {
+          window.__commFilterBound = true;
+          var filt = document.getElementById("comm-filters");
+          if (filt) filt.addEventListener("click", function (e) {
+            var b = e.target.closest("button");
+            if (!b) return;
+            var mode = b.getAttribute("data-comm") || "all";
+            filt.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+            var map = {
+              action: ["comm-need-card", "comm-survey-card"],
+              news: ["comm-feed-card", "comm-announce-card", "comm-news-card"],
+              events: ["comm-week"],
+              homes: ["comm-re-card"],
+              archive: ["comm-archive-card"]
+            };
+            var show = map[mode] || null;
+            ["comm-need-card","comm-feed-card","comm-announce-card","comm-archive-card","comm-survey-card","comm-re-card","comm-news-card"].forEach(function (id) {
+              var el = document.getElementById(id);
+              if (!el) return;
+              if (!show) { el.style.display = ""; return; }
+              el.style.display = show.indexOf(id) >= 0 ? "" : "none";
+            });
+            var week = document.getElementById("comm-week");
+            if (week && week.parentElement) week.parentElement.style.display = (!show || show.indexOf("comm-week") >= 0) ? "" : "none";
+          });
+        }
         if (typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity() && Array.isArray(j.events) && j.events.length && window.__entBag) {
           var extra = j.events.map(function (e) {
             var when = new Date(e.when);
