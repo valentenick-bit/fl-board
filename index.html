@@ -6429,7 +6429,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1780;
+    window.BOARD_VER = 1781;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -24814,10 +24814,13 @@ function mustEatsFL() {
       function card(r) {
         var reviews = r.reviews ? (r.reviews + " reviews") : "";
         var kindRaw = String(r.kind || "Course").trim();
-        var kindKey = kindRaw.toLowerCase().replace(/\s+/g, "-");
-        var kindMap = { "public":"golf-pub", "private":"golf-priv", "semi-private":"golf-semi", "semiprivate":"golf-semi", "resort":"golf-res", "executive":"golf-exec", "course":"golf-course" };
-        var kcls = kindMap[kindKey] || "golf-course";
-        var kindLabel = ({ "public":"Public", "private":"Private", "semi-private":"Semi-Private", "semiprivate":"Semi-Private", "resort":"Resort", "executive":"Executive", "course":"Course" }[kindKey] || kindRaw);
+        var kindLow = kindRaw.toLowerCase();
+        var kcls = "golf-course", kindLabel = "Course";
+        if (/semi[-\s]?private/.test(kindLow)) { kcls = "golf-semi"; kindLabel = "Semi-Private"; }
+        else if (/private/.test(kindLow)) { kcls = "golf-priv"; kindLabel = "Private"; }
+        else if (/public/.test(kindLow)) { kcls = "golf-pub"; kindLabel = "Public"; }
+        else if (/resort/.test(kindLow)) { kcls = "golf-res"; kindLabel = "Resort"; }
+        else if (/executive/.test(kindLow)) { kcls = "golf-exec"; kindLabel = "Executive"; }
         var addr = r.addr || r.area || "";
         var pills = '<span class="kind-tag ' + kcls + '">' + kindLabel + "</span>";
         pills += (typeof window.locPillHtml === "function" ? window.locPillHtml(r) : "");
