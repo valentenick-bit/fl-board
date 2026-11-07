@@ -6438,7 +6438,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1782;
+    window.BOARD_VER = 1783;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21064,11 +21064,25 @@ function paintObservatories() { paintObsTable(); }
       filters.innerHTML = near.map(function (a) {
         return '<button type="button" data-ap="' + a.code + '"' + (a.code === sel ? ' class="on"' : '') + '>' + a.code + '</button>';
       }).join("");
-      filters.querySelectorAll("button").forEach(function (b) {
-        b.addEventListener("click", function () {
-          window.__travelAp = b.getAttribute("data-ap");
+      if (!filters._bound) {
+        filters._bound = true;
+        filters.addEventListener("click", function (e) {
+          var b = e.target.closest("button");
+          if (!b) return;
+          var code = b.getAttribute("data-ap");
+          if (!code || code === window.__travelAp) return;
+          window.__travelAp = code;
+          // Show cached rows instantly if we have them
+          var cached = window.__fidsByAp && window.__fidsByAp[code];
+          if (cached && cached.rows && cached.rows.length) {
+            window.__fidsCache = cached;
+            if (typeof window.drawFids === "function") window.drawFids();
+          }
           paintTravelBoard();
         });
+      }
+      filters.querySelectorAll("button").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-ap") === sel);
       });
       var dirFilters = document.getElementById("travel-dir-filters");
       if (dirFilters) {
@@ -21240,6 +21254,8 @@ function paintObservatories() { paintObsTable(); }
             });
           });
           window.__fidsCache = { ap: apCode, rows: matched.slice() };
+          window.__fidsByAp = window.__fidsByAp || {};
+          window.__fidsByAp[apCode] = window.__fidsCache;
         }
         window.renderFidsFromCache = function () {
           var cache = window.__fidsCache;
