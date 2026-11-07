@@ -6438,7 +6438,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1783;
+    window.BOARD_VER = 1784;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21107,7 +21107,7 @@ function paintObservatories() { paintObsTable(); }
         body.innerHTML = "<p class=\"pill-key\">Loading aircraft near " + ap.code + "…</p>";
       }
       if (!ap || !isFinite(ap.lat) || !isFinite(ap.lon)) { body.innerHTML = "<p class=\"pill-key\">No airport position.</p>"; return; }
-      var url = "/adsb?lat=" + Number(ap.lat).toFixed(3) + "&lon=" + Number(ap.lon).toFixed(3) + "&dist=100";
+      var url = "/adsb?lat=" + Number(ap.lat).toFixed(3) + "&lon=" + Number(ap.lon).toFixed(3) + "&dist=220";
       window.__fidsGen = (window.__fidsGen || 0) + 1;
       var myGen = window.__fidsGen;
       fetch(url).then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); }).then(function (j) {
@@ -21134,7 +21134,7 @@ function paintObservatories() { paintObsTable(); }
         var altUnit = metric ? "m" : "ft";
         var spdUnit = metric ? "km/h" : "kt";
         var distUnit = metric ? "km" : "mi";
-        var distCap = metric ? 320 : 200;
+        var distCap = metric ? 400 : 250;
         var airlines = { AAL:"American", DAL:"Delta", UAL:"United", SWA:"Southwest", JBU:"JetBlue", ASA:"Alaska", FFT:"Frontier", NKS:"Spirit", SKW:"SkyWest", RPA:"Republic", EDV:"Endeavor", JIA:"PSA", ASH:"Mesa", GJS:"GoJet", BWA:"Caribbean", VXP:"Avelo", MXY:"Breeze", HAL:"Hawaiian", FDX:"FedEx", UPS:"UPS", GTI:"Atlas", ABX:"ABX", ATN:"Air Transport", NCR:"National", SCX:"Sun Country", ROU:"Rouge", ACA:"Air Canada", WJA:"WestJet", BAW:"British", AFR:"Air France", DLH:"Lufthansa", KLM:"KLM", UAE:"Emirates", QFA:"Qantas", ANA:"ANA", JAL:"Japan", CCA:"Air China", CES:"China Eastern", CSN:"China Southern", SIA:"Singapore", THA:"Thai", AAR:"Asiana", KAL:"Korean", EVA:"EVA", CAL:"China Airlines", AMX:"Aeromexico", AVA:"Avianca", CMP:"Copa", TAM:"LATAM", LAN:"LATAM", GLO:"Gol", AZA:"ITA", IBE:"Iberia", SAS:"SAS", FIN:"Finnair", AEE:"Aegean", ELY:"El Al", ETH:"Ethiopian", SAA:"South African", QTR:"Qatar", ETD:"Etihad", SVA:"Saudia", GFA:"Gulf Air", OMA:"Oman", RJA:"Royal Jordanian", MEA:"MEA", IRA:"Iran Air", PIA:"PIA", AIC:"Air India", VTI:"Vistara", IGO:"IndiGo", SLI:"SpiceJet", TGW:"Scoot", JST:"Jetstar", VOZ:"Virgin Australia", ANZ:"Air NZ", PAL:"Philippine", CPA:"Cathay", HKE:"HK Express", CXA:"Xiamen", CHH:"Hainan", CSZ:"Shenzhen", CDC:"Loong", DK:"Sunclass", NAX:"Norwegian", WZZ:"Wizz", RYR:"Ryanair", EZY:"easyJet", VL:"Vueling", TOM:"TUI", EXS:"Jet2", TCX:"Thomas Cook" };
         function airName(call) {
           var c = String(call || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3);
@@ -21144,7 +21144,7 @@ function paintObservatories() { paintObsTable(); }
           var lat = Number(a.lat), lon = Number(a.lon);
           if (!isFinite(lat) || !isFinite(lon)) return null;
           var d = distMi(lat, lon, ap.lat, ap.lon);
-          if (d > 200) return null;
+          if (d > 250) return null;
           var hdg = Number(a.track || 0);
           var brg = bearing(lat, lon, ap.lat, ap.lon);
           var diff = Math.abs(((hdg - brg + 540) % 360) - 180);
@@ -21195,7 +21195,8 @@ function paintObservatories() { paintObsTable(); }
           note.textContent = faa ? (ap.code + " · " + faa.status + (faa.reason ? " · " + faa.reason : "")) : "";
         }
         if (!rows.length) {
-          if (!body.querySelector("table.ap-board")) {
+          var had = window.__fidsByAp && window.__fidsByAp[ap.code] && window.__fidsByAp[ap.code].rows && window.__fidsByAp[ap.code].rows.length;
+          if (!had && !body.querySelector("table.ap-board")) {
             body.innerHTML = "<p class=\"pill-key\">No aircraft in this view near " + ap.code + ".</p>";
           }
           return;
