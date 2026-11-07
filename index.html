@@ -6447,7 +6447,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1789;
+    window.BOARD_VER = 1790;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -31356,10 +31356,10 @@ function wxSvg(kind, box) {
       Promise.all([rssXml(foxRss), rssXml(localRss)]).then(function (both) {
         var set = getSet();
         var foxHits = set.breakNat === "0" ? [] : (both[0] || []).filter(isBreak).map(function (it) {
-          return { src: "Fox", title: (it.title || "").replace(/\s+/g, " "), link: it.link || "" };
+          return { src: "Fox", title: (it.title || "").replace(/\s+/g, " "), link: it.link || "", desc: (it.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
         });
         var localHits = set.breakLoc === "0" ? [] : (both[1] || []).filter(isBreak).map(function (it) {
-          return { src: "Local", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News).*$/i, ""), link: it.link || "" };
+          return { src: "Local", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News).*$/i, ""), link: it.link || "", desc: (it.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
         });
         var seen = {};
         var hits = [];
@@ -31390,10 +31390,14 @@ function wxSvg(kind, box) {
         }
         var body = hits.map(function (h) {
           var src = String(h.src || "");
+          var title = String(h.title || "");
+          var desc = String(h.desc || "").replace(/\s+/g, " ").trim();
+          if (desc.length > 140) desc = desc.slice(0, 137).replace(/\s+\S*$/, "") + "…";
+          var detail = desc && desc.toLowerCase() !== title.toLowerCase() ? (title + ". " + desc) : title;
           if (/FDA|NTAS|CDC|TFR|USCG|AIR/i.test(src)) {
-            return spaceSentences(String(h.title || ""));
+            return spaceSentences(detail);
           }
-          return speakAlert({ kind: "break", title: src + " breaking news", body: h.title });
+          return speakAlert({ kind: "break", title: src + " breaking news", body: detail });
         }).join("\u00a0".repeat(160));
         bar.classList.add("on");
         stackTickers();
