@@ -3244,6 +3244,7 @@ window.__ensureLeaflet = function () {
     #wx-radar-windy { display:none !important; }
     #golf-list .kind-tag.golf-pub, .kind-tag.golf-pub { background:#1b6b62 !important; color:#fff !important; }
     #golf-list .kind-tag.golf-priv, .kind-tag.golf-priv { background:#1e3a5f !important; color:#fff !important; }
+    #golf-list .kind-tag.golf-semi, .kind-tag.golf-semi { background:#5b4b8a !important; color:#fff !important; }
     #golf-list .kind-tag.golf-res, .kind-tag.golf-res { background:#c45c4a !important; color:#fff !important; }
     #golf-list .kind-tag.golf-exec, .kind-tag.golf-exec { background:#c4a35a !important; color:#1a1408 !important; }
     #golf-list .kind-tag.golf-course, .kind-tag.golf-course { background:#3d6b1f !important; color:#fff !important; }
@@ -6428,7 +6429,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1779;
+    window.BOARD_VER = 1780;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -24812,9 +24813,13 @@ function mustEatsFL() {
       }
       function card(r) {
         var reviews = r.reviews ? (r.reviews + " reviews") : "";
-        var kcls = ({ Public:"golf-pub", Private:"golf-priv", Resort:"golf-res", Executive:"golf-exec", "Semi-Private":"golf-pub" }[r.kind] || "golf-course");
+        var kindRaw = String(r.kind || "Course").trim();
+        var kindKey = kindRaw.toLowerCase().replace(/\s+/g, "-");
+        var kindMap = { "public":"golf-pub", "private":"golf-priv", "semi-private":"golf-semi", "semiprivate":"golf-semi", "resort":"golf-res", "executive":"golf-exec", "course":"golf-course" };
+        var kcls = kindMap[kindKey] || "golf-course";
+        var kindLabel = ({ "public":"Public", "private":"Private", "semi-private":"Semi-Private", "semiprivate":"Semi-Private", "resort":"Resort", "executive":"Executive", "course":"Course" }[kindKey] || kindRaw);
         var addr = r.addr || r.area || "";
-        var pills = '<span class="kind-tag ' + kcls + '">' + (r.kind || "Course") + "</span>";
+        var pills = '<span class="kind-tag ' + kcls + '">' + kindLabel + "</span>";
         pills += (typeof window.locPillHtml === "function" ? window.locPillHtml(r) : "");
         if (reviews) pills += '<span class="eat-rate-pill">' + reviews + "</span>";
         var stars = r.rating != null ? Number(r.rating).toFixed(1) : "—";
