@@ -6438,7 +6438,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1785;
+    window.BOARD_VER = 1786;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21105,7 +21105,8 @@ function paintObservatories() { paintObsTable(); }
         map.src = "https://www.google.com/maps?q=" + ap.lat + "," + ap.lon + "&z=10&output=embed";
       }
       // Keep the existing table visible while we refresh. Only show loading on first paint.
-      if (!body.querySelector("table.ap-board")) {
+      var hasCache = window.__fidsByAp && window.__fidsByAp[ap.code] && window.__fidsByAp[ap.code].rows && window.__fidsByAp[ap.code].rows.length;
+      if (!hasCache && !body.querySelector("table.ap-board")) {
         body.innerHTML = "<p class=\"pill-key\">Loading aircraft near " + ap.code + "…</p>";
       }
       if (!ap || !isFinite(ap.lat) || !isFinite(ap.lon)) { body.innerHTML = "<p class=\"pill-key\">No airport position.</p>"; return; }
@@ -21197,9 +21198,13 @@ function paintObservatories() { paintObsTable(); }
           note.textContent = faa ? (ap.code + " · " + faa.status + (faa.reason ? " · " + faa.reason : "")) : "";
         }
         if (!rows.length) {
-          window.__fidsByAp = window.__fidsByAp || {};
-          window.__fidsByAp[ap.code] = { ap: ap.code, rows: [] };
-          body.innerHTML = "<p class=\"pill-key\">No aircraft in this view near " + ap.code + ".</p>";
+          var kept = window.__fidsByAp && window.__fidsByAp[ap.code] && window.__fidsByAp[ap.code].rows && window.__fidsByAp[ap.code].rows.length;
+          if (kept) {
+            window.__fidsCache = window.__fidsByAp[ap.code];
+            if (typeof window.drawFids === "function") window.drawFids();
+          } else {
+            body.innerHTML = "<p class=\"pill-key\">No aircraft in this view near " + ap.code + ".</p>";
+          }
           return;
         }
         // Only keep flights whose FlightAware origin or destination is the selected airport,
