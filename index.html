@@ -6447,7 +6447,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1788;
+    window.BOARD_VER = 1789;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26362,7 +26362,9 @@ function mustEatsFL() {
       var rows = hits.slice(0, 6).map(function (h) {
         var title = String(h.title || "").replace(/</g, "");
         var src = String(h.src || "Breaking").replace(/</g, "");
-        return '<div class="card" style="border-left:3px solid #c0392b"><span class="warn-tag">' + src + '</span><b>' + title + '</b></div>';
+        var link = String(h.link || "").replace(/"/g, "");
+        var titleHtml = link ? '<a href="' + link + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">' + title + '</a>' : title;
+        return '<div class="card" style="border-left:3px solid #c0392b"><span class="warn-tag">' + src + '</span><b>' + titleHtml + '</b></div>';
       }).join("");
       box.innerHTML = '<b style="display:block;margin:0 0 8px;color:#c0392b">Breaking</b>' + rows;
     };
@@ -31301,7 +31303,7 @@ function wxSvg(kind, box) {
             if (!m) return "";
             return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
           }
-          out.push({ title: tag("title"), description: tag("description"), pubDate: tag("pubDate") });
+          out.push({ title: tag("title"), description: tag("description"), pubDate: tag("pubDate"), link: tag("link") });
         }
         return out;
       }
@@ -31354,10 +31356,10 @@ function wxSvg(kind, box) {
       Promise.all([rssXml(foxRss), rssXml(localRss)]).then(function (both) {
         var set = getSet();
         var foxHits = set.breakNat === "0" ? [] : (both[0] || []).filter(isBreak).map(function (it) {
-          return { src: "Fox", title: (it.title || "").replace(/\s+/g, " ") };
+          return { src: "Fox", title: (it.title || "").replace(/\s+/g, " "), link: it.link || "" };
         });
         var localHits = set.breakLoc === "0" ? [] : (both[1] || []).filter(isBreak).map(function (it) {
-          return { src: "Local", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News).*$/i, "") };
+          return { src: "Local", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News).*$/i, ""), link: it.link || "" };
         });
         var seen = {};
         var hits = [];
