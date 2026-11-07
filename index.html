@@ -5040,6 +5040,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="wink" class="page">
         <h2 data-k="Near this pin">News</h2>
         <p class="pill-key" id="news-note">Local headlines for the home pin.</p>
+        <div id="break-news" hidden></div>
         <div id="wink-list">
           <div class="card"><b>Local headlines</b><span>Pulling local news…</span></div>
         </div>
@@ -6446,7 +6447,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1787;
+    window.BOARD_VER = 1788;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26352,6 +26353,19 @@ function mustEatsFL() {
       var q = '"' + n.city + '" ' + n.st + (n.zip ? " OR " + n.zip : "") + " when:7d";
       return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
     }
+    window.paintBreakNews = function () {
+      var box = document.getElementById("break-news");
+      if (!box) return;
+      var hits = window.__breakHits || [];
+      if (!hits.length) { box.hidden = true; box.innerHTML = ""; return; }
+      box.hidden = false;
+      var rows = hits.slice(0, 6).map(function (h) {
+        var title = String(h.title || "").replace(/</g, "");
+        var src = String(h.src || "Breaking").replace(/</g, "");
+        return '<div class="card" style="border-left:3px solid #c0392b"><span class="warn-tag">' + src + '</span><b>' + title + '</b></div>';
+      }).join("");
+      box.innerHTML = '<b style="display:block;margin:0 0 8px;color:#c0392b">Breaking</b>' + rows;
+    };
     (function localHeadlines() {
       var box = document.getElementById("wink-list");
       if (!box) { console.log("news: no wink-list"); return; }
@@ -31364,10 +31378,12 @@ function wxSvg(kind, box) {
         if (typeof noteFeed === "function") {
           noteFeed("breaking", true, hits.length + " · fox " + foxHits.length + " · local " + localHits.length + " · desk " + (window.__deskBreak || []).length);
         }
+        window.__breakHits = hits.slice();
         if (!hits.length) {
           bar.classList.remove("on");
           txt.setAttribute("data-hash", "");
           stackTickers();
+          if (typeof window.paintBreakNews === "function") window.paintBreakNews();
           return;
         }
         var body = hits.map(function (h) {
@@ -31380,6 +31396,7 @@ function wxSvg(kind, box) {
         bar.classList.add("on");
         stackTickers();
         setTicker(txt, body, tickSpeedPx());
+        if (typeof window.paintBreakNews === "function") window.paintBreakNews();
         if (typeof maybeChimeBreak === "function") maybeChimeBreak(hits);
       }).catch(function () { bar.classList.remove("on"); stackTickers(); });
     }
