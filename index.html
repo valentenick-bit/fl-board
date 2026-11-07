@@ -6438,7 +6438,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1784;
+    window.BOARD_VER = 1785;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21072,11 +21072,13 @@ function paintObservatories() { paintObsTable(); }
           var code = b.getAttribute("data-ap");
           if (!code || code === window.__travelAp) return;
           window.__travelAp = code;
-          // Show cached rows instantly if we have them
+          var body = document.getElementById("travel-board-body");
           var cached = window.__fidsByAp && window.__fidsByAp[code];
           if (cached && cached.rows && cached.rows.length) {
             window.__fidsCache = cached;
             if (typeof window.drawFids === "function") window.drawFids();
+          } else if (body) {
+            body.innerHTML = "<p class=\"pill-key\">Loading aircraft near " + code + "…</p>";
           }
           paintTravelBoard();
         });
@@ -21195,10 +21197,9 @@ function paintObservatories() { paintObsTable(); }
           note.textContent = faa ? (ap.code + " · " + faa.status + (faa.reason ? " · " + faa.reason : "")) : "";
         }
         if (!rows.length) {
-          var had = window.__fidsByAp && window.__fidsByAp[ap.code] && window.__fidsByAp[ap.code].rows && window.__fidsByAp[ap.code].rows.length;
-          if (!had && !body.querySelector("table.ap-board")) {
-            body.innerHTML = "<p class=\"pill-key\">No aircraft in this view near " + ap.code + ".</p>";
-          }
+          window.__fidsByAp = window.__fidsByAp || {};
+          window.__fidsByAp[ap.code] = { ap: ap.code, rows: [] };
+          body.innerHTML = "<p class=\"pill-key\">No aircraft in this view near " + ap.code + ".</p>";
           return;
         }
         // Only keep flights whose FlightAware origin or destination is the selected airport,
