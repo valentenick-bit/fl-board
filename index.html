@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 <script>
 window.__ensureLeaflet = function () {
   if (window.L) return Promise.resolve(window.L);
@@ -5065,7 +5064,6 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
           <div class="news-stream-frame" id="news-stream-frame">
             <div class="radar-crop">
               <iframe id="news-stream" title="Local news live" src="about:blank" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-              <video id="news-stream-hls" playsinline muted autoplay style="display:none;width:100%;height:100%;object-fit:cover;background:#111"></video>
             </div>
             <div class="sea-map-pills"><b id="news-stream-title">Live</b></div>
           </div>
@@ -6469,7 +6467,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1794;
+    window.BOARD_VER = 1795;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26377,34 +26375,21 @@ function mustEatsFL() {
     }
     window.paintNewsStream = function () {
       var frame = document.getElementById("news-stream");
-      var hls = document.getElementById("news-stream-hls");
       var title = document.getElementById("news-stream-title");
       if (!frame) return;
       var st = (typeof homeState === "function" ? homeState() : "");
       var place = (typeof homePlace === "function" ? homePlace() : "");
       var isCT = st === "CT" || /south windsor|hartford|connecticut|windsor/i.test(place);
+      var src, label;
       if (isCT) {
-        frame.style.display = "none";
-        if (hls) {
-          hls.style.display = "block";
-          var hlsSrc = "https://livevideo01.fox61.com/hls/live/2011658/elvs/live.m3u8";
-          if (hls.canPlayType("application/vnd.apple.mpegurl")) {
-            hls.src = hlsSrc;
-          } else if (window.Hls && Hls.isSupported()) {
-            if (!hls._hls) { hls._hls = new Hls(); hls._hls.loadSource(hlsSrc); hls._hls.attachMedia(hls); }
-          } else {
-            hls.src = hlsSrc;
-          }
-          hls.play().catch(function () {});
-        }
-        if (title) title.textContent = "Fox 61 live";
+        src = "https://www.fox61.com/watch";
+        label = "Fox 61 live";
       } else {
-        if (hls) { hls.style.display = "none"; hls.pause(); }
-        frame.style.display = "block";
-        var src = "https://www.youtube-nocookie.com/embed/mk9vPn0bEfM?autoplay=1&mute=1&playsinline=1";
-        if (frame.src !== src) frame.src = src;
-        if (title) title.textContent = "WINK News live";
+        src = "https://www.youtube-nocookie.com/embed/mk9vPn0bEfM?autoplay=1&mute=1&playsinline=1";
+        label = "WINK News live";
       }
+      if (frame.src !== src) frame.src = src;
+      if (title) title.textContent = label;
     };
     window.paintBreakNews = function () {
       var box = document.getElementById("break-news");
