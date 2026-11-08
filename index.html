@@ -5040,6 +5040,10 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="wink" class="page">
         <h2 data-k="Near this pin">News</h2>
         <p class="pill-key" id="news-note">Local headlines for the home pin.</p>
+        <div class="card" id="news-stream-card">
+          <b id="news-stream-title">Live</b>
+          <div class="sea-cam-frame"><iframe id="news-stream" title="Local news live" src="about:blank" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
+        </div>
         <div id="break-news" hidden></div>
         <div id="wink-list">
           <div class="card"><b>Local headlines</b><span>Pulling local news…</span></div>
@@ -6447,7 +6451,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1791;
+    window.BOARD_VER = 1792;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26353,6 +26357,24 @@ function mustEatsFL() {
       var q = '"' + n.city + '" ' + n.st + (n.zip ? " OR " + n.zip : "") + " when:7d";
       return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
     }
+    window.paintNewsStream = function () {
+      var frame = document.getElementById("news-stream");
+      var title = document.getElementById("news-stream-title");
+      if (!frame) return;
+      var st = (typeof homeState === "function" ? homeState() : "");
+      var place = (typeof homePlace === "function" ? homePlace() : "");
+      var isCT = st === "CT" || /south windsor|hartford|connecticut|windsor/i.test(place);
+      var src, label;
+      if (isCT) {
+        src = "https://www.youtube-nocookie.com/embed/live_stream?channel=UCyqFmhadLMeSjKC86j4AoAQ&autoplay=1&mute=1";
+        label = "Fox 61 live";
+      } else {
+        src = "https://www.youtube-nocookie.com/embed/mk9vPn0bEfM?autoplay=1&mute=1&playsinline=1";
+        label = "WINK News live";
+      }
+      if (frame.src !== src) frame.src = src;
+      if (title) title.textContent = label;
+    };
     window.paintBreakNews = function () {
       var box = document.getElementById("break-news");
       if (!box) return;
@@ -26474,6 +26496,7 @@ function mustEatsFL() {
       }
 
       window.__reloadLocalNews = load;
+      if (typeof window.paintNewsStream === "function") window.paintNewsStream();
       load();
       setInterval(load, 15 * 60 * 1000);
     })();
