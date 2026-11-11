@@ -3623,7 +3623,7 @@ window.__ensureLeaflet = function () {
     
 .dist-tag, .loc-pill { background:#f3ead8; color:#5c4a2a; }
     
-    .comm-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,.85fr); gap:12px; align-items:start; }
+    .comm-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:14px; align-items:start; }
     #comm.page.on { display:flex !important; flex-direction:column; height:calc(100vh - 210px); max-height:calc(100vh - 210px); overflow:hidden; }
     #comm .comm-board { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
     #comm .comm-grid { flex:1; min-height:0; align-items:stretch; }
@@ -3634,8 +3634,8 @@ window.__ensureLeaflet = function () {
     }
 
     .comm-main, .comm-side { display:flex; flex-direction:column; gap:12px; min-width:0; }
-    #comm-need-card.comm-urgent { border-color:#e07a5f; }
-    html.dark #comm-need-card.comm-urgent { border-color:#f4a261; }
+    #comm-action-card.comm-urgent { border-color:#e07a5f; }
+    html.dark #comm-action-card.comm-urgent { border-color:#f4a261; }
     @media (max-width:900px), (orientation:portrait) {
       .comm-grid { grid-template-columns:1fr; }
     }
@@ -3652,8 +3652,8 @@ window.__ensureLeaflet = function () {
     .comm-lightbox img { max-width:92vw; max-height:88vh; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.5); }
     .comm-lightbox .lb-close { position:absolute; top:16px; right:20px; color:#fff; font-size:32px; cursor:pointer; line-height:1; background:none; border:0; }
 
-    #comm-need-card.comm-urgent { border-left:4px solid #e07a5f; background:rgba(224,122,95,.06); }
-    html.dark #comm-need-card.comm-urgent { border-left-color:#f4a261; background:rgba(244,162,97,.08); }
+    #comm-action-card.comm-urgent { border-left:4px solid #e07a5f; background:rgba(224,122,95,.06); }
+    html.dark #comm-action-card.comm-urgent { border-left-color:#f4a261; background:rgba(244,162,97,.08); }
     .comm-row:last-child { border-bottom:0; }
     .comm-row .comm-kicker { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .comm-row .kind-chip { display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; padding:2px 7px; border-radius:999px; background:rgba(27,107,98,.12); color:var(--teal); }
@@ -4989,40 +4989,26 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       <section id="comm" class="page">
         <h2 id="comm-title">HOA</h2>
         <p class="pill-key" id="comm-note">Official notices from the association to residents.</p>
-        <div class="ev-filters" id="comm-filters" style="margin:6px 0 10px">
-          <button type="button" data-comm="all" class="on">All</button>
-          <button type="button" data-comm="action">Action</button>
-          <button type="button" data-comm="news">News</button>
-          <button type="button" data-comm="events">This week</button>
-          <button type="button" data-comm="homes">Homes</button>
-          <button type="button" data-comm="archive">Earlier</button>
-        </div>
         <p class="comm-off" id="comm-off" hidden>Set Account community to BeachWalk by Manasota Key to see HOA mail from TownSq.</p>
         <div class="comm-board" id="comm-board">
           <div class="comm-grid">
             <div class="comm-main">
-              <div class="card comm-urgent" id="comm-need-card" hidden>
-                <b>Action required</b>
+              <div class="card comm-urgent" id="comm-action-card" hidden>
+                <b>Needs your attention</b>
                 <div id="comm-need"></div>
+                <div id="comm-survey"></div>
               </div>
-              <div class="card" id="comm-feed-card">
-                <b>Latest from the association</b>
+              <div class="card" id="comm-week-card">
+                <b>This week on site</b>
+                <div id="comm-week">Loading…</div>
+              </div>
+              <div class="card" id="comm-notices-card">
+                <b>Notices</b>
                 <div id="comm-feed">Checking TownSq…</div>
-              </div>
-              <div class="card" id="comm-announce-card" hidden>
-                <b>Announcements</b>
                 <div id="comm-announce"></div>
-              </div>
-              <div class="card" id="comm-archive-card" hidden>
-                <b>Earlier notices · last 30 days</b>
-                <div id="comm-archive"></div>
               </div>
             </div>
             <div class="comm-side">
-              <div class="card" id="comm-survey-card" hidden>
-                <b>Needs a reply</b>
-                <div id="comm-survey"></div>
-              </div>
               <div class="card" id="comm-re-card">
                 <b>Homes for sale</b>
                 <div id="comm-re"></div>
@@ -5031,9 +5017,9 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
                 <b>Newsletters</b>
                 <div id="comm-news"></div>
               </div>
-              <div class="card">
-                <b>This week on site</b>
-                <div id="comm-week">Loading…</div>
+              <div class="card" id="comm-archive-card" hidden>
+                <b>Earlier notices</b>
+                <div id="comm-archive"></div>
               </div>
             </div>
           </div>
@@ -6467,7 +6453,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1795;
+    window.BOARD_VER = 1796;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -23628,8 +23614,8 @@ function paint() {
         j = Object.assign({}, j, { notices: notices, announce: upcoming, newsletters: news, archive: arch });
         var need = j.need || [];
         var surveys = j.surveys || [];
-        var needCard = document.getElementById("comm-need-card");
-        if (needCard) needCard.hidden = !need.length;
+        var needCard = document.getElementById("comm-action-card");
+        if (needCard) needCard.hidden = !need.length && !surveys.length;
         paintCommList("comm-need", need, "");
         function normTitle(r) { return String(r.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
         var recentArch = (j.archive || []).filter(function (r) {
@@ -23658,45 +23644,19 @@ function paint() {
         paintCommList("comm-feed", feed, "No official notices on file.");
         var ann = (j.announce || []).slice();
         paintCommList("comm-announce", ann, "");
-        var annCard = document.getElementById("comm-announce-card");
+        var annCard = document.getElementById("comm-notices-card");
         if (annCard) annCard.hidden = !ann.length;
         paintCommList("comm-news", j.newsletters || [], "No newsletter on file.");
         if (typeof loadListings === "function") setTimeout(loadListings, 800);
         paintCommList("comm-survey", surveys, "");
-        var surveyCard = document.getElementById("comm-survey-card");
-        if (surveyCard) surveyCard.hidden = !surveys.length;
+        
 
         var olderArch = (j.archive || []).filter(function (r) { return !seenFeed[normTitle(r)] && !needTitles[normTitle(r)]; });
         paintCommList("comm-archive", olderArch, "");
         var archCard = document.getElementById("comm-archive-card");
         if (archCard) archCard.hidden = !olderArch.length;
         paintCommWeek();
-        if (!window.__commFilterBound) {
-          window.__commFilterBound = true;
-          var filt = document.getElementById("comm-filters");
-          if (filt) filt.addEventListener("click", function (e) {
-            var b = e.target.closest("button");
-            if (!b) return;
-            var mode = b.getAttribute("data-comm") || "all";
-            filt.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
-            var map = {
-              action: ["comm-need-card", "comm-survey-card"],
-              news: ["comm-feed-card", "comm-announce-card", "comm-news-card"],
-              events: ["comm-week"],
-              homes: ["comm-re-card"],
-              archive: ["comm-archive-card"]
-            };
-            var show = map[mode] || null;
-            ["comm-need-card","comm-feed-card","comm-announce-card","comm-archive-card","comm-survey-card","comm-re-card","comm-news-card"].forEach(function (id) {
-              var el = document.getElementById(id);
-              if (!el) return;
-              if (!show) { el.style.display = ""; return; }
-              el.style.display = show.indexOf(id) >= 0 ? "" : "none";
-            });
-            var week = document.getElementById("comm-week");
-            if (week && week.parentElement) week.parentElement.style.display = (!show || show.indexOf("comm-week") >= 0) ? "" : "none";
-          });
-        }
+        
         if (typeof isBeachWalkCommunity === "function" && isBeachWalkCommunity() && Array.isArray(j.events) && j.events.length && window.__entBag) {
           var extra = j.events.map(function (e) {
             var when = new Date(e.when);
