@@ -6481,7 +6481,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1814;
+    window.BOARD_VER = 1815;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -26380,9 +26380,18 @@ function mustEatsFL() {
       if (!frame) return;
       var page = document.getElementById("wink");
       var visible = page && page.classList.contains("on");
+      var radio = document.getElementById("radioPlayer");
       if (!visible && !force) {
         if (frame.src && frame.src !== "about:blank") frame.src = "about:blank";
+        if (window.__radioWasPlaying && radio && radio.paused) {
+          radio.play().catch(function () {});
+          window.__radioWasPlaying = false;
+        }
         return;
+      }
+      if (radio && !radio.paused && radio.src) {
+        window.__radioWasPlaying = true;
+        radio.pause();
       }
       var st = (typeof homeState === "function" ? homeState() : "");
       var place = (typeof homePlace === "function" ? homePlace() : "");
