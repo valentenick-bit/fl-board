@@ -6481,7 +6481,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1812;
+    window.BOARD_VER = 1813;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -13270,6 +13270,7 @@ function currentRotation() {
     }
     function showPage(id) {
       window.showPage = showPage;
+      if (typeof window.paintNewsStream === "function") window.paintNewsStream(id === "wink");
       var rotPages = typeof rotateList === "function" ? rotateList() : [];
       if (rotPages.indexOf(id) < 0 && id !== "now") {
         window.__holdPage = true;
@@ -26373,10 +26374,16 @@ function mustEatsFL() {
       var q = '"' + n.city + '" ' + n.st + (n.zip ? " OR " + n.zip : "") + " when:7d";
       return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-US&gl=US&ceid=US:en";
     }
-    window.paintNewsStream = function () {
+    window.paintNewsStream = function (force) {
       var frame = document.getElementById("news-stream");
       var title = document.getElementById("news-stream-title");
       if (!frame) return;
+      var page = document.getElementById("wink");
+      var visible = page && page.classList.contains("on");
+      if (!visible && !force) {
+        if (frame.src && frame.src !== "about:blank") frame.src = "about:blank";
+        return;
+      }
       var st = (typeof homeState === "function" ? homeState() : "");
       var place = (typeof homePlace === "function" ? homePlace() : "");
       var isCT = st === "CT" || /south windsor|hartford|connecticut|windsor/i.test(place);
