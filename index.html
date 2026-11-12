@@ -3935,7 +3935,26 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     
     #tenday-scroll .tenday { width:max-content !important; max-width:none !important; }
     #tenday-scroll .tenday .day { flex:0 0 64px !important; }
-.holiday-banner {
+.holiday-stamp {
+      position: fixed; bottom: 16px; right: 16px; z-index: 40;
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(27,42,74,.92); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+      cursor: pointer; user-select: none;
+      transition: transform .3s ease;
+    }
+    .holiday-stamp.jiggle { animation: stampJiggle .6s ease; }
+    @keyframes stampJiggle {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      20% { transform: rotate(-8deg) scale(1.08); }
+      40% { transform: rotate(8deg) scale(1.08); }
+      60% { transform: rotate(-4deg) scale(1.04); }
+      80% { transform: rotate(4deg) scale(1.04); }
+    }
+    .holiday-stamp[hidden] { display: none; }
+    html.phone .holiday-stamp { width: 56px; height: 56px; font-size: 24px; bottom: 12px; right: 12px; }
+    .holiday-banner {
       position: sticky; top: 0; z-index: 25;
       width: 100%; margin: 0; padding: 0;
       background: var(--hb-bg, #1b2a4a); color: #fff;
@@ -4362,6 +4381,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
     <audio id="radioPlayer" preload="none" playsinline></audio>
     <div class="ptr" id="ptr">Pull to refresh</div>
     <div id="holiday-banner" class="holiday-banner" hidden></div>
+    <div id="holiday-stamp" class="holiday-stamp" hidden></div>
     <main>
       <section id="now" class="page on">
         <h2 data-k="At this pin">Today</h2>
@@ -6461,7 +6481,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1807;
+    window.BOARD_VER = 1808;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -30757,6 +30777,48 @@ function wxSvg(kind, box) {
     }
     paintHolidayBanner();
     setInterval(paintHolidayBanner, 30 * 60 * 1000);
+
+    var STAMPS = {
+      "hb-veterans": ["⭐", "⚓", "✈️", "🦅", "🛟", "🚀", "🎖️", "🇺🇸"],
+      "hb-xmas": ["🎄", "⭐", "🎁", "❄️", "🕯️", "🔔"],
+      "hb-july": ["🎆", "🇺🇸", "⭐", "🎇"],
+      "hb-halloween": ["🎃", "👻", "🦇", "🕷️"],
+      "hb-thanks": ["🦃", "🍂", "🌽", "🥧"],
+      "hb-nye": ["🎉", "🥂", "✨", "🎆"],
+      "hb-val": ["❤️", "💝", "🌹", "💕"],
+      "hb-easter": ["🐰", "🥚", "🌸", "🐣"],
+      "hb-mom": ["💐", "🌸", "💕", "🌷"],
+      "hb-dad": ["👔", "🎩", "⭐", "🏆"]
+    };
+    function paintStamp() {
+      var box = document.getElementById("holiday-stamp");
+      if (!box) return;
+      var h = holidayToday();
+      if (!h || !STAMPS[h.cls]) { box.hidden = true; return; }
+      var list = STAMPS[h.cls];
+      var pick = list[Math.floor(Math.random() * list.length)];
+      box.textContent = pick;
+      box.title = h.title;
+      box.hidden = false;
+    }
+    function jiggleStamp() {
+      var box = document.getElementById("holiday-stamp");
+      if (!box || box.hidden) return;
+      box.classList.remove("jiggle");
+      void box.offsetWidth;
+      box.classList.add("jiggle");
+    }
+    paintStamp();
+    setInterval(paintStamp, 4 * 60 * 60 * 1000);
+    setInterval(jiggleStamp, 45 * 1000);
+    document.getElementById("holiday-stamp").addEventListener("click", function () {
+      this.hidden = true;
+      sessionStorage.setItem("bw-stamp-off", "1");
+    });
+    if (sessionStorage.getItem("bw-stamp-off") === "1") {
+      var st = document.getElementById("holiday-stamp");
+      if (st) st.hidden = true;
+    }
 
 
     function refreshWeather() {
