@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1824;
+    window.BOARD_VER = 1825;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -16662,10 +16662,15 @@ function paintObservatories() { paintObsTable(); }
       };
       var upperKind = "tee";
       var lowerKind = "shorts";
+      var gulf = (typeof homeState === "function" ? homeState() : "") === "FL";
+      var night = (typeof hrNow !== "undefined" ? hrNow : new Date().getHours()) >= 20 || (typeof hrNow !== "undefined" ? hrNow : new Date().getHours()) < 6;
       if (nearStorm || nearPop >= 60) { upperKind = "rain"; lowerKind = "rainpants"; }
-      else if (isFinite(feel) && feel <= 50) { upperKind = "jacket"; lowerKind = "pants"; }
-      else if (isFinite(feel) && feel <= 68) { upperKind = "long"; lowerKind = "pants"; }
+      else if (night && !gulf && isFinite(feel) && feel <= 50) { upperKind = "jacket"; lowerKind = "pants"; }
+      else if (night && !gulf && isFinite(feel) && feel <= 65) { upperKind = "long"; lowerKind = "pants"; }
+      else if (isFinite(feel) && feel >= 90) { upperKind = "tee"; lowerKind = "shorts"; }
       else if (isFinite(feel) && feel >= 78) { upperKind = "tee"; lowerKind = "shorts"; }
+      else if (isFinite(feel) && feel <= 68) { upperKind = "long"; lowerKind = "pants"; }
+      else if (night && isFinite(feel) && feel <= 72) { upperKind = "long"; lowerKind = "pants"; }
       else { upperKind = "tee"; lowerKind = "shorts"; }
       var shirt = upperSvg[upperKind] || upperSvg.tee;
       var pants = lowerSvg[lowerKind] || lowerSvg.shorts;
