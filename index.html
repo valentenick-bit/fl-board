@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1823;
+    window.BOARD_VER = 1824;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -31478,16 +31478,26 @@ function wxSvg(kind, box) {
           .slice(0, 8)
           .join(" ");
       }
-      var foxRss = "https://moxie.foxnews.com/google-publisher/latest.xml";
-      var localRss = "https://corsproxy.io/?" + encodeURIComponent(localNewsRss());
-      Promise.all([rssXml(foxRss), rssXml(localRss)]).then(function (both) {
+      var feeds = [
+        { url: "https://moxie.foxnews.com/google-publisher/latest.xml", src: "Fox", nat: true },
+        { url: "https://feeds.reuters.com/reuters/topNews", src: "Reuters", nat: true },
+        { url: "https://rss.cnn.com/rss/cnn_topstories.rss", src: "CNN", nat: true },
+        { url: "https://feeds.npr.org/1001/rss.xml", src: "NPR", nat: true },
+        { url: "https://feeds.nbcnews.com/nbcnews/public/news", src: "NBC", nat: true },
+        { url: "https://corsproxy.io/?" + encodeURIComponent(localNewsRss()), src: "Local", nat: false }
+      ];
+      Promise.all(feeds.map(function (f) { return rssXml(f.url).then(function (rows) { return { src: f.src, nat: f.nat, rows: rows || [] }; }).catch(function () { return { src: f.src, nat: f.nat, rows: [] }; }); })).then(function (results) {
         var set = getSet();
-        var foxHits = set.breakNat === "0" ? [] : (both[0] || []).filter(isBreak).map(function (it) {
-          return { src: "Fox", title: (it.title || "").replace(/\s+/g, " "), link: it.link || "", desc: (it.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+        var natHits = [], locHits = [];
+        results.forEach(function (r) {
+          var hits = (r.rows || []).filter(isBreak).map(function (it) {
+            return { src: r.src, title: (it.title || "").replace(/\s+/g, " "), link: it.link || "", desc: (it.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+          });
+          if (r.nat && set.breakNat !== "0") natHits = natHits.concat(hits);
+          else if (!r.nat && set.breakLoc !== "0") locHits = locHits.concat(hits);
         });
-        var localHits = set.breakLoc === "0" ? [] : (both[1] || []).filter(isBreak).map(function (it) {
-          return { src: "Local", title: (it.title || "").replace(/\s+/g, " ").replace(/\s*[-–|]\s*(WINK News|Fox News).*$/i, ""), link: it.link || "", desc: (it.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
-        });
+        var foxHits = natHits;
+        var localHits = locHits;
         var seen = {};
         var hits = [];
         (window.__deskBreak || []).forEach(function (h) {
