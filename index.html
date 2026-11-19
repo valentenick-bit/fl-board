@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1833;
+    window.BOARD_VER = 1834;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21389,25 +21389,26 @@ function paintObservatories() { paintObsTable(); }
               }).catch(function () { cb(null); });
           }
           tryFa(r.call, function (fa) {
-              if (fa && fa.found && fa.origin && fa.dest && fa.origin !== fa.dest && (fa.origin === apCode || fa.dest === apCode)) {
-                matched.push({
-                  call: r.call,
-                  airline: r.airline,
-                  origin: fa.origin,
-                  originCity: fa.originCity || fa.origin,
-                  dest: fa.dest,
-                  destCity: fa.destCity || fa.dest,
-                  arr: fa.arr,
-                  dep: fa.dep,
-                  depDelay: fa.depDelay,
-                  arrDelay: fa.arrDelay,
-                  phase: fa.phase || "",
-                  alt: r.alt,
-                  spd: r.spd,
-                  hdg: r.hdg,
-                  dist: r.dist
-                });
-              }
+              var origin = (fa && fa.origin) || "";
+              var dest = (fa && fa.dest) || "";
+              var useFa = fa && fa.found && origin && dest && origin !== dest;
+              matched.push({
+                call: r.call,
+                airline: r.airline,
+                origin: useFa ? origin : (r.dir === "Arr" ? "" : apCode),
+                originCity: useFa ? (fa.originCity || origin) : "",
+                dest: useFa ? dest : (r.dir === "Dep" ? "" : apCode),
+                destCity: useFa ? (fa.destCity || dest) : "",
+                arr: useFa ? fa.arr : r.arr,
+                dep: useFa ? fa.dep : r.dep,
+                depDelay: useFa ? fa.depDelay : null,
+                arrDelay: useFa ? fa.arrDelay : null,
+                phase: useFa ? (fa.phase || "") : "",
+                alt: r.alt,
+                spd: r.spd,
+                hdg: r.hdg,
+                dist: r.dist
+              });
               finish();
             });
         });
