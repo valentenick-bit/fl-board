@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1826;
+    window.BOARD_VER = 1827;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -20167,6 +20167,7 @@ function paintObservatories() { paintObsTable(); }
       var pills = '<span class="place-tag place-out">' + (path || "Flight") + "</span>" +
         '<span class="' + tagClass + '">' + (st || "Live") + "</span>";
       if (eta) pills += '<span class="place-tag place-bw">' + eta + "</span>";
+      if (f.gate) pills += '<span class="kind-tag">Gate ' + f.gate + "</span>";
       var title = [who, num].filter(Boolean).join(" · ") || "Flight";
       var whenLine = when || "";
       if (!isNaN(tm)) {
@@ -20290,6 +20291,15 @@ function paintObservatories() { paintObsTable(); }
             var arr = typeof typicalArriveMs === "function" ? typicalArriveMs(f) : NaN;
             if (!isNaN(arr) && Date.now() >= arr) f.liveKind = "Arrived";
             else if (f.liveKind && /in flight/i.test(f.liveKind) && !f.liveLat) f.liveKind = "";
+          }
+          if (f && !f.gate) {
+            var fa = "https://www.flightaware.com/live/flight/" + encodeURIComponent(codes[0] || "");
+            fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(fa)).then(function (r) { return r.text(); }).then(function (html) {
+              var m = html.match(/gate[^<]*?([A-Z]?\d{1,3}[A-Z]?)/i);
+              if (m) f.gate = m[1];
+              done((f && f.liveKind) || "");
+            }).catch(function () { done((f && f.liveKind) || ""); });
+            return;
           }
           return done((f && f.liveKind) || "");
         }
