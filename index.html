@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1840;
+    window.BOARD_VER = 1841;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -20286,9 +20286,24 @@ function paintObservatories() { paintObsTable(); }
         endpoints.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(src));
         if (hex) endpoints.push("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://api.adsb.lol/v2/hex/" + hex));
       });
+      function tryFaStatus(idx, cb) {
+        if (idx >= codes.length) return cb(null);
+        fetch("/fa-times?call=" + encodeURIComponent(codes[idx]))
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (fa) {
+            if (fa && fa.found && fa.phase) return cb(fa);
+            tryFaStatus(idx + 1, cb);
+          }).catch(function () { tryFaStatus(idx + 1, cb); });
+      }
       function next(i) {
         if (i >= endpoints.length) {
-          if (typeof noteFeed === "function") noteFeed("fly-live", true, "no live fix · " + codes[0]);
+          tryFaStatus(0, function (fa) {
+            if (fa && fa.phase) {
+              f.liveKind = fa.phase;
+              if (typeof noteFeed === "function") noteFeed("fly-live", true, codes[0] + " · " + fa.phase);
+              return done(fa.phase);
+            }
+            if (typeof noteFeed === "function") noteFeed("fly-live", true, "no live fix · " + codes[0]);
           if (f) {
             var arr = typeof typicalArriveMs === "function" ? typicalArriveMs(f) : NaN;
             if (!isNaN(arr) && Date.now() >= arr && (f.arriveMs || f.arriveIso)) f.liveKind = "Arrived";
