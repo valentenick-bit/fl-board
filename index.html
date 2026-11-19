@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1841;
+    window.BOARD_VER = 1842;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -21389,21 +21389,20 @@ function paintObservatories() { paintObsTable(); }
           finish();
         };
         if (!rows.length) { finish(); return; }
+        var faLimit = 8;
+        var faCount = 0;
         rows.forEach(function (r) {
-          if (!r.call || r.call === "—") { finish(); return; }
+          if (!r.call || r.call === "—" || faCount >= faLimit) { finish(); return; }
+          faCount++;
           function tryFa(call, cb) {
-            fetch("/fa-times?call=" + encodeURIComponent(call))
-              .then(function (res) { return res.ok ? res.json() : null; })
+            var ctrl = new AbortController();
+            var t = setTimeout(function () { ctrl.abort(); }, 3000);
+            fetch("/fa-times?call=" + encodeURIComponent(call), { signal: ctrl.signal })
+              .then(function (res) { clearTimeout(t); return res.ok ? res.json() : null; })
               .then(function (fa) {
                 if (fa && fa.found) return cb(fa);
-                var num = call.replace(/^[A-Z]+/, "");
-                if (num && num !== call) {
-                  fetch("/fa-times?call=" + encodeURIComponent(num))
-                    .then(function (res2) { return res2.ok ? res2.json() : null; })
-                    .then(function (fa2) { cb(fa2 && fa2.found ? fa2 : null); })
-                    .catch(function () { cb(null); });
-                } else cb(null);
-              }).catch(function () { cb(null); });
+                cb(null);
+              }).catch(function () { clearTimeout(t); cb(null); });
           }
           tryFa(r.call, function (fa) {
               var origin = (fa && fa.origin) || "";
