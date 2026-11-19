@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1829;
+    window.BOARD_VER = 1830;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -20936,13 +20936,15 @@ function paintObservatories() { paintObsTable(); }
     }
     function flyMapSrc(f) {
       if (!f) return "";
+      var code = (typeof parseFlightCode === "function" && parseFlightCode(f).codes[0]) || String(f.flight || "").replace(/\s+/g, "");
+      code = String(code || "").toUpperCase();
+      if (code) return "https://www.flightradar24.com/" + encodeURIComponent(code);
       var dest = typeof aptLL === "function" ? aptLL(f.to) : null;
       var orig = typeof aptLL === "function" ? aptLL(f.from) : null;
       var lat = f.liveLat || (dest && dest[0]) || (orig && orig[0]);
       var lon = f.liveLon || (dest && dest[1]) || (orig && orig[1]);
       if (!lat || !lon) return "";
-      return (typeof pinMapSrc === "function" && pinMapSrc(lat, lon)) ||
-        ("https://maps.google.com/maps?q=" + lat + "," + lon + "&ll=" + lat + "," + lon + "&z=8&t=m&hl=en&output=embed");
+      return "https://www.flightradar24.com/simple?lat=" + lat + "&lon=" + lon + "&z=8";
     }
     function flyMapLinks(f) {
       if (!f) return "";
