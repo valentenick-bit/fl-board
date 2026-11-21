@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1871;
+    window.BOARD_VER = 1872;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -23595,27 +23595,24 @@ function paint() {
           } else whenTxt = String(when);
         }
         var body = r.body || r.summary || r.desc || r.details || r.detail || "";
-        function imgKey(u) {
-          return String(u || "").replace(/\?.*$/, "").replace(/_\d+x\d+/g, "").replace(/\/\d+x\d+\//g, "/").replace(/-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "");
-        }
-        var seen = {};
-        var imgs = (r.images || r.imgs || []).filter(function (u) {
-          var k = imgKey(u);
-          if (seen[k] || __commSeenImgs[k]) return false;
-          seen[k] = true;
-          __commSeenImgs[k] = true;
-          return true;
-        }).slice(0, 4);
+        var rawImgs = (r.images || r.imgs || []).slice(0, 6);
+        var imgs = [];
+        var sizes = {};
+        rawImgs.forEach(function (u) {
+          var src = String(u).replace(/"/g, "");
+          if (__commSeenImgs[src]) return;
+          imgs.push(src);
+        });
         var thumbHtml = "";
         var galleryHtml = "";
         if (imgs.length === 1) {
-          var src = String(imgs[0]).replace(/"/g, "");
-          thumbHtml = "<img class=\"comm-thumb\" src=\"" + src + "\" alt=\"\" loading=\"lazy\" decoding=\"async\" data-lb=\"" + src + "\">";
+          thumbHtml = "<img class=\"comm-thumb\" src=\"" + imgs[0] + "\" alt=\"\" loading=\"lazy\" decoding=\"async\" data-lb=\"" + imgs[0] + "\" onload=\"this.dataset.sz=this.naturalWidth+\'x\'+this.naturalHeight\">";
+          __commSeenImgs[imgs[0]] = true;
         } else if (imgs.length > 1) {
-          galleryHtml = "<div class=\"comm-imgs\">" + imgs.map(function (u) {
-            var src = String(u).replace(/"/g, "");
+          galleryHtml = "<div class=\"comm-imgs\" data-dedupe=\"1\">" + imgs.map(function (src) {
             return "<img src=\"" + src + "\" alt=\"\" loading=\"lazy\" decoding=\"async\" data-lb=\"" + src + "\">";
           }).join("") + "</div>";
+          imgs.forEach(function (src) { __commSeenImgs[src] = true; });
         }
         var photoNote = (r.photos || r.hasPhotos) && !imgs.length ? " <small>📷 Photos in announcement</small>" : "";
         var rowClass = "comm-row" + (isPast ? " past" : "") + (imgs.length ? " has-img" : "");
@@ -23623,6 +23620,24 @@ function paint() {
           (whenTxt ? "<em>" + whenTxt + "</em>" : "") + "</div><b>" + String(r.title || "").replace(/</g,"") + "</b><span>" + String(body).replace(/</g,"") + photoNote + "</span>" + galleryHtml + "</div>";
         return "<div class=\"" + rowClass + "\">" + thumbHtml + bodyHtml + "</div>";
       }).join("");
+    }
+    if (!window.__commDedupeWired) {
+      window.__commDedupeWired = true;
+      var dedupeGalleries = function () {
+        document.querySelectorAll(".comm-imgs[data-dedupe]").forEach(function (g) {
+          var imgs = g.querySelectorAll("img");
+          var seen = {};
+          imgs.forEach(function (img) {
+            if (!img.complete || !img.naturalWidth) return;
+            var k = img.naturalWidth + "x" + img.naturalHeight;
+            if (seen[k]) img.remove();
+            else seen[k] = true;
+          });
+        });
+      };
+      document.addEventListener("load", function (e) {
+        if (e.target && e.target.tagName === "IMG" && e.target.closest(".comm-imgs")) dedupeGalleries();
+      }, true);
     }
     if (!window.__commLbWired) {
       window.__commLbWired = true;
