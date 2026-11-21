@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1854;
+    window.BOARD_VER = 1855;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -20244,8 +20244,11 @@ function paintObservatories() { paintObsTable(); }
       var fromName = APT_NAME[String(f.from || "").toUpperCase()] || f.from || "";
       var toName = APT_NAME[String(f.to || "").toUpperCase()] || f.to || "";
       box.hidden = false;
-      box.innerHTML =
-        '<iframe title="Flight map" src="' + osm + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>' +
+      var prev = box.getAttribute("data-src");
+      if (prev !== osm) {
+        box.setAttribute("data-src", osm);
+        box.innerHTML =
+          '<iframe title="Flight map" src="' + osm + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>' +
         '<div class="fly-meta">' +
           (fromName && toName ? "<span>" + fromName + " → " + toName + "</span>" : "") +
           (f.etaMs ? "<span>ETA " + fmtClockTime(f.etaMs) + "</span>" : "") +
@@ -20254,6 +20257,7 @@ function paintObservatories() { paintObsTable(); }
           '<a href="' + fr + '" target="_blank" rel="noopener">FlightRadar24</a>' +
           '<a href="' + fa + '" target="_blank" rel="noopener">FlightAware</a>' +
         "</div>";
+      }
     }
     function lookupFlightStatus(f, done) {
       var st = typeof inferFlyStatus === "function" ? inferFlyStatus(f) : "";
@@ -21102,7 +21106,7 @@ function paintObservatories() { paintObsTable(); }
       if (!window.__flyLiveT) {
         window.__flyLiveT = setInterval(function () {
           if (typeof paintTodayFly === "function") paintTodayFly();
-        }, 30 * 1000);
+        }, 3 * 60 * 1000);
       }
     }
 
@@ -21486,7 +21490,7 @@ function paintObservatories() { paintObsTable(); }
       window.__travelBoardTimer = setInterval(function () {
         var on = document.querySelector(".page.on");
         if (on && on.id === "travel" && typeof paintTravelBoard === "function") paintTravelBoard();
-      }, 60000);
+      }, 3 * 60 * 1000);
     }
     function airportTzOffset(code) {
       var a = (typeof AIRPORTS !== "undefined" ? AIRPORTS : []).filter(function (x) { return x[0] === code; })[0];
