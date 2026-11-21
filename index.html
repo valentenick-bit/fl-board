@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1870;
+    window.BOARD_VER = 1871;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -23595,18 +23595,27 @@ function paint() {
           } else whenTxt = String(when);
         }
         var body = r.body || r.summary || r.desc || r.details || r.detail || "";
+        function imgKey(u) {
+          return String(u || "").replace(/\?.*$/, "").replace(/_\d+x\d+/g, "").replace(/\/\d+x\d+\//g, "/").replace(/-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "");
+        }
         var seen = {};
         var imgs = (r.images || r.imgs || []).filter(function (u) {
-          if (seen[u] || __commSeenImgs[u]) return false;
-          seen[u] = true;
-          __commSeenImgs[u] = true;
+          var k = imgKey(u);
+          if (seen[k] || __commSeenImgs[k]) return false;
+          seen[k] = true;
+          __commSeenImgs[k] = true;
           return true;
-        }).slice(0, 6);
+        }).slice(0, 4);
         var thumbHtml = "";
         var galleryHtml = "";
-        if (imgs.length) {
+        if (imgs.length === 1) {
           var src = String(imgs[0]).replace(/"/g, "");
           thumbHtml = "<img class=\"comm-thumb\" src=\"" + src + "\" alt=\"\" loading=\"lazy\" decoding=\"async\" data-lb=\"" + src + "\">";
+        } else if (imgs.length > 1) {
+          galleryHtml = "<div class=\"comm-imgs\">" + imgs.map(function (u) {
+            var src = String(u).replace(/"/g, "");
+            return "<img src=\"" + src + "\" alt=\"\" loading=\"lazy\" decoding=\"async\" data-lb=\"" + src + "\">";
+          }).join("") + "</div>";
         }
         var photoNote = (r.photos || r.hasPhotos) && !imgs.length ? " <small>📷 Photos in announcement</small>" : "";
         var rowClass = "comm-row" + (isPast ? " past" : "") + (imgs.length ? " has-img" : "");
