@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1872;
+    window.BOARD_VER = 1873;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -23623,21 +23623,41 @@ function paint() {
     }
     if (!window.__commDedupeWired) {
       window.__commDedupeWired = true;
-      var dedupeGalleries = function () {
+      var hashCache = {};
+      function imgHash(src, cb) {
+        if (hashCache[src]) return cb(hashCache[src]);
+        fetch(src).then(function (r) { return r.arrayBuffer(); }).then(function (buf) {
+          var bytes = new Uint8Array(buf);
+          var h = 0;
+          for (var i = 0; i < Math.min(bytes.length, 8000); i += 16) h = ((h << 5) - h + bytes[i]) | 0;
+          hashCache[src] = h;
+          cb(h);
+        }).catch(function () { cb(null); });
+      }
+      function dedupeGalleries() {
         document.querySelectorAll(".comm-imgs[data-dedupe]").forEach(function (g) {
-          var imgs = g.querySelectorAll("img");
-          var seen = {};
+          var imgs = Array.from(g.querySelectorAll("img"));
+          var pending = imgs.length;
+          var hashes = {};
           imgs.forEach(function (img) {
-            if (!img.complete || !img.naturalWidth) return;
-            var k = img.naturalWidth + "x" + img.naturalHeight;
-            if (seen[k]) img.remove();
-            else seen[k] = true;
+            imgHash(img.src, function (h) {
+              if (h != null) {
+                if (hashes[h]) img.remove();
+                else hashes[h] = true;
+              }
+              if (--pending === 0 && g.querySelectorAll("img").length === 1) {
+                var only = g.querySelector("img");
+                only.className = "comm-thumb";
+                g.replaceWith(only);
+              }
+            });
           });
         });
-      };
+      }
       document.addEventListener("load", function (e) {
         if (e.target && e.target.tagName === "IMG" && e.target.closest(".comm-imgs")) dedupeGalleries();
       }, true);
+      setTimeout(dedupeGalleries, 2000);
     }
     if (!window.__commLbWired) {
       window.__commLbWired = true;
