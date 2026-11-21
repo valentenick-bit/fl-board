@@ -6477,7 +6477,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1865;
+    window.BOARD_VER = 1866;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -23560,11 +23560,13 @@ function paint() {
       var s = typeof getSet === "function" ? getSet() : {};
       return String(s.community || "BeachWalk by Manasota Key").trim() || "Community";
     }
+    var __commSeenImgs = {};
     function paintCommList(id, rows, empty) {
       var box = document.getElementById(id);
       if (!box) return;
       rows = rows || [];
       if (!rows.length) { box.innerHTML = empty || ""; return; }
+      if (id === "comm-need") __commSeenImgs = {};
       box.innerHTML = rows.map(function (r) {
         var kind = String(r.kind || "").toLowerCase();
         if (!kind) {
@@ -23593,7 +23595,11 @@ function paint() {
           } else whenTxt = String(when);
         }
         var body = r.body || r.summary || r.desc || r.details || r.detail || "";
-        var imgs = (r.images || r.imgs || []).slice(0, 6);
+        var imgs = (r.images || r.imgs || []).filter(function (u) {
+          if (__commSeenImgs[u]) return false;
+          __commSeenImgs[u] = true;
+          return true;
+        }).slice(0, 6);
         var hasOne = imgs.length === 1;
         var thumbHtml = "";
         var galleryHtml = "";
