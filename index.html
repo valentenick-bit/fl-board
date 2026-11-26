@@ -6478,7 +6478,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1891;
+    window.BOARD_VER = 1892;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -9849,7 +9849,14 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
       function updatePhoto() {
         var img = document.getElementById("re-main-img");
         var cnt = document.getElementById("re-count");
-        if (img && photos[idx]) img.src = photos[idx];
+        if (!img || !photos[idx]) return;
+        img.onerror = function () {
+          if (photos.length > 1) {
+            idx = (idx + 1) % photos.length;
+            updatePhoto();
+          }
+        };
+        img.src = photos[idx];
         if (cnt) cnt.textContent = (idx + 1) + " of " + photos.length + " · click photo for next";
       }
       function render() {
