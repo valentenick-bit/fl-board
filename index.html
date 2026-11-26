@@ -6478,7 +6478,7 @@ html.dark .metric-spark svg path { stroke:#e0c27a; }
   </div>
   <script>
 
-    window.BOARD_VER = 1885;
+    window.BOARD_VER = 1886;
 
     function defer(fn, ms) {
       if (window.requestIdleCallback) requestIdleCallback(function () { setTimeout(fn, ms || 0); }, { timeout: 2000 });
@@ -30789,10 +30789,11 @@ function wxSvg(kind, box) {
           var days = (best && best.days) || [];
           if (days.length < 8) { i++; tryNext(); return; }
           var rows = days.slice(0, 10).map(function (r, n) {
-            var dt = new Date(r.date + "T12:00:00");
+            var parts = r.date.split("-");
+            var dt = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 17, 0, 0));
             return {
               label: n === 0 ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" }),
-              date: (dt.getMonth() + 1) + "/" + dt.getDate(),
+              date: parseInt(parts[1]) + "/" + parseInt(parts[2]),
               hi: r.hi,
               lo: r.lo,
               pop: r.pop || 0,
